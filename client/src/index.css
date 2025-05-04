@@ -20,6 +20,8 @@
 .annotation-pulse {
   animation: pulse 1.5s ease-in-out 2;
   z-index: 100 !important;
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: 2px;
 }
 
 @layer base {
