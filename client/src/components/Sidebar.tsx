@@ -21,11 +21,11 @@ import {
   Users,
   Clock,
   PieChart,
-  Bell,
   MessageSquare,
   HelpCircle,
   CircleUser,
-  Search
+  Search,
+  Box
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -63,7 +63,11 @@ export function Sidebar({ className }: SidebarProps) {
   const isMobile = useMobile();
   const [isOpen, setIsOpen] = useState(!isMobile);
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({
-    "-Planning": false
+    "-Planning": false,
+    "-Vault": true,
+    "-Vault-Files": true,
+    "-Vault-Files-01- Organisation": true,
+    "-Vault-Files-01- Organisation-01- Arkitekt": true
   });
 
   useEffect(() => {
@@ -97,9 +101,15 @@ export function Sidebar({ className }: SidebarProps) {
   const navItems: NavItemType[] = [
     {
       href: "/",
+      label: "Home",
+      icon: <Home className="w-5 h-5" />,
+      active: location === "/"
+    },
+    {
+      href: "/dashboard",
       label: "Dashboard",
       icon: <LayoutDashboard className="w-5 h-5" />,
-      active: location === "/"
+      active: location === "/dashboard"
     },
     {
       href: "#", // No direct planning page
@@ -125,65 +135,157 @@ export function Sidebar({ className }: SidebarProps) {
       ]
     },
     {
-      href: "/notifications", // Changed to a route that exists in App.tsx
+      href: "/communication",
       label: "Communication",
       icon: <MessageSquare className="w-5 h-5" />,
-      active: location === "/notifications"
+      active: location === "/communication"
     },
     {
-      href: "/files", // Changed to match the files route in App.tsx
-      label: "Files",
-      icon: <FileText className="w-5 h-5" />,
-      active: location === "/files",
+      href: "/3d-viewer",
+      label: "3D Viewer",
+      icon: <Box className="w-5 h-5" />,
+      active: location === "/3d-viewer",
       badge: "1"
     },
     {
-      href: "/tasks", // Match tasks route
-      label: "Tasks",
-      icon: <CheckSquare className="w-5 h-5" />,
-      active: location === "/tasks",
-    },
-    {
-      href: "/timeline", // Match timeline route
-      label: "Timeline",
-      icon: <Calendar className="w-5 h-5" />,
-      active: location === "/timeline",
-    },
-    {
-      href: "/team", // Match team route
-      label: "Team",
-      icon: <Users className="w-5 h-5" />,
-      active: location === "/team",
-    },
-    {
-      href: "/wiki", // Match wiki route
-      label: "Wiki",
-      icon: <BookOpen className="w-5 h-5" />,
-      active: location === "/wiki",
-    },
-    {
-      href: "/time-tracking", // Match time-tracking route
-      label: "Time Tracking",
-      icon: <Clock className="w-5 h-5" />,
-      active: location === "/time-tracking",
-    },
-    {
-      href: "/analytics", // Match analytics route
-      label: "Analytics",
-      icon: <PieChart className="w-5 h-5" />,
-      active: location === "/analytics",
-    },
-    {
-      href: "/help", // Match help route
-      label: "Help",
-      icon: <HelpCircle className="w-5 h-5" />,
-      active: location === "/help",
-    },
-    {
-      href: "/settings", // Match settings route
-      label: "Settings",
-      icon: <Settings className="w-5 h-5" />,
-      active: location === "/settings",
+      href: "#",
+      label: "Vault",
+      icon: <FolderClosed className="w-5 h-5" />,
+      active: location.startsWith("/vault"),
+      children: [
+        {
+          href: "/vault",
+          label: "Home",
+          active: location === "/vault",
+          indent: 1,
+          icon: <Home className="w-4 h-4" />
+        },
+        {
+          href: "/vault/comments",
+          label: "Comments",
+          active: location === "/vault/comments",
+          indent: 1,
+          icon: <MessageSquare className="w-4 h-4" />
+        },
+        {
+          href: "#",
+          label: "Review Package",
+          active: location.startsWith("/vault/review"),
+          indent: 1,
+          icon: <CheckSquare className="w-4 h-4" />,
+          children: []
+        },
+        {
+          href: "#",
+          label: "Files",
+          active: location.startsWith("/vault/files"),
+          indent: 1,
+          icon: <FileText className="w-4 h-4" />,
+          children: [
+            {
+              href: "#",
+              label: "01- Organisation",
+              active: false,
+              indent: 2,
+              icon: <FolderClosed className="w-4 h-4" />,
+              children: [
+                {
+                  href: "#",
+                  label: "01- Arkitekt",
+                  active: false,
+                  indent: 3,
+                  icon: <FolderClosed className="w-3 h-3" />,
+                  children: [
+                    {
+                      href: "/vault/files/1",
+                      label: "1. Ritningar",
+                      active: false,
+                      indent: 4,
+                      icon: <FileText className="w-3 h-3" />
+                    },
+                    {
+                      href: "/vault/files/2",
+                      label: "2. DWG & IFC",
+                      active: false,
+                      indent: 4,
+                      icon: <FileText className="w-3 h-3" />
+                    },
+                    {
+                      href: "/vault/files/3",
+                      label: "3. Beskrivningar",
+                      active: false,
+                      indent: 4,
+                      icon: <FileText className="w-3 h-3" />
+                    },
+                    {
+                      href: "/vault/files/4",
+                      label: "4. Underlag",
+                      active: false,
+                      indent: 4,
+                      icon: <FileText className="w-3 h-3" />
+                    },
+                    {
+                      href: "/vault/files/5",
+                      label: "5. Egenkontroller",
+                      active: false,
+                      indent: 4,
+                      icon: <FileText className="w-3 h-3" />
+                    }
+                  ]
+                },
+                {
+                  href: "#",
+                  label: "02- Projektering",
+                  active: false,
+                  indent: 3,
+                  icon: <FolderClosed className="w-3 h-3" />,
+                  children: []
+                },
+                {
+                  href: "#",
+                  label: "00- Gemensam",
+                  active: false,
+                  indent: 3,
+                  icon: <FolderClosed className="w-3 h-3" />,
+                  children: []
+                }
+              ]
+            },
+            {
+              href: "#",
+              label: "02- Akustik",
+              active: false,
+              indent: 2,
+              icon: <FolderClosed className="w-4 h-4" />,
+              children: []
+            },
+            {
+              href: "#",
+              label: "02- Brand",
+              active: false,
+              indent: 2,
+              icon: <FolderClosed className="w-4 h-4" />,
+              children: []
+            }
+          ]
+        },
+        {
+          href: "#",
+          label: "Versionset",
+          active: location.startsWith("/vault/versions"),
+          indent: 1,
+          icon: <Clock className="w-4 h-4" />,
+          children: []
+        },
+        {
+          href: "#",
+          label: "Meetings",
+          active: location.startsWith("/vault/meetings"),
+          indent: 1,
+          icon: <Users className="w-4 h-4" />,
+          children: []
+        }
+      ]
     }
   ];
 
@@ -321,23 +423,30 @@ export function Sidebar({ className }: SidebarProps) {
         )}
       >
         <div className="p-4 border-b border-neutral-200">
-          <div className="flex items-center">
+          <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <div className="w-8 h-8 bg-primary-600 rounded-md flex items-center justify-center text-white">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center text-white">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M12 2L20 7V17L12 22L4 17V7L12 2Z" fill="currentColor"/>
                 </svg>
               </div>
-              <span className="ml-2 text-primary-900 text-xl font-bold">ValvX</span>
+              <span className="ml-2 text-blue-900 text-xl font-bold">ValvX</span>
             </div>
-            {isMobile && (
-              <button 
-                onClick={toggleSidebar} 
-                className="ml-auto text-neutral-500 hover:text-neutral-700"
-              >
-                <X className="w-5 h-5" />
+            <div className="flex space-x-1 items-center">
+              <button className="p-1 text-gray-500 hover:text-blue-700">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+                </svg>
               </button>
-            )}
+              {isMobile && (
+                <button 
+                  onClick={toggleSidebar} 
+                  className="p-1 text-neutral-500 hover:text-neutral-700"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
         
@@ -357,22 +466,43 @@ export function Sidebar({ className }: SidebarProps) {
           </div>
         </div>
         
-        <div className="p-3 border-t border-neutral-200 mt-auto">
+        <div className="px-3 py-1 mt-auto">
+          <div className="space-y-1 mt-1">
+            <Link 
+              href="/support"
+              className="flex items-center px-3 py-2 rounded-md text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+            >
+              <HelpCircle className="w-5 h-5 mr-3 text-neutral-500" />
+              <span className="text-sm">Support</span>
+            </Link>
+            <Link 
+              href="/settings"
+              className="flex items-center px-3 py-2 rounded-md text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+            >
+              <Settings className="w-5 h-5 mr-3 text-neutral-500" />
+              <span className="text-sm">Settings</span>
+            </Link>
+          </div>
+        </div>
+        
+        <div className="p-3 border-t border-neutral-200">
           <div className="flex items-center">
             <Avatar className="h-8 w-8 border border-neutral-200">
               <AvatarFallback className="bg-neutral-100 text-neutral-700 text-xs">
-                {user ? getInitials(user.username) : 'U'}
+                FH
               </AvatarFallback>
             </Avatar>
             <div className="ml-2 overflow-hidden">
-              <p className="text-sm font-medium text-neutral-900 truncate">{user?.username || 'User'}</p>
-              <p className="text-xs text-neutral-500 truncate">maria@valvxl.se</p>
+              <p className="text-sm font-medium text-neutral-900 truncate">Fredrik H.</p>
+              <p className="text-xs text-neutral-500 truncate">fredrik@valvx.com</p>
             </div>
             <button 
-              className="ml-auto text-neutral-400 hover:text-neutral-600"
+              className="ml-auto text-neutral-400 hover:text-neutral-600 p-1"
               onClick={handleLogout}
             >
-              <LogOut className="h-4 w-4" />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
             </button>
           </div>
         </div>
