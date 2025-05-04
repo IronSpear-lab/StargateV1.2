@@ -131,11 +131,37 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     setActiveAnnotation(null);
     
     // Försök hämta annotationer från localStorage för denna fil - KRITISKT: Körs när dialogen öppnas
-    if (isOpen && fileData?.fileId && fileData?.filename) {
+    if (isOpen && fileData) {
       try {
-        // Generera samma nyckel som vid sparande
+        // Först, bestäm vilket fileId vi ska använda
+        let fileId = fileData.fileId;
+        
+        // Om vi inte har ett fileId, kolla om vi har ett i vår mapping
+        if (!fileId) {
+          try {
+            const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+            fileId = fileIdMappings[fileData.filename];
+            
+            if (fileId) {
+              console.log(`[${Date.now()}] Found fileId mapping for ${fileData.filename}: ${fileId}`);
+            } else {
+              // Skapa ett nytt ID om inget hittades
+              fileId = `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+              console.log(`[${Date.now()}] Creating new fileId for ${fileData.filename}: ${fileId}`);
+              
+              // Spara för framtida användning
+              fileIdMappings[fileData.filename] = fileId;
+              localStorage.setItem('pdf_file_id_mappings', JSON.stringify(fileIdMappings));
+            }
+          } catch (error) {
+            console.error("Error with fileId mappings:", error);
+            fileId = `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          }
+        }
+        
+        // Nu har vi ett fileId, så vi kan försöka hämta annotationer
         const fileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
-        const annotationsKey = `pdf_annotations_${fileName}_${fileData.fileId}`;
+        const annotationsKey = `pdf_annotations_${fileName}_${fileId}`;
         
         console.log(`[${Date.now()}] Attempting to load annotations using key: ${annotationsKey}`);
         const savedAnnotations = localStorage.getItem(annotationsKey);
@@ -158,17 +184,17 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             setAnnotations([]);
           }
         } else {
-          // Check for legacy storage format as well
-          const legacyKey = `annotations_${fileData.fileId}`;
+          // Kolla efter äldre lagringsformat som fallback
+          const legacyKey = `annotations_${fileId}`;
           const legacyAnnotations = localStorage.getItem(legacyKey);
           
           if (legacyAnnotations) {
-            console.log(`Found annotations in legacy format, migrating to new format...`);
+            console.log(`[${Date.now()}] Found annotations in legacy format, migrating to new format...`);
             const parsedLegacyAnnotations = JSON.parse(legacyAnnotations);
             setAnnotations(parsedLegacyAnnotations);
-            // Will be saved in new format by the save effect
+            // Kommer sparas i nytt format av save-effecten
           } else {
-            console.log(`No annotations found for file: ${fileData.filename}, starting with empty list`);
+            console.log(`[${Date.now()}] No annotations found for file: ${fileData.filename}, starting with empty list`);
             setAnnotations([]);
           }
         }
@@ -188,64 +214,79 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         setAnnotations([]);
       }
     } else {
-      // Om dialogrutan inte är öppen eller ingen fil-ID/filnamn, gör ingenting
+      // Om dialogrutan inte är öppen eller ingen fildata, gör ingenting
       if (!isOpen) {
         console.log("PDF Viewer is closed, skipping annotation loading");
       } else {
-        console.log("Missing file data, cannot load annotations", { fileId: fileData?.fileId, filename: fileData?.filename });
+        console.log("Missing file data, cannot load annotations", { filename: fileData?.filename });
         setAnnotations([]);
       }
     }
-  }, [isOpen, fileData?.fileId, fileData?.filename]);
+  }, [isOpen, fileData]);
   
   // Hämta tillgängliga versioner när en fil öppnas
   useEffect(() => {
-    if (!fileData?.fileId) return;
+    if (!isOpen || !fileData) return;
     
-    // Här skulle vi göra ett API-anrop för att hämta alla versioner av denna fil
-    // Exempel: fetchFileVersions(fileData.fileId)
+    // Bestäm ett fileId - skapa ett om det inte finns
+    const fileId = fileData.fileId || `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     
-    // Simulera versionshämtning för demo
-    const dummyVersions: FileVersion[] = [
-      {
-        id: 'version1',
-        versionNumber: 1,
-        filename: fileData.filename,
-        fileUrl: fileUrl || '',
-        description: 'Ursprunglig version',
-        uploaded: '2025-03-15',
-        uploadedBy: 'Johan Andersson',
-        commentCount: 2
-      },
-      {
-        id: 'version2',
-        versionNumber: 2,
-        filename: fileData.filename,
-        fileUrl: fileUrl || '',
-        description: 'Uppdaterade mått på kök och badrum',
-        uploaded: '2025-04-02',
-        uploadedBy: 'Anna Svensson',
-        commentCount: 5
-      },
-      {
-        id: 'version3',
-        versionNumber: 3,
-        filename: fileData.filename,
-        fileUrl: fileUrl || '',
-        description: 'Justerad planlösning med utökad veranda',
-        uploaded: fileData.uploaded,
-        uploadedBy: fileData.uploadedBy,
-        commentCount: 0
+    // Om fileData saknar fileId, uppdatera det internt
+    if (!fileData.fileId) {
+      console.log(`[${Date.now()}] File data was missing fileId, generated:`, fileId);
+    }
+    
+    // Skapa en nyckel som är unik för denna fil (oavsett om vi har ett fileId eller ej)
+    const fileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+    const versionsKey = `pdf_versions_${fileName}_${fileId}`;
+    
+    console.log(`[${Date.now()}] Attempting to load versions with key:`, versionsKey);
+    
+    // Först, försök hämta versioner från localStorage
+    const savedVersionsStr = localStorage.getItem(versionsKey);
+    if (savedVersionsStr) {
+      try {
+        const savedVersions = JSON.parse(savedVersionsStr);
+        if (Array.isArray(savedVersions) && savedVersions.length > 0) {
+          console.log(`[${Date.now()}] Successfully loaded ${savedVersions.length} versions from localStorage`);
+          setFileVersions(savedVersions);
+          
+          // Använd den senaste versionen som aktiv
+          const latestVersion = savedVersions[savedVersions.length - 1];
+          setActiveVersionId(latestVersion.id);
+          return;
+        }
+      } catch (error) {
+        console.error("Error parsing saved versions:", error);
       }
-    ];
+    }
     
-    setFileVersions(dummyVersions);
+    // Om vi inte hittade några sparade versioner, skapa en initial version
+    console.log(`[${Date.now()}] No saved versions found for key ${versionsKey}, creating initial version`);
     
-    // Sätt aktuell version till den senaste
-    const latestVersion = dummyVersions[dummyVersions.length - 1];
-    setActiveVersionId(latestVersion.id);
+    const initialVersion: FileVersion = {
+      id: `version1_${Date.now()}`,
+      versionNumber: 1,
+      filename: fileData.filename,
+      fileUrl: fileUrl || '',
+      description: fileData.description || 'Ursprunglig fil',
+      uploaded: fileData.uploaded || new Date().toISOString(),
+      uploadedBy: fileData.uploadedBy || user?.username || 'Användare',
+      commentCount: 0
+    };
     
-  }, [fileData?.fileId, fileUrl]);
+    const initialVersions = [initialVersion];
+    setFileVersions(initialVersions);
+    setActiveVersionId(initialVersion.id);
+    
+    // Spara denna första version till localStorage
+    try {
+      localStorage.setItem(versionsKey, JSON.stringify(initialVersions));
+      console.log(`[${Date.now()}] Saved initial version to localStorage:`, initialVersion);
+    } catch (error) {
+      console.error("Error saving initial version to localStorage:", error);
+    }
+  }, [isOpen, fileData, fileUrl, user]);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -362,22 +403,51 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       setAnnotations(updatedAnnotations);
       
       // Spara omedelbart till localStorage
-      if (fileData?.fileId && fileData?.filename) {
-        const fileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
-        const annotationsKey = `pdf_annotations_${fileName}_${fileData.fileId}`;
-        
-        localStorage.setItem(annotationsKey, JSON.stringify(updatedAnnotations));
-        console.log(`Successfully saved ${updatedAnnotations.length} annotations to localStorage with key: ${annotationsKey}`);
-        
-        // Uppdatera även nyckellistan
+      if (fileData) {
         try {
-          let keyList = JSON.parse(localStorage.getItem('pdf_annotation_keys') || '[]');
-          if (!keyList.includes(annotationsKey)) {
-            keyList.push(annotationsKey);
-            localStorage.setItem('pdf_annotation_keys', JSON.stringify(keyList));
+          // Bestäm fileId att använda, skapa ett om det saknas
+          let fileId = fileData.fileId;
+          
+          // Om vi inte har något fileId, kolla om vi har ett mappat ID
+          if (!fileId) {
+            try {
+              const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+              fileId = fileIdMappings[fileData.filename];
+              
+              if (!fileId) {
+                // Skapa ett nytt ID om det saknas
+                fileId = `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+                console.log(`[${Date.now()}] Created new fileId for annotations: ${fileId}`);
+                
+                // Spara mapping för framtida användning
+                fileIdMappings[fileData.filename] = fileId;
+                localStorage.setItem('pdf_file_id_mappings', JSON.stringify(fileIdMappings));
+              }
+            } catch (error) {
+              console.error("Error handling fileId mappings:", error);
+              fileId = `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+            }
           }
-        } catch (e) {
-          console.error("Error updating key list", e);
+          
+          // Använd det säkra fileId vi nu har
+          const fileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+          const annotationsKey = `pdf_annotations_${fileName}_${fileId}`;
+          
+          localStorage.setItem(annotationsKey, JSON.stringify(updatedAnnotations));
+          console.log(`[${Date.now()}] Successfully saved ${updatedAnnotations.length} annotations to localStorage with key: ${annotationsKey}`);
+          
+          // Uppdatera även nyckellistan för enklare felsökning
+          try {
+            let keyList = JSON.parse(localStorage.getItem('pdf_annotation_keys') || '[]');
+            if (!keyList.includes(annotationsKey)) {
+              keyList.push(annotationsKey);
+              localStorage.setItem('pdf_annotation_keys', JSON.stringify(keyList));
+            }
+          } catch (e) {
+            console.error("Error updating annotation key list", e);
+          }
+        } catch (error) {
+          console.error("Error saving annotations:", error);
         }
       }
       
@@ -691,20 +761,39 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       setActiveVersionId(newVersionId);
       setPdfUrl(newFileUrl);
       
-      // Om fileData inte hade ett fileId, uppdatera det
-      if (!fileData?.fileId && fileData) {
-        const updatedFileData = {
-          ...fileData,
-          fileId: fileId
-        };
+      // VIKTIG ÄNDRING: Spara versioner till localStorage
+      try {
+        const fileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+        const versionsKey = `pdf_versions_${fileName}_${fileId}`;
         
-        // Vi behöver någott sätt att uppdatera fileData här
-        // Detta är lite komplext eftersom fileData kommer utifrån
-        // Vi får hoppas att URL:en uppdateras!
-        console.log("Generated fileId for file:", fileId);
+        localStorage.setItem(versionsKey, JSON.stringify(updatedVersions));
+        console.log(`[${Date.now()}] Saved ${updatedVersions.length} versions to localStorage with key: ${versionsKey}`);
+        
+        // Uppdatera även nyckellistan för versioner
+        let versionKeyList = JSON.parse(localStorage.getItem('pdf_version_keys') || '[]');
+        if (!versionKeyList.includes(versionsKey)) {
+          versionKeyList.push(versionsKey);
+          localStorage.setItem('pdf_version_keys', JSON.stringify(versionKeyList));
+        }
+      } catch (error) {
+        console.error("Failed to save versions to localStorage:", error);
       }
       
-      console.log("Version saved and activated successfully");
+      // Om fileData inte hade ett fileId, uppdatera det internt
+      if (!fileData?.fileId && fileData) {
+        // Vi kan inte direkt ändra fileData eftersom det kommer utifrån,
+        // men vi kan spara en koppling mellan filnamn och genererat ID
+        try {
+          const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+          fileIdMappings[fileData.filename] = fileId;
+          localStorage.setItem('pdf_file_id_mappings', JSON.stringify(fileIdMappings));
+          console.log(`[${Date.now()}] Saved file ID mapping for ${fileData.filename}: ${fileId}`);
+        } catch (error) {
+          console.error("Failed to save file ID mapping:", error);
+        }
+      }
+      
+      console.log(`[${Date.now()}] Version saved and activated successfully`);
       
       // Stäng dialogrutan
       closeUploadVersionDialog();
