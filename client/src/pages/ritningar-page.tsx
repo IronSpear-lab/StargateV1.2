@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SimplePDFViewer } from "@/components/SimplePDFViewer";
+import { PDFViewer } from "@/components/PDFViewer";
 import { storeFiles, getUploadedFileUrl, getStoredFile } from "@/lib/file-utils";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
@@ -493,9 +493,9 @@ export default function RitningarPage() {
         </div>
       </div>
       
-      {/* Enkel PDF-visare */}
+      {/* PDF-visare */}
       {selectedFile && (
-        <SimplePDFViewer
+        <PDFViewer
           isOpen={!!selectedFile}
           onClose={() => setSelectedFile(null)}
           file={selectedFile.file}
