@@ -111,17 +111,17 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
     
     switch(fileType.toLowerCase()) {
       case 'pdf':
-        return <FilePdf className={cn(iconClasses, "text-[#fa5c7c]")} />;
+        return <File className={cn(iconClasses, "text-[#fa5c7c]")} />;
       case 'png':
       case 'jpg':
       case 'jpeg':
       case 'gif':
       case 'svg':
-        return <FileImage className={cn(iconClasses, "text-[#0acf97]")} />;
+        return <Image className={cn(iconClasses, "text-[#0acf97]")} />;
       case 'xlsx':
       case 'xls':
       case 'csv':
-        return <FileSpreadsheet className={cn(iconClasses, "text-[#727cf5]")} />;
+        return <Table className={cn(iconClasses, "text-[#727cf5]")} />;
       case 'doc':
       case 'docx':
       case 'txt':
@@ -129,15 +129,15 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
       case 'mp3':
       case 'wav':
       case 'ogg':
-        return <FileAudio className={cn(iconClasses, "text-[#ffc35a]")} />;
+        return <Music className={cn(iconClasses, "text-[#ffc35a]")} />;
       case 'mp4':
       case 'avi':
       case 'mov':
-        return <FileVideo className={cn(iconClasses, "text-[#fa5c7c]")} />;
+        return <Video className={cn(iconClasses, "text-[#fa5c7c]")} />;
       case 'zip':
       case 'rar':
       case '7z':
-        return <FileArchive className={cn(iconClasses, "text-[#ffc35a]")} />;
+        return <Archive className={cn(iconClasses, "text-[#ffc35a]")} />;
       default:
         return <FileText className={cn(iconClasses, "text-gray-500")} />;
     }
@@ -207,7 +207,7 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
               <div key={file.id}>
                 <div className="flex py-2.5 px-3 rounded-md hover:bg-gray-50 transition-colors cursor-pointer group">
                   <div className="mr-3 mt-1">
-                    {getFileIcon(file.fileType)}
+                    <File className="h-4 w-4 text-gray-500" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2">

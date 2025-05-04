@@ -104,10 +104,10 @@ export function Widget({
       <CardHeader className="p-3 bg-gradient-to-r from-[rgba(114,124,245,0.1)] to-white border-b flex-row items-center justify-between space-y-0 rounded-t-lg">
         <div className="flex items-center space-x-2">
           <div
-            className="cursor-move p-1 rounded hover:bg-blue-100/50"
+            className="cursor-move p-1 rounded hover:bg-[#727cf5]/10"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <Grip className="h-4 w-4 text-blue-500" />
+            <Grip className="h-4 w-4 text-[#727cf5]" />
           </div>
           <div>
             <CardTitle className="text-sm font-medium text-gray-800">{title}</CardTitle>
@@ -120,13 +120,13 @@ export function Widget({
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-6 w-6 rounded-full hover:bg-blue-100/50" 
+            className="h-6 w-6 rounded-full hover:bg-[#727cf5]/10" 
             onClick={toggleCollapsed}
           >
             {collapsed ? (
-              <ChevronDown className="h-3.5 w-3.5 text-blue-500" />
+              <ChevronDown className="h-3.5 w-3.5 text-[#727cf5]" />
             ) : (
-              <ChevronUp className="h-3.5 w-3.5 text-blue-500" />
+              <ChevronUp className="h-3.5 w-3.5 text-[#727cf5]" />
             )}
           </Button>
           
@@ -134,19 +134,19 @@ export function Widget({
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-6 w-6 rounded-full hover:bg-blue-100/50" 
+              className="h-6 w-6 rounded-full hover:bg-[#727cf5]/10" 
               onClick={toggleExpanded}
             >
-              <Maximize2 className="h-3.5 w-3.5 text-blue-500" />
+              <Maximize2 className="h-3.5 w-3.5 text-[#727cf5]" />
             </Button>
           ) : (
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-6 w-6 rounded-full hover:bg-blue-100/50" 
+              className="h-6 w-6 rounded-full hover:bg-[#727cf5]/10" 
               onClick={toggleExpanded}
             >
-              <Minimize2 className="h-3.5 w-3.5 text-blue-500" />
+              <Minimize2 className="h-3.5 w-3.5 text-[#727cf5]" />
             </Button>
           )}
           
@@ -155,9 +155,9 @@ export function Widget({
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-6 w-6 rounded-full hover:bg-blue-100/50"
+                className="h-6 w-6 rounded-full hover:bg-[#727cf5]/10"
               >
-                <MoreHorizontal className="h-3.5 w-3.5 text-blue-500" />
+                <MoreHorizontal className="h-3.5 w-3.5 text-[#727cf5]" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[160px]">
@@ -188,10 +188,10 @@ export function Widget({
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 rounded-full hover:bg-blue-100/50"
+            className="h-6 w-6 rounded-full hover:bg-[#fa5c7c]/10"
             onClick={() => onRemove(id)}
           >
-            <X className="h-3.5 w-3.5 text-blue-500" />
+            <X className="h-3.5 w-3.5 text-[#fa5c7c]" />
           </Button>
         </div>
       </CardHeader>
