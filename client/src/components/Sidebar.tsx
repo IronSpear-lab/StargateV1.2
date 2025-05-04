@@ -112,18 +112,16 @@ export function Sidebar({ className }: SidebarProps) {
             <ul>
               {navItems.map((item) => (
                 <li key={item.href} className="mb-1">
-                  <Link href={item.href}>
-                    <a 
-                      className={cn(
-                        "flex items-center p-2 rounded-md",
-                        location === item.href 
-                          ? "bg-primary-50 text-primary-700" 
-                          : "text-neutral-700 hover:bg-neutral-100"
-                      )}
-                    >
-                      {item.icon}
-                      <span className="ml-3">{item.label}</span>
-                    </a>
+                  <Link href={item.href} 
+                    className={cn(
+                      "flex items-center p-2 rounded-md",
+                      location === item.href 
+                        ? "bg-primary-50 text-primary-700" 
+                        : "text-neutral-700 hover:bg-neutral-100"
+                    )}
+                  >
+                    {item.icon}
+                    <span className="ml-3">{item.label}</span>
                   </Link>
                 </li>
               ))}
