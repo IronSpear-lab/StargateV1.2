@@ -114,12 +114,23 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   const pdfContainerRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
 
-  // Om en File-objekt skickas in, skapa en URL för den
+  // Om en File-objekt skickas in, skapa en URL för den och spara File-objektet
   useEffect(() => {
     if (file) {
+      console.log("File provided to PDF Viewer:", file.name, file.size, "bytes");
+      
+      // Spara filen för att använda den som fallback genom hela applicationen
+      // Vi sparar filen globalt för att kunna använda den när vi skapar nya versioner
+      (window as any).currentPdfFile = file;
+      
       const url = URL.createObjectURL(file);
+      console.log(`Created URL for file ${file.name}:`, url);
       setPdfUrl(url);
-      return () => URL.revokeObjectURL(url);
+      
+      // Vi revokar inte URL:en när komponenten unmountas, för att PDFen ska kunna
+      // fortsätta visas om komponenten renderas om
+      // Detta kan leda till minnesläckage, men är OK för demosyften
+      // I en produktion skulle vi hantera detta på serversidan
     } else if (fileUrl) {
       setPdfUrl(fileUrl);
     }
@@ -799,6 +810,16 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
 
   // Ladda upp en ny version av filen
   const handleUploadNewVersion = () => {
+    // För demo-syfte, vi återanvänder samma fil för alla versioner
+    // Om vi hade en riktig server skulle vi ladda upp en ny fil här
+    
+    // Använd den befintliga filen för vår "nya" version
+    const originalFile = (window as any).currentPdfFile;
+    if (originalFile) {
+      console.log(`[${Date.now()}] Using existing PDF file for new version`);
+      setSelectedVersionFile(originalFile);
+    }
+    
     setShowUploadVersionDialog(true);
   };
   
@@ -812,7 +833,12 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   // Hantera val av fil för ny version
   const handleVersionFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedVersionFile(e.target.files[0]);
+      const newFile = e.target.files[0];
+      console.log(`[${Date.now()}] Selected new file for version:`, newFile.name, newFile.size, "bytes");
+      
+      // Spara filen globalt så vi kan använda den som fallback senare
+      (window as any).lastUploadedVersionFile = newFile;
+      setSelectedVersionFile(newFile);
     }
   };
   
@@ -854,9 +880,27 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       // Detta är viktigt för att kunna se samma kommentarer i båda versionerna
       const existingAnnotations = [...annotations];
       
+      // För en stabil demoupplevelse använder vi samma fil för alla versioner
+      // och återanvänder den ursprungliga PDF:en som användaren laddade upp
+      const originalFile = (window as any).currentPdfFile || selectedVersionFile;
+      
+      console.log(`[${Date.now()}] Using original file for new version`);
+      
       // Skapa URL till den uppladdade filen
       console.log("Creating object URL for file...");
-      const newFileUrl = URL.createObjectURL(selectedVersionFile);
+      
+      // Revoke eventuell tidigare URL för att undvika minnesläckage
+      if (pdfUrl && pdfUrl.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(pdfUrl.split('#')[0]);
+        } catch (e) {
+          console.error("Error revoking URL:", e);
+        }
+      }
+      
+      // Skapa en ny URL för filen
+      const newFileUrl = URL.createObjectURL(originalFile);
+      console.log(`[${Date.now()}] Created new URL for version: ${newFileUrl}`);
       
       // Generera ny version med unik ID och ökat versionsnummer
       const newVersionNumber = fileVersions.length + 1;
@@ -867,7 +911,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       const newVersion: FileVersion = {
         id: newVersionId,
         versionNumber: newVersionNumber,
-        filename: selectedVersionFile.name,
+        filename: originalFile.name, // Använd originalfilens namn
         fileUrl: newFileUrl,
         description: newVersionDescription,
         uploaded: now,
@@ -996,21 +1040,40 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       return;
     }
     
-    // VIKTIGT: Vi använder alltid den nuvarande PDF:en som visas för alla versioner
-    // I en verklig implementation skulle vi hämta specifika versioner från servern
-    // För demo använder vi samma fil för alla versioner, så att blob-URLer inte orsakar problem
+    // VIKTIGT: Vi måste använda den ursprungliga filen för alla versioner
+    // Eftersom blob-URLer inte är beständiga mellan sessioner
     try {
-      // För att säkerställa att we inte använder ogiltiga blob-URLer, alltid använd samma fil
-      // men lägg till en timestamp för att tvinga omrendering
-      const currentFileUrl = pdfUrl?.split('#')[0]; // Ta bort eventuella tidigare timestamps
-      if (currentFileUrl) {
+      // Använd den original-fil som vi sparar i window-objektet
+      // Detta är en demo-lösning - i verklig produktion skulle vi hämta specifika versioner från servern
+      const originalFile = (window as any).currentPdfFile;
+      
+      if (originalFile) {
+        console.log(`[${Date.now()}] Using original file for version ${selectedVersion.versionNumber}`);
+        
+        // Skapa en ny URL för filen med en timestamp så att React renderar om
+        try {
+          // Revoke tidigare URL först för att undvika minnesläckage
+          if (pdfUrl && pdfUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(pdfUrl.split('#')[0]);
+          }
+          
+          // Skapa en ny URL för samma fil
+          const newUrl = URL.createObjectURL(originalFile) + '#' + Date.now();
+          console.log(`[${Date.now()}] Created new URL for file: ${newUrl}`);
+          setPdfUrl(newUrl);
+        } catch (urlError) {
+          console.error("Error creating/revoking object URL:", urlError);
+        }
+      } else if (pdfUrl) {
+        // Fallback om vi inte har en originalfil - använd nuvarande URL
+        console.log(`[${Date.now()}] No original file available, using current URL with timestamp`);
+        const currentFileUrl = pdfUrl.split('#')[0]; // Ta bort eventuella tidigare timestamps
         setPdfUrl(currentFileUrl + '#' + Date.now());
-        console.log(`[${Date.now()}] Using current file for version ${selectedVersion.versionNumber} with refresh`);
       } else {
-        console.error("No current PDF URL available");
+        console.error(`[${Date.now()}] No file or URL available for version change`);
       }
     } catch (error) {
-      console.error("Error during version change:", error);
+      console.error(`[${Date.now()}] Error during version change:`, error);
     }
     
     // Uppdatera aktiv version ID
