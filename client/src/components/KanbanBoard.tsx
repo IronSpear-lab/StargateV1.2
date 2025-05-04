@@ -60,6 +60,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Task } from "@shared/schema";
+import { useFormValidation } from "@/hooks/use-form-validation";
+import { FormValidationError } from "@/components/ui/form-validation-error";
 
 // Type to represent a task in the Kanban board
 interface KanbanTask {
@@ -499,20 +501,29 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
       dueDate: "",
       startDate: "",
       endDate: ""
-    }
+    },
+    mode: "onChange" // Enable validation as fields change
   });
+  
+  // Use our form validation hook
+  const { validationResult, handleValidationErrors } = useFormValidation(taskForm);
 
   // Handle creating a new task
   const onCreateTask = (values: TaskFormValues) => {
-    const taskData = {
-      ...values,
-      projectId: parseInt(values.projectId),
-      assigneeId: values.assigneeId ? parseInt(values.assigneeId) : null,
-      createdAt: new Date().toISOString(),
-      createdById: 11 // Default to current user ID
-    };
-    
-    createTaskMutation.mutate(taskData);
+    try {
+      const taskData = {
+        ...values,
+        projectId: parseInt(values.projectId),
+        assigneeId: values.assigneeId ? parseInt(values.assigneeId) : null,
+        createdAt: new Date().toISOString(),
+        createdById: 11 // Default to current user ID
+      };
+      
+      createTaskMutation.mutate(taskData);
+    } catch (error) {
+      // Handle validation errors
+      handleValidationErrors(error);
+    }
   };
 
   // Open dialog to create a new task
@@ -557,15 +568,20 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
   const onUpdateTask = (values: TaskFormValues) => {
     if (!selectedTask) return;
     
-    const taskData = {
-      ...values,
-      id: Number(selectedTask.id),
-      projectId: parseInt(values.projectId),
-      assigneeId: values.assigneeId ? parseInt(values.assigneeId) : null
-    };
-    
-    updateTaskMutation.mutate(taskData);
-    setIsTaskDialogOpen(false);
+    try {
+      const taskData = {
+        ...values,
+        id: Number(selectedTask.id),
+        projectId: parseInt(values.projectId),
+        assigneeId: values.assigneeId ? parseInt(values.assigneeId) : null
+      };
+      
+      updateTaskMutation.mutate(taskData);
+      setIsTaskDialogOpen(false);
+    } catch (error) {
+      // Handle validation errors
+      handleValidationErrors(error);
+    }
   };
 
   // Extract unique users from project data
@@ -741,6 +757,14 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
           
           <Form {...taskForm}>
             <form onSubmit={taskForm.handleSubmit(selectedTask ? onUpdateTask : onCreateTask)} className="space-y-6">
+              {/* Display form validation errors */}
+              {validationResult.hasErrors && (
+                <FormValidationError
+                  validationResult={validationResult}
+                  displayMode="inline"
+                  className="mb-4"
+                />
+              )}
               <FormField
                 control={taskForm.control}
                 name="title"
