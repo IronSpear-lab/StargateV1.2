@@ -30,7 +30,7 @@ async function comparePasswords(supplied: string, stored: string) {
 
 export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET!,
+    secret: process.env.SESSION_SECRET || "valvxlstart-super-secret-key-for-development",
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
