@@ -65,9 +65,7 @@ export function Sidebar({ className }: SidebarProps) {
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({
     "-Planning": false,
     "-Vault": true,
-    "-Vault-Files": true,
-    "-Vault-Files-01- Organisation": true,
-    "-Vault-Files-01- Arkitekt": true
+    "-Vault-Files": true
   });
 
   useEffect(() => {
@@ -212,47 +210,48 @@ export function Sidebar({ className }: SidebarProps) {
               active: false,
               indent: 2,
               icon: <FolderClosed className="w-4 h-4" />,
-              children: []
-            },
-            {
-              href: "#",
-              label: "1. Ritningar",
-              active: false,
-              indent: 3,
-              icon: <FolderClosed className="w-3 h-3" />,
-              children: []
-            },
-            {
-              href: "#",
-              label: "2. DWG & IFC",
-              active: false,
-              indent: 3,
-              icon: <FolderClosed className="w-3 h-3" />,
-              children: []
-            },
-            {
-              href: "#",
-              label: "3. Beskrivningar",
-              active: false,
-              indent: 3,
-              icon: <FolderClosed className="w-3 h-3" />,
-              children: []
-            },
-            {
-              href: "#",
-              label: "4. Underlag",
-              active: false,
-              indent: 3,
-              icon: <FolderClosed className="w-3 h-3" />,
-              children: []
-            },
-            {
-              href: "#",
-              label: "5. Egenkontroller",
-              active: false,
-              indent: 3,
-              icon: <FolderClosed className="w-3 h-3" />,
-              children: []
+              children: [
+                {
+                  href: "#",
+                  label: "1. Ritningar",
+                  active: false,
+                  indent: 3,
+                  icon: <FolderClosed className="w-3 h-3" />,
+                  children: []
+                },
+                {
+                  href: "#",
+                  label: "2. DWG & IFC",
+                  active: false,
+                  indent: 3,
+                  icon: <FolderClosed className="w-3 h-3" />,
+                  children: []
+                },
+                {
+                  href: "#",
+                  label: "3. Beskrivningar",
+                  active: false,
+                  indent: 3,
+                  icon: <FolderClosed className="w-3 h-3" />,
+                  children: []
+                },
+                {
+                  href: "#",
+                  label: "4. Underlag",
+                  active: false,
+                  indent: 3,
+                  icon: <FolderClosed className="w-3 h-3" />,
+                  children: []
+                },
+                {
+                  href: "#",
+                  label: "5. Egenkontroller",
+                  active: false,
+                  indent: 3,
+                  icon: <FolderClosed className="w-3 h-3" />,
+                  children: []
+                }
+              ]
             },
             {
               href: "#",
