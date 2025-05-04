@@ -74,7 +74,7 @@ const defaultWidgets: WidgetInstance[] = [
   {
     id: uuidv4(),
     type: "recent-files",
-    title: "RECENT FILES IN BOX",
+    title: "RECENT FILES IN VAULT",
     width: "half",
     height: "medium"
   }

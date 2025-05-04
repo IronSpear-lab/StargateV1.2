@@ -125,8 +125,8 @@ export function WidgetGallery({
     },
     {
       id: "recent-files",
-      name: "Recent Files",
-      description: "View recently added or modified files",
+      name: "Recent Files in Vault",
+      description: "View recently added or modified files from the vault",
       icon: <FolderOpen className="h-6 w-6" />,
       category: "files",
       defaultWidth: "half",

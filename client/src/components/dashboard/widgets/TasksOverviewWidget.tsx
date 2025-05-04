@@ -101,7 +101,7 @@ export function TasksOverviewWidget({ projectId }: TasksOverviewWidgetProps) {
       
       {/* Task status breakdown */}
       <div className="grid grid-cols-2 gap-3 mb-5">
-        {taskGroups.map((group) => (
+        {taskGroups.map((group: TaskGroup) => (
           <button
             key={group.status}
             className={cn(
@@ -151,7 +151,7 @@ export function TasksOverviewWidget({ projectId }: TasksOverviewWidgetProps) {
               {Object.entries(tasks.tasksByStatus)
                 .filter(([status]) => !selectedStatus || status === selectedStatus)
                 .flatMap(([status, taskList]) => 
-                  taskList.map((task: any) => (
+                  (taskList as any[]).map((task: any) => (
                     <div key={task.id} className="group">
                       <div className="flex py-2 px-3 rounded-md hover:bg-gray-50 cursor-pointer">
                         <div 

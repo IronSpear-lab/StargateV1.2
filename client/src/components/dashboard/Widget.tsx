@@ -93,7 +93,7 @@ export function Widget({
       id={`widget-${id}`}
       className={cn(
         expanded ? "fixed inset-6 z-50" : widthClasses,
-        "shadow-sm rounded-lg transition-all duration-200 widget border-0",
+        "shadow-md rounded-lg transition-all duration-200 widget border-0",
         dragging ? "opacity-50" : "opacity-100",
         className
       )}
@@ -101,16 +101,16 @@ export function Widget({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <CardHeader className="p-3 bg-white border-b flex-row items-center justify-between space-y-0 rounded-t-lg">
+      <CardHeader className="p-3 bg-gradient-to-r from-blue-50 to-white border-b flex-row items-center justify-between space-y-0 rounded-t-lg">
         <div className="flex items-center space-x-2">
           <div
-            className="cursor-move p-1 rounded hover:bg-neutral-100"
+            className="cursor-move p-1 rounded hover:bg-blue-100/50"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <Grip className="h-4 w-4 text-blue-500" />
           </div>
           <div>
-            <CardTitle className="text-sm font-medium text-gray-700">{title}</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-800">{title}</CardTitle>
             {description && (
               <CardDescription className="text-xs text-gray-500">{description}</CardDescription>
             )}
@@ -120,13 +120,13 @@ export function Widget({
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-6 w-6 rounded-full hover:bg-gray-100" 
+            className="h-6 w-6 rounded-full hover:bg-blue-100/50" 
             onClick={toggleCollapsed}
           >
             {collapsed ? (
-              <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
+              <ChevronDown className="h-3.5 w-3.5 text-blue-500" />
             ) : (
-              <ChevronUp className="h-3.5 w-3.5 text-gray-500" />
+              <ChevronUp className="h-3.5 w-3.5 text-blue-500" />
             )}
           </Button>
           
@@ -134,19 +134,19 @@ export function Widget({
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-6 w-6 rounded-full hover:bg-gray-100" 
+              className="h-6 w-6 rounded-full hover:bg-blue-100/50" 
               onClick={toggleExpanded}
             >
-              <Maximize2 className="h-3.5 w-3.5 text-gray-500" />
+              <Maximize2 className="h-3.5 w-3.5 text-blue-500" />
             </Button>
           ) : (
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-6 w-6 rounded-full hover:bg-gray-100" 
+              className="h-6 w-6 rounded-full hover:bg-blue-100/50" 
               onClick={toggleExpanded}
             >
-              <Minimize2 className="h-3.5 w-3.5 text-gray-500" />
+              <Minimize2 className="h-3.5 w-3.5 text-blue-500" />
             </Button>
           )}
           
@@ -155,9 +155,9 @@ export function Widget({
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-6 w-6 rounded-full hover:bg-gray-100"
+                className="h-6 w-6 rounded-full hover:bg-blue-100/50"
               >
-                <MoreHorizontal className="h-3.5 w-3.5 text-gray-500" />
+                <MoreHorizontal className="h-3.5 w-3.5 text-blue-500" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[160px]">
@@ -188,10 +188,10 @@ export function Widget({
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 rounded-full hover:bg-gray-100"
+            className="h-6 w-6 rounded-full hover:bg-blue-100/50"
             onClick={() => onRemove(id)}
           >
-            <X className="h-3.5 w-3.5 text-gray-500" />
+            <X className="h-3.5 w-3.5 text-blue-500" />
           </Button>
         </div>
       </CardHeader>

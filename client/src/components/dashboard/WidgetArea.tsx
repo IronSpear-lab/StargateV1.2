@@ -91,15 +91,27 @@ export function WidgetArea({ children, className, onWidgetPositionChange }: Widg
     <div
       ref={areaRef}
       className={cn(
-        "grid grid-cols-12 gap-4 p-4 bg-slate-50",
-        dropzoneActive && "bg-blue-50/40 border-2 border-dashed border-blue-200 rounded-lg",
+        "grid grid-cols-12 gap-4 p-4 relative",
+        dropzoneActive && "border-2 border-dashed border-blue-200 rounded-lg",
         className
       )}
+      style={{
+        backgroundImage: "linear-gradient(to bottom, rgba(241, 245, 249, 0.8), rgba(241, 245, 249, 0.9)), url('/hero-pattern.svg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "repeat"
+      }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {children}
+      {/* Subtle overlay */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-blue-50/20 to-white/30 pointer-events-none" />
+      
+      {/* Widget content */}
+      <div className="col-span-12 grid grid-cols-12 gap-4 relative z-10">
+        {children}
+      </div>
     </div>
   );
 }
