@@ -45,6 +45,7 @@ export function PDFViewer({ fileName, fileId, totalPages: initialTotalPages = 1 
     if (pdfUrl) {
       setIsLoading(true);
       setError(null);
+      console.log("Loading PDF from URL:", pdfUrl);
     }
   }, [pdfUrl]);
 
@@ -67,6 +68,12 @@ export function PDFViewer({ fileName, fileId, totalPages: initialTotalPages = 1 
   const decreaseZoom = () => {
     setZoom(prev => Math.max(prev - 10, 50));
   };
+
+  function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
+    setNumPages(numPages);
+    setIsLoading(false);
+    console.log(`Document loaded with ${numPages} pages`);
+  }
 
   return (
     <Card className="shadow-none border border-neutral-200">
@@ -114,24 +121,17 @@ export function PDFViewer({ fileName, fileId, totalPages: initialTotalPages = 1 
         </Button>
       </div>
       
-      <div className="p-4 bg-neutral-100 h-96 flex items-center justify-center overflow-auto">
+      <div className="p-4 bg-neutral-100 h-[500px] flex items-center justify-center overflow-auto">
         {!pdfUrl ? (
           <div className="text-center">
             <FileQuestion className="h-16 w-16 mx-auto text-neutral-400 mb-4" />
             <p className="text-neutral-500">No file selected or preview not available</p>
           </div>
         ) : (
-          <div 
-            className="bg-white shadow-md w-full max-w-2xl h-full flex flex-col items-center justify-center p-2 relative"
-            style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'center center' }}
-          >
+          <div className="bg-white shadow-md w-full max-w-2xl h-full flex flex-col items-center justify-center p-2 relative overflow-auto">
             <Document
               file={pdfUrl}
-              onLoadSuccess={({ numPages }) => {
-                setNumPages(numPages);
-                setIsLoading(false);
-                console.log(`Document loaded with ${numPages} pages`);
-              }}
+              onLoadSuccess={onDocumentLoadSuccess}
               onLoadError={(error) => {
                 console.error("Error loading PDF:", error);
                 setIsLoading(false);
@@ -149,7 +149,7 @@ export function PDFViewer({ fileName, fileId, totalPages: initialTotalPages = 1 
                   <p className="text-xs text-neutral-500">Please check if the file exists and is a valid PDF</p>
                 </div>
               }
-              className="w-full h-full overflow-auto"
+              className="w-full overflow-auto"
             >
               <Page 
                 pageNumber={currentPage} 
