@@ -63,12 +63,7 @@ export function Sidebar({ className }: SidebarProps) {
   const isMobile = useMobile();
   const [isOpen, setIsOpen] = useState(!isMobile);
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({
-    "-Vault": true,
-    "-Vault-Files": true,
-    "-Vault-Files-Banker": true,
-    "-Planning": false,
-    "-Communication": false,
-    "-Personnel": false
+    "-Planning": false
   });
 
   useEffect(() => {
