@@ -10,7 +10,9 @@ import {
   ChevronLeft, 
   ChevronRight,
   Link as LinkIcon,
-  Link2Off
+  Link2Off,
+  Pencil,
+  Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -722,6 +724,44 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
             <PlusCircle className="h-4 w-4" />
             Add Task
           </Button>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline"
+                  className="gap-1" 
+                  onClick={handleEditTask}
+                  disabled={!selectedTask}
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {selectedTask ? "Edit selected task" : "Select a task to edit"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline"
+                  className="gap-1 text-red-500 hover:bg-red-50"
+                  onClick={() => selectedTask && setIsDeleteDialogOpen(true)}
+                  disabled={!selectedTask}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {selectedTask ? "Delete selected task" : "Select a task to delete"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
       
@@ -817,12 +857,16 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
                             <TooltipTrigger asChild>
                               <div 
                                 data-task-id={task.id}
-                                className={cn("task-bar", task.color)}
+                                className={cn(
+                                  "task-bar", 
+                                  task.color,
+                                  selectedTask?.id === task.id && "ring-2 ring-blue-500 ring-offset-1" // Highlight selected task
+                                )}
                                 style={{
                                   ...taskStyles,
                                   ...getTaskPosition(task)
                                 }}
-                                onClick={() => handleTaskClick(task)}
+                                onClick={(e) => handleTaskClick(e, task)}
                                 onMouseDown={(e) => handleTaskMouseDown(e, task, 'move')}
                               >
                                 {/* Resize handles */}
@@ -1050,6 +1094,53 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Task Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Delete Task</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this task? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 border p-3 rounded-md">
+            {selectedTask && (
+              <div>
+                <p className="font-medium">{selectedTask.title}</p>
+                <p className="text-sm text-neutral-500 mt-1">
+                  {selectedTask.startDate && selectedTask.endDate && (
+                    <span>
+                      {format(typeof selectedTask.startDate === 'string' ? parseISO(selectedTask.startDate) : selectedTask.startDate, 'MMM d')} - 
+                      {format(typeof selectedTask.endDate === 'string' ? parseISO(selectedTask.endDate) : selectedTask.endDate, 'MMM d, yyyy')}
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteTask}
+              disabled={deleteTaskMutation.isPending}
+            >
+              {deleteTaskMutation.isPending ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                  </svg>
+                  Deleting...
+                </>
+              ) : "Delete Task"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
