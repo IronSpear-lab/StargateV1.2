@@ -79,6 +79,13 @@ export interface IStorage {
   // User Projects (Roles)
   assignUserToProject(userProject: Omit<UserProject, "id">): Promise<UserProject>;
   
+  // Calendar Events
+  getCalendarEvents(userId: number, projectId?: number): Promise<CalendarEvent[]>;
+  getCalendarEvent(id: number): Promise<CalendarEvent | undefined>;
+  createCalendarEvent(event: Omit<CalendarEvent, "id" | "createdAt" | "updatedAt">): Promise<CalendarEvent>;
+  updateCalendarEvent(id: number, event: Partial<CalendarEvent>): Promise<CalendarEvent>;
+  deleteCalendarEvent(id: number): Promise<void>;
+  
   // Session store
   sessionStore: session.SessionStore;
 }
@@ -390,6 +397,67 @@ class DatabaseStorage implements IStorage {
     const validatedData = insertUserProjectSchema.parse(userProject);
     const result = await db.insert(userProjects).values(validatedData).returning();
     return result[0];
+  }
+
+  // Calendar Events methods
+  async getCalendarEvents(userId: number, projectId?: number): Promise<CalendarEvent[]> {
+    let query = db.select().from(calendarEvents);
+
+    if (projectId) {
+      query = query.where(
+        and(
+          eq(calendarEvents.createdBy, userId),
+          eq(calendarEvents.projectId, projectId)
+        )
+      );
+    } else {
+      query = query.where(eq(calendarEvents.createdBy, userId));
+    }
+
+    return await query;
+  }
+
+  async getCalendarEvent(id: number): Promise<CalendarEvent | undefined> {
+    const result = await db
+      .select()
+      .from(calendarEvents)
+      .where(eq(calendarEvents.id, id));
+    return result[0];
+  }
+
+  async createCalendarEvent(event: Omit<CalendarEvent, "id" | "createdAt" | "updatedAt">): Promise<CalendarEvent> {
+    const now = new Date();
+    const validatedData = insertCalendarEventSchema.parse({
+      ...event,
+      createdAt: now,
+      updatedAt: now
+    });
+    
+    const result = await db
+      .insert(calendarEvents)
+      .values(validatedData)
+      .returning();
+      
+    return result[0];
+  }
+
+  async updateCalendarEvent(id: number, event: Partial<CalendarEvent>): Promise<CalendarEvent> {
+    const result = await db
+      .update(calendarEvents)
+      .set({
+        ...event,
+        updatedAt: new Date()
+      })
+      .where(eq(calendarEvents.id, id))
+      .returning();
+      
+    return result[0];
+  }
+
+  async deleteCalendarEvent(id: number): Promise<void> {
+    await db
+      .delete(calendarEvents)
+      .where(eq(calendarEvents.id, id));
   }
 }
 

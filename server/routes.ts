@@ -387,6 +387,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch user projects" });
     }
   });
+  
+  // Calendar events API
+  app.get(`${apiPrefix}/calendar-events`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      
+      const userId = req.user!.id;
+      const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
+      
+      const events = await storage.getCalendarEvents(userId, projectId);
+      res.json(events);
+    } catch (error) {
+      console.error("Error fetching calendar events:", error);
+      res.status(500).json({ error: "Failed to fetch calendar events" });
+    }
+  });
+
+  app.get(`${apiPrefix}/calendar-events/:id`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      
+      const eventId = parseInt(req.params.id);
+      const event = await storage.getCalendarEvent(eventId);
+      
+      if (!event) {
+        return res.status(404).json({ error: "Calendar event not found" });
+      }
+      
+      // Make sure the user has access to this event
+      if (event.createdBy !== req.user!.id) {
+        return res.status(403).json({ error: "You don't have access to this event" });
+      }
+      
+      res.json(event);
+    } catch (error) {
+      console.error("Error fetching calendar event:", error);
+      res.status(500).json({ error: "Failed to fetch calendar event" });
+    }
+  });
+
+  app.post(`${apiPrefix}/calendar-events`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      
+      const userId = req.user!.id;
+      
+      // Ensure the creator is set to the current user
+      const event = await storage.createCalendarEvent({
+        ...req.body,
+        createdBy: userId
+      });
+      
+      res.status(201).json(event);
+    } catch (error) {
+      console.error("Error creating calendar event:", error);
+      res.status(500).json({ error: "Failed to create calendar event" });
+    }
+  });
+
+  app.patch(`${apiPrefix}/calendar-events/:id`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      
+      const eventId = parseInt(req.params.id);
+      
+      // Make sure the event exists and belongs to the user
+      const existingEvent = await storage.getCalendarEvent(eventId);
+      
+      if (!existingEvent) {
+        return res.status(404).json({ error: "Calendar event not found" });
+      }
+      
+      if (existingEvent.createdBy !== req.user!.id) {
+        return res.status(403).json({ error: "You don't have permission to update this event" });
+      }
+      
+      const updatedEvent = await storage.updateCalendarEvent(eventId, req.body);
+      res.json(updatedEvent);
+    } catch (error) {
+      console.error("Error updating calendar event:", error);
+      res.status(500).json({ error: "Failed to update calendar event" });
+    }
+  });
+
+  app.delete(`${apiPrefix}/calendar-events/:id`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      
+      const eventId = parseInt(req.params.id);
+      
+      // Make sure the event exists and belongs to the user
+      const existingEvent = await storage.getCalendarEvent(eventId);
+      
+      if (!existingEvent) {
+        return res.status(404).json({ error: "Calendar event not found" });
+      }
+      
+      if (existingEvent.createdBy !== req.user!.id) {
+        return res.status(403).json({ error: "You don't have permission to delete this event" });
+      }
+      
+      await storage.deleteCalendarEvent(eventId);
+      res.sendStatus(204); // No content, successful deletion
+    } catch (error) {
+      console.error("Error deleting calendar event:", error);
+      res.status(500).json({ error: "Failed to delete calendar event" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

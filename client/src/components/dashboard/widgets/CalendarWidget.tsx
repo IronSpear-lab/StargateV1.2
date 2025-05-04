@@ -135,12 +135,28 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
   });
   
   // Fetch events from API
-  const { data: events, isLoading } = useQuery({
+  const { data: events, isLoading, refetch } = useQuery({
     queryKey: ['calendar-events', projectId],
     queryFn: async () => {
-      // Simulate API call with mock data for now
-      // In real implementation, replace with actual API call
-      return getSampleEvents();
+      try {
+        // Get events from the API
+        const url = projectId 
+          ? `/api/calendar-events?projectId=${projectId}` 
+          : '/api/calendar-events';
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch events');
+        }
+        
+        const eventsData = await response.json();
+        return eventsData;
+      } catch (error) {
+        console.error('Error fetching calendar events:', error);
+        // Fallback to sample data if API call fails during development
+        return getSampleEvents();
+      }
     }
   });
   
@@ -207,26 +223,55 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
     setSelectedDay(today);
   };
   
+  // Create mutation for adding a new event
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  
   // Function to handle adding a new event
-  const onSubmit = (data: z.infer<typeof eventFormSchema>) => {
-    const newEvent = {
-      id: Math.random().toString(36).substring(2, 11),
-      title: data.title,
-      description: data.description || "",
-      start: `${data.date}T${data.startTime}:00`,
-      end: `${data.date}T${data.endTime}:00`,
-      type: data.type,
-      status: "scheduled" as const,
-      allDay: data.allDay,
-      location: data.location,
-    };
+  const onSubmit = async (data: z.infer<typeof eventFormSchema>) => {
+    setIsCreating(true);
+    setCreateError(null);
     
-    // In a real app, you would make an API call to save the event
-    console.log("New event:", newEvent);
-    
-    // Close the dialog
-    setCreateDialogOpen(false);
-    form.reset();
+    try {
+      // Create the event data
+      const eventData = {
+        title: data.title,
+        description: data.description || "",
+        start: `${data.date}T${data.startTime}:00`,
+        end: `${data.date}T${data.endTime}:00`,
+        type: data.type,
+        status: "scheduled" as const,
+        allDay: data.allDay,
+        location: data.location,
+        projectId: projectId
+      };
+      
+      // Send the event to the API
+      const response = await fetch('/api/calendar-events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(eventData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create event');
+      }
+      
+      // Refresh the events list
+      refetch();
+      
+      // Close the dialog
+      setCreateDialogOpen(false);
+      form.reset();
+    } catch (error) {
+      console.error('Error creating event:', error);
+      setCreateError(error instanceof Error ? error.message : 'An unknown error occurred');
+    } finally {
+      setIsCreating(false);
+    }
   };
   
   // Get events for a specific day
@@ -762,16 +807,31 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
                     )}
                   />
                   
+                  {createError && (
+                    <div className="w-full mb-3 p-2 text-sm text-red-500 bg-red-50 border border-red-200 rounded-md">
+                      {createError}
+                    </div>
+                  )}
                   <div className="flex justify-end space-x-2 pt-2">
                     <Button 
                       type="button" 
                       variant="outline"
                       onClick={() => setCreateDialogOpen(false)}
+                      disabled={isCreating}
                     >
                       Cancel
                     </Button>
-                    <Button type="submit" className="bg-[#0acf97] hover:bg-[#0acf97]/90">
-                      Add Event
+                    <Button 
+                      type="submit" 
+                      className="bg-[#0acf97] hover:bg-[#0acf97]/90"
+                      disabled={isCreating}
+                    >
+                      {isCreating ? (
+                        <>
+                          <div className="h-4 w-4 mr-2 border-2 border-t-transparent border-white rounded-full animate-spin"></div>
+                          Saving...
+                        </>
+                      ) : 'Add Event'}
                     </Button>
                   </div>
                 </form>
