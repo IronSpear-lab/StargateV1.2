@@ -82,10 +82,10 @@ export function Widget({
   }[width] || "col-span-12";
 
   const heightClasses = {
-    small: "h-[200px]",
+    small: collapsed ? "h-[42px]" : "h-[200px]",
     medium: collapsed ? "h-[42px]" : "h-[320px]",
-    large: "h-[500px]",
-    auto: "h-auto",
+    large: collapsed ? "h-[42px]" : "h-[500px]",
+    auto: collapsed ? "h-[42px]" : "h-auto",
   }[height] || "h-[320px]";
 
   return (
@@ -93,10 +93,14 @@ export function Widget({
       id={`widget-${id}`}
       className={cn(
         expanded ? "fixed inset-6 z-50" : widthClasses,
-        "shadow-md rounded-lg transition-all duration-200 widget border-0",
+        "shadow-md rounded-lg transition-all duration-300 widget border-0",
         dragging ? "opacity-50" : "opacity-100",
+        expanded && "backdrop-blur-sm",
         className
       )}
+      style={{
+        boxShadow: expanded ? "0 8px 30px rgba(0, 0, 0, 0.12)" : "",
+      }}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}

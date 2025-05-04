@@ -183,7 +183,7 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-3">
         <div className="text-sm font-medium flex items-center space-x-1.5">
-          <FolderOpen className="h-4 w-4 text-blue-500" />
+          <FolderOpen className="h-4 w-4 text-[#727cf5]" />
           <span>Recent Files in Vault</span>
         </div>
         <Button 
