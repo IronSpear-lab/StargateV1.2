@@ -866,7 +866,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   };
   
   // Spara en ny version
-  const saveNewVersion = () => {
+  const saveNewVersion = async () => {
     console.log("saveNewVersion called with:", { 
       selectedVersionFile, 
       fileData, 
@@ -904,10 +904,68 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       const existingAnnotations = [...annotations];
       
       // För en stabil demoupplevelse använder vi samma fil för alla versioner
-      // och återanvänder den ursprungliga PDF:en som användaren laddade upp
-      const originalFile = (window as any).currentPdfFile || selectedVersionFile;
+      // och försöker återanvända den ursprungliga PDF:en
+      let originalFile = (window as any).currentPdfFile;
+      let persistentFileId = (window as any).currentPdfFileId;
       
-      console.log(`[${Date.now()}] Using original file for new version`);
+      // Om vi inte har en referens till originalfilen i minnet, försök hämta den
+      // från IndexedDB om vi har ett fileId i mappning
+      if (!originalFile && fileData) {
+        console.log(`[${Date.now()}] Attempting to retrieve original file from IndexedDB`);
+        
+        try {
+          // Kolla om vi har ett fileId i vår metadata-mappning
+          const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+          persistentFileId = fileIdMappings[fileData.filename];
+          
+          if (persistentFileId) {
+            console.log(`[${Date.now()}] Found persistent fileId for ${fileData.filename}: ${persistentFileId}`);
+            
+            // Hämta filen från IndexedDB
+            const storedFile = await getStoredFileById(persistentFileId);
+            if (storedFile) {
+              console.log(`[${Date.now()}] Successfully retrieved original file from IndexedDB: ${storedFile.name}`);
+              originalFile = storedFile.file;
+              
+              // Uppdatera också referensen i window-objektet
+              (window as any).currentPdfFile = originalFile;
+              (window as any).currentPdfFileId = persistentFileId;
+            }
+          }
+        } catch (error) {
+          console.error(`[${Date.now()}] Error retrieving file from IndexedDB:`, error);
+        }
+      }
+      
+      // Om vi fortfarande inte har en originalfil, använd den valda versionen
+      if (!originalFile) {
+        console.log(`[${Date.now()}] No original file available, using selected version file`);
+        originalFile = selectedVersionFile;
+        
+        // Spara filen för persistent lagring
+        try {
+          persistentFileId = await storeFileForReuse(selectedVersionFile, {
+            fromPdfViewer: true,
+            uploadDate: new Date().toISOString(),
+            filename: fileData.filename
+          });
+          
+          console.log(`[${Date.now()}] Stored new file for reuse with ID: ${persistentFileId}`);
+          
+          // Spara mappad ID för filen
+          const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+          fileIdMappings[fileData.filename] = persistentFileId;
+          localStorage.setItem('pdf_file_id_mappings', JSON.stringify(fileIdMappings));
+          
+          // Uppdatera referenserna i window-objektet
+          (window as any).currentPdfFile = originalFile;
+          (window as any).currentPdfFileId = persistentFileId;
+        } catch (error) {
+          console.error(`[${Date.now()}] Error storing file for reuse:`, error);
+        }
+      }
+      
+      console.log(`[${Date.now()}] Using file for new version: ${originalFile.name}`);
       
       // Skapa URL till den uppladdade filen
       console.log("Creating object URL for file...");
