@@ -16,6 +16,9 @@ import ProjectDetailPage from "@/pages/project-detail-page";
 import GanttPage from "@/pages/gantt-page";
 import AnalyticsPage from "@/pages/analytics-page";
 import TimeTrackingPage from "@/pages/time-tracking-page";
+import NotificationsPage from "@/pages/notifications-page";
+import TeamPage from "@/pages/team-page";
+import HelpPage from "@/pages/help-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 
@@ -33,6 +36,9 @@ function Router() {
       <ProtectedRoute path="/kanban" component={KanbanPage} />
       <ProtectedRoute path="/wiki" component={WikiPage} />
       <ProtectedRoute path="/time-tracking" component={TimeTrackingPage} />
+      <ProtectedRoute path="/notifications" component={NotificationsPage} />
+      <ProtectedRoute path="/team" component={TeamPage} />
+      <ProtectedRoute path="/help" component={HelpPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />

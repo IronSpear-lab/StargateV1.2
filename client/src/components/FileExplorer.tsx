@@ -71,8 +71,8 @@ interface FileUploadState {
 
 interface FolderFormData {
   name: string;
-  projectId: string;
-  parentId: string | null;
+  projectId: number;
+  parentId: number | null;
 }
 
 export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps) {
@@ -339,7 +339,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     
     const folderData: FolderFormData = {
       name: newFolderName.trim(),
-      projectId: parseInt(uploadState.projectId), // Convert string to number
+      projectId: parseInt(uploadState.projectId),
       parentId: uploadState.selectedFolder ? parseInt(uploadState.selectedFolder) : null
     };
     
