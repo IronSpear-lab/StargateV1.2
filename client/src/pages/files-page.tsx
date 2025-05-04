@@ -12,11 +12,7 @@ interface FileNode {
 
 export default function FilesPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [selectedFile, setSelectedFile] = useState<FileNode>({
-    id: "file-1",
-    name: "Requirements.pdf",
-    type: "file"
-  });
+  const [selectedFile, setSelectedFile] = useState<FileNode | null>(null);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);

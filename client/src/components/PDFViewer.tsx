@@ -23,7 +23,16 @@ import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 
 // We need to provide the PDF.js worker explicitly
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+// Try to use the local worker first, and fall back to CDN if needed
+try {
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.mjs',
+    import.meta.url,
+  ).toString();
+} catch (err) {
+  console.warn('Failed to set local PDF worker, falling back to CDN worker');
+  pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.js`;
+}
 
 interface PDFViewerProps {
   fileName: string;
