@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
 import { FileExplorer } from "@/components/FileExplorer";
-import { PDFViewer } from "@/components/PDFViewer-new";
+import { PDFViewer } from "@/components/PDFViewer";
 
 interface FileNode {
   id: string;
@@ -42,7 +42,10 @@ export default function FilesPage() {
               />
             </div>
             <div className="lg:w-3/4">
-              <PDFViewer fileName={selectedFile?.name || "Document.pdf"} />
+              <PDFViewer 
+                fileName={selectedFile?.name || "Document.pdf"} 
+                fileId={selectedFile?.id}
+              />
             </div>
           </div>
         </main>

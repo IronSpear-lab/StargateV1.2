@@ -18,12 +18,12 @@ import {
 } from "lucide-react";
 import { CommentList } from "./CommentList";
 import { Separator } from "@/components/ui/separator";
-import { pdfjs, Document, Page } from "react-pdf";
+import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 
-// Set the worker source
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+// We need to provide the PDF.js worker explicitly
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 interface PDFViewerProps {
   fileName: string;
@@ -32,12 +32,12 @@ interface PDFViewerProps {
 }
 
 export function PDFViewer({ fileName, fileId, totalPages: initialTotalPages = 1 }: PDFViewerProps) {
-  // For real file access, we'd use the fileId to generate a URL to the file content
+  // Generate URL to the file content
   const pdfUrl = fileId ? `/api/files/${fileId}/content` : null;
   const [currentPage, setCurrentPage] = useState(1);
   const [zoom, setZoom] = useState(100);
   const [numPages, setNumPages] = useState(initialTotalPages);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   
   // Set initial loading state when PDF URL changes
@@ -72,7 +72,13 @@ export function PDFViewer({ fileName, fileId, totalPages: initialTotalPages = 1 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
     setIsLoading(false);
-    console.log(`Document loaded with ${numPages} pages`);
+    console.log(`Document loaded successfully with ${numPages} pages`);
+  }
+
+  function onDocumentLoadError(error: Error) {
+    console.error("Error loading PDF:", error);
+    setIsLoading(false);
+    setError(error);
   }
 
   return (
@@ -129,34 +135,36 @@ export function PDFViewer({ fileName, fileId, totalPages: initialTotalPages = 1 
           </div>
         ) : (
           <div className="bg-white shadow-md w-full max-w-2xl h-full flex flex-col items-center justify-center p-2 relative overflow-auto">
+            {isLoading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white bg-opacity-80 z-10">
+                <Loader2 className="h-8 w-8 text-primary-600 animate-spin mb-2" />
+                <p className="text-sm text-neutral-500">Loading PDF...</p>
+              </div>
+            )}
+            
+            {error && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white z-10">
+                <div className="text-center p-4">
+                  <p className="text-sm text-red-500 mb-2">Failed to load PDF document</p>
+                  <p className="text-xs text-neutral-500">Please check if the file exists and is a valid PDF</p>
+                  <p className="text-xs text-neutral-400 mt-2">Error: {error.message}</p>
+                </div>
+              </div>
+            )}
+
             <Document
               file={pdfUrl}
               onLoadSuccess={onDocumentLoadSuccess}
-              onLoadError={(error) => {
-                console.error("Error loading PDF:", error);
-                setIsLoading(false);
-                setError(error instanceof Error ? error : new Error("Failed to load PDF"));
-              }}
-              loading={
-                <div className="flex flex-col items-center justify-center h-full w-full">
-                  <Loader2 className="h-8 w-8 text-primary-600 animate-spin mb-2" />
-                  <p className="text-sm text-neutral-500">Loading PDF...</p>
-                </div>
-              }
-              error={
-                <div className="flex flex-col items-center justify-center h-full w-full">
-                  <p className="text-sm text-red-500 mb-2">Failed to load PDF document</p>
-                  <p className="text-xs text-neutral-500">Please check if the file exists and is a valid PDF</p>
-                </div>
-              }
-              className="w-full overflow-auto"
+              onLoadError={onDocumentLoadError}
+              className="w-full h-full"
             >
               <Page 
+                key={`page_${currentPage}`}
                 pageNumber={currentPage} 
                 renderTextLayer={true}
                 renderAnnotationLayer={true}
                 scale={zoom / 100}
-                className="page-container"
+                className="page-container mx-auto"
               />
             </Document>
             
