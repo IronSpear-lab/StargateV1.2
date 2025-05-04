@@ -13,6 +13,7 @@ import WikiPage from "@/pages/wiki-page";
 import SettingsPage from "@/pages/settings-page";
 import ProjectsPage from "@/pages/projects-page";
 import ProjectDetailPage from "@/pages/project-detail-page";
+import GanttPage from "@/pages/gantt-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 
@@ -25,6 +26,7 @@ function Router() {
       <ProtectedRoute path="/files" component={FilesPage} />
       <ProtectedRoute path="/tasks" component={TasksPage} />
       <ProtectedRoute path="/timeline" component={TimelinePage} />
+      <ProtectedRoute path="/gantt" component={GanttPage} />
       <ProtectedRoute path="/kanban" component={KanbanPage} />
       <ProtectedRoute path="/wiki" component={WikiPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />

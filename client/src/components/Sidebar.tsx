@@ -12,7 +12,8 @@ import {
   LogOut, 
   Menu, 
   X,
-  Briefcase
+  Briefcase,
+  BarChart2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -54,6 +55,7 @@ export function Sidebar({ className }: SidebarProps) {
     { href: "/files", label: "Files", icon: <FolderClosed className="w-5 h-5" /> },
     { href: "/tasks", label: "Tasks", icon: <CheckSquare className="w-5 h-5" /> },
     { href: "/timeline", label: "Timeline", icon: <Calendar className="w-5 h-5" /> },
+    { href: "/gantt", label: "Gantt Chart", icon: <BarChart2 className="w-5 h-5" /> },
     { href: "/kanban", label: "Kanban", icon: <Columns className="w-5 h-5" /> },
     { href: "/wiki", label: "Wiki", icon: <BookOpen className="w-5 h-5" /> },
     { href: "/settings", label: "Settings", icon: <Settings className="w-5 h-5" /> },
