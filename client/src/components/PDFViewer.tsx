@@ -991,48 +991,29 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   // Hantera byte av version
   const handleChangeVersion = (versionId: string) => {
     const selectedVersion = fileVersions.find(v => v.id === versionId);
-    if (!selectedVersion) return;
-    
-    // VIKTIGT: Blob URLs är inte beständiga mellan sessioner
-    // Om det är en tidigare version, återanvänd den aktuella PDF:en istället för den sparade URL:en
-    // I ett riktigt system skulle vi hämta korrekt fil från servern här
-    try {
-      // Försök använda den sparade URL:en, men var beredd på att den kan vara ogiltig
-      if (selectedVersion.fileUrl.startsWith('blob:')) {
-        // Detta är en blob URL
-        try {
-          // För äldre versioner, om vi inte kan använda den befintliga blob-URL:en,
-          // använd den aktuella PDF:en som fallback (för demo-syfte)
-          // I ett riktigt system skulle vi hämta rätt version från servern
-          fetch(selectedVersion.fileUrl, { method: 'HEAD' })
-            .then(() => {
-              // URL:en är tillgänglig, använd den
-              console.log(`Version URL ${selectedVersion.fileUrl} is valid, using it`);
-              setPdfUrl(selectedVersion.fileUrl);
-            })
-            .catch(() => {
-              // URL:en är inte tillgänglig, använd aktuell URL istället
-              console.log(`Version URL ${selectedVersion.fileUrl} is invalid, using current PDF as fallback`);
-              // I verklig produktion skulle vi göra ett API-anrop för att hämta korrekt fil
-              // Men för demo använder vi befintlig PDF
-              if (pdfUrl) setPdfUrl(pdfUrl + '#' + Date.now()); // Lägg till timestamp för att tvinga omrendering
-            });
-        } catch (e) {
-          console.error("Error checking blob URL validity:", e);
-          // Fallback: använd aktuell PDF
-          if (pdfUrl) setPdfUrl(pdfUrl + '#' + Date.now());
-        }
-      } else {
-        // För direkta URL:er (inte blob) kan vi använda direkt
-        setPdfUrl(selectedVersion.fileUrl);
-      }
-    } catch (error) {
-      console.error("Error changing version:", error);
-      // Fallback - aktuell PDF igen (i värsta fall)
-      if (pdfUrl) setPdfUrl(pdfUrl + '#' + Date.now());
+    if (!selectedVersion) {
+      console.error("Could not find version with id:", versionId);
+      return;
     }
     
-    // Uppdatera aktiv version oavsett om URL-bytet lyckades
+    // VIKTIGT: Vi använder alltid den nuvarande PDF:en som visas för alla versioner
+    // I en verklig implementation skulle vi hämta specifika versioner från servern
+    // För demo använder vi samma fil för alla versioner, så att blob-URLer inte orsakar problem
+    try {
+      // För att säkerställa att we inte använder ogiltiga blob-URLer, alltid använd samma fil
+      // men lägg till en timestamp för att tvinga omrendering
+      const currentFileUrl = pdfUrl?.split('#')[0]; // Ta bort eventuella tidigare timestamps
+      if (currentFileUrl) {
+        setPdfUrl(currentFileUrl + '#' + Date.now());
+        console.log(`[${Date.now()}] Using current file for version ${selectedVersion.versionNumber} with refresh`);
+      } else {
+        console.error("No current PDF URL available");
+      }
+    } catch (error) {
+      console.error("Error during version change:", error);
+    }
+    
+    // Uppdatera aktiv version ID
     setActiveVersionId(versionId);
     
     // Återställ eventuell zoomning/aktiv markering
