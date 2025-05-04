@@ -1000,17 +1000,28 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
 
   // Ladda upp en ny version av filen
   const handleUploadNewVersion = () => {
-    // För demo-syfte, vi återanvänder samma fil för alla versioner
-    // Om vi hade en riktig server skulle vi ladda upp en ny fil här
+    // Nollställ state för versionsuppladdningsformuläret
+    setSelectedVersionFile(null);
+    setNewVersionDescription('');
     
-    // Använd den befintliga filen för vår "nya" version
-    const originalFile = (window as any).currentPdfFile;
-    if (originalFile) {
-      console.log(`[${Date.now()}] Using existing PDF file for new version`);
-      setSelectedVersionFile(originalFile);
-    }
+    // Vi bör INTE sätta en befintlig fil som standard
+    // Användaren ska välja en ny fil för den nya versionen
     
+    // Visa dialogrutan
     setShowUploadVersionDialog(true);
+    
+    // Rensa input-fältet med en kort fördröjning för att säkerställa att det har renderats
+    setTimeout(() => {
+      try {
+        const fileInput = document.getElementById('version-file-upload') as HTMLInputElement;
+        if (fileInput) {
+          fileInput.value = '';
+          console.log("File input field cleared when opening upload dialog");
+        }
+      } catch (e) {
+        console.error("Failed to reset file input when opening dialog:", e);
+      }
+    }, 50);
   };
   
   // Stäng versionsuppladdningsdialogrutan
