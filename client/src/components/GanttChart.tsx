@@ -486,7 +486,7 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
             
             updateTaskMutation.mutate({
               id: Number(targetTask.id),
-              dependencies: updatedDependencies
+              dependencies: JSON.stringify(updatedDependencies)
             });
           } else {
             toast({
