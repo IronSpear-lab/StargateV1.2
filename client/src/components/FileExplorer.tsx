@@ -45,6 +45,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { getFileExtension, isFileOfType, formatFileSize } from "@/lib/file-utils";
 import { isPdf } from "@/lib/pdf-utils";
+import { SimplePDFViewer } from "@/components/SimplePDFViewer";
 
 interface FileNode {
   id: string;
