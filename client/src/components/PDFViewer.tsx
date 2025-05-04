@@ -47,6 +47,18 @@ export interface PDFAnnotation {
   createdAt: string;
 }
 
+// Typ för filversioner
+export interface FileVersion {
+  id: string;
+  versionNumber: number;
+  filename: string;
+  fileUrl: string;
+  description: string;
+  uploaded: string;
+  uploadedBy: string;
+  commentCount?: number;
+}
+
 // Färgkodning baserat på status
 const statusColors = {
   open: '#727cf5',        // Blå
@@ -66,6 +78,7 @@ interface PDFViewerProps {
     description: string;
     uploaded: string;
     uploadedBy: string;
+    fileId?: string;
   };
 }
 
@@ -87,6 +100,11 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   const [newComment, setNewComment] = useState('');
   const [isAddingComment, setIsAddingComment] = useState(false);
   const [tempAnnotation, setTempAnnotation] = useState<Partial<PDFAnnotation> | null>(null);
+  
+  // Versionshantering
+  const [fileVersions, setFileVersions] = useState<FileVersion[]>([]);
+  const [activeVersionId, setActiveVersionId] = useState<string | undefined>(undefined);
+  const [showVersionsPanel, setShowVersionsPanel] = useState(false);
   
   const pdfContainerRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -113,6 +131,55 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     // Rensa också eventuella tidigare aktiva annotationer när en ny fil öppnas
     setActiveAnnotation(null);
   }, [fileUrl, file]);
+  
+  // Hämta tillgängliga versioner när en fil öppnas
+  useEffect(() => {
+    if (!fileData?.fileId) return;
+    
+    // Här skulle vi göra ett API-anrop för att hämta alla versioner av denna fil
+    // Exempel: fetchFileVersions(fileData.fileId)
+    
+    // Simulera versionshämtning för demo
+    const dummyVersions: FileVersion[] = [
+      {
+        id: 'version1',
+        versionNumber: 1,
+        filename: fileData.filename,
+        fileUrl: fileUrl || '',
+        description: 'Ursprunglig version',
+        uploaded: '2025-03-15',
+        uploadedBy: 'Johan Andersson',
+        commentCount: 2
+      },
+      {
+        id: 'version2',
+        versionNumber: 2,
+        filename: fileData.filename,
+        fileUrl: fileUrl || '',
+        description: 'Uppdaterade mått på kök och badrum',
+        uploaded: '2025-04-02',
+        uploadedBy: 'Anna Svensson',
+        commentCount: 5
+      },
+      {
+        id: 'version3',
+        versionNumber: 3,
+        filename: fileData.filename,
+        fileUrl: fileUrl || '',
+        description: 'Justerad planlösning med utökad veranda',
+        uploaded: fileData.uploaded,
+        uploadedBy: fileData.uploadedBy,
+        commentCount: 0
+      }
+    ];
+    
+    setFileVersions(dummyVersions);
+    
+    // Sätt aktuell version till den senaste
+    const latestVersion = dummyVersions[dummyVersions.length - 1];
+    setActiveVersionId(latestVersion.id);
+    
+  }, [fileData?.fileId, fileUrl]);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -301,11 +368,37 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     };
   };
 
+  // Hantera byte av version
+  const handleChangeVersion = (versionId: string) => {
+    const selectedVersion = fileVersions.find(v => v.id === versionId);
+    if (!selectedVersion) return;
+    
+    // Normalt skulle vi hämta ny file URL för denna version
+    // För demo använder vi samma URL
+    setPdfUrl(selectedVersion.fileUrl);
+    setActiveVersionId(versionId);
+    
+    // Återställ eventuell zoomning/aktiv markering
+    setActiveAnnotation(null);
+    setScale(1);
+    
+    // Stäng versionspanelen
+    setShowVersionsPanel(false);
+  };
+  
+  // Växla versionssidan när användaren trycker på knapparna i överkanten
+  const toggleVersionPanel = () => {
+    setShowVersionsPanel(prev => !prev);
+  };
+  
+  // Hitta aktiv version baserat på id
+  const activeVersion = fileVersions.find(v => v.id === activeVersionId);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div 
         className="absolute inset-0 bg-black bg-opacity-70" 
-        onClick={isMarking || isAddingComment ? cancelMarkingOrComment : onClose}
+        onClick={isMarking || isAddingComment || showVersionsPanel ? cancelMarkingOrComment : onClose}
       />
       
       <div 
@@ -313,77 +406,113 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       >
         {/* Vänster sida - PDF-visare */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between p-4 border-b bg-gray-50">
-            <div className="flex items-center">
-              <h2 className="text-xl font-semibold mr-4">{fileData?.filename || "PDF Document"}</h2>
-              {fileData && (
-                <div className="text-sm text-gray-500">
-                  Version: {fileData.version} | Uppladdad: {fileData.uploaded} | Av: {fileData.uploadedBy}
-                </div>
-              )}
-            </div>
-            <div className="flex items-center space-x-3">
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={zoomOut}
-                className="h-8 w-8"
-              >
-                <ZoomOut size={16} />
-              </Button>
-              <div className="w-12 text-center text-sm">
-                {Math.round(scale * 100)}%
+          <div className="flex flex-col border-b bg-gray-50">
+            {/* Övre delen med filinfo och knappar */}
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center">
+                <h2 className="text-xl font-semibold mr-4">{fileData?.filename || "PDF Document"}</h2>
+                {activeVersion && (
+                  <div className="text-sm text-gray-500">
+                    Version: {activeVersion.versionNumber} | Uppladdad: {activeVersion.uploaded} | Av: {activeVersion.uploadedBy}
+                  </div>
+                )}
               </div>
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={zoomIn}
-                className="h-8 w-8"
-              >
-                <ZoomIn size={16} />
-              </Button>
-              <Button 
-                variant={isMarking ? "default" : "outline"}
-                size="icon"
-                onClick={handleToggleMarkingMode}
-                className="h-8 w-8"
-                title={isMarking ? "Avsluta markering" : "Skapa markering"}
-              >
-                <MessageSquare size={16} />
-              </Button>
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={rotate}
-                className="h-8 w-8"
-              >
-                <Rotate3D size={16} />
-              </Button>
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={handleDownload}
-                className="h-8 w-8"
-              >
-                <Download size={16} />
-              </Button>
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={toggleFullscreen}
-                className="h-8 w-8"
-              >
-                {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
-              </Button>
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={onClose}
-                className="h-8 w-8"
-              >
-                <X size={16} />
-              </Button>
+              <div className="flex items-center space-x-3">
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={zoomOut}
+                  className="h-8 w-8"
+                >
+                  <ZoomOut size={16} />
+                </Button>
+                <div className="w-12 text-center text-sm">
+                  {Math.round(scale * 100)}%
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={zoomIn}
+                  className="h-8 w-8"
+                >
+                  <ZoomIn size={16} />
+                </Button>
+                <Button 
+                  variant={isMarking ? "default" : "outline"}
+                  size="icon"
+                  onClick={handleToggleMarkingMode}
+                  className="h-8 w-8"
+                  title={isMarking ? "Avsluta markering" : "Skapa markering"}
+                >
+                  <MessageSquare size={16} />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={rotate}
+                  className="h-8 w-8"
+                >
+                  <Rotate3D size={16} />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={handleDownload}
+                  className="h-8 w-8"
+                >
+                  <Download size={16} />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={toggleFullscreen}
+                  className="h-8 w-8"
+                >
+                  {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={onClose}
+                  className="h-8 w-8"
+                >
+                  <X size={16} />
+                </Button>
+              </div>
             </div>
+            
+            {/* Versionsknappar */}
+            {fileVersions.length > 1 && (
+              <div className="flex items-center justify-between px-4 pb-2">
+                <div className="flex space-x-2">
+                  <Button
+                    variant={activeVersionId === fileVersions[fileVersions.length - 1]?.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleChangeVersion(fileVersions[fileVersions.length - 1]?.id)}
+                    className="rounded-md py-1 h-8"
+                  >
+                    Nuvarande version
+                  </Button>
+                  <Button
+                    variant={activeVersionId === fileVersions[0]?.id ? "destructive" : "outline"}
+                    size="sm"
+                    onClick={() => handleChangeVersion(fileVersions[0]?.id)}
+                    className="rounded-md py-1 h-8"
+                  >
+                    Ursprunglig version
+                  </Button>
+                </div>
+                
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={toggleVersionPanel}
+                  className="rounded-md py-1 h-8"
+                >
+                  Visa versionshistorik
+                </Button>
+              </div>
+            )}
           </div>
           
           <div 
@@ -487,114 +616,196 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
           )}
         </div>
         
-        {/* Höger sida - Kommentarspanel */}
-        <div className="w-80 border-l overflow-auto flex flex-col h-full">
-          <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-            <h3 className="font-medium text-lg">Kommentarer</h3>
-            <Button 
-              variant="ghost"
-              size="sm"
-              onClick={handleToggleMarkingMode}
-              className={isMarking ? "text-primary-600" : ""}
-            >
-              <MessageSquare size={16} className="mr-1" />
-              {!isMarking ? "Ny kommentar" : "Avbryt"}
-            </Button>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto">
-            {annotations.length === 0 ? (
-              <div className="p-8 text-gray-500 text-center flex flex-col items-center justify-center h-full">
-                <MessageSquare size={30} className="text-gray-400 mb-3" />
-                <p className="font-medium">Inga kommentarer ännu</p>
-                <p className="text-sm mt-2 max-w-[220px]">
-                  Lägg till kommentarer direkt på ritningen genom att klicka på 
-                  <span className="font-medium"> Ny kommentar</span> ovan
-                </p>
+        {/* Höger sida - innehåller antingen kommentarpanelen eller versionspanelen */}
+        <div className="w-80 border-l overflow-hidden flex flex-col h-full">
+          {showVersionsPanel ? (
+            <>
+              {/* Versionspanel */}
+              <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+                <h3 className="font-medium text-lg">Versionshistorik</h3>
                 <Button 
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  onClick={handleToggleMarkingMode}
-                  className="mt-4"
+                  onClick={toggleVersionPanel}
+                  className="text-gray-500"
                 >
-                  <MessageSquare size={14} className="mr-1" />
-                  Lägg till första kommentaren
+                  <X size={16} className="mr-1" />
+                  Stäng
                 </Button>
               </div>
-            ) : (
-              <div className="space-y-4 p-4">
-                <div className="flex justify-between items-center mb-2 px-1">
-                  <p className="text-sm text-gray-500">
-                    {annotations.length} {annotations.length === 1 ? 'kommentar' : 'kommentarer'}
-                  </p>
-                  {/* Här skulle vi kunna lägga till en sortering eller filtrering */}
+              
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="space-y-4">
+                  {fileVersions.map((version, index) => {
+                    const isLatest = index === fileVersions.length - 1;
+                    const isFirst = index === 0;
+                    
+                    return (
+                      <div 
+                        key={version.id}
+                        className={`border rounded-lg p-4 transition-all ${
+                          version.id === activeVersionId 
+                            ? 'bg-blue-50 border-blue-300 shadow-sm' 
+                            : 'bg-white hover:border-blue-200'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex flex-col">
+                            <h4 className="font-medium flex items-center">
+                              Version {version.versionNumber}
+                              {isLatest && <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">Senaste</span>}
+                              {isFirst && <span className="ml-2 text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded-full">Första</span>}
+                            </h4>
+                            <span className="text-xs text-gray-500 mt-1">
+                              {version.uploadedBy}, {version.uploaded}
+                            </span>
+                          </div>
+                          
+                          <div>
+                            {version.id !== activeVersionId ? (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleChangeVersion(version.id)}
+                                className="text-xs h-7"
+                              >
+                                Visa version
+                              </Button>
+                            ) : (
+                              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                Aktiv
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <p className="text-sm text-gray-700 mb-2">
+                          {version.description}
+                        </p>
+                        
+                        <div className="flex items-center text-xs text-gray-500">
+                          <span className="flex items-center">
+                            <MessageSquare size={12} className="mr-1" />
+                            {version.commentCount || 0} kommentarer
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                
-                {annotations.map(annotation => (
-                  <div 
-                    key={annotation.id} 
-                    className={`bg-white border rounded-lg p-3 shadow-sm transition-all duration-200 ${activeAnnotation?.id === annotation.id ? 'ring-2 ring-blue-400' : 'hover:border-blue-200'}`}
-                    onClick={() => zoomToAnnotation(annotation)}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center">
-                        <div 
-                          className="w-3 h-3 rounded-full mr-2" 
-                          style={{ backgroundColor: annotation.color }} 
-                        />
-                        <span className="text-sm font-medium">
-                          {annotation.rect.pageNumber !== pageNumber && `Sida ${annotation.rect.pageNumber}: `}
-                          {annotation.status === 'open' && 'Öppen'}
-                          {annotation.status === 'resolved' && 'Löst'}
-                          {annotation.status === 'action_required' && 'Kräver åtgärd'}
-                          {annotation.status === 'reviewing' && 'Under granskning'}
-                        </span>
-                      </div>
-                      <div className="flex space-x-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            updateAnnotationStatus(annotation.id, 'resolved');
-                          }}
-                          title="Markera som löst"
-                        >
-                          <Check size={14} className="text-green-600" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            updateAnnotationStatus(annotation.id, 'action_required');
-                          }}
-                          title="Markera som kräver åtgärd"
-                        >
-                          <AlertCircle size={14} className="text-red-600" />
-                        </Button>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-700 mb-3">{annotation.comment}</p>
-                    <div className="flex justify-between mt-2 text-xs text-gray-500 border-t pt-2">
-                      <span>{annotation.createdBy}</span>
-                      <span>{new Date(annotation.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                ))}
               </div>
-            )}
-          </div>
+            </>
+          ) : (
+            <>
+              {/* Kommentarspanel */}
+              <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+                <h3 className="font-medium text-lg">Kommentarer</h3>
+                <Button 
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleToggleMarkingMode}
+                  className={isMarking ? "text-primary-600" : ""}
+                >
+                  <MessageSquare size={16} className="mr-1" />
+                  {!isMarking ? "Ny kommentar" : "Avbryt"}
+                </Button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto">
+                {annotations.length === 0 ? (
+                  <div className="p-8 text-gray-500 text-center flex flex-col items-center justify-center h-full">
+                    <MessageSquare size={30} className="text-gray-400 mb-3" />
+                    <p className="font-medium">Inga kommentarer ännu</p>
+                    <p className="text-sm mt-2 max-w-[220px]">
+                      Lägg till kommentarer direkt på ritningen genom att klicka på 
+                      <span className="font-medium"> Ny kommentar</span> ovan
+                    </p>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={handleToggleMarkingMode}
+                      className="mt-4"
+                    >
+                      <MessageSquare size={14} className="mr-1" />
+                      Lägg till första kommentaren
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4 p-4">
+                    <div className="flex justify-between items-center mb-2 px-1">
+                      <p className="text-sm text-gray-500">
+                        {annotations.length} {annotations.length === 1 ? 'kommentar' : 'kommentarer'}
+                      </p>
+                      {/* Här skulle vi kunna lägga till en sortering eller filtrering */}
+                    </div>
+                    
+                    {annotations.map(annotation => (
+                      <div 
+                        key={annotation.id} 
+                        className={`bg-white border rounded-lg p-3 shadow-sm transition-all duration-200 ${activeAnnotation?.id === annotation.id ? 'ring-2 ring-blue-400' : 'hover:border-blue-200'}`}
+                        onClick={() => zoomToAnnotation(annotation)}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center">
+                            <div 
+                              className="w-3 h-3 rounded-full mr-2" 
+                              style={{ backgroundColor: annotation.color }} 
+                            />
+                            <span className="text-sm font-medium">
+                              {annotation.rect.pageNumber !== pageNumber && `Sida ${annotation.rect.pageNumber}: `}
+                              {annotation.status === 'open' && 'Öppen'}
+                              {annotation.status === 'resolved' && 'Löst'}
+                              {annotation.status === 'action_required' && 'Kräver åtgärd'}
+                              {annotation.status === 'reviewing' && 'Under granskning'}
+                            </span>
+                          </div>
+                          <div className="flex space-x-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateAnnotationStatus(annotation.id, 'resolved');
+                              }}
+                              title="Markera som löst"
+                            >
+                              <Check size={14} className="text-green-600" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateAnnotationStatus(annotation.id, 'action_required');
+                              }}
+                              title="Markera som kräver åtgärd"
+                            >
+                              <AlertCircle size={14} className="text-red-600" />
+                            </Button>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-700 mb-3">{annotation.comment}</p>
+                        <div className="flex justify-between mt-2 text-xs text-gray-500 border-t pt-2">
+                          <span>{annotation.createdBy}</span>
+                          <span>{new Date(annotation.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
       
       {/* Dialog för att lägga till ny kommentar */}
       {isAddingComment && tempAnnotation && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
           <div className="absolute inset-0 bg-black bg-opacity-50" onClick={cancelMarkingOrComment} />
-          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-lg font-medium">Lägg till kommentar</h3>
               <Button
