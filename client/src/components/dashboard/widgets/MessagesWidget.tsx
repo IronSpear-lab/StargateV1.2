@@ -112,7 +112,7 @@ export function MessagesWidget({ limit = 5 }: MessagesWidgetProps) {
           </div>
         ) : messages && messages.length > 0 ? (
           <div className="space-y-1">
-            {messages.slice(0, limit).map((message) => (
+            {messages.slice(0, limit).map((message: Message) => (
               <div key={message.id}>
                 <div 
                   className={cn(

@@ -1,18 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { 
   Sidebar, 
   Header, 
   Widget, 
   WidgetArea, 
-  WidgetGallery,
-  TasksOverviewWidget 
+  WidgetGallery
 } from "@/components";
+import {
+  CustomTextWidget,
+  CalendarWidget,
+  MessagesWidget,
+  DeadlinesWidget,
+  FieldTasksWidget,
+  RecentFilesWidget,
+  TasksOverviewWidget
+} from "@/components/dashboard/widgets";
 import { v4 as uuidv4 } from "uuid";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Home } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { Link } from "wouter";
 import type { WidgetType } from "@/components/dashboard/WidgetGallery";
 
 // Define a widget instance type for state management
@@ -25,6 +34,52 @@ type WidgetInstance = {
   height: string;
 };
 
+// Define pre-configured dashboard widgets based on the screenshot
+const defaultWidgets: WidgetInstance[] = [
+  {
+    id: uuidv4(),
+    type: "custom-text",
+    title: "CUSTOM TEXT",
+    width: "half",
+    height: "medium"
+  },
+  {
+    id: uuidv4(),
+    type: "calendar",
+    title: "CALENDAR",
+    width: "half",
+    height: "medium"
+  },
+  {
+    id: uuidv4(),
+    type: "messages",
+    title: "MESSAGES",
+    width: "half",
+    height: "medium"
+  },
+  {
+    id: uuidv4(),
+    type: "deadlines",
+    title: "UPCOMING DEADLINES",
+    width: "half",
+    height: "medium"
+  },
+  {
+    id: uuidv4(),
+    type: "field-tasks",
+    title: "MY FIELD TASKS",
+    width: "half",
+    height: "medium"
+  },
+  {
+    id: uuidv4(),
+    type: "recent-files",
+    title: "RECENT FILES IN BOX",
+    width: "half",
+    height: "medium"
+  }
+];
+
 export default function DashboardPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [widgets, setWidgets] = useState<WidgetInstance[]>([]);
@@ -32,13 +87,36 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const { user } = useAuth();
 
+  // Load saved widgets from localStorage on first render
+  // or use default widgets if none exist
+  useEffect(() => {
+    const savedWidgets = localStorage.getItem('dashboard-widgets');
+    if (savedWidgets) {
+      try {
+        setWidgets(JSON.parse(savedWidgets));
+      } catch (error) {
+        console.error('Failed to parse saved widgets:', error);
+        setWidgets(defaultWidgets);
+      }
+    } else {
+      setWidgets(defaultWidgets);
+    }
+  }, []);
+
+  // Save widgets to localStorage when they change
+  useEffect(() => {
+    if (widgets.length > 0) {
+      localStorage.setItem('dashboard-widgets', JSON.stringify(widgets));
+    }
+  }, [widgets]);
+
   // Fetch user's projects
   const { data: projects } = useQuery({
     queryKey: ['/api/user-projects'],
     queryFn: async () => {
       const response = await fetch('/api/user-projects');
       if (!response.ok) {
-        throw new Error('Failed to fetch projects');
+        return [];
       }
       return response.json();
     }
@@ -71,6 +149,11 @@ export default function DashboardPage() {
     });
   };
 
+  // Add widget button trigger
+  const handleAddWidgetClick = () => {
+    setIsWidgetGalleryOpen(true);
+  };
+
   // Remove a widget from the dashboard
   const handleRemoveWidget = (widgetId: string) => {
     setWidgets(widgets.filter(widget => widget.id !== widgetId));
@@ -100,13 +183,24 @@ export default function DashboardPage() {
   // Render the appropriate widget component based on type
   const renderWidget = (widget: WidgetInstance) => {
     switch (widget.type) {
+      case "custom-text":
+        return <CustomTextWidget id={widget.id} />;
+      case "calendar":
+        return <CalendarWidget projectId={widget.projectId} />;
+      case "messages":
+        return <MessagesWidget limit={5} />;
+      case "deadlines":
+        return <DeadlinesWidget projectId={widget.projectId} />;
+      case "field-tasks":
+        return <FieldTasksWidget limit={5} />;
+      case "recent-files":
+        return <RecentFilesWidget projectId={widget.projectId} />;
       case "tasks-overview":
         return <TasksOverviewWidget projectId={widget.projectId} />;
-      // Add cases for other widget types here as they are implemented
       default:
         return (
           <div className="flex items-center justify-center h-full">
-            <p className="text-muted-foreground">Widget content not implemented</p>
+            <p className="text-gray-500">Widget content not implemented</p>
           </div>
         );
     }
@@ -119,26 +213,39 @@ export default function DashboardPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header title="Dashboard" onToggleSidebar={toggleSidebar} />
         
-        <main className="flex-1 overflow-y-auto">
-          <div className="container mx-auto py-4">
+        <main className="flex-1 overflow-y-auto bg-slate-50">
+          <div className="max-w-7xl mx-auto py-5 px-4 sm:px-6">
+            {/* Breadcrumb */}
+            <div className="flex items-center space-x-2 text-sm mb-5">
+              <Link href="/" className="text-blue-600 hover:text-blue-700">
+                <Home className="h-4 w-4" />
+              </Link>
+              <span className="text-gray-400">/</span>
+              <span className="text-gray-500">Dashboard</span>
+            </div>
+            
             <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-bold">My Dashboard</h1>
-              <Button onClick={() => setIsWidgetGalleryOpen(true)} className="gap-1">
+              <h1 className="text-xl font-bold text-gray-800">Dashboard</h1>
+              
+              <Button 
+                onClick={handleAddWidgetClick} 
+                className="gap-1 bg-blue-600 hover:bg-blue-700"
+              >
                 <PlusCircle className="h-4 w-4" />
-                Add Widget
+                Add widget
               </Button>
             </div>
             
             {widgets.length === 0 ? (
-              <div className="bg-muted/30 border border-dashed border-muted rounded-lg p-8 text-center">
-                <h3 className="font-medium text-lg mb-2">Your dashboard is empty</h3>
-                <p className="text-muted-foreground mb-4">
+              <div className="bg-white border border-dashed border-gray-200 rounded-lg p-8 text-center shadow-sm">
+                <h3 className="font-medium text-lg mb-2 text-gray-700">Your dashboard is empty</h3>
+                <p className="text-gray-500 mb-4">
                   Add widgets to customize your dashboard experience
                 </p>
                 <Button 
                   variant="outline" 
-                  onClick={() => setIsWidgetGalleryOpen(true)}
-                  className="gap-1"
+                  onClick={handleAddWidgetClick}
+                  className="gap-1 border-blue-200 text-blue-600 hover:bg-blue-50"
                 >
                   <PlusCircle className="h-4 w-4" />
                   Add Your First Widget

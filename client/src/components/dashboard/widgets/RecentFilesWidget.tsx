@@ -3,10 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { 
   FileText, 
   File, 
-  FileArchive, 
-  FileSpreadsheet, 
-  FileImage, 
-  FilePdf, 
+  Archive, 
+  Table, 
+  Image, 
+  FileText as FilePdf, 
   Download, 
   AlertCircle, 
   FolderOpen 
@@ -69,11 +69,11 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
     if (type.includes('pdf')) {
       return <FilePdf className="h-4 w-4 text-red-500" />;
     } else if (type.includes('image') || type.includes('png') || type.includes('jpg') || type.includes('jpeg')) {
-      return <FileImage className="h-4 w-4 text-purple-500" />;
+      return <Image className="h-4 w-4 text-purple-500" />;
     } else if (type.includes('excel') || type.includes('spreadsheet') || type.includes('csv') || type.includes('xls')) {
-      return <FileSpreadsheet className="h-4 w-4 text-green-600" />;
+      return <Table className="h-4 w-4 text-green-600" />;
     } else if (type.includes('zip') || type.includes('archive') || type.includes('compressed')) {
-      return <FileArchive className="h-4 w-4 text-amber-500" />;
+      return <Archive className="h-4 w-4 text-amber-500" />;
     } else if (type.includes('text') || type.includes('doc') || type.includes('word')) {
       return <FileText className="h-4 w-4 text-blue-500" />;
     } else {

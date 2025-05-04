@@ -9,7 +9,23 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, BarChart2, CalendarDays, ListTodo, Users, Kanban, Clock, FileText, Activity } from "lucide-react";
+import { 
+  Search, 
+  Plus, 
+  BarChart2, 
+  CalendarDays, 
+  ListTodo, 
+  Users, 
+  Kanban, 
+  Clock, 
+  FileText, 
+  Activity,
+  MessageSquare,
+  Check,
+  Calendar,
+  FolderOpen,
+  Pencil
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -58,6 +74,66 @@ export function WidgetGallery({
       available: true,
     },
     {
+      id: "custom-text",
+      name: "Custom Text",
+      description: "Add your own notes and important information",
+      icon: <Pencil className="h-6 w-6" />,
+      category: "notes",
+      defaultWidth: "half",
+      defaultHeight: "medium",
+      available: true,
+    },
+    {
+      id: "calendar",
+      name: "Calendar",
+      description: "Weekly view of events and important dates",
+      icon: <Calendar className="h-6 w-6" />,
+      category: "calendar",
+      defaultWidth: "half",
+      defaultHeight: "medium",
+      available: true,
+    },
+    {
+      id: "messages",
+      name: "Messages",
+      description: "View your recent messages and notifications",
+      icon: <MessageSquare className="h-6 w-6" />,
+      category: "communication",
+      defaultWidth: "half",
+      defaultHeight: "medium",
+      available: true,
+    },
+    {
+      id: "deadlines",
+      name: "Upcoming Deadlines",
+      description: "View important upcoming deadlines for your projects",
+      icon: <Clock className="h-6 w-6" />,
+      category: "planning",
+      defaultWidth: "half",
+      defaultHeight: "medium",
+      available: true,
+    },
+    {
+      id: "field-tasks",
+      name: "My Field Tasks",
+      description: "View and manage your assigned field tasks",
+      icon: <Check className="h-6 w-6" />,
+      category: "tasks",
+      defaultWidth: "half",
+      defaultHeight: "medium",
+      available: true,
+    },
+    {
+      id: "recent-files",
+      name: "Recent Files",
+      description: "View recently added or modified files",
+      icon: <FolderOpen className="h-6 w-6" />,
+      category: "files",
+      defaultWidth: "half",
+      defaultHeight: "medium",
+      available: true,
+    },
+    {
       id: "project-stats",
       name: "Project Statistics",
       description: "Displays key metrics about the current project",
@@ -80,16 +156,6 @@ export function WidgetGallery({
       available: true,
     },
     {
-      id: "calendar",
-      name: "Calendar",
-      description: "Monthly view of deadlines and important dates",
-      icon: <CalendarDays className="h-6 w-6" />,
-      category: "calendar",
-      defaultWidth: "full",
-      defaultHeight: "large",
-      available: true,
-    },
-    {
       id: "kanban-preview",
       name: "Kanban Preview",
       description: "Compact kanban board showing current sprint",
@@ -97,16 +163,6 @@ export function WidgetGallery({
       category: "tasks",
       defaultWidth: "full",
       defaultHeight: "large",
-      available: true,
-    },
-    {
-      id: "recent-files",
-      name: "Recent Files",
-      description: "Recently uploaded or modified files",
-      icon: <FileText className="h-6 w-6" />,
-      category: "files",
-      defaultWidth: "third",
-      defaultHeight: "medium",
       available: true,
     },
     {
