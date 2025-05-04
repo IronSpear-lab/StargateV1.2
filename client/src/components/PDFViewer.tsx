@@ -340,22 +340,57 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   
   // Spara en ny kommentar/markering
   const saveComment = () => {
-    if (!tempAnnotation || !user) return;
+    if (!tempAnnotation || !user) {
+      console.error("Cannot save comment: Missing tempAnnotation or user", { tempAnnotation, user });
+      return;
+    }
     
-    const newAnnotation: PDFAnnotation = {
-      id: `annotation_${Date.now()}`,
-      rect: tempAnnotation.rect as PDFAnnotation['rect'],
-      color: tempAnnotation.color || statusColors.open,
-      comment: newComment,
-      status: tempAnnotation.status as PDFAnnotation['status'],
-      createdBy: user.username || 'Anonymous',
-      createdAt: new Date().toISOString()
-    };
-    
-    setAnnotations([...annotations, newAnnotation]);
-    setIsAddingComment(false);
-    setTempAnnotation(null);
-    setNewComment('');
+    try {
+      // Skapa den nya annotationen med unikt ID
+      const newAnnotation: PDFAnnotation = {
+        id: `annotation_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`,
+        rect: tempAnnotation.rect as PDFAnnotation['rect'],
+        color: tempAnnotation.color || statusColors.open,
+        comment: newComment,
+        status: tempAnnotation.status as PDFAnnotation['status'],
+        createdBy: user.username || 'Anonymous',
+        createdAt: new Date().toISOString()
+      };
+      
+      // Skapa ny array för att forcera state update
+      const updatedAnnotations = [...annotations, newAnnotation];
+      setAnnotations(updatedAnnotations);
+      
+      // Spara omedelbart till localStorage
+      if (fileData?.fileId && fileData?.filename) {
+        const fileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+        const annotationsKey = `pdf_annotations_${fileName}_${fileData.fileId}`;
+        
+        localStorage.setItem(annotationsKey, JSON.stringify(updatedAnnotations));
+        console.log(`Successfully saved ${updatedAnnotations.length} annotations to localStorage with key: ${annotationsKey}`);
+        
+        // Uppdatera även nyckellistan
+        try {
+          let keyList = JSON.parse(localStorage.getItem('pdf_annotation_keys') || '[]');
+          if (!keyList.includes(annotationsKey)) {
+            keyList.push(annotationsKey);
+            localStorage.setItem('pdf_annotation_keys', JSON.stringify(keyList));
+          }
+        } catch (e) {
+          console.error("Error updating key list", e);
+        }
+      }
+      
+      // Återställ kommentarsläget
+      setIsAddingComment(false);
+      setTempAnnotation(null);
+      setNewComment('');
+      
+      // Visa feedback
+      console.log("Annotation saved successfully:", newAnnotation);
+    } catch (error) {
+      console.error("Failed to save annotation:", error);
+    }
   };
   
   // Avbryt markering eller kommentarsskapande
@@ -1266,21 +1301,21 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
               </div>
             </div>
             
-            <div className="flex justify-end space-x-3 pt-3 border-t border-gray-200 dark:border-slate-700">
+            <div className="flex justify-end space-x-3 pt-3 mt-2 border-t border-gray-200 dark:border-slate-700">
               <Button
                 variant="outline"
                 onClick={cancelMarkingOrComment}
-                className="rounded-full"
+                className="rounded-full px-4 py-2 h-auto"
               >
                 Avbryt
               </Button>
               <Button
                 onClick={saveComment}
                 disabled={!newComment.trim()}
-                className="rounded-full bg-primary-500 hover:bg-primary-600 text-white"
+                className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 h-auto shadow-sm hover:shadow"
               >
                 <MessageSquare size={16} className="mr-2" />
-                Spara kommentar
+                Publicera kommentar
               </Button>
             </div>
           </div>
@@ -1386,18 +1421,23 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
               </div>
             </div>
             
-            <div className="flex justify-end space-x-3 pt-3 border-t border-gray-200 dark:border-slate-700">
+            <div className="flex justify-end space-x-3 pt-3 mt-2 border-t border-gray-200 dark:border-slate-700">
               <Button
                 variant="outline"
                 onClick={closeUploadVersionDialog}
-                className="rounded-full"
+                className="rounded-full px-4 py-2 h-auto"
               >
                 Avbryt
               </Button>
               <Button
-                onClick={saveNewVersion}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log("Upload button clicked");
+                  saveNewVersion();
+                }}
                 disabled={!selectedVersionFile || !newVersionDescription.trim()}
-                className="rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+                className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 h-auto shadow-sm hover:shadow"
               >
                 <Upload size={16} className="mr-2" />
                 Ladda upp ny version
