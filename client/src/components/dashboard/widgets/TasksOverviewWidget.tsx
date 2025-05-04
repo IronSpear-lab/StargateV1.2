@@ -211,8 +211,8 @@ export function TasksOverviewWidget({ projectId }: TasksOverviewWidgetProps) {
               <span>Due in next 48 hours</span>
             </div>
             <Badge 
-              variant={stats.dueSoonTasks > 0 ? "warning" : "secondary"}
-              className="text-xs"
+              variant={stats.dueSoonTasks > 0 ? "outline" : "secondary"}
+              className={stats.dueSoonTasks > 0 ? "text-amber-500 border-amber-500" : ""}
             >
               {stats.dueSoonTasks}
             </Badge>

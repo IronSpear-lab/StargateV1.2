@@ -813,7 +813,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Unassigned</SelectItem>
+                          <SelectItem value="unassigned">Unassigned</SelectItem>
                           {users.map((user: any) => (
                             <SelectItem key={user.id} value={user.id.toString()}>
                               {user.username}
