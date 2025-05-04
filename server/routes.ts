@@ -274,10 +274,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(`${apiPrefix}/tasks`, async (req, res) => {
     try {
+      // Process the request body to handle empty dates
+      const taskData = { ...req.body };
+      
+      // Convert empty strings to null for date fields
+      if (taskData.dueDate === '') taskData.dueDate = null;
+      if (taskData.startDate === '') taskData.startDate = null;
+      if (taskData.endDate === '') taskData.endDate = null;
+      
+      // If createdAt is a string ISO date, convert to Date object
+      if (typeof taskData.createdAt === 'string') {
+        taskData.createdAt = new Date(taskData.createdAt);
+      }
+      
       const task = await storage.createTask({
-        ...req.body,
-        createdById: req.user!.id
+        ...taskData,
+        createdById: req.user?.id || taskData.createdById || 1
       });
+      
       res.status(201).json(task);
     } catch (error) {
       console.error("Error creating task:", error);
@@ -288,7 +302,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch(`${apiPrefix}/tasks/:id`, async (req, res) => {
     try {
       const taskId = parseInt(req.params.id);
-      const task = await storage.updateTask(taskId, req.body);
+      
+      // Process the request body to handle empty dates
+      const taskData = { ...req.body };
+      
+      // Convert empty strings to null for date fields
+      if (taskData.dueDate === '') taskData.dueDate = null;
+      if (taskData.startDate === '') taskData.startDate = null;
+      if (taskData.endDate === '') taskData.endDate = null;
+      
+      const task = await storage.updateTask(taskId, taskData);
       res.json(task);
     } catch (error) {
       console.error("Error updating task:", error);
