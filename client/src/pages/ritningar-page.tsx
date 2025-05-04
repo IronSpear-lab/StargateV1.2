@@ -19,6 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PDFViewer } from "@/components/PDFViewer";
+import { storeFiles, getUploadedFileUrl, getStoredFile } from "@/lib/file-utils";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { UploadDialog } from "@/components/UploadDialog";
@@ -203,6 +205,20 @@ const mockRitningar = [
   }
 ];
 
+// Utöka ritningarna med ett fileId-fält för att hålla reda på uppladdade filer
+interface Ritning {
+  id: number;
+  filename: string;
+  version: string;
+  description: string;
+  uploaded: string;
+  uploadedBy: string;
+  number: string;
+  status: string;
+  annat: string;
+  fileId?: string; // Används för att hålla reda på PDF-filer för uppladdade ritningar
+}
+
 export default function RitningarPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState("uploaded");
@@ -210,7 +226,18 @@ export default function RitningarPage() {
   const [versionFilter, setVersionFilter] = useState("all");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
-  const [ritningarData, setRitningarData] = useState(mockRitningar);
+  const [ritningarData, setRitningarData] = useState<Ritning[]>(mockRitningar);
+  const [selectedFile, setSelectedFile] = useState<{
+    file: File | null;
+    fileUrl?: string;
+    fileData?: {
+      filename: string;
+      version: string;
+      description: string;
+      uploaded: string;
+      uploadedBy: string;
+    };
+  } | null>(null);
   
   // I en riktig implementation skulle denna query hämta data från API:et
   // const { data: ritningar = [], isLoading } = useQuery({
@@ -236,6 +263,9 @@ export default function RitningarPage() {
     // I en riktig implementering skulle vi skicka filerna till en API-endpoint
     console.log("Uppladdade filer:", files);
     
+    // Lagra filerna och spara deras ID:n för senare användning
+    const fileIds = storeFiles(files);
+    
     // Lägg till de uppladdade filerna i listan
     const now = new Date();
     const timeString = `${now.getDate()} ${['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'][now.getMonth()]} ${now.getFullYear()}, ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
@@ -249,7 +279,8 @@ export default function RitningarPage() {
       uploadedBy: "Du",
       number: "(New)",
       status: "(Active)",
-      annat: "(PDF)"
+      annat: "(PDF)",
+      fileId: fileIds[index] // Spara ID:t från fillagringen
     }));
     
     // Uppdatera listan med ritningar
@@ -263,6 +294,42 @@ export default function RitningarPage() {
         variant: "default",
       });
     }, 300);
+  };
+  
+  // Öppna PDF-visaren när användaren klickar på en fil
+  const handleFileClick = (ritning: Ritning) => {
+    // För uppladdade filer, använd den lagrade filen
+    if (ritning.fileId && ritning.fileId.startsWith('file_')) {
+      const storedFileData = getStoredFile(ritning.fileId);
+      if (storedFileData) {
+        setSelectedFile({
+          file: storedFileData.file,
+          fileUrl: storedFileData.url,
+          fileData: {
+            filename: ritning.filename,
+            version: ritning.version,
+            description: ritning.description,
+            uploaded: ritning.uploaded,
+            uploadedBy: ritning.uploadedBy
+          }
+        });
+        return;
+      }
+    }
+    
+    // För befintliga/mock-filer, använd exempelfilen
+    const fileUrl = getUploadedFileUrl(ritning.id);
+    setSelectedFile({
+      file: null,
+      fileUrl,
+      fileData: {
+        filename: ritning.filename,
+        version: ritning.version,
+        description: ritning.description,
+        uploaded: ritning.uploaded,
+        uploadedBy: ritning.uploadedBy
+      }
+    });
   };
 
   return (
@@ -401,7 +468,10 @@ export default function RitningarPage() {
                             <div className="flex-shrink-0 mr-3 text-red-500">
                               <FileText size={20} />
                             </div>
-                            <div className="text-sm text-blue-600 hover:underline cursor-pointer whitespace-nowrap">
+                            <div 
+                              className="text-sm text-blue-600 hover:underline cursor-pointer whitespace-nowrap"
+                              onClick={() => handleFileClick(ritning)}
+                            >
                               {ritning.filename}
                             </div>
                           </div>
@@ -422,6 +492,17 @@ export default function RitningarPage() {
           </div>
         </div>
       </div>
+      
+      {/* PDF-visare */}
+      {selectedFile && (
+        <PDFViewer
+          isOpen={!!selectedFile}
+          onClose={() => setSelectedFile(null)}
+          file={selectedFile.file}
+          fileUrl={selectedFile.fileUrl}
+          fileData={selectedFile.fileData}
+        />
+      )}
     </div>
   );
 }

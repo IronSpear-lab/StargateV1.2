@@ -1,73 +1,125 @@
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import React from 'react';
+// Detta är en utilities-fil för filhantering
 
-interface DraggableProps {
+// Här spara vi temporära data för filer som laddats upp
+interface StoredFile {
   id: string;
-  children: React.ReactNode;
+  name: string;
+  file: File;
+  url?: string;
 }
 
-export function Draggable({ id, children }: DraggableProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id });
-  
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+// Vi använder en global Map-struktur för att lagra fildata temporärt
+// I en produktionsversion skulle detta ersättas med en korrekt lagring på servern
+const fileStorage = new Map<string, StoredFile>();
+
+/**
+ * Spara en fil i det temporära lagringsutrymmet
+ */
+export function storeFile(file: File): string {
+  const id = `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  const storedFile: StoredFile = {
+    id,
+    name: file.name,
+    file: file,
+    url: URL.createObjectURL(file),
   };
   
-  return React.createElement(
-    'div',
-    {
-      ref: setNodeRef,
-      style: style,
-      ...attributes,
-      ...listeners
-    },
-    children
-  );
+  fileStorage.set(id, storedFile);
+  return id;
 }
 
-// File types supported by the application
-export const FileTypes = {
-  PDF: 'application/pdf',
-  DOC: 'application/msword',
-  DOCX: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  XLS: 'application/vnd.ms-excel',
-  XLSX: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  PPT: 'application/vnd.ms-powerpoint',
-  PPTX: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  TXT: 'text/plain',
-  JPG: 'image/jpeg',
-  PNG: 'image/png',
-  GIF: 'image/gif',
-};
+/**
+ * Hämta en fil från lagringutrymmet
+ */
+export function getStoredFile(id: string): StoredFile | undefined {
+  return fileStorage.get(id);
+}
 
-// Function to get file extension from filename
+/**
+ * Hämta url för en lagrad fil
+ */
+export function getStoredFileUrl(id: string): string | undefined {
+  const storedFile = fileStorage.get(id);
+  return storedFile?.url;
+}
+
+/**
+ * Ta bort en fil från lagringsutrymmet och frigör URL-objektet
+ */
+export function removeStoredFile(id: string): boolean {
+  const storedFile = fileStorage.get(id);
+  if (storedFile?.url) {
+    URL.revokeObjectURL(storedFile.url);
+  }
+  return fileStorage.delete(id);
+}
+
+/**
+ * Lagra alla filer i en array och returnera deras ID:n
+ */
+export function storeFiles(files: File[]): string[] {
+  return files.map(file => storeFile(file));
+}
+
+/**
+ * Ta bort alla lagrade filer och frigör minne
+ */
+export function clearFileStorage(): void {
+  fileStorage.forEach((storedFile) => {
+    if (storedFile.url) {
+      URL.revokeObjectURL(storedFile.url);
+    }
+  });
+  fileStorage.clear();
+}
+
+/**
+ * Genererar en dummy-URL för filerna i mock-data
+ * För demonstration endast, returnerar en statisk länk till en exempel-PDF
+ */
+export function getDummyFileUrl(): string {
+  return '/exampleFiles/demo.pdf';
+}
+
+/**
+ * Hämta in-memory URL för uppladdad fil
+ */
+export function getUploadedFileUrl(fileId: string | number): string | undefined {
+  // Om det är en strängbaserad ID, anta att det är en av våra temporärt skapade ID:n
+  if (typeof fileId === 'string' && fileId.startsWith('file_')) {
+    return getStoredFileUrl(fileId);
+  }
+  
+  // Annars är det förmodligen ett mock-id eller ett id från databasen
+  return getDummyFileUrl();
+}
+
+/**
+ * Hämta filändelse från filnamn
+ */
 export function getFileExtension(filename: string): string {
-  return filename.slice((filename.lastIndexOf('.') - 1 >>> 0) + 2).toLowerCase();
+  return filename.split('.').pop()?.toLowerCase() || '';
 }
 
-// Function to check if a file is of a specific type
+/**
+ * Kontrollera om filen är av en viss typ
+ */
 export function isFileOfType(filename: string, types: string[]): boolean {
   const extension = getFileExtension(filename);
   return types.includes(extension);
 }
 
-// Function to format file size
-export function formatFileSize(size: number): string {
-  if (size < 1024) {
-    return `${size} B`;
-  } else if (size < 1024 * 1024) {
-    return `${(size / 1024).toFixed(2)} KB`;
-  } else if (size < 1024 * 1024 * 1024) {
-    return `${(size / (1024 * 1024)).toFixed(2)} MB`;
+/**
+ * Formattera filstorlek till läsbar form
+ */
+export function formatFileSize(sizeInBytes: number): string {
+  if (sizeInBytes < 1024) {
+    return sizeInBytes + ' B';
+  } else if (sizeInBytes < 1024 * 1024) {
+    return (sizeInBytes / 1024).toFixed(1) + ' KB';
+  } else if (sizeInBytes < 1024 * 1024 * 1024) {
+    return (sizeInBytes / (1024 * 1024)).toFixed(1) + ' MB';
   } else {
-    return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+    return (sizeInBytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
   }
 }

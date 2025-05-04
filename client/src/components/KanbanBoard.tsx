@@ -24,7 +24,7 @@ import {
   sortableKeyboardCoordinates, 
   verticalListSortingStrategy 
 } from '@dnd-kit/sortable';
-import { Draggable } from '@/lib/file-utils';
+import { Draggable } from '@/lib/dnd-utils';
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { format, addDays, isAfter, isBefore } from "date-fns";

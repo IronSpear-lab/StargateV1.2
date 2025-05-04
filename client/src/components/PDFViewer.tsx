@@ -1,208 +1,226 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Document, Page, pdfjs } from "react-pdf";
 import { Button } from "@/components/ui/button";
-import { 
-  Download, 
-  Share, 
-  MoreVertical, 
-  ArrowLeft, 
-  ArrowRight, 
-  ZoomIn, 
-  ZoomOut, 
-  Maximize,
-  Pen, 
-  Highlighter, 
-  MessageSquare,
-  FileQuestion,
-  Loader2
-} from "lucide-react";
-import { CommentList } from "./CommentList";
-import { Separator } from "@/components/ui/separator";
-import { Document, Page, pdfjs } from 'react-pdf';
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-import 'react-pdf/dist/esm/Page/TextLayer.css';
+import { X, ChevronLeft, ChevronRight, Download, Maximize, Minimize, ZoomIn, ZoomOut, Rotate3D } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
-// Set PDF worker
-// React PDF version 8 uses PDF.js v3.11.174
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+// Konfigurera worker för react-pdf
+pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
 
 interface PDFViewerProps {
-  fileName: string;
-  fileId?: string | number;
-  totalPages?: number;
+  isOpen: boolean;
+  onClose: () => void;
+  file: File | null;
+  fileUrl?: string;
+  fileData?: {
+    filename: string;
+    version: string;
+    description: string;
+    uploaded: string;
+    uploadedBy: string;
+  };
 }
 
-export function PDFViewer({ fileName, fileId, totalPages: initialTotalPages = 1 }: PDFViewerProps) {
-  // Generate URL to the file content
-  const pdfUrl = fileId ? `/api/files/${fileId}/content` : null;
-  const [currentPage, setCurrentPage] = useState(1);
-  const [zoom, setZoom] = useState(100);
-  const [numPages, setNumPages] = useState(initialTotalPages);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  
-  // Set initial loading state when PDF URL changes
+export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewerProps) {
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pdfUrl, setPdfUrl] = useState<string | undefined>(fileUrl);
+  const [scale, setScale] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Om en File-objekt skickas in, skapa en URL för den
   useEffect(() => {
-    if (pdfUrl) {
-      setIsLoading(true);
-      setError(null);
-      console.log("Loading PDF from URL:", pdfUrl);
-      
-      // Try to pre-fetch the PDF file to ensure it exists
-      fetch(pdfUrl)
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
-          }
-          // No need to process the response here, just checking if it's available
-        })
-        .catch(err => {
-          console.error("Error pre-fetching PDF:", err);
-          setError(err);
-          setIsLoading(false);
-        });
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setPdfUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else if (fileUrl) {
+      setPdfUrl(fileUrl);
     }
-  }, [pdfUrl]);
+  }, [file, fileUrl]);
 
-  const increasePage = () => {
-    if (currentPage < numPages) {
-      setCurrentPage(prev => prev + 1);
-    }
-  };
-
-  const decreasePage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(prev => prev - 1);
-    }
-  };
-
-  const increaseZoom = () => {
-    setZoom(prev => Math.min(prev + 10, 200));
-  };
-
-  const decreaseZoom = () => {
-    setZoom(prev => Math.max(prev - 10, 50));
-  };
-
-  function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
+  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
-    setIsLoading(false);
-    console.log(`Document loaded successfully with ${numPages} pages`);
-  }
+    setPageNumber(1);
+  };
 
-  function onDocumentLoadError(error: Error) {
-    console.error("Error loading PDF:", error);
-    setIsLoading(false);
-    setError(error);
-  }
+  const changePage = (offset: number) => {
+    setPageNumber(prevPageNumber => {
+      const newPageNumber = prevPageNumber + offset;
+      if (newPageNumber >= 1 && numPages && newPageNumber <= numPages) {
+        return newPageNumber;
+      }
+      return prevPageNumber;
+    });
+  };
+
+  const previousPage = () => changePage(-1);
+  const nextPage = () => changePage(1);
+
+  const zoomIn = () => setScale(prev => Math.min(prev + 0.2, 3));
+  const zoomOut = () => setScale(prev => Math.max(prev - 0.2, 0.5));
+  
+  const rotate = () => setRotation(prev => (prev + 90) % 360);
+
+  const toggleFullscreen = () => {
+    setIsFullscreen(prev => !prev);
+  };
+
+  const handleDownload = () => {
+    if (pdfUrl) {
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.download = fileData?.filename || "document.pdf";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  if (!isOpen) return null;
 
   return (
-    <Card className="shadow-none border border-neutral-200">
-      <CardHeader className="border-b border-neutral-200 p-3 flex-row items-center justify-between">
-        <CardTitle className="text-base font-medium">{fileName}</CardTitle>
-        <div className="flex items-center space-x-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Download className="h-4 w-4 text-neutral-500" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Share className="h-4 w-4 text-neutral-500" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <MoreVertical className="h-4 w-4 text-neutral-500" />
-          </Button>
-        </div>
-      </CardHeader>
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div 
+        className="absolute inset-0 bg-black bg-opacity-70" 
+        onClick={onClose}
+      />
       
-      <div className="p-2 flex space-x-2 border-b border-neutral-200 bg-neutral-50">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={decreasePage} disabled={currentPage === 1}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={increasePage} disabled={currentPage === numPages}>
-          <ArrowRight className="h-4 w-4" />
-        </Button>
-        <span className="text-sm flex items-center">Page {currentPage} of {numPages}</span>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={increaseZoom}>
-          <ZoomIn className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={decreaseZoom}>
-          <ZoomOut className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
-          <Maximize className="h-4 w-4" />
-        </Button>
-        <div className="flex-1"></div>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
-          <Pen className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
-          <Highlighter className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
-          <MessageSquare className="h-4 w-4" />
-        </Button>
-      </div>
-      
-      <div className="p-4 bg-neutral-100 h-[500px] flex items-center justify-center overflow-auto">
-        {!pdfUrl ? (
-          <div className="text-center">
-            <FileQuestion className="h-16 w-16 mx-auto text-neutral-400 mb-4" />
-            <p className="text-neutral-500">No file selected or preview not available</p>
+      <div 
+        className={`relative bg-white rounded-lg shadow-2xl flex flex-col overflow-hidden
+                   ${isFullscreen ? 'w-full h-full rounded-none' : 'w-[90%] max-w-5xl h-[90%]'}`}
+      >
+        <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+          <div className="flex items-center">
+            <h2 className="text-xl font-semibold mr-4">{fileData?.filename || "PDF Document"}</h2>
+            {fileData && (
+              <div className="text-sm text-gray-500">
+                Version: {fileData.version} | Uppladdad: {fileData.uploaded} | Av: {fileData.uploadedBy}
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="bg-white shadow-md w-full max-w-2xl h-full flex flex-col items-center justify-center p-2 relative overflow-auto">
-            {isLoading && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white bg-opacity-80 z-10">
-                <Loader2 className="h-8 w-8 text-primary-600 animate-spin mb-2" />
-                <p className="text-sm text-neutral-500">Loading PDF...</p>
-              </div>
-            )}
-            
-            {error && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white z-10">
-                <div className="text-center p-4">
-                  <p className="text-sm text-red-500 mb-2">Failed to load PDF document</p>
-                  <p className="text-xs text-neutral-500">Please check if the file exists and is a valid PDF</p>
-                  <p className="text-xs text-neutral-400 mt-2">Error: {error.message}</p>
-                </div>
-              </div>
-            )}
-
+          <div className="flex items-center space-x-3">
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={zoomOut}
+              className="h-8 w-8"
+            >
+              <ZoomOut size={16} />
+            </Button>
+            <div className="w-12 text-center text-sm">
+              {Math.round(scale * 100)}%
+            </div>
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={zoomIn}
+              className="h-8 w-8"
+            >
+              <ZoomIn size={16} />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={rotate}
+              className="h-8 w-8"
+            >
+              <Rotate3D size={16} />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={handleDownload}
+              className="h-8 w-8"
+            >
+              <Download size={16} />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={toggleFullscreen}
+              className="h-8 w-8"
+            >
+              {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={onClose}
+              className="h-8 w-8"
+            >
+              <X size={16} />
+            </Button>
+          </div>
+        </div>
+        
+        <div className="flex-1 overflow-auto bg-gray-200 flex items-center justify-center">
+          {pdfUrl ? (
             <Document
               file={pdfUrl}
               onLoadSuccess={onDocumentLoadSuccess}
-              onLoadError={onDocumentLoadError}
-              className="w-full h-full"
+              loading={
+                <div className="flex flex-col items-center justify-center">
+                  <Loader2 className="h-10 w-10 animate-spin text-primary-600 mb-4" />
+                  <p className="text-gray-600">Laddar dokument...</p>
+                </div>
+              }
+              error={
+                <div className="flex flex-col items-center justify-center">
+                  <p className="text-red-500 mb-2">Kunde inte ladda dokumentet</p>
+                  <p className="text-gray-600 text-sm">Kontrollera att det är en giltig PDF-fil</p>
+                </div>
+              }
+              className="pdfDocument"
             >
-              <Page 
-                key={`page_${currentPage}`}
-                pageNumber={currentPage} 
-                renderTextLayer={true}
-                renderAnnotationLayer={true}
-                scale={zoom / 100}
-                className="page-container mx-auto"
+              <Page
+                pageNumber={pageNumber}
+                renderTextLayer={false}
+                renderAnnotationLayer={false}
+                scale={scale}
+                rotate={rotation}
+                loading={
+                  <div className="h-[500px] w-[400px] bg-gray-100 flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+                  </div>
+                }
+                className="pdfPage shadow-lg"
               />
             </Document>
+          ) : (
+            <div className="text-gray-500">Ingen PDF vald</div>
+          )}
+        </div>
+        
+        {numPages && numPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50">
+            <Button
+              variant="outline"
+              onClick={previousPage}
+              disabled={pageNumber <= 1}
+              className="h-8"
+            >
+              <ChevronLeft size={16} className="mr-1" />
+              Föregående
+            </Button>
             
-            {/* Example annotation - this would be dynamic in a real implementation */}
-            <div className="absolute bottom-20 right-20 bg-yellow-100 p-3 rounded-md shadow-md" style={{ width: "200px" }}>
-              <div className="flex items-start gap-2">
-                <div className="w-8 h-8 rounded-full bg-yellow-200 flex items-center justify-center text-yellow-700 text-sm font-medium">
-                  AS
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Alex Smith</p>
-                  <p className="text-xs text-neutral-600">Please review this section</p>
-                  <p className="text-xs text-neutral-500 mt-1">Yesterday at 3:45 PM</p>
-                </div>
-              </div>
+            <div className="text-sm text-gray-600">
+              Sida {pageNumber} av {numPages}
             </div>
+            
+            <Button
+              variant="outline"
+              onClick={nextPage}
+              disabled={Boolean(numPages && pageNumber >= numPages)}
+              className="h-8"
+            >
+              Nästa
+              <ChevronRight size={16} className="ml-1" />
+            </Button>
           </div>
         )}
       </div>
-      
-      <CardContent className="p-0">
-        <CommentList />
-      </CardContent>
-    </Card>
+    </div>
   );
 }
