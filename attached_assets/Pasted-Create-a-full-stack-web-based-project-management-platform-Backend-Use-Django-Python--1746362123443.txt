@@ -1,0 +1,79 @@
+Create a full-stack web-based project management platform.
+
+**Backend**: Use Django (Python).  
+**Frontend**: Use React and follow the Joi UI design system, based on one of the official templates from https://mui.com/joy-ui/getting-started/templates/. Preferably use the "Dashboard" template as the foundation and customize it to match this platform's needs.
+
+---
+
+🎨 Design and User Experience:
+- Frontend must use one of the official templates from https://mui.com/joy-ui/getting-started/templates/ as the visual and structural foundation. Preferably start from the "Dashboard" template.
+- Minimalist layout with clean lines, neutral colors, and readable fonts.
+- Intuitive icons and simple navigation between modules: tasks, Gantt charts, files, and dashboards.
+- Fully responsive design for both desktop and mobile devices.
+- Customizable dashboards with modular widgets (e.g., task lists, progress charts, announcements).
+
+---
+
+📋 Core Features:
+- Gantt charts for project planning and timelines.
+- Kanban boards for drag-and-drop visual task management.
+- Task system with creation, status updates, priority tags, and user assignment.
+- Time tracking per task/user, with logs accessible in reports.
+- Wiki module for internal documentation (WYSIWYG editor).
+- **File annotation system**:
+  → File manager must visually resemble Windows Explorer.
+  → Include a tree-view sidebar with expandable/collapsible folders and nested subfolders.
+  → Users can upload files into any folder/subfolder.
+  → Users can open PDF files in-browser and leave comments directly inside the viewer.
+  → Each comment automatically generates a task linked to the file and its location.
+  → Comments are aggregated in a separate view with filtering and progress tracking.
+- Project leader dashboard:
+  → Displays tasks, comments, budget status, progress indicators, and recent activity.
+- Full support for drag-and-drop file organization and permission-restricted folder creation.
+
+---
+
+👥 Roles and Permissions:
+- **Regular user**: Can access assigned tasks and view relevant files.
+- **Project leader**: Can create new projects, invite users, and manage project structure and folders.
+- **Superuser (admin)**: Full control over all settings, users, file access, and system configuration.
+
+---
+
+🔐 Security:
+- Two-factor authentication (2FA) using either YubiKey or standard MFA (e.g., email, TOTP).
+- Login interface and all security-related UI must follow Joi UI component styling.
+- Secure session handling and role-based access control.
+
+---
+
+🚀 Scalability:
+- Modular and scalable architecture that supports large teams and many simultaneous projects.
+- Clean codebase with strict separation of concerns (e.g., models, services, APIs).
+- Prepared for future integrations (e.g., analytics, external APIs, single sign-on).
+
+---
+
+☁️ Deployment:
+- Support both cloud-hosted and on-premise/self-hosted deployment.
+- Configuration via environment variables.
+- Include Docker support: Dockerfile and docker-compose.yml.
+
+---
+
+📦 Development Guidelines:
+- Use Django REST Framework (DRF) for backend APIs.
+- Structure Django into logical apps: users, tasks, files, comments, etc.
+- Implement unit tests for critical features (e.g., user roles, file comments, task creation).
+- Ensure React frontend securely consumes the backend API.
+- All frontend components should follow Joi UI design language and UX standards.
+
+---
+
+📁 Output structure:
+- Two main folders:
+  → `backend/` (Django)
+  → `frontend/` (React using MUI + Joi UI)
+
+Ensure the project is runnable with clear installation instructions, API documentation, and a basic working prototype that includes login, project creation, task management, and PDF annotation.
+

@@ -1,0 +1,57 @@
+============================================================
+📁 PROJECT MANAGEMENT & GANTT CHART FUNCTIONALITY (Inspired by OpenProject)
+============================================================
+
+1. PROJECT CREATION & STRUCTURE
+------------------------------------------------------------
+- [ ] Allow Project Leaders / Admins to:
+      • Create new projects
+      • Set project name, description
+      • Define start & end dates
+      • Add project members
+      • Assign roles & permissions per member
+
+- [ ] Each project includes:
+      • Tasks
+      • Files & folders
+      • Wiki documentation
+      • Time reports
+      • Project-specific dashboard
+      • Gantt chart view
+      • Kanban board
+
+2. GANTT CHART FUNCTIONALITY
+------------------------------------------------------------
+Goal: Provide full visual project timeline view with interactivity
+
+- [ ] Timeline view with:
+      • Tasks as horizontal bars
+      • Start & End dates displayed visually
+      • Color-coded by status (To Do / In Progress / Done)
+
+- [ ] Interactions:
+      • Drag to change task duration
+      • Click to open/edit task
+      • Double-click to create new task
+      • Set task dependencies (links between tasks)
+
+- [ ] Usability:
+      • Zoom in/out (daily, weekly, monthly views)
+      • Tooltip on hover: show task name, assignee, status
+      • Responsive layout
+      • Syncs with Kanban/task list in real time
+
+3. REQUIREMENT FOR DEVIN
+------------------------------------------------------------
+Please implement the following based on the above:
+
+✔ Full project creation system with timeline metadata  
+✔ Interactive Gantt chart with linked task system  
+✔ Dependency support between tasks  
+✔ Sync between Gantt, Kanban, and Dashboard views  
+✔ Real-time updates when dates/statuses change  
+
+============================================================
+This is core functionality for the application. Please confirm
+when the Gantt module and project system are ready.
+============================================================
