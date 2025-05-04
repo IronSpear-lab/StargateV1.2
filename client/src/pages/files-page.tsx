@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
 import { FileExplorer } from "@/components/FileExplorer";
-import { PDFViewer } from "@/components/PDFViewer";
+import { PDFViewer } from "@/components/PDFViewer-new";
 
 interface FileNode {
   id: string;
