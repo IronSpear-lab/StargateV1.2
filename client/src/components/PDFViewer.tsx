@@ -130,20 +130,33 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     // Rensa eventuella tidigare aktiva annotationer
     setActiveAnnotation(null);
     
-    // Försök hämta annotationer från localStorage för denna fil
-    if (fileData?.fileId && fileData?.filename) {
+    // Försök hämta annotationer från localStorage för denna fil - KRITISKT: Körs när dialogen öppnas
+    if (isOpen && fileData?.fileId && fileData?.filename) {
       try {
         // Generera samma nyckel som vid sparande
         const fileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
         const annotationsKey = `pdf_annotations_${fileName}_${fileData.fileId}`;
         
-        console.log(`Attempting to load annotations using key: ${annotationsKey}`);
+        console.log(`[${Date.now()}] Attempting to load annotations using key: ${annotationsKey}`);
         const savedAnnotations = localStorage.getItem(annotationsKey);
         
         if (savedAnnotations) {
-          const parsedAnnotations = JSON.parse(savedAnnotations);
-          console.log(`Successfully loaded ${parsedAnnotations.length} annotations from localStorage for file: ${fileData.filename}`);
-          setAnnotations(parsedAnnotations);
+          try {
+            const parsedAnnotations = JSON.parse(savedAnnotations);
+            if (Array.isArray(parsedAnnotations)) {
+              console.log(`[${Date.now()}] Successfully loaded ${parsedAnnotations.length} annotations from localStorage for file: ${fileData.filename}`);
+              
+              // För att tvinga React att uppdatera vyn, skapa en ny array
+              const annotationsCopy = [...parsedAnnotations];
+              setAnnotations(annotationsCopy);
+            } else {
+              console.error("Saved annotations are not an array:", typeof parsedAnnotations);
+              setAnnotations([]);
+            }
+          } catch (parseError) {
+            console.error("Failed to parse annotations JSON:", parseError);
+            setAnnotations([]);
+          }
         } else {
           // Check for legacy storage format as well
           const legacyKey = `annotations_${fileData.fileId}`;
@@ -159,15 +172,31 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             setAnnotations([]);
           }
         }
+        
+        // Som extra säkerhet, skriv också nyckelnamnet till en separat lista för felsökning
+        try {
+          let keyList = JSON.parse(localStorage.getItem('pdf_annotation_keys') || '[]');
+          if (!keyList.includes(annotationsKey)) {
+            keyList.push(annotationsKey);
+            localStorage.setItem('pdf_annotation_keys', JSON.stringify(keyList));
+          }
+        } catch (e) {
+          console.error("Error updating annotation key list:", e);
+        }
       } catch (error) {
         console.error("Failed to load annotations from localStorage", error);
         setAnnotations([]);
       }
     } else {
-      // Om ingen fil-ID eller filnamn, börja med tom lista
-      setAnnotations([]);
+      // Om dialogrutan inte är öppen eller ingen fil-ID/filnamn, gör ingenting
+      if (!isOpen) {
+        console.log("PDF Viewer is closed, skipping annotation loading");
+      } else {
+        console.log("Missing file data, cannot load annotations", { fileId: fileData?.fileId, filename: fileData?.filename });
+        setAnnotations([]);
+      }
     }
-  }, [fileData?.fileId, fileData?.filename, file, fileUrl]);
+  }, [isOpen, fileData?.fileId, fileData?.filename]);
   
   // Hämta tillgängliga versioner när en fil öppnas
   useEffect(() => {
@@ -377,28 +406,43 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   
   // Separera ut zoomning och scrollning till en separat funktion för återanvändning
   const doZoomAndScroll = (annotation: PDFAnnotation) => {
+    console.log("Zooming to annotation:", annotation);
+    
     // Smidig zoomeffekt, lite högre zoom för bättre visning
     setScale(1.8);
     
-    // Scrolla till annotationen med fördröjning så PDF hinner renderas
+    // Scrolla till annotationen med fördröjning så PDF hinner renderas och zoomen har tagit effekt
     setTimeout(() => {
-      if (pdfContainerRef.current && pageRef.current) {
+      try {
+        if (!pdfContainerRef.current || !pageRef.current) {
+          console.error("Missing refs for scrolling", { pdfContainerRef: !!pdfContainerRef.current, pageRef: !!pageRef.current });
+          return;
+        }
+        
         // Sök efter annotationselementet igen för att få korrekt position efter zoom
         const annotationElement = document.getElementById(`annotation-${annotation.id}`);
         
         if (annotationElement) {
-          // Beräkna centrum för annotationen
-          const rect = annotationElement.getBoundingClientRect();
-          const pageRect = pageRef.current.getBoundingClientRect();
+          console.log("Found annotation element, positioning...");
           
-          // Centrera vyn på annotationen
-          const scrollX = rect.left + rect.width/2 - pageRect.left - pdfContainerRef.current.clientWidth/2;
-          const scrollY = rect.top + rect.height/2 - pageRect.top - pdfContainerRef.current.clientHeight/2;
+          // Beräkna korrekt position för scrollning
+          const annotRect = annotationElement.getBoundingClientRect();
+          const containerRect = pdfContainerRef.current.getBoundingClientRect();
+          
+          // Använd aktuell scroll-position som utgångspunkt
+          const currentScrollLeft = pdfContainerRef.current.scrollLeft;
+          const currentScrollTop = pdfContainerRef.current.scrollTop;
+          
+          // Beräkna centrum för annotationen i förhållande till PDF:en
+          const targetX = currentScrollLeft + (annotRect.left + annotRect.width/2 - containerRect.left) - containerRect.width/2;
+          const targetY = currentScrollTop + (annotRect.top + annotRect.height/2 - containerRect.top) - containerRect.height/2;
+          
+          console.log("Scrolling to position:", { targetX, targetY, currentScroll: { x: currentScrollLeft, y: currentScrollTop } });
           
           // Animerad scrollning
           pdfContainerRef.current.scrollTo({
-            left: pdfContainerRef.current.scrollLeft + scrollX,
-            top: pdfContainerRef.current.scrollTop + scrollY,
+            left: Math.max(0, targetX),
+            top: Math.max(0, targetY),
             behavior: 'smooth'
           });
           
@@ -411,9 +455,47 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
           }, 2000);
         } else {
           console.warn(`Could not find annotation element with id: annotation-${annotation.id}`);
+          
+          // Försök återskapa annotationselement genom direkt positionering
+          const annotation_overlay = document.createElement('div');
+          annotation_overlay.id = `temp-highlight-${annotation.id}`;
+          annotation_overlay.className = 'absolute border-4 border-blue-500 bg-blue-200/30 z-50 annotation-pulse';
+          annotation_overlay.style.left = `${annotation.rect.x}px`;
+          annotation_overlay.style.top = `${annotation.rect.y}px`;
+          annotation_overlay.style.width = `${annotation.rect.width}px`;
+          annotation_overlay.style.height = `${annotation.rect.height}px`;
+          
+          // Lägg till i PDF-containern
+          if (pageRef.current) {
+            pageRef.current.appendChild(annotation_overlay);
+            
+            // Skrolla till den manuellt skapade markeringen
+            setTimeout(() => {
+              const rect = annotation_overlay.getBoundingClientRect();
+              const containerRect = pdfContainerRef.current!.getBoundingClientRect();
+              
+              const targetX = pdfContainerRef.current!.scrollLeft + (rect.left - containerRect.left) + rect.width/2 - containerRect.width/2;
+              const targetY = pdfContainerRef.current!.scrollTop + (rect.top - containerRect.top) + rect.height/2 - containerRect.height/2;
+              
+              pdfContainerRef.current!.scrollTo({
+                left: Math.max(0, targetX),
+                top: Math.max(0, targetY),
+                behavior: 'smooth'
+              });
+              
+              // Ta bort det temporära elementet efter en stund
+              setTimeout(() => {
+                if (pageRef.current && pageRef.current.contains(annotation_overlay)) {
+                  pageRef.current.removeChild(annotation_overlay);
+                }
+              }, 3000);
+            }, 100);
+          }
         }
+      } catch (error) {
+        console.error("Error during scroll to annotation:", error);
       }
-    }, 100);
+    }, 150); // Längre fördröjning för att säkerställa att zoomen har applicerats
   };
   
   // Uppdatera status för en kommentar
@@ -486,38 +568,73 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   
   // Spara en ny version
   const saveNewVersion = () => {
-    if (!selectedVersionFile || !fileData?.fileId || !user) return;
+    console.log("saveNewVersion called with:", { 
+      selectedVersionFile, 
+      fileData, 
+      newVersionDescription, 
+      user 
+    });
     
-    // I en verklig implementation skulle vi skicka filen till server via API
-    // och få tillbaka den nya versionsinformationen
+    // Kontrollera alla villkor som måste vara uppfyllda och ge en tydlig felmeddelande
+    if (!selectedVersionFile) {
+      console.error("No file selected for new version");
+      return;
+    }
     
-    // Simulera serverrespons för demo
-    const newVersionNumber = fileVersions.length + 1;
-    const newVersionId = `version${newVersionNumber}`;
-    const now = new Date().toISOString();
-    const newFileUrl = URL.createObjectURL(selectedVersionFile);
+    if (!fileData?.fileId) {
+      console.error("No file ID available for current file");
+      return;
+    }
     
-    const newVersion: FileVersion = {
-      id: newVersionId,
-      versionNumber: newVersionNumber,
-      filename: selectedVersionFile.name,
-      fileUrl: newFileUrl,
-      description: newVersionDescription,
-      uploaded: now,
-      uploadedBy: user.username,
-      commentCount: 0
-    };
+    if (!user) {
+      console.error("No user logged in");
+      return;
+    }
     
-    // Uppdatera listan med versioner
-    const updatedVersions = [...fileVersions, newVersion];
-    setFileVersions(updatedVersions);
+    if (!newVersionDescription || newVersionDescription.trim() === '') {
+      console.error("Version description is empty");
+      return;
+    }
     
-    // Byt till den nya versionen
-    setActiveVersionId(newVersionId);
-    setPdfUrl(newFileUrl);
-    
-    // Stäng dialogrutan
-    closeUploadVersionDialog();
+    try {
+      // Skapa URL till den uppladdade filen
+      console.log("Creating object URL for file...");
+      const newFileUrl = URL.createObjectURL(selectedVersionFile);
+      
+      // Generera ny version med unik ID och ökat versionsnummer
+      const newVersionNumber = fileVersions.length + 1;
+      const newVersionId = `version${newVersionNumber}_${Date.now()}`;
+      const now = new Date().toISOString();
+      
+      console.log("Creating new version object...");
+      const newVersion: FileVersion = {
+        id: newVersionId,
+        versionNumber: newVersionNumber,
+        filename: selectedVersionFile.name,
+        fileUrl: newFileUrl,
+        description: newVersionDescription,
+        uploaded: now,
+        uploadedBy: user.username,
+        commentCount: 0
+      };
+      
+      console.log("New version created:", newVersion);
+      
+      // Uppdatera listan med versioner
+      const updatedVersions = [...fileVersions, newVersion];
+      setFileVersions(updatedVersions);
+      
+      // Byt till den nya versionen
+      setActiveVersionId(newVersionId);
+      setPdfUrl(newFileUrl);
+      
+      console.log("Version saved and activated successfully");
+      
+      // Stäng dialogrutan
+      closeUploadVersionDialog();
+    } catch (error) {
+      console.error("Error saving new version:", error);
+    }
   };
 
   const handleDownload = () => {
@@ -1160,7 +1277,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
               <Button
                 onClick={saveComment}
                 disabled={!newComment.trim()}
-                className="rounded-full bg-primary-500 hover:bg-primary-600"
+                className="rounded-full bg-primary-500 hover:bg-primary-600 text-white"
               >
                 <MessageSquare size={16} className="mr-2" />
                 Spara kommentar
