@@ -163,12 +163,164 @@ async function seed() {
       // Create tasks
       console.log("Creating tasks...");
       const now = new Date();
+      const oneWeekAgo = new Date(now);
+      oneWeekAgo.setDate(now.getDate() - 7);
+      
+      const twoWeeksAgo = new Date(now);
+      twoWeeksAgo.setDate(now.getDate() - 14);
+      
       const inOneWeek = new Date(now);
       inOneWeek.setDate(now.getDate() + 7);
       
       const inTwoWeeks = new Date(now);
       inTwoWeeks.setDate(now.getDate() + 14);
       
+      const inThreeWeeks = new Date(now);
+      inThreeWeeks.setDate(now.getDate() + 21);
+      
+      const inFourWeeks = new Date(now);
+      inFourWeeks.setDate(now.getDate() + 28);
+      
+      // 1. First create the completed tasks
+      const setupTask = await db.insert(schema.tasks).values({
+        title: "Project setup and configuration",
+        description: "Initialize React project with Joy UI components",
+        status: "done",
+        priority: "high",
+        type: "setup",
+        projectId: project[0].id,
+        assigneeId: regularUsers[0].id,
+        createdById: projectLeader[0].id,
+        createdAt: twoWeeksAgo,
+        startDate: twoWeeksAgo,
+        endDate: oneWeekAgo
+      }).returning();
+      
+      const requirementsTask = await db.insert(schema.tasks).values({
+        title: "Gather Requirements",
+        description: "Collect and document all project requirements and specifications",
+        status: "done",
+        priority: "high",
+        type: "planning",
+        projectId: project[0].id,
+        assigneeId: projectLeader[0].id,
+        createdById: projectLeader[0].id,
+        createdAt: twoWeeksAgo,
+        startDate: twoWeeksAgo,
+        endDate: new Date(oneWeekAgo.getTime() - 2 * 24 * 60 * 60 * 1000) // 9 days ago
+      }).returning();
+      
+      // 2. Create in-progress tasks
+      const dbDesignTask = await db.insert(schema.tasks).values({
+        title: "Database Design",
+        description: "Design database schema and entity relationships",
+        status: "in_progress",
+        priority: "high",
+        type: "design",
+        projectId: project[0].id,
+        assigneeId: regularUsers[0].id,
+        createdById: projectLeader[0].id,
+        createdAt: oneWeekAgo,
+        startDate: oneWeekAgo,
+        endDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
+        dependencies: JSON.stringify([requirementsTask[0].id])
+      }).returning();
+      
+      const uiDesignTask = await db.insert(schema.tasks).values({
+        title: "UI/UX Design",
+        description: "Create mockups and UI components following design guidelines",
+        status: "in_progress",
+        priority: "high",
+        type: "design",
+        projectId: project[0].id,
+        assigneeId: regularUsers[1].id,
+        createdById: projectLeader[0].id,
+        createdAt: oneWeekAgo,
+        startDate: oneWeekAgo,
+        endDate: new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000), // 4 days from now
+        dependencies: JSON.stringify([requirementsTask[0].id])
+      }).returning();
+      
+      // 3. Create upcoming tasks (dependencies on in-progress tasks)
+      const backendTask = await db.insert(schema.tasks).values({
+        title: "Backend API Implementation",
+        description: "Implement RESTful API endpoints with Express",
+        status: "todo",
+        priority: "high",
+        type: "development",
+        projectId: project[0].id,
+        assigneeId: regularUsers[0].id,
+        createdById: projectLeader[0].id,
+        createdAt: now,
+        startDate: new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000), // 4 days from now
+        endDate: inTwoWeeks,
+        dependencies: JSON.stringify([dbDesignTask[0].id])
+      }).returning();
+      
+      const frontendTask = await db.insert(schema.tasks).values({
+        title: "Frontend Implementation",
+        description: "Develop React components for user interface",
+        status: "todo",
+        priority: "high",
+        type: "development",
+        projectId: project[0].id,
+        assigneeId: regularUsers[1].id,
+        createdById: projectLeader[0].id,
+        createdAt: now,
+        startDate: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
+        endDate: inTwoWeeks,
+        dependencies: JSON.stringify([uiDesignTask[0].id])
+      }).returning();
+      
+      // 4. Create dependent tasks
+      const integrationTask = await db.insert(schema.tasks).values({
+        title: "Frontend-Backend Integration",
+        description: "Connect frontend to API endpoints",
+        status: "todo",
+        priority: "high",
+        type: "development",
+        projectId: project[0].id,
+        assigneeId: projectLeader[0].id,
+        createdById: projectLeader[0].id,
+        createdAt: now,
+        startDate: inTwoWeeks,
+        endDate: inThreeWeeks,
+        dependencies: JSON.stringify([backendTask[0].id, frontendTask[0].id])
+      }).returning();
+      
+      // 5. Testing tasks
+      const testingTask = await db.insert(schema.tasks).values({
+        title: "Testing and QA",
+        description: "Perform unit tests, integration tests, and QA",
+        status: "todo",
+        priority: "medium",
+        type: "testing",
+        projectId: project[0].id,
+        assigneeId: regularUsers[2].id,
+        createdById: projectLeader[0].id,
+        createdAt: now,
+        startDate: inThreeWeeks,
+        endDate: inFourWeeks,
+        dependencies: JSON.stringify([integrationTask[0].id])
+      }).returning();
+      
+      // 6. Final tasks
+      const deploymentTask = await db.insert(schema.tasks).values({
+        title: "Deployment",
+        description: "Deploy application to production environment",
+        status: "todo",
+        priority: "high",
+        type: "deployment",
+        projectId: project[0].id,
+        assigneeId: projectLeader[0].id,
+        createdById: projectLeader[0].id,
+        createdAt: now,
+        startDate: inFourWeeks,
+        endDate: new Date(inFourWeeks.getTime() + 2 * 24 * 60 * 60 * 1000), // 30 days from now
+        dependencies: JSON.stringify([testingTask[0].id])
+      }).returning();
+      
+      // Additional tasks for File Management Features 
       const fileUploadTask = await db.insert(schema.tasks).values({
         title: "Implement file upload system",
         description: "Create drag & drop file upload component with progress indicator",
@@ -176,10 +328,12 @@ async function seed() {
         priority: "high",
         type: "feature",
         projectId: project[0].id,
-        assigneeId: projectLeader[0].id,
+        assigneeId: regularUsers[2].id,
         createdById: projectLeader[0].id,
         createdAt: now,
-        dueDate: inOneWeek
+        startDate: new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000), // 6 days from now
+        endDate: inTwoWeeks,
+        dependencies: JSON.stringify([frontendTask[0].id])
       }).returning();
       
       const pdfTask = await db.insert(schema.tasks).values({
@@ -192,20 +346,9 @@ async function seed() {
         assigneeId: regularUsers[0].id,
         createdById: projectLeader[0].id,
         createdAt: now,
-        dueDate: new Date(now.getTime() + 24 * 60 * 60 * 1000) // tomorrow
-      }).returning();
-      
-      const uiTask = await db.insert(schema.tasks).values({
-        title: "Create UI components for File Viewer",
-        description: "Design responsive components following Joy UI guidelines",
-        status: "in_progress",
-        priority: "high",
-        type: "design",
-        projectId: project[0].id,
-        assigneeId: regularUsers[1].id,
-        createdById: projectLeader[0].id,
-        createdAt: now,
-        dueDate: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000) // 2 days
+        startDate: inOneWeek,
+        endDate: new Date(inOneWeek.getTime() + 2 * 24 * 60 * 60 * 1000), // 9 days from now
+        dependencies: JSON.stringify([])
       }).returning();
       
       const authTask = await db.insert(schema.tasks).values({
@@ -217,21 +360,9 @@ async function seed() {
         projectId: project[0].id,
         assigneeId: projectLeader[0].id,
         createdById: projectLeader[0].id,
-        createdAt: now
-      }).returning();
-      
-      const setupTask = await db.insert(schema.tasks).values({
-        title: "Project setup and configuration",
-        description: "Initialize React project with Joy UI components",
-        status: "done",
-        priority: "high",
-        type: "setup",
-        projectId: project[0].id,
-        assigneeId: regularUsers[0].id,
-        createdById: projectLeader[0].id,
-        createdAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
-        startDate: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
-        endDate: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000) // 5 days ago
+        createdAt: now,
+        startDate: oneWeekAgo,
+        endDate: now
       }).returning();
       
       // Add time entries
@@ -246,20 +377,20 @@ async function seed() {
           notes: "Initial project setup and configuration"
         },
         {
-          taskId: uiTask[0].id,
+          taskId: uiDesignTask[0].id,
           userId: regularUsers[1].id,
           startTime: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
           endTime: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000), // +6 hours
           duration: 6 * 60, // 6 hours in minutes
-          notes: "Started work on file viewer components"
+          notes: "Started work on UI designs and components"
         },
         {
-          taskId: uiTask[0].id,
+          taskId: uiDesignTask[0].id,
           userId: regularUsers[1].id,
           startTime: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
           endTime: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000 + 7 * 60 * 60 * 1000), // +7 hours
           duration: 7 * 60, // 7 hours in minutes
-          notes: "Continue working on file viewer components"
+          notes: "Continue working on UI designs and components"
         }
       ]);
       
