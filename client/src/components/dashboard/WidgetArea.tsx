@@ -49,8 +49,9 @@ export function WidgetArea({ children, className, onWidgetPositionChange }: Widg
     if (nearestWidget && onWidgetPositionChange) {
       onWidgetPositionChange(widgetId, nearestWidget);
       toast({
-        title: "Widget moved",
+        title: "Widget repositioned",
         description: "Widget position has been updated",
+        variant: "default",
       });
     }
   };
@@ -90,8 +91,8 @@ export function WidgetArea({ children, className, onWidgetPositionChange }: Widg
     <div
       ref={areaRef}
       className={cn(
-        "grid grid-cols-12 gap-4 p-4",
-        dropzoneActive && "bg-blue-50 border-2 border-dashed border-blue-200 rounded-lg",
+        "grid grid-cols-12 gap-4 p-4 bg-slate-50",
+        dropzoneActive && "bg-blue-50/40 border-2 border-dashed border-blue-200 rounded-lg",
         className
       )}
       onDragOver={handleDragOver}

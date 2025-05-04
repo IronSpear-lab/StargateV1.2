@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Grip, X, Settings, Maximize, Minimize } from "lucide-react";
+import { Grip, X, ChevronDown, ChevronUp, MoreHorizontal, Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -22,6 +22,7 @@ interface WidgetProps {
   className?: string;
   width?: string; // "full", "half", "third"
   height?: string; // "small", "medium", "large"
+  noPadding?: boolean;
 }
 
 export function Widget({
@@ -33,10 +34,12 @@ export function Widget({
   onRemove,
   onEdit,
   className,
-  width = "full",
+  width = "half",
   height = "medium",
+  noPadding = false,
 }: WidgetProps) {
   const [expanded, setExpanded] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [dragging, setDragging] = useState(false);
 
   const handleDragStart = (e: React.DragEvent) => {
@@ -62,6 +65,12 @@ export function Widget({
 
   const toggleExpanded = () => {
     setExpanded(!expanded);
+    if (collapsed) setCollapsed(false);
+  };
+
+  const toggleCollapsed = () => {
+    setCollapsed(!collapsed);
+    if (expanded) setExpanded(false);
   };
 
   // Determine widget size classes
@@ -74,17 +83,17 @@ export function Widget({
 
   const heightClasses = {
     small: "h-[200px]",
-    medium: "h-[360px]",
+    medium: collapsed ? "h-[42px]" : "h-[320px]",
     large: "h-[500px]",
     auto: "h-auto",
-  }[height] || "h-[360px]";
+  }[height] || "h-[320px]";
 
   return (
     <Card
       id={`widget-${id}`}
       className={cn(
         expanded ? "fixed inset-6 z-50" : widthClasses,
-        "shadow-md transition-all duration-200 widget",
+        "shadow-sm rounded-lg transition-all duration-200 widget border-0",
         dragging ? "opacity-50" : "opacity-100",
         className
       )}
@@ -92,36 +101,63 @@ export function Widget({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <CardHeader className="p-3 bg-neutral-50 border-b flex-row items-center justify-between space-y-0">
+      <CardHeader className="p-3 bg-white border-b flex-row items-center justify-between space-y-0 rounded-t-lg">
         <div className="flex items-center space-x-2">
           <div
             className="cursor-move p-1 rounded hover:bg-neutral-100"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <Grip className="h-4 w-4 text-neutral-500" />
+            <Grip className="h-4 w-4 text-blue-500" />
           </div>
           <div>
-            <CardTitle className="text-sm font-medium">{title}</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-700">{title}</CardTitle>
             {description && (
-              <CardDescription className="text-xs">{description}</CardDescription>
+              <CardDescription className="text-xs text-gray-500">{description}</CardDescription>
             )}
           </div>
         </div>
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-0.5">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-6 w-6 rounded-full hover:bg-gray-100" 
+            onClick={toggleCollapsed}
+          >
+            {collapsed ? (
+              <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
+            ) : (
+              <ChevronUp className="h-3.5 w-3.5 text-gray-500" />
+            )}
+          </Button>
+          
           {!expanded ? (
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleExpanded}>
-              <Maximize className="h-3.5 w-3.5 text-neutral-500" />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6 rounded-full hover:bg-gray-100" 
+              onClick={toggleExpanded}
+            >
+              <Maximize2 className="h-3.5 w-3.5 text-gray-500" />
             </Button>
           ) : (
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleExpanded}>
-              <Minimize className="h-3.5 w-3.5 text-neutral-500" />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6 rounded-full hover:bg-gray-100" 
+              onClick={toggleExpanded}
+            >
+              <Minimize2 className="h-3.5 w-3.5 text-gray-500" />
             </Button>
           )}
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7">
-                <Settings className="h-3.5 w-3.5 text-neutral-500" />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6 rounded-full hover:bg-gray-100"
+              >
+                <MoreHorizontal className="h-3.5 w-3.5 text-gray-500" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[160px]">
@@ -152,18 +188,22 @@ export function Widget({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-6 w-6 rounded-full hover:bg-gray-100"
             onClick={() => onRemove(id)}
           >
-            <X className="h-3.5 w-3.5 text-neutral-500" />
+            <X className="h-3.5 w-3.5 text-gray-500" />
           </Button>
         </div>
       </CardHeader>
-      <CardContent className={cn(
-        "p-3 overflow-auto",
-        !expanded && heightClasses, 
-        "relative"
-      )}>
+      <CardContent 
+        className={cn(
+          noPadding ? "p-0" : "p-3", 
+          "overflow-auto bg-white rounded-b-lg",
+          !expanded && heightClasses, 
+          collapsed && "hidden", 
+          "relative"
+        )}
+      >
         {children}
       </CardContent>
     </Card>
