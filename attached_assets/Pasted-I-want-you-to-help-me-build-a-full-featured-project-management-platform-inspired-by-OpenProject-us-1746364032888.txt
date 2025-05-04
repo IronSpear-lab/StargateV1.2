@@ -1,0 +1,96 @@
+I want you to help me build a full-featured project management platform, inspired by OpenProject, using React (frontend) and Django (backend). The platform must support the following core features, and I want you to build them one by one, as separate components or modules:
+
+🔷 1. Project Management
+Create, edit, delete projects
+
+Show a project dashboard with description and key stats
+
+Support subprojects (hierarchy)
+
+Color-coded status for each project
+
+🔷 2. Work Packages / Task Management
+Create/edit/delete tasks (called work packages)
+
+Assign tasks to users
+
+Set due dates, priorities, status
+
+Track dependencies between tasks
+
+Allow comments on each task
+
+Allow attachments (uploading files to a task)
+
+Log time worked on a task
+
+Support custom fields per task
+
+🔷 3. Gantt Chart View
+Display all tasks visually on a timeline
+
+Draw dependency arrows between tasks
+
+Allow drag and drop to change task dates
+
+Display milestones
+
+Update tasks when changes are made on the chart
+
+🔷 4. Wiki Module
+Each project has a wiki section
+
+Markdown editor and preview
+
+Version history and rollback
+
+Internal page linking
+
+🔷 5. Calendar
+Show deadlines and milestones
+
+Show assigned tasks on a calendar view
+
+🔷 6. Document Module
+Upload/download documents to a project
+
+Organize files into folders
+
+Comment on files
+
+Version control (keep older versions)
+
+🔷 7. Agile Boards
+Basic Kanban board for each project
+
+Tasks shown as cards in columns (To Do, In Progress, Done)
+
+Drag and drop support
+
+🔷 8. User Management
+Register/login with 2FA support
+
+Assign roles and permissions (admin, manager, developer)
+
+Each user has a profile page
+
+🔷 9. Notifications
+Email or in-app notifications on task assignment or changes
+
+🔷 10. REST API
+Provide REST API for all project/task/wiki features
+
+Secure endpoints with token authentication
+
+🔧 Tech Stack Requirements:
+Frontend: React with TypeScript, using MUI (Joy UI), or similar
+
+Backend: Django with Django REST Framework
+
+Database: SQLite for dev, PostgreSQL for production
+
+Gantt Library: Use frappe-gantt or any React-compatible Gantt library
+
+Optional: Docker support, OpenAPI docs, GitHub integration
+
+Start by scaffolding the backend project with Django, define the basic models (Project, Task, User, WikiPage, Document), and set up the REST API. Then create the frontend layout and progressively implement each module as listed.
