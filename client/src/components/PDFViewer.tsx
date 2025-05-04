@@ -837,6 +837,10 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     }
     
     try {
+      // Först: Kopiera befintliga kommentarer så vi inte förlorar dem vid versionsbyte
+      // Detta är viktigt för att kunna se samma kommentarer i båda versionerna
+      const existingAnnotations = [...annotations];
+      
       // Skapa URL till den uppladdade filen
       console.log("Creating object URL for file...");
       const newFileUrl = URL.createObjectURL(selectedVersionFile);
@@ -855,7 +859,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         description: newVersionDescription,
         uploaded: now,
         uploadedBy: user.username,
-        commentCount: 0
+        commentCount: existingAnnotations.length
       };
       
       console.log("New version created:", newVersion);
@@ -867,6 +871,20 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       // Byt till den nya versionen
       setActiveVersionId(newVersionId);
       setPdfUrl(newFileUrl);
+      
+      // Här är förändringen: Kopiera de befintliga annotationerna till nya fileId först
+      // Detta säkerställer att kommentarerna finns även efter att vi byter version
+      if (existingAnnotations.length > 0) {
+        console.log(`[${Date.now()}] Copying ${existingAnnotations.length} annotations to new version`);
+        const fileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+        const annotationsKey = `pdf_annotations_${fileName}_${fileId}`;
+        try {
+          localStorage.setItem(annotationsKey, JSON.stringify(existingAnnotations));
+          console.log(`[${Date.now()}] Successfully copied annotations to new version`);
+        } catch (err) {
+          console.error("Failed to copy annotations to new version:", err);
+        }
+      }
       
       // VIKTIG ÄNDRING: Spara versioner till localStorage
       try {
