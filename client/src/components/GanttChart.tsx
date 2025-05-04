@@ -971,7 +971,7 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
                                   const newDeps = (editingTask.dependencies || []).filter(id => id !== depId);
                                   updateTaskMutation.mutate({
                                     id: Number(editingTask.id),
-                                    dependencies: newDeps
+                                    dependencies: JSON.stringify(newDeps)
                                   });
                                 }}
                               >
