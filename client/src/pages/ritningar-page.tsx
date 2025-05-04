@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/select";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
+import { UploadDialog } from "@/components/UploadDialog";
+import { toast } from "@/hooks/use-toast";
 
 const mockRitningar = [
   { 
@@ -77,6 +79,127 @@ const mockRitningar = [
     number: "(Value)", 
     status: "(Status_Value)", 
     annat: "(Subject_Text)" 
+  },
+  { 
+    id: 6, 
+    filename: "A-401-1-100.pdf", 
+    version: "1", 
+    description: "HUS PLAN 11", 
+    uploaded: "7 sep 2023, 10:23", 
+    uploadedBy: "Fredrik Helleström", 
+    number: "(Value)", 
+    status: "(Status_Value)", 
+    annat: "(Subject_Text)" 
+  },
+  { 
+    id: 7, 
+    filename: "A-402-1-100.pdf", 
+    version: "1", 
+    description: "HUS PLAN 12", 
+    uploaded: "7 sep 2023, 14:15", 
+    uploadedBy: "Fredrik Helleström", 
+    number: "(Value)", 
+    status: "(Status_Value)", 
+    annat: "(Subject_Text)" 
+  },
+  { 
+    id: 8, 
+    filename: "A-403-1-100.pdf", 
+    version: "2", 
+    description: "HUS PLAN 13", 
+    uploaded: "8 sep 2023, 09:12", 
+    uploadedBy: "Fredrik Helleström", 
+    number: "(Value)", 
+    status: "(Status_Value)", 
+    annat: "(Subject_Text)" 
+  },
+  { 
+    id: 9, 
+    filename: "A-404-1-100.pdf", 
+    version: "1", 
+    description: "HUS PLAN 14", 
+    uploaded: "8 sep 2023, 11:30", 
+    uploadedBy: "Fredrik Helleström", 
+    number: "(Value)", 
+    status: "(Status_Value)", 
+    annat: "(Subject_Text)" 
+  },
+  { 
+    id: 10, 
+    filename: "A-405-1-100.pdf", 
+    version: "3", 
+    description: "HUS PLAN 15", 
+    uploaded: "9 sep 2023, 08:45", 
+    uploadedBy: "Fredrik Helleström", 
+    number: "(Value)", 
+    status: "(Status_Value)", 
+    annat: "(Subject_Text)" 
+  },
+  { 
+    id: 11, 
+    filename: "A-406-1-100.pdf", 
+    version: "2", 
+    description: "HUS SEKTION A-A", 
+    uploaded: "9 sep 2023, 14:22", 
+    uploadedBy: "Fredrik Helleström", 
+    number: "(Value)", 
+    status: "(Status_Value)", 
+    annat: "(Subject_Text)" 
+  },
+  { 
+    id: 12, 
+    filename: "A-407-1-100.pdf", 
+    version: "1", 
+    description: "HUS SEKTION B-B", 
+    uploaded: "10 sep 2023, 10:15", 
+    uploadedBy: "Fredrik Helleström", 
+    number: "(Value)", 
+    status: "(Status_Value)", 
+    annat: "(Subject_Text)" 
+  },
+  { 
+    id: 13, 
+    filename: "A-408-1-100.pdf", 
+    version: "2", 
+    description: "HUS FASAD NORR", 
+    uploaded: "10 sep 2023, 15:40", 
+    uploadedBy: "Fredrik Helleström", 
+    number: "(Value)", 
+    status: "(Status_Value)", 
+    annat: "(Subject_Text)" 
+  },
+  { 
+    id: 14, 
+    filename: "A-409-1-100.pdf", 
+    version: "1", 
+    description: "HUS FASAD SÖDER", 
+    uploaded: "11 sep 2023, 09:05", 
+    uploadedBy: "Fredrik Helleström", 
+    number: "(Value)", 
+    status: "(Status_Value)", 
+    annat: "(Subject_Text)" 
+  },
+  { 
+    id: 15, 
+    filename: "A-410-1-100.pdf", 
+    version: "1", 
+    description: "HUS FASAD ÖSTER", 
+    uploaded: "11 sep 2023, 14:30", 
+    uploadedBy: "Fredrik Helleström", 
+    number: "(Value)", 
+    status: "(Status_Value)", 
+    annat: "(Subject_Text)" 
+  },
+  { 
+    id: 16, 
+    filename: "A-411-1-100.pdf", 
+    version: "2", 
+    description: "HUS FASAD VÄSTER", 
+    uploaded: "12 sep 2023, 11:20", 
+    uploadedBy: "Fredrik Helleström", 
+    number: "(Value)", 
+    status: "(Status_Value)", 
+    annat: "(Subject_Text)" 
   }
 ];
 
@@ -86,6 +209,7 @@ export default function RitningarPage() {
   const [sortDirection, setSortDirection] = useState("desc");
   const [versionFilter, setVersionFilter] = useState("all");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   
   // I en riktig implementation skulle denna query hämta data från API:et
   // const { data: ritningar = [], isLoading } = useQuery({
@@ -105,6 +229,16 @@ export default function RitningarPage() {
   
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
+  };
+  
+  const handleUpload = (files: File[]) => {
+    // I en riktig implementering skulle vi skicka filerna till en API-endpoint
+    console.log("Uppladdade filer:", files);
+    
+    toast({
+      title: "Filer uppladdade",
+      description: `${files.length} fil(er) har laddats upp.`,
+    });
   };
 
   return (
@@ -135,10 +269,20 @@ export default function RitningarPage() {
                 <Plus className="mr-2 h-4 w-4" />
                 Add Folder
               </Button>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+              <Button 
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => setShowUploadDialog(true)}
+              >
                 <Upload className="mr-2 h-4 w-4" />
                 Upload
               </Button>
+              
+              {/* Upload Dialog */}
+              <UploadDialog 
+                isOpen={showUploadDialog} 
+                onClose={() => setShowUploadDialog(false)}
+                onUpload={handleUpload}
+              />
             </div>
           </div>
 
