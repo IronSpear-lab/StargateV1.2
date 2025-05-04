@@ -960,18 +960,37 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         }
       }
       
-      // Generera nyckel med konsistent format
-      const fileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
-      const annotationsKey = `pdf_annotations_${fileName}_${fileId}`;
+      // Använd samma konsistenta ID-system som i övriga koden
+      const canonicalFileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+      
+      // Generera ett konsekvent ID baserat på filnamnet, precis som i övriga koden
+      let consistentFileId = '';
+      try {
+        // Samma metod som i laddningskoden
+        consistentFileId = `file_${canonicalFileName}_${Buffer.from(canonicalFileName).toString('hex').substring(0, 8)}`;
+      } catch (error) {
+        // Fallback om hashing misslyckas
+        consistentFileId = `file_${canonicalFileName}_fallback`;
+      }
+      
+      // Använd det konsekventa ID:t för att skapa en pålitlig nyckel
+      const consistentAnnotationsKey = `pdf_annotations_${canonicalFileName}_${consistentFileId}`;
       
       // Spara även om listan är tom (för att rensa tidigare annotationer)
-      localStorage.setItem(annotationsKey, JSON.stringify(annotations));
-      console.log(`[${Date.now()}] Auto-saved ${annotations.length} annotations to localStorage with key: ${annotationsKey}`);
+      localStorage.setItem(consistentAnnotationsKey, JSON.stringify(annotations));
+      console.log(`[${Date.now()}] Auto-saved ${annotations.length} annotations to localStorage with consistent key: ${consistentAnnotationsKey}`);
+      
+      // För bakåtkompatibilitet, spara även med det gamla fileId om det finns och är annorlunda
+      if (fileId && fileId !== consistentFileId) {
+        const legacyAnnotationsKey = `pdf_annotations_${canonicalFileName}_${fileId}`;
+        localStorage.setItem(legacyAnnotationsKey, JSON.stringify(annotations));
+        console.log(`[${Date.now()}] Also saved annotations with legacy key for backward compatibility: ${legacyAnnotationsKey}`);
+      }
       
       // Spara en lista över alla annotation-nycklar för att hålla koll på dem
       let savedKeys = JSON.parse(localStorage.getItem('pdf_annotation_keys') || '[]');
-      if (!savedKeys.includes(annotationsKey)) {
-        savedKeys.push(annotationsKey);
+      if (!savedKeys.includes(consistentAnnotationsKey)) {
+        savedKeys.push(consistentAnnotationsKey);
         localStorage.setItem('pdf_annotation_keys', JSON.stringify(savedKeys));
       }
     } catch (error) {
@@ -1158,15 +1177,37 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       setActiveVersionId(newVersionId);
       setPdfUrl(newFileUrl);
       
-      // Här är förändringen: Kopiera de befintliga annotationerna till nya fileId först
+      // Här är förändringen: Kopiera de befintliga annotationerna med konsekvent nyckel
       // Detta säkerställer att kommentarerna finns även efter att vi byter version
       if (existingAnnotations.length > 0) {
         console.log(`[${Date.now()}] Copying ${existingAnnotations.length} annotations to new version`);
-        const fileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
-        const annotationsKey = `pdf_annotations_${fileName}_${fileId}`;
+        const canonicalFileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+        
+        // Skapa ett konsekvent ID precis som för versioner
+        let consistentAnnotationFileId = '';
         try {
-          localStorage.setItem(annotationsKey, JSON.stringify(existingAnnotations));
-          console.log(`[${Date.now()}] Successfully copied annotations to new version`);
+          consistentAnnotationFileId = `file_${canonicalFileName}_${Buffer.from(canonicalFileName).toString('hex').substring(0, 8)}`;
+        } catch (error) {
+          // Fallback om hashing misslyckas
+          consistentAnnotationFileId = `file_${canonicalFileName}_fallback`;
+        }
+        
+        // Använd samma nyckelformat som i auto-save useEffect
+        const consistentAnnotationsKey = `pdf_annotations_${canonicalFileName}_${consistentAnnotationFileId}`;
+        try {
+          localStorage.setItem(consistentAnnotationsKey, JSON.stringify(existingAnnotations));
+          console.log(`[${Date.now()}] Successfully copied annotations to new version with consistent key: ${consistentAnnotationsKey}`);
+          
+          // Uppdatera nyckelregistret
+          try {
+            let keyList = JSON.parse(localStorage.getItem('pdf_annotation_keys') || '[]');
+            if (!keyList.includes(consistentAnnotationsKey)) {
+              keyList.push(consistentAnnotationsKey);
+              localStorage.setItem('pdf_annotation_keys', JSON.stringify(keyList));
+            }
+          } catch (e) {
+            console.error("Error updating annotation key list:", e);
+          }
         } catch (err) {
           console.error("Failed to copy annotations to new version:", err);
         }
