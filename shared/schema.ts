@@ -321,6 +321,9 @@ export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
   })
 }));
 
-export const insertCalendarEventSchema = createInsertSchema(calendarEvents);
+export const insertCalendarEventSchema = createInsertSchema(calendarEvents, {
+  start: (schema) => z.coerce.date(),
+  end: (schema) => z.coerce.date(),
+});
 export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;

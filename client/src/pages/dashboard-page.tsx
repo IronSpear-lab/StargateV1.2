@@ -227,13 +227,29 @@ export default function DashboardPage() {
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-xl font-bold text-gray-800">Dashboard</h1>
               
-              <Button 
-                onClick={handleAddWidgetClick} 
-                className="gap-1 bg-blue-600 hover:bg-blue-700"
-              >
-                <PlusCircle className="h-4 w-4" />
-                Add widget
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => {
+                    localStorage.removeItem('dashboard-widgets');
+                    setWidgets(defaultWidgets);
+                    toast({
+                      title: "Dashboard reset",
+                      description: "Your dashboard has been reset to defaults",
+                    });
+                  }}
+                  variant="outline"
+                  className="gap-1 text-sm border-red-200 text-red-600 hover:bg-red-50"
+                >
+                  Reset dashboard
+                </Button>
+                <Button 
+                  onClick={handleAddWidgetClick} 
+                  className="gap-1 bg-blue-600 hover:bg-blue-700"
+                >
+                  <PlusCircle className="h-4 w-4" />
+                  Add widget
+                </Button>
+              </div>
             </div>
             
             {widgets.length === 0 ? (
