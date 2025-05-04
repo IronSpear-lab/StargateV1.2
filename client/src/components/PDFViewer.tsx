@@ -131,28 +131,43 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     setActiveAnnotation(null);
     
     // Försök hämta annotationer från localStorage för denna fil
-    if (fileData?.fileId) {
+    if (fileData?.fileId && fileData?.filename) {
       try {
-        const annotationsKey = `annotations_${fileData.fileId}`;
+        // Generera samma nyckel som vid sparande
+        const fileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+        const annotationsKey = `pdf_annotations_${fileName}_${fileData.fileId}`;
+        
+        console.log(`Attempting to load annotations using key: ${annotationsKey}`);
         const savedAnnotations = localStorage.getItem(annotationsKey);
         
         if (savedAnnotations) {
           const parsedAnnotations = JSON.parse(savedAnnotations);
-          console.log(`Loaded ${parsedAnnotations.length} annotations from localStorage for file ID: ${fileData.fileId}`);
+          console.log(`Successfully loaded ${parsedAnnotations.length} annotations from localStorage for file: ${fileData.filename}`);
           setAnnotations(parsedAnnotations);
         } else {
-          // Om inga sparade annotationer finns, börja med tom lista
-          setAnnotations([]);
+          // Check for legacy storage format as well
+          const legacyKey = `annotations_${fileData.fileId}`;
+          const legacyAnnotations = localStorage.getItem(legacyKey);
+          
+          if (legacyAnnotations) {
+            console.log(`Found annotations in legacy format, migrating to new format...`);
+            const parsedLegacyAnnotations = JSON.parse(legacyAnnotations);
+            setAnnotations(parsedLegacyAnnotations);
+            // Will be saved in new format by the save effect
+          } else {
+            console.log(`No annotations found for file: ${fileData.filename}, starting with empty list`);
+            setAnnotations([]);
+          }
         }
       } catch (error) {
         console.error("Failed to load annotations from localStorage", error);
         setAnnotations([]);
       }
     } else {
-      // Om ingen fil-ID, börja med tom lista
+      // Om ingen fil-ID eller filnamn, börja med tom lista
       setAnnotations([]);
     }
-  }, [fileData?.fileId, file, fileUrl]);
+  }, [fileData?.fileId, fileData?.filename, file, fileUrl]);
   
   // Hämta tillgängliga versioner när en fil öppnas
   useEffect(() => {
@@ -326,65 +341,79 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   
   // Zooma in till en specifik annotation med smidig övergång
   const zoomToAnnotation = (annotation: PDFAnnotation) => {
+    // Sätt annotation som aktiv omedelbart så färgkodning visas
     setActiveAnnotation(annotation);
     
     // Om på annan sida, byt sida först
     if (annotation.rect.pageNumber !== pageNumber) {
+      // Återställ scale först så vi kan zooma in med animation
+      setScale(1);
+      
+      // Byt sida
       setPageNumber(annotation.rect.pageNumber);
       
       // När sidbytet är klart, zooma in och scrolla
       setTimeout(() => {
-        // Smidig zoomeffekt
-        setScale(1.8); // Lite högre zoom för bättre visning
+        // Försäkra oss om att elementet fortfarande finns synligt i DOm efter sidbyte
+        const annotationElement = document.getElementById(`annotation-${annotation.id}`);
         
-        // Scrolla till annotationen med fördröjning så PDF hinner renderas
-        setTimeout(() => {
-          if (pdfContainerRef.current && pageRef.current) {
-            const annotationElement = document.getElementById(`annotation-${annotation.id}`);
-            if (annotationElement) {
-              // Beräkna centrum för annotationen
-              const rect = annotationElement.getBoundingClientRect();
-              const pageRect = pageRef.current.getBoundingClientRect();
-              
-              // Centrera vyn på annotationen
-              const scrollX = rect.left + rect.width/2 - pageRect.left - pdfContainerRef.current.clientWidth/2;
-              const scrollY = rect.top + rect.height/2 - pageRect.top - pdfContainerRef.current.clientHeight/2;
-              
-              // Animeraad scrollning
-              pdfContainerRef.current.scrollTo({
-                left: pdfContainerRef.current.scrollLeft + scrollX,
-                top: pdfContainerRef.current.scrollTop + scrollY,
-                behavior: 'smooth'
-              });
-            }
-          }
-        }, 100);
+        if (!annotationElement) {
+          console.warn("Could not find annotation element after page change");
+          // Force re-render to ensure element exists
+          setAnnotations(prev => [...prev]);
+          
+          // Try again after a short delay
+          setTimeout(() => doZoomAndScroll(annotation), 200);
+        } else {
+          // Element exists, proceed with zoom
+          doZoomAndScroll(annotation);
+        }
       }, 300);
     } else {
-      // Redan på rätt sida, zooma direkt
-      setScale(1.8);
-      
-      // Scrolla till annotationen
-      setTimeout(() => {
-        if (pdfContainerRef.current && pageRef.current) {
-          const annotationElement = document.getElementById(`annotation-${annotation.id}`);
-          if (annotationElement) {
-            // Centrera vyn på annotationen
-            const rect = annotationElement.getBoundingClientRect();
-            const pageRect = pageRef.current.getBoundingClientRect();
-            
-            const scrollX = rect.left + rect.width/2 - pageRect.left - pdfContainerRef.current.clientWidth/2;
-            const scrollY = rect.top + rect.height/2 - pageRect.top - pdfContainerRef.current.clientHeight/2;
-            
-            pdfContainerRef.current.scrollTo({
-              left: pdfContainerRef.current.scrollLeft + scrollX,
-              top: pdfContainerRef.current.scrollTop + scrollY,
-              behavior: 'smooth'
-            });
-          }
-        }
-      }, 100);
+      // Redan på rätt sida, zooma och scrolla direkt
+      doZoomAndScroll(annotation);
     }
+  };
+  
+  // Separera ut zoomning och scrollning till en separat funktion för återanvändning
+  const doZoomAndScroll = (annotation: PDFAnnotation) => {
+    // Smidig zoomeffekt, lite högre zoom för bättre visning
+    setScale(1.8);
+    
+    // Scrolla till annotationen med fördröjning så PDF hinner renderas
+    setTimeout(() => {
+      if (pdfContainerRef.current && pageRef.current) {
+        // Sök efter annotationselementet igen för att få korrekt position efter zoom
+        const annotationElement = document.getElementById(`annotation-${annotation.id}`);
+        
+        if (annotationElement) {
+          // Beräkna centrum för annotationen
+          const rect = annotationElement.getBoundingClientRect();
+          const pageRect = pageRef.current.getBoundingClientRect();
+          
+          // Centrera vyn på annotationen
+          const scrollX = rect.left + rect.width/2 - pageRect.left - pdfContainerRef.current.clientWidth/2;
+          const scrollY = rect.top + rect.height/2 - pageRect.top - pdfContainerRef.current.clientHeight/2;
+          
+          // Animerad scrollning
+          pdfContainerRef.current.scrollTo({
+            left: pdfContainerRef.current.scrollLeft + scrollX,
+            top: pdfContainerRef.current.scrollTop + scrollY,
+            behavior: 'smooth'
+          });
+          
+          // Lägg till en visuell indikation för att hjälpa användaren hitta markeringen
+          annotationElement.classList.add('annotation-pulse');
+          
+          // Ta bort pulsklassen efter animationen
+          setTimeout(() => {
+            annotationElement.classList.remove('annotation-pulse');
+          }, 2000);
+        } else {
+          console.warn(`Could not find annotation element with id: annotation-${annotation.id}`);
+        }
+      }
+    }, 100);
   };
   
   // Uppdatera status för en kommentar
@@ -395,12 +424,20 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         : ann
     );
     
+    // Uppdatera lokal state omedelbart
     setAnnotations(updatedAnnotations);
     
-    // Här skulle vi göra ett API-anrop för att uppdatera i databasen
-    // Spara till localStorage för demo
-    if (fileData?.fileId) {
-      localStorage.setItem(`annotations_${fileData.fileId}`, JSON.stringify(updatedAnnotations));
+    // Spara till localStorage enligt nya formatet
+    if (fileData?.fileId && fileData?.filename) {
+      try {
+        const fileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+        const annotationsKey = `pdf_annotations_${fileName}_${fileData.fileId}`;
+        
+        localStorage.setItem(annotationsKey, JSON.stringify(updatedAnnotations));
+        console.log(`Updated annotation status and saved to localStorage with key: ${annotationsKey}`);
+      } catch (error) {
+        console.error("Failed to save annotation status update to localStorage", error);
+      }
     }
   };
   
@@ -408,11 +445,25 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   useEffect(() => {
     if (!fileData?.fileId || !annotations) return;
     
-    // Spara även om listan är tom (för att rensa tidigare annotationer)
-    const annotationsKey = `annotations_${fileData.fileId}`;
-    localStorage.setItem(annotationsKey, JSON.stringify(annotations));
-    console.log(`Saved ${annotations.length} annotations to localStorage for file ID: ${fileData.fileId}`);
-  }, [annotations, fileData?.fileId]);
+    try {
+      // Generera en mer unik nyckel baserad på filnamn och fil-ID
+      const fileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+      const annotationsKey = `pdf_annotations_${fileName}_${fileData.fileId}`;
+      
+      // Spara även om listan är tom (för att rensa tidigare annotationer)
+      localStorage.setItem(annotationsKey, JSON.stringify(annotations));
+      console.log(`Saved ${annotations.length} annotations to localStorage with key: ${annotationsKey}`);
+      
+      // Spara en lista över alla annotation-nycklar för att hålla koll på dem
+      let savedKeys = JSON.parse(localStorage.getItem('pdf_annotation_keys') || '[]');
+      if (!savedKeys.includes(annotationsKey)) {
+        savedKeys.push(annotationsKey);
+        localStorage.setItem('pdf_annotation_keys', JSON.stringify(savedKeys));
+      }
+    } catch (error) {
+      console.error("Failed to save annotations to localStorage", error);
+    }
+  }, [annotations, fileData?.fileId, fileData?.filename]);
 
   // Ladda upp en ny version av filen
   const handleUploadNewVersion = () => {
@@ -742,10 +793,11 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                         id={`annotation-${annotation.id}`}
                         className={`absolute border-2 transition-all duration-300 ${
                           activeAnnotation?.id === annotation.id 
-                            ? 'z-10 ring-4 ring-blue-400 scale-105 shadow-lg' 
-                            : 'z-0 hover:scale-102 hover:shadow-md'
+                            ? 'z-20 ring-4 ring-blue-400 scale-105 shadow-lg' 
+                            : 'z-10 hover:scale-102 hover:shadow-md'
                         }`}
                         style={{
+                          position: 'absolute',
                           left: `${annotation.rect.x}px`,
                           top: `${annotation.rect.y}px`,
                           width: `${annotation.rect.width}px`,
@@ -755,10 +807,20 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                           boxShadow: activeAnnotation?.id === annotation.id ? '0 0 15px rgba(59, 130, 246, 0.6)' : 'none',
                           transform: activeAnnotation?.id === annotation.id ? 'scale(1.05)' : 'scale(1)',
                           transformOrigin: 'center',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          pointerEvents: 'auto' 
                         }}
-                        onClick={() => zoomToAnnotation(annotation)}
-                      />
+                        onClick={(e) => {
+                          e.stopPropagation(); // Förhindra att klicket når underliggande element
+                          zoomToAnnotation(annotation);
+                        }}
+                      >
+                        {/* Lägg till en liten indikator i hörnet som alltid syns tydligt */}
+                        <div 
+                          className="absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800"
+                          style={{ backgroundColor: annotation.color }}
+                        />
+                      </div>
                     ))}
                   
                   {/* Visa temporär markering under pågående markering */}
