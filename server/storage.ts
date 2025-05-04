@@ -196,29 +196,96 @@ class DatabaseStorage implements IStorage {
 
   // Tasks methods
   async getTasks(projectId: number): Promise<Task[]> {
-    return await db
+    const result = await db
       .select()
       .from(tasks)
       .where(eq(tasks.projectId, projectId));
+    
+    // Process dependencies as JSON for the frontend
+    return result.map(task => {
+      if (task.dependencies) {
+        try {
+          // Parse the dependencies JSON string into an array
+          const deps = JSON.parse(task.dependencies);
+          return {
+            ...task,
+            dependencies: deps
+          };
+        } catch (e) {
+          console.error("Error parsing task dependencies:", e);
+        }
+      }
+      return {
+        ...task,
+        dependencies: []
+      };
+    });
   }
 
   async createTask(task: Omit<Task, "id" | "createdAt">): Promise<Task> {
+    // Handle dependencies - convert array to JSON string
+    let processedTask = { ...task };
+    if (task.dependencies && Array.isArray(task.dependencies)) {
+      processedTask.dependencies = JSON.stringify(task.dependencies);
+    }
+    
     const validatedData = insertTaskSchema.parse({
-      ...task,
+      ...processedTask,
       createdAt: new Date()
     });
+    
     const result = await db.insert(tasks).values(validatedData).returning();
-    return result[0];
+    const createdTask = result[0];
+    
+    // Convert JSON string back to array for the response
+    if (createdTask.dependencies) {
+      try {
+        return {
+          ...createdTask,
+          dependencies: JSON.parse(createdTask.dependencies)
+        };
+      } catch (e) {
+        console.error("Error parsing task dependencies:", e);
+      }
+    }
+    
+    return {
+      ...createdTask,
+      dependencies: []
+    };
   }
 
   async updateTask(id: number, task: Partial<Task>): Promise<Task> {
+    // Handle dependencies - convert array to JSON string
+    let processedTask = { ...task };
+    if (task.dependencies && Array.isArray(task.dependencies)) {
+      processedTask.dependencies = JSON.stringify(task.dependencies);
+    }
+    
     const result = await db
       .update(tasks)
-      .set(task)
+      .set(processedTask)
       .where(eq(tasks.id, id))
       .returning();
     
-    return result[0];
+    const updatedTask = result[0];
+    
+    // Convert JSON string back to array for the response
+    if (updatedTask.dependencies) {
+      try {
+        return {
+          ...updatedTask,
+          dependencies: JSON.parse(updatedTask.dependencies)
+        };
+      } catch (e) {
+        console.error("Error parsing task dependencies:", e);
+      }
+    }
+    
+    return {
+      ...updatedTask,
+      dependencies: []
+    };
   }
 
   // Comments methods

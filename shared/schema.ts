@@ -71,6 +71,7 @@ export const tasks = pgTable("tasks", {
   dueDate: date("due_date"),
   startDate: date("start_date"),
   endDate: date("end_date"),
+  dependencies: text("dependencies"), // JSON string array of task IDs this task depends on
 });
 
 // Time entries for tasks
