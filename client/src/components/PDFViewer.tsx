@@ -269,9 +269,22 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
           console.log(`[${Date.now()}] Successfully loaded ${savedVersions.length} versions from localStorage`);
           setFileVersions(savedVersions);
           
-          // Använd den senaste versionen som aktiv
-          const latestVersion = savedVersions[savedVersions.length - 1];
-          setActiveVersionId(latestVersion.id);
+          // VIKTIGT: Alltid säkerställ att vi har en version vald
+          // Se först om den nuvarande versionen fortfarande finns
+          const versionExists = savedVersions.some(v => v.id === activeVersionId);
+          
+          if (!versionExists || !activeVersionId) {
+            // Om ingen version är vald eller om den valda versionen inte finns, välj den senaste
+            const latestVersion = savedVersions[savedVersions.length - 1];
+            console.log(`[${Date.now()}] Auto-selecting latest version: ${latestVersion.id}`);
+            setActiveVersionId(latestVersion.id);
+            
+            // Säkerställ att PDF URL är uppdaterad om det behövs
+            if (latestVersion.fileUrl && (!pdfUrl || !versionExists)) {
+              console.log(`[${Date.now()}] Updating PDF URL to match selected version`);
+              setPdfUrl(latestVersion.fileUrl);
+            }
+          }
           return;
         }
       } catch (error) {
@@ -980,9 +993,46 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     const selectedVersion = fileVersions.find(v => v.id === versionId);
     if (!selectedVersion) return;
     
-    // Normalt skulle vi hämta ny file URL för denna version
-    // För demo använder vi samma URL
-    setPdfUrl(selectedVersion.fileUrl);
+    // VIKTIGT: Blob URLs är inte beständiga mellan sessioner
+    // Om det är en tidigare version, återanvänd den aktuella PDF:en istället för den sparade URL:en
+    // I ett riktigt system skulle vi hämta korrekt fil från servern här
+    try {
+      // Försök använda den sparade URL:en, men var beredd på att den kan vara ogiltig
+      if (selectedVersion.fileUrl.startsWith('blob:')) {
+        // Detta är en blob URL
+        try {
+          // För äldre versioner, om vi inte kan använda den befintliga blob-URL:en,
+          // använd den aktuella PDF:en som fallback (för demo-syfte)
+          // I ett riktigt system skulle vi hämta rätt version från servern
+          fetch(selectedVersion.fileUrl, { method: 'HEAD' })
+            .then(() => {
+              // URL:en är tillgänglig, använd den
+              console.log(`Version URL ${selectedVersion.fileUrl} is valid, using it`);
+              setPdfUrl(selectedVersion.fileUrl);
+            })
+            .catch(() => {
+              // URL:en är inte tillgänglig, använd aktuell URL istället
+              console.log(`Version URL ${selectedVersion.fileUrl} is invalid, using current PDF as fallback`);
+              // I verklig produktion skulle vi göra ett API-anrop för att hämta korrekt fil
+              // Men för demo använder vi befintlig PDF
+              if (pdfUrl) setPdfUrl(pdfUrl + '#' + Date.now()); // Lägg till timestamp för att tvinga omrendering
+            });
+        } catch (e) {
+          console.error("Error checking blob URL validity:", e);
+          // Fallback: använd aktuell PDF
+          if (pdfUrl) setPdfUrl(pdfUrl + '#' + Date.now());
+        }
+      } else {
+        // För direkta URL:er (inte blob) kan vi använda direkt
+        setPdfUrl(selectedVersion.fileUrl);
+      }
+    } catch (error) {
+      console.error("Error changing version:", error);
+      // Fallback - aktuell PDF igen (i värsta fall)
+      if (pdfUrl) setPdfUrl(pdfUrl + '#' + Date.now());
+    }
+    
+    // Uppdatera aktiv version oavsett om URL-bytet lyckades
     setActiveVersionId(versionId);
     
     // Återställ eventuell zoomning/aktiv markering
@@ -991,6 +1041,9 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     
     // Stäng versionspanelen
     setShowVersionsPanel(false);
+    
+    // Visa meddelande till användaren
+    console.log(`[${Date.now()}] Switched to version ${selectedVersion.versionNumber}: ${selectedVersion.description}`);
   };
   
   // Växla versionssidan när användaren trycker på knapparna i överkanten
@@ -1103,26 +1156,45 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             {/* Versionsknappar */}
             <div className="flex items-center justify-between px-4 pb-3 pt-1">
               <div className="flex space-x-2">
-                {fileVersions.length > 0 && (
+                {fileVersions.length > 0 ? (
                   <>
-                    <Button
-                      variant={activeVersionId === fileVersions[fileVersions.length - 1]?.id ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleChangeVersion(fileVersions[fileVersions.length - 1]?.id)}
-                      className="rounded-full py-1 h-7 px-3"
-                    >
-                      <span className="flex items-center">
-                        Nuvarande version
-                        {activeVersionId === fileVersions[fileVersions.length - 1]?.id && (
-                          <Check size={14} className="ml-1" />
-                        )}
-                      </span>
-                    </Button>
+                    {/* En säkerhetskontroll för att garantera att senaste versionen alltid finns */}
+                    {fileVersions.length > 0 && (
+                      <Button
+                        variant={activeVersionId === fileVersions[fileVersions.length - 1]?.id ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          const latestVersionId = fileVersions[fileVersions.length - 1]?.id;
+                          if (latestVersionId) {
+                            handleChangeVersion(latestVersionId);
+                          } else {
+                            console.error("Latest version ID is missing");
+                          }
+                        }}
+                        className="rounded-full py-1 h-7 px-3"
+                      >
+                        <span className="flex items-center">
+                          Nuvarande version
+                          {activeVersionId === fileVersions[fileVersions.length - 1]?.id && (
+                            <Check size={14} className="ml-1" />
+                          )}
+                        </span>
+                      </Button>
+                    )}
+                    
+                    {/* Bara visa originalversionsknappen om det finns mer än en version */}
                     {fileVersions.length > 1 && (
                       <Button
                         variant={activeVersionId === fileVersions[0]?.id ? "destructive" : "outline"}
                         size="sm"
-                        onClick={() => handleChangeVersion(fileVersions[0]?.id)}
+                        onClick={() => {
+                          const originalVersionId = fileVersions[0]?.id;
+                          if (originalVersionId) {
+                            handleChangeVersion(originalVersionId);
+                          } else {
+                            console.error("Original version ID is missing");
+                          }
+                        }}
                         className="rounded-full py-1 h-7 px-3"
                       >
                         <span className="flex items-center">
@@ -1134,7 +1206,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                       </Button>
                     )}
                   </>
-                )}
+                ) : null /* Inga versionsval om det inte finns några versioner */}
                 <Button
                   variant="default"
                   size="sm"
