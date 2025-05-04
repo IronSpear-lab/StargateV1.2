@@ -20,6 +20,8 @@ function Router() {
   return (
     <Switch>
       <ProtectedRoute path="/" component={DashboardPage} />
+      <ProtectedRoute path="/projects" component={ProjectsPage} />
+      <ProtectedRoute path="/projects/:id" component={ProjectDetailPage} />
       <ProtectedRoute path="/files" component={FilesPage} />
       <ProtectedRoute path="/tasks" component={TasksPage} />
       <ProtectedRoute path="/timeline" component={TimelinePage} />

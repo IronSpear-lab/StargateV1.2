@@ -81,7 +81,9 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
   const [linkMode, setLinkMode] = useState(false);
   const [linkSource, setLinkSource] = useState<number | null>(null);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<GanttTask | null>(null);
+  const [selectedTask, setSelectedTask] = useState<GanttTask | null>(null);
   const [users, setUsers] = useState<{ id: number; username: string }[]>([]);
   const ganttContainerRef = useRef<HTMLDivElement>(null);
   const [draggedTask, setDraggedTask] = useState<GanttTask | null>(null);
@@ -458,8 +460,49 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
     document.removeEventListener('mouseup', handleMouseUp);
   };
 
+  // Delete task mutation
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => {
+      const response = await apiRequest('DELETE', `/api/tasks/${taskId}`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      toast({
+        title: "Task deleted",
+        description: "Task has been deleted successfully",
+      });
+      setSelectedTask(null);
+      setIsDeleteDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to delete task",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Handle delete task confirmation
+  const handleDeleteTask = () => {
+    if (selectedTask) {
+      deleteTaskMutation.mutate(Number(selectedTask.id));
+    }
+  };
+
+  // Handle background click to deselect task
+  const handleBackgroundClick = (e: React.MouseEvent) => {
+    // Only deselect if clicking directly on the container, not on task bars or other elements
+    if (e.target === e.currentTarget) {
+      setSelectedTask(null);
+    }
+  };
+
   // Handle task bar click (different behavior based on linkMode)
-  const handleTaskClick = (task: GanttTask) => {
+  const handleTaskClick = (e: React.MouseEvent, task: GanttTask) => {
+    e.stopPropagation();
+    
     if (linkMode) {
       // In link mode, we're creating dependencies
       if (linkSource === null) {
@@ -501,9 +544,21 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
         setLinkSource(null);
       }
     } else {
-      // Normal click - show task details/edit dialog
-      setEditingTask(task);
+      // Select task for highlighting
+      setSelectedTask(task);
+    }
+  };
+  
+  // Handle edit task
+  const handleEditTask = () => {
+    if (selectedTask) {
+      setEditingTask(selectedTask);
       setIsTaskDialogOpen(true);
+    } else {
+      toast({
+        title: "No task selected",
+        description: "Please select a task to edit",
+      });
     }
   };
 
