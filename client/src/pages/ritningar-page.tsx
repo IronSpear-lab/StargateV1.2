@@ -210,6 +210,7 @@ export default function RitningarPage() {
   const [versionFilter, setVersionFilter] = useState("all");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [ritningarData, setRitningarData] = useState(mockRitningar);
   
   // I en riktig implementation skulle denna query hämta data från API:et
   // const { data: ritningar = [], isLoading } = useQuery({
@@ -217,7 +218,7 @@ export default function RitningarPage() {
   // });
 
   // Använder mockdata tills vidare
-  const ritningar = mockRitningar;
+  const ritningar = ritningarData;
   const isLoading = false;
 
   const filteredRitningar = ritningar.filter(ritning => 
@@ -235,8 +236,26 @@ export default function RitningarPage() {
     // I en riktig implementering skulle vi skicka filerna till en API-endpoint
     console.log("Uppladdade filer:", files);
     
-    // Simulera att vi lägger till den uppladdade filen i tabellen
-    // I en verklig implementation skulle detta hanteras av en API-anrop
+    // Lägg till de uppladdade filerna i listan
+    const now = new Date();
+    const timeString = `${now.getDate()} ${['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'][now.getMonth()]} ${now.getFullYear()}, ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    
+    const newRitningar = files.map((file, index) => ({
+      id: ritningarData.length + index + 1,
+      filename: file.name,
+      version: "1", // Ny fil får version 1
+      description: "Ny uppladdad fil", 
+      uploaded: timeString,
+      uploadedBy: "Du",
+      number: "(New)",
+      status: "(Active)",
+      annat: "(PDF)"
+    }));
+    
+    // Uppdatera listan med ritningar
+    setRitningarData([...newRitningar, ...ritningarData]);
+    
+    // Visa bekräftelse
     setTimeout(() => {
       toast({
         title: "Filer uppladdade",
