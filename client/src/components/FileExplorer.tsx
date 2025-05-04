@@ -168,7 +168,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         xhr.send(formData);
       });
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       toast({
         title: "File uploaded successfully",
         description: uploadState.file?.name ? `${uploadState.file.name} has been uploaded.` : "Your file has been uploaded."
@@ -402,7 +402,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     const extension = file.name ? getFileExtension(file.name).toLowerCase() : '';
     
     if (isPdf(file.name)) {
-      return <FilePdf className="h-4 w-4 text-red-500" />;
+      return <File className="h-4 w-4 text-red-500" />;
     }
     
     if (isFileOfType(file.name, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
@@ -414,15 +414,15 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     }
     
     if (isFileOfType(file.name, ['xls', 'xlsx', 'csv'])) {
-      return <FileSpreadsheet className="h-4 w-4 text-green-600" />;
+      return <File className="h-4 w-4 text-green-600" />;
     }
     
     if (isFileOfType(file.name, ['html', 'css', 'js', 'jsx', 'ts', 'tsx', 'json'])) {
-      return <FileCode className="h-4 w-4 text-yellow-600" />;
+      return <File className="h-4 w-4 text-yellow-600" />;
     }
     
     if (isFileOfType(file.name, ['zip', 'rar', 'tar', 'gz'])) {
-      return <FileArchive className="h-4 w-4 text-neutral-600" />;
+      return <File className="h-4 w-4 text-neutral-600" />;
     }
     
     return <FileIcon className="h-4 w-4 text-neutral-500" />;
@@ -630,7 +630,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                         <div className="space-y-2">
                           <div className="flex items-center justify-center">
                             {isPdf(uploadState.file.name) ? (
-                              <FilePdf className="h-10 w-10 text-red-500" />
+                              <File className="h-10 w-10 text-red-500" />
                             ) : isFileOfType(uploadState.file.name, ['jpg', 'jpeg', 'png', 'gif']) ? (
                               <Image className="h-10 w-10 text-blue-500" />
                             ) : (
