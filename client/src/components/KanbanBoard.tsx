@@ -100,9 +100,9 @@ const taskFormSchema = z.object({
   type: z.string().optional(),
   assigneeId: z.string().optional(),
   projectId: z.string(),
-  dueDate: z.string().optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
+  dueDate: z.string().optional().transform(val => val === "" ? null : val),
+  startDate: z.string().optional().transform(val => val === "" ? null : val),
+  endDate: z.string().optional().transform(val => val === "" ? null : val),
 });
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -402,14 +402,34 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
     
-    if (!over || active.id === over.id) {
+    if (!over) {
       setActiveId(null);
       setActiveTask(null);
       return;
     }
 
-    // Get column ID from the container ID (format: "column-{columnId}")
-    const targetColumnId = over.id.toString().split('-')[1];
+    // If dragged over another task card, it means dropping into the same column
+    if (over.id.toString() !== active.id.toString() && !over.id.toString().startsWith('column-')) {
+      setActiveId(null);
+      setActiveTask(null);
+      return;
+    }
+    
+    // Get target column ID - either from column ID or from the task's parent column
+    let targetColumnId: string = '';
+    
+    if (over.id.toString().startsWith('column-')) {
+      // Direct drop on column
+      targetColumnId = over.id.toString().split('-')[1];
+    } else {
+      // Find the column that contains the task we're hovering over
+      for (const column of columns) {
+        if (column.tasks.some(t => t.id.toString() === over.id.toString())) {
+          targetColumnId = column.id;
+          break;
+        }
+      }
+    }
     
     if (!targetColumnId) {
       setActiveId(null);
@@ -433,15 +453,18 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
       }
     }
 
-    if (sourceColumnId && taskToMove && targetColumnId !== sourceColumnId) {
-      // Update the task's status in the database
-      updateTaskMutation.mutate({
-        id: Number(taskToMove.id),
-        status: targetColumnId
-      });
-      
-      // Update the task's status locally
-      taskToMove.status = targetColumnId;
+    if (sourceColumnId && taskToMove) {
+      // Only update if the column changed
+      if (targetColumnId !== sourceColumnId) {
+        // Update the task's status in the database
+        updateTaskMutation.mutate({
+          id: Number(taskToMove.id),
+          status: targetColumnId
+        });
+        
+        // Update the task's status locally
+        taskToMove.status = targetColumnId;
+      }
       
       // Add the task to the target column
       const targetColumnIndex = newColumns.findIndex(col => col.id === targetColumnId);
@@ -588,48 +611,53 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                   <span className="text-sm bg-white bg-opacity-50 rounded-full px-2">{column.tasks.length}</span>
                 </div>
                 
-                <div id={`column-${column.id}`} className={`space-y-3 min-h-[100px] flex-1 p-3 ${column.bgColor} rounded-b-md`}>
-                  {column.tasks.map(task => (
-                    <Draggable key={task.id} id={task.id.toString()}>
-                      <Card 
-                        className={`kanban-card shadow-sm border-l-4 ${task.borderColor} cursor-grab hover:shadow-md transition-shadow bg-white`}
-                        onClick={() => handleTaskClick(task)}
-                      >
-                        <CardContent className="p-3">
-                          <div className="flex justify-between items-start">
-                            {task.type ? (
-                              <span className={`text-xs font-medium px-2 py-1 rounded ${task.typeBg} ${task.typeColor}`}>
-                                {task.type}
-                              </span>
-                            ) : (
-                              <span></span>
+                <div id={`column-${column.id}`} className={`space-y-3 min-h-[100px] flex-1 p-3 ${column.bgColor} rounded-b-md droppable-area`}>
+                  <SortableContext
+                    items={column.tasks.map(task => task.id.toString())}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {column.tasks.map(task => (
+                      <Draggable key={task.id} id={task.id.toString()}>
+                        <Card 
+                          className={`kanban-card shadow-sm border-l-4 ${task.borderColor} cursor-grab hover:shadow-md transition-shadow bg-white`}
+                          onClick={() => handleTaskClick(task)}
+                        >
+                          <CardContent className="p-3">
+                            <div className="flex justify-between items-start">
+                              {task.type ? (
+                                <span className={`text-xs font-medium px-2 py-1 rounded ${task.typeBg} ${task.typeColor}`}>
+                                  {task.type}
+                                </span>
+                              ) : (
+                                <span></span>
+                              )}
+                              {task.priority && (
+                                <span className={`text-xs font-medium ${task.priorityColor}`}>
+                                  {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                                </span>
+                              )}
+                            </div>
+                            <h4 className="font-medium mt-2">{task.title}</h4>
+                            {task.description && (
+                              <p className="text-xs text-neutral-600 mt-1 line-clamp-2">{task.description}</p>
                             )}
-                            {task.priority && (
-                              <span className={`text-xs font-medium ${task.priorityColor}`}>
-                                {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-                              </span>
-                            )}
-                          </div>
-                          <h4 className="font-medium mt-2">{task.title}</h4>
-                          {task.description && (
-                            <p className="text-xs text-neutral-600 mt-1 line-clamp-2">{task.description}</p>
-                          )}
-                          <div className="flex items-center justify-between mt-3">
-                            {task.assigneeId ? (
-                              <div className="flex">
-                                <div className={`w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center text-xs font-semibold text-primary-700`}>
-                                  {task.assigneeInitials}
+                            <div className="flex items-center justify-between mt-3">
+                              {task.assigneeId ? (
+                                <div className="flex">
+                                  <div className={`w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center text-xs font-semibold text-primary-700`}>
+                                    {task.assigneeInitials}
+                                  </div>
                                 </div>
-                              </div>
-                            ) : (
-                              <div></div>
-                            )}
-                            <div className="text-xs text-neutral-500">{task.dueDateDisplay}</div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Draggable>
-                  ))}
+                              ) : (
+                                <div></div>
+                              )}
+                              <div className="text-xs text-neutral-500">{task.dueDateDisplay}</div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </Draggable>
+                    ))}
+                  </SortableContext>
                   
                   <button 
                     onClick={() => {
