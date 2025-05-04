@@ -14,6 +14,8 @@ import SettingsPage from "@/pages/settings-page";
 import ProjectsPage from "@/pages/projects-page";
 import ProjectDetailPage from "@/pages/project-detail-page";
 import GanttPage from "@/pages/gantt-page";
+import AnalyticsPage from "@/pages/analytics-page";
+import TimeTrackingPage from "@/pages/time-tracking-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 
@@ -21,6 +23,7 @@ function Router() {
   return (
     <Switch>
       <ProtectedRoute path="/" component={DashboardPage} />
+      <ProtectedRoute path="/analytics" component={AnalyticsPage} />
       <ProtectedRoute path="/projects" component={ProjectsPage} />
       <ProtectedRoute path="/projects/:id" component={ProjectDetailPage} />
       <ProtectedRoute path="/files" component={FilesPage} />
@@ -29,6 +32,7 @@ function Router() {
       <ProtectedRoute path="/gantt" component={GanttPage} />
       <ProtectedRoute path="/kanban" component={KanbanPage} />
       <ProtectedRoute path="/wiki" component={WikiPage} />
+      <ProtectedRoute path="/time-tracking" component={TimeTrackingPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />

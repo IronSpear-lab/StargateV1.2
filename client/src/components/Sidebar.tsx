@@ -308,7 +308,6 @@ export function Sidebar({ className }: SidebarProps) {
         <div className="p-4 border-b border-neutral-200">
           <div className="flex items-center">
             <Avatar className="h-10 w-10 border-2 border-primary-100">
-              <AvatarImage src={user?.avatarUrl} alt={user?.username || 'User'} />
               <AvatarFallback className="bg-primary-50 text-primary-700">
                 {user ? getInitials(user.username) : '--'}
               </AvatarFallback>
