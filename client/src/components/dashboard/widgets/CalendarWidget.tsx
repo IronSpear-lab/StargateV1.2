@@ -35,12 +35,33 @@ interface CalendarWidgetProps {
   projectId?: number;
 }
 
-// Different colors for different event types
+// Different colors for different event types using provided color scheme
+// #ffc35a (orange), #0acf97 (grön), #727cf5 (blå) och #fa5c7c (rosa)
 const eventColors: Record<string, { bg: string, text: string, bgHover: string, border?: string }> = {
-  meeting: { bg: "bg-blue-100", text: "text-blue-700", bgHover: "hover:bg-blue-200", border: "border-blue-300" },
-  task: { bg: "bg-green-100", text: "text-green-700", bgHover: "hover:bg-green-200", border: "border-green-300" },
-  reminder: { bg: "bg-amber-100", text: "text-amber-700", bgHover: "hover:bg-amber-200", border: "border-amber-300" },
-  milestone: { bg: "bg-purple-100", text: "text-purple-700", bgHover: "hover:bg-purple-200", border: "border-purple-300" },
+  meeting: { 
+    bg: "bg-[#727cf5]/10", 
+    text: "text-[#727cf5]", 
+    bgHover: "hover:bg-[#727cf5]/20", 
+    border: "border-[#727cf5]/30" 
+  },
+  task: { 
+    bg: "bg-[#0acf97]/10", 
+    text: "text-[#0acf97]", 
+    bgHover: "hover:bg-[#0acf97]/20", 
+    border: "border-[#0acf97]/30" 
+  },
+  reminder: { 
+    bg: "bg-[#ffc35a]/10", 
+    text: "text-[#ffc35a]/90", 
+    bgHover: "hover:bg-[#ffc35a]/20", 
+    border: "border-[#ffc35a]/30" 
+  },
+  milestone: { 
+    bg: "bg-[#fa5c7c]/10", 
+    text: "text-[#fa5c7c]", 
+    bgHover: "hover:bg-[#fa5c7c]/20", 
+    border: "border-[#fa5c7c]/30" 
+  },
 };
 
 export function CalendarWidget({ projectId }: CalendarWidgetProps) {

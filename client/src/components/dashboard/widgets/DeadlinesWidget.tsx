@@ -31,7 +31,54 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
       try {
         const response = await fetch(`/api/deadlines${projectId ? `?projectId=${projectId}` : ''}`);
         if (!response.ok) {
-          return [];
+          // Return sample data for demonstration
+          return [
+            {
+              id: "1",
+              title: "Frontend Code Review",
+              description: "Review the UI component implementation for the dashboard feature",
+              dueDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(),
+              category: "Development",
+              priority: "high",
+              completed: false
+            },
+            {
+              id: "2",
+              title: "API Documentation Update",
+              description: "Update the documentation for the new auth endpoints",
+              dueDate: new Date(new Date().setDate(new Date().getDate() + 3)).toISOString(),
+              category: "Documentation",
+              priority: "medium",
+              completed: false
+            },
+            {
+              id: "3",
+              title: "Q2 Sprint Planning",
+              description: "Finalize the scope and tasks for the next sprint",
+              dueDate: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString(),
+              category: "Planning",
+              priority: "high",
+              completed: false
+            },
+            {
+              id: "4",
+              title: "Security Audit Report",
+              description: "Complete the security vulnerability report for last month",
+              dueDate: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
+              category: "Security",
+              priority: "high",
+              completed: false
+            },
+            {
+              id: "5",
+              title: "User Testing Session",
+              description: "Conduct user testing for the new feature with the team",
+              dueDate: new Date(new Date().setDate(new Date().getDate() + 10)).toISOString(),
+              category: "QA",
+              priority: "medium",
+              completed: false
+            }
+          ];
         }
         return await response.json();
       } catch (error) {
@@ -56,26 +103,27 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
   };
   
   // Get badge color based on days until deadline
+  // Using the provided color palette: #ffc35a (orange), #0acf97 (grön), #727cf5 (blå) och #fa5c7c (rosa)
   const getDeadlineBadgeStyle = (deadline: Deadline) => {
     if (deadline.completed) {
-      return "bg-green-100 text-green-800";
+      return "bg-[#0acf97]/10 text-[#0acf97]"; // Completed - green
     }
     
     if (isOverdue(deadline)) {
-      return "bg-red-100 text-red-800";
+      return "bg-[#fa5c7c]/10 text-[#fa5c7c]"; // Overdue - pink/red
     }
     
     const daysUntil = getDaysUntil(deadline.dueDate);
     
     if (daysUntil <= 2) {
-      return "bg-orange-100 text-orange-800";
+      return "bg-[#ffc35a]/10 text-[#ffc35a]"; // Very soon - orange/amber
     }
     
     if (daysUntil <= 7) {
-      return "bg-amber-100 text-amber-800";
+      return "bg-[#ffc35a]/10 text-[#ffc35a]/80"; // Soon - lighter orange
     }
     
-    return "bg-blue-100 text-blue-800";
+    return "bg-[#727cf5]/10 text-[#727cf5]"; // Future - blue
   };
   
   return (

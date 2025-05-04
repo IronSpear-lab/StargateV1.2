@@ -42,47 +42,51 @@ export function MessagesWidget({ limit = 5 }: MessagesWidgetProps) {
   
   // Sample messages data - this would come from your API in a real implementation
   function getSampleMessages(): Message[] {
-    const baseTimestamp = new Date();
+    // Create timestamps with slight variations to create a more realistic timeline
+    const now = new Date();
+    const today = new Date(now.setHours(9, 30, 0, 0)).toISOString();
+    const yesterday = new Date(now.setDate(now.getDate() - 1)).toISOString();
+    const twoDaysAgo = new Date(now.setDate(now.getDate() - 1)).toISOString();
     
     return [
       {
         id: "1",
-        category: "Bygghandling",
-        title: "13:1 - Leverans av BH",
-        description: "Leverans av bygghandling behöver skickas in senast 25 november.",
-        timestamp: baseTimestamp.toISOString(),
+        category: "Frontend",
+        title: "UI Component Library Update",
+        description: "We've released v2.1 of our Design System with new components. Check the documentation for more info.",
+        timestamp: today,
         read: false
       },
       {
         id: "2",
-        category: "Bygghandling",
-        title: "21/12 Uppdatering av CH-BH senast",
-        description: "Uppdatering av centrala handlingar behöver göras senast 21 december.",
-        timestamp: baseTimestamp.toISOString(),
+        category: "Project",
+        title: "Milestone Review Meeting",
+        description: "Don't forget our Q2 milestone review meeting on Friday at 2pm. Please prepare your progress reports.",
+        timestamp: today,
         read: false
       },
       {
         id: "3",
-        category: "Granskningshandling",
-        title: "13:1 - Leverans av BH",
-        description: "Granska de senaste handlingarna från projekteringsgruppen.",
-        timestamp: baseTimestamp.toISOString(),
+        category: "Backend",
+        title: "API Schema Changes",
+        description: "Important: We're updating the user profile API schema next week. Check Slack for migration details.",
+        timestamp: yesterday,
         read: false
       },
       {
         id: "4",
-        category: "Bygghandling",
-        title: "21/12 Uppdatering av CH-BH senast",
-        description: "Uppdatering av detaljer från central hantering.",
-        timestamp: baseTimestamp.toISOString(),
+        category: "DevOps",
+        title: "New Deployment Pipeline",
+        description: "The CI/CD pipeline has been updated with improved test coverage reports and performance metrics.",
+        timestamp: yesterday,
         read: true
       },
       {
         id: "5",
-        category: "Granskningshandling",
-        title: "13:1 - Leverans av BH",
-        description: "Slutleverans inför granskningsmöte på torsdag.",
-        timestamp: baseTimestamp.toISOString(),
+        category: "Security",
+        title: "OAuth Implementation Complete",
+        description: "The new OAuth2 flow has been implemented. All team members should update their authentication methods.",
+        timestamp: twoDaysAgo,
         read: false
       }
     ];

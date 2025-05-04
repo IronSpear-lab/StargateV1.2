@@ -101,7 +101,7 @@ export function Widget({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <CardHeader className="p-3 bg-gradient-to-r from-blue-50 to-white border-b flex-row items-center justify-between space-y-0 rounded-t-lg">
+      <CardHeader className="p-3 bg-gradient-to-r from-[rgba(114,124,245,0.1)] to-white border-b flex-row items-center justify-between space-y-0 rounded-t-lg">
         <div className="flex items-center space-x-2">
           <div
             className="cursor-move p-1 rounded hover:bg-blue-100/50"
