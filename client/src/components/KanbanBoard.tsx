@@ -114,28 +114,34 @@ interface KanbanBoardProps {
 export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
   const [columns, setColumns] = useState<KanbanColumn[]>([
     {
+      id: 'backlog',
+      title: 'Backlog',
+      tasks: [],
+      bgColor: 'bg-neutral-100'
+    },
+    {
       id: 'todo',
       title: 'To Do',
       tasks: [],
-      bgColor: 'bg-neutral-50'
+      bgColor: 'bg-yellow-100'
     },
     {
       id: 'in_progress',
       title: 'In Progress',
       tasks: [],
-      bgColor: 'bg-amber-50'
+      bgColor: 'bg-blue-100'
     },
     {
       id: 'review',
-      title: 'Review',
+      title: 'Testing',
       tasks: [],
-      bgColor: 'bg-blue-50'
+      bgColor: 'bg-purple-100'
     },
     {
       id: 'done',
       title: 'Done',
       tasks: [],
-      bgColor: 'bg-green-50'
+      bgColor: 'bg-green-100'
     }
   ]);
 
@@ -357,14 +363,17 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
     
     // Status colors for the border
     switch (task.status) {
-      case 'todo':
+      case 'backlog':
         borderColor = 'border-neutral-500';
         break;
+      case 'todo':
+        borderColor = 'border-yellow-500';
+        break;
       case 'in_progress':
-        borderColor = 'border-amber-500';
+        borderColor = 'border-blue-500';
         break;
       case 'review':
-        borderColor = 'border-blue-500';
+        borderColor = 'border-purple-500';
         break;
       case 'done':
         borderColor = 'border-green-500';
@@ -571,17 +580,17 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
         >
           <div className="flex overflow-x-auto pb-4 kanban-container gap-4">
             {columns.map(column => (
-              <div key={column.id} className={`kanban-column ${column.bgColor} rounded-md shadow-sm p-3 min-w-[280px] max-w-[320px] w-full`}>
-                <div className="flex items-center justify-between mb-3">
+              <div key={column.id} className={`kanban-column rounded-md shadow-sm min-w-[280px] max-w-[320px] w-full flex flex-col`}>
+                <div className={`flex items-center justify-between p-3 ${column.bgColor} rounded-t-md`}>
                   <h3 className="font-medium">{column.title}</h3>
-                  <span className="text-sm bg-neutral-200 rounded-full px-2">{column.tasks.length}</span>
+                  <span className="text-sm bg-white bg-opacity-50 rounded-full px-2">{column.tasks.length}</span>
                 </div>
                 
-                <div id={`column-${column.id}`} className="space-y-3 min-h-[100px]">
+                <div id={`column-${column.id}`} className={`space-y-3 min-h-[100px] flex-1 p-3 ${column.bgColor} rounded-b-md`}>
                   {column.tasks.map(task => (
                     <Draggable key={task.id} id={task.id.toString()}>
                       <Card 
-                        className={`kanban-card shadow-sm border-l-4 ${task.borderColor} cursor-grab hover:shadow-md transition-shadow`}
+                        className={`kanban-card shadow-sm border-l-4 ${task.borderColor} cursor-grab hover:shadow-md transition-shadow bg-white`}
                         onClick={() => handleTaskClick(task)}
                       >
                         <CardContent className="p-3">
@@ -619,6 +628,29 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                       </Card>
                     </Draggable>
                   ))}
+                  
+                  <button 
+                    onClick={() => {
+                      setSelectedTask(null);
+                      taskForm.reset({
+                        title: "",
+                        description: "",
+                        status: column.id,
+                        priority: "medium",
+                        type: "",
+                        assigneeId: "",
+                        projectId: projectId.toString(),
+                        dueDate: "",
+                        startDate: "",
+                        endDate: ""
+                      });
+                      setIsTaskDialogOpen(true);
+                    }}
+                    className="w-full text-center py-2 px-3 bg-white bg-opacity-60 hover:bg-opacity-80 rounded-md text-neutral-600 text-sm flex items-center justify-center gap-1 mt-2"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                    Add new card
+                  </button>
                 </div>
               </div>
             ))}
@@ -729,9 +761,10 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="backlog">Backlog</SelectItem>
                           <SelectItem value="todo">To Do</SelectItem>
                           <SelectItem value="in_progress">In Progress</SelectItem>
-                          <SelectItem value="review">Review</SelectItem>
+                          <SelectItem value="review">Testing</SelectItem>
                           <SelectItem value="done">Done</SelectItem>
                         </SelectContent>
                       </Select>
