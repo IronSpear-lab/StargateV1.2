@@ -67,12 +67,7 @@ export function Sidebar({ className }: SidebarProps) {
     "-Vault": true,
     "-Vault-Files": true,
     "-Vault-Files-01- Organisation": true,
-    "-Vault-Files-01- Organisation-01- Arkitekt": true,
-    "-Vault-Files-01- Organisation-01- Arkitekt-1. Ritningar": true,
-    "-Vault-Files-01- Organisation-01- Arkitekt-2. DWG & IFC": true,
-    "-Vault-Files-01- Organisation-01- Arkitekt-3. Beskrivningar": true,
-    "-Vault-Files-01- Organisation-01- Arkitekt-4. Underlag": true,
-    "-Vault-Files-01- Organisation-01- Arkitekt-5. Egenkontroller": true
+    "-Vault-Files-01- Arkitekt": true
   });
 
   useEffect(() => {
@@ -193,73 +188,71 @@ export function Sidebar({ className }: SidebarProps) {
               active: false,
               indent: 2,
               icon: <FolderClosed className="w-4 h-4" />,
-              children: [
-                {
-                  href: "#",
-                  label: "01- Arkitekt",
-                  active: false,
-                  indent: 3,
-                  icon: <FolderClosed className="w-3 h-3" />,
-                  children: [
-                    {
-                      href: "#",
-                      label: "1. Ritningar",
-                      active: false,
-                      indent: 4,
-                      icon: <FolderClosed className="w-3 h-3" />,
-                      children: []
-                    },
-                    {
-                      href: "#",
-                      label: "2. DWG & IFC",
-                      active: false,
-                      indent: 4,
-                      icon: <FolderClosed className="w-3 h-3" />,
-                      children: []
-                    },
-                    {
-                      href: "#",
-                      label: "3. Beskrivningar",
-                      active: false,
-                      indent: 4,
-                      icon: <FolderClosed className="w-3 h-3" />,
-                      children: []
-                    },
-                    {
-                      href: "#",
-                      label: "4. Underlag",
-                      active: false,
-                      indent: 4,
-                      icon: <FolderClosed className="w-3 h-3" />,
-                      children: []
-                    },
-                    {
-                      href: "#",
-                      label: "5. Egenkontroller",
-                      active: false,
-                      indent: 4,
-                      icon: <FolderClosed className="w-3 h-3" />,
-                      children: []
-                    }
-                  ]
-                },
-                {
-                  href: "#",
-                  label: "02- Projektering",
-                  active: false,
-                  indent: 3,
-                  icon: <FolderClosed className="w-3 h-3" />,
-                  children: []
-                },
-                {
-                  href: "#",
-                  label: "00- Gemensam",
-                  active: false,
-                  indent: 3,
-                  icon: <FolderClosed className="w-3 h-3" />,
-                  children: []
-                }
-              ]
+              children: []
+            },
+            {
+              href: "#",
+              label: "02- Projektering",
+              active: false,
+              indent: 2,
+              icon: <FolderClosed className="w-4 h-4" />,
+              children: []
+            },
+            {
+              href: "#",
+              label: "00- Gemensam",
+              active: false,
+              indent: 2,
+              icon: <FolderClosed className="w-4 h-4" />,
+              children: []
+            },
+            {
+              href: "#",
+              label: "01- Arkitekt",
+              active: false,
+              indent: 2,
+              icon: <FolderClosed className="w-4 h-4" />,
+              children: []
+            },
+            {
+              href: "#",
+              label: "1. Ritningar",
+              active: false,
+              indent: 3,
+              icon: <FolderClosed className="w-3 h-3" />,
+              children: []
+            },
+            {
+              href: "#",
+              label: "2. DWG & IFC",
+              active: false,
+              indent: 3,
+              icon: <FolderClosed className="w-3 h-3" />,
+              children: []
+            },
+            {
+              href: "#",
+              label: "3. Beskrivningar",
+              active: false,
+              indent: 3,
+              icon: <FolderClosed className="w-3 h-3" />,
+              children: []
+            },
+            {
+              href: "#",
+              label: "4. Underlag",
+              active: false,
+              indent: 3,
+              icon: <FolderClosed className="w-3 h-3" />,
+              children: []
+            },
+            {
+              href: "#",
+              label: "5. Egenkontroller",
+              active: false,
+              indent: 3,
+              icon: <FolderClosed className="w-3 h-3" />,
+              children: []
             },
             {
               href: "#",
@@ -322,6 +315,7 @@ export function Sidebar({ className }: SidebarProps) {
       if (item.indent === 1) indentClass = 'pl-4';
       else if (item.indent === 2) indentClass = 'pl-8';
       else if (item.indent === 3) indentClass = 'pl-12';
+      else if (item.indent === 4) indentClass = 'pl-16';
       
       return (
         <div key={itemKey}>
