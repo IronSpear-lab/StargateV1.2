@@ -12,6 +12,7 @@ import {
   wikiPages,
   taskTimeEntries,
   userProjects,
+  calendarEvents,
   insertUserSchema,
   insertFileSchema,
   insertFolderSchema,
@@ -21,6 +22,7 @@ import {
   insertWikiPageSchema,
   insertTimeEntrySchema,
   insertUserProjectSchema,
+  insertCalendarEventSchema,
   User,
   File,
   Folder,
@@ -29,7 +31,9 @@ import {
   Project,
   WikiPage,
   TimeEntry,
-  UserProject
+  UserProject,
+  CalendarEvent,
+  InsertCalendarEvent
 } from "@shared/schema";
 import { eq, and, or, isNull } from "drizzle-orm";
 

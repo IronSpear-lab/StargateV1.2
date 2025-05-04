@@ -120,6 +120,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   uploadedFiles: many(files),
   createdWikiPages: many(wikiPages, { relationName: 'createdWikiPages' }),
   updatedWikiPages: many(wikiPages, { relationName: 'updatedWikiPages' }),
+  calendarEvents: many(calendarEvents),
 }));
 
 export const projectsRelations = relations(projects, ({ one, many }) => ({
@@ -132,6 +133,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   files: many(files),
   tasks: many(tasks),
   wikiPages: many(wikiPages),
+  calendarEvents: many(calendarEvents),
 }));
 
 export const userProjectsRelations = relations(userProjects, ({ one }) => ({
@@ -287,3 +289,38 @@ export type InsertWikiPage = z.infer<typeof insertWikiPageSchema>;
 
 export type UserProject = typeof userProjects.$inferSelect;
 export type InsertUserProject = z.infer<typeof insertUserProjectSchema>;
+
+// Calendar events
+export const calendarEventTypeEnum = pgEnum('calendar_event_type', ['meeting', 'task', 'reminder', 'milestone']);
+export const calendarEventStatusEnum = pgEnum('calendar_event_status', ['scheduled', 'in_progress', 'completed', 'canceled']);
+
+export const calendarEvents = pgTable("calendar_events", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  start: timestamp("start").notNull(),
+  end: timestamp("end").notNull(),
+  type: calendarEventTypeEnum("type").notNull(),
+  status: calendarEventStatusEnum("status").default("scheduled"),
+  allDay: boolean("all_day").default(false),
+  location: text("location"),
+  projectId: integer("project_id").references(() => projects.id),
+  createdBy: integer("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+
+export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
+  project: one(projects, {
+    fields: [calendarEvents.projectId],
+    references: [projects.id]
+  }),
+  creator: one(users, {
+    fields: [calendarEvents.createdBy],
+    references: [users.id]
+  })
+}));
+
+export const insertCalendarEventSchema = createInsertSchema(calendarEvents);
+export type CalendarEvent = typeof calendarEvents.$inferSelect;
+export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
