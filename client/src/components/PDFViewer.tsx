@@ -1,11 +1,59 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Button } from "@/components/ui/button";
-import { X, ChevronLeft, ChevronRight, Download, Maximize, Minimize, ZoomIn, ZoomOut, Rotate3D } from "lucide-react";
+import { 
+  X, 
+  ChevronLeft, 
+  ChevronRight, 
+  Download, 
+  Maximize, 
+  Minimize, 
+  ZoomIn, 
+  ZoomOut, 
+  Rotate3D, 
+  MessageSquare, 
+  Check, 
+  AlertCircle 
+} from "lucide-react";
 import { Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAuth } from "@/hooks/use-auth";
 
 // Konfigurera worker för react-pdf - använder CDN för att undvika byggproblem
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+
+// Typer för markeringar och kommentarer
+export interface PDFAnnotation {
+  id: string;
+  rect: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    pageNumber: number;
+  };
+  color: string;
+  comment: string;
+  status: 'open' | 'resolved' | 'action_required' | 'reviewing';
+  createdBy: string;
+  createdAt: string;
+}
+
+// Färgkodning baserat på status
+const statusColors = {
+  open: '#727cf5',        // Blå
+  resolved: '#0acf97',    // Grön
+  action_required: '#fa5c7c',  // Röd
+  reviewing: '#ffbc00'    // Gul
+};
 
 interface PDFViewerProps {
   isOpen: boolean;
@@ -22,12 +70,26 @@ interface PDFViewerProps {
 }
 
 export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewerProps) {
+  const { user } = useAuth();
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [pdfUrl, setPdfUrl] = useState<string | undefined>(fileUrl);
   const [scale, setScale] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  // Markerings- och kommentarsfunktionalitet
+  const [isMarking, setIsMarking] = useState(false);
+  const [markingStart, setMarkingStart] = useState<{ x: number; y: number } | null>(null);
+  const [markingEnd, setMarkingEnd] = useState<{ x: number; y: number } | null>(null);
+  const [annotations, setAnnotations] = useState<PDFAnnotation[]>([]);
+  const [activeAnnotation, setActiveAnnotation] = useState<PDFAnnotation | null>(null);
+  const [newComment, setNewComment] = useState('');
+  const [isAddingComment, setIsAddingComment] = useState(false);
+  const [tempAnnotation, setTempAnnotation] = useState<Partial<PDFAnnotation> | null>(null);
+  
+  const pdfContainerRef = useRef<HTMLDivElement>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
 
   // Om en File-objekt skickas in, skapa en URL för den
   useEffect(() => {
@@ -39,6 +101,33 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       setPdfUrl(fileUrl);
     }
   }, [file, fileUrl]);
+  
+  // Ladda dummy-annotationer för demo (skulle ersättas med API-anrop i en verklig implementation)
+  useEffect(() => {
+    // Simulera inläsning av annotationer från API
+    const dummyAnnotations: PDFAnnotation[] = [
+      {
+        id: '1',
+        rect: { x: 100, y: 150, width: 80, height: 60, pageNumber: 1 },
+        color: statusColors.action_required,
+        comment: 'Denna del behöver justeras för att matcha ritningsstandarder',
+        status: 'action_required',
+        createdBy: 'Anna Svensson',
+        createdAt: '2025-05-01T10:30:00Z'
+      },
+      {
+        id: '2',
+        rect: { x: 250, y: 300, width: 100, height: 70, pageNumber: 1 },
+        color: statusColors.resolved,
+        comment: 'Mått korrigerade enligt specifikation',
+        status: 'resolved',
+        createdBy: 'Erik Johansson',
+        createdAt: '2025-05-02T14:15:00Z'
+      }
+    ];
+    
+    setAnnotations(dummyAnnotations);
+  }, []);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -67,6 +156,127 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     setIsFullscreen(prev => !prev);
   };
 
+  // Hanterar start av markering
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!isMarking) return;
+    
+    // Hämta position relativt till PDF-sidan
+    if (pageRef.current) {
+      const rect = pageRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      setMarkingStart({ x, y });
+      setMarkingEnd({ x, y }); // Initialisera slutposition också
+    }
+  };
+  
+  // Uppdaterar markeringens storlek när musen flyttas
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isMarking || !markingStart) return;
+    
+    if (pageRef.current) {
+      const rect = pageRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      setMarkingEnd({ x, y });
+    }
+  };
+  
+  // Avslutar markeringen och visar dialogrutan för att lägga till kommentar
+  const handleMouseUp = () => {
+    if (!isMarking || !markingStart || !markingEnd) return;
+    
+    // Om markeringen är för liten, ignorera den
+    const width = Math.abs(markingEnd.x - markingStart.x);
+    const height = Math.abs(markingEnd.y - markingStart.y);
+    
+    if (width < 10 || height < 10) {
+      setMarkingStart(null);
+      setMarkingEnd(null);
+      return;
+    }
+    
+    // Beräkna rektangeln för markering
+    const rect = {
+      x: Math.min(markingStart.x, markingEnd.x),
+      y: Math.min(markingStart.y, markingEnd.y),
+      width: width,
+      height: height,
+      pageNumber: pageNumber
+    };
+    
+    // Skapa en temporär annotation som vi sedan kan spara
+    setTempAnnotation({
+      rect,
+      color: statusColors.open,
+      status: 'open'
+    });
+    
+    setIsAddingComment(true);
+    setIsMarking(false);
+    setMarkingStart(null);
+    setMarkingEnd(null);
+  };
+  
+  // Spara en ny kommentar/markering
+  const saveComment = () => {
+    if (!tempAnnotation || !user) return;
+    
+    const newAnnotation: PDFAnnotation = {
+      id: `annotation_${Date.now()}`,
+      rect: tempAnnotation.rect as PDFAnnotation['rect'],
+      color: tempAnnotation.color || statusColors.open,
+      comment: newComment,
+      status: tempAnnotation.status as PDFAnnotation['status'],
+      createdBy: user.username || 'Anonymous',
+      createdAt: new Date().toISOString()
+    };
+    
+    setAnnotations([...annotations, newAnnotation]);
+    setIsAddingComment(false);
+    setTempAnnotation(null);
+    setNewComment('');
+  };
+  
+  // Avbryt markering eller kommentarsskapande
+  const cancelMarkingOrComment = () => {
+    setIsMarking(false);
+    setIsAddingComment(false);
+    setMarkingStart(null);
+    setMarkingEnd(null);
+    setTempAnnotation(null);
+    setNewComment('');
+  };
+  
+  // Zooma in till en specifik annotation
+  const zoomToAnnotation = (annotation: PDFAnnotation) => {
+    if (annotation.rect.pageNumber !== pageNumber) {
+      setPageNumber(annotation.rect.pageNumber);
+    }
+    
+    setActiveAnnotation(annotation);
+    
+    // Sätt en större skala för bättre zoom
+    setScale(1.5);
+    
+    // Skulle även behöva scroll till positionen, men detta kräver ytterligare implementation
+  };
+  
+  // Uppdatera status för en kommentar
+  const updateAnnotationStatus = (annotationId: string, newStatus: PDFAnnotation['status']) => {
+    const updatedAnnotations = annotations.map(ann => 
+      ann.id === annotationId 
+        ? { ...ann, status: newStatus, color: statusColors[newStatus] } 
+        : ann
+    );
+    
+    setAnnotations(updatedAnnotations);
+    
+    // Här skulle vi göra ett API-anrop för att uppdatera i databasen
+  };
+
   const handleDownload = () => {
     if (pdfUrl) {
       const link = document.createElement('a');
@@ -78,149 +288,352 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     }
   };
 
+  const handleToggleMarkingMode = () => {
+    setIsMarking(prev => !prev);
+    if (activeAnnotation) setActiveAnnotation(null);
+  };
+
   if (!isOpen) return null;
+
+  // Beräkna rektangel för temporär markering (under pågående markering)
+  const getMarkingRectStyles = () => {
+    if (!markingStart || !markingEnd) return {};
+    
+    const left = Math.min(markingStart.x, markingEnd.x);
+    const top = Math.min(markingStart.y, markingEnd.y);
+    const width = Math.abs(markingEnd.x - markingStart.x);
+    const height = Math.abs(markingEnd.y - markingStart.y);
+    
+    return {
+      position: 'absolute' as const,
+      left: `${left}px`,
+      top: `${top}px`,
+      width: `${width}px`,
+      height: `${height}px`,
+      background: 'rgba(114, 124, 245, 0.3)',
+      border: '2px dashed #727cf5',
+      pointerEvents: 'none' as const
+    };
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div 
         className="absolute inset-0 bg-black bg-opacity-70" 
-        onClick={onClose}
+        onClick={isMarking || isAddingComment ? cancelMarkingOrComment : onClose}
       />
       
       <div 
-        className={`relative bg-white rounded-lg shadow-2xl flex flex-col overflow-hidden
-                   ${isFullscreen ? 'w-full h-full rounded-none' : 'w-[90%] max-w-5xl h-[90%]'}`}
+        className={`relative bg-white rounded-lg shadow-2xl flex ${isFullscreen ? 'w-full h-full rounded-none' : 'w-[90%] max-w-6xl h-[90%]'}`}
       >
-        <div className="flex items-center justify-between p-4 border-b bg-gray-50">
-          <div className="flex items-center">
-            <h2 className="text-xl font-semibold mr-4">{fileData?.filename || "PDF Document"}</h2>
-            {fileData && (
-              <div className="text-sm text-gray-500">
-                Version: {fileData.version} | Uppladdad: {fileData.uploaded} | Av: {fileData.uploadedBy}
+        {/* Vänster sida - PDF-visare */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+            <div className="flex items-center">
+              <h2 className="text-xl font-semibold mr-4">{fileData?.filename || "PDF Document"}</h2>
+              {fileData && (
+                <div className="text-sm text-gray-500">
+                  Version: {fileData.version} | Uppladdad: {fileData.uploaded} | Av: {fileData.uploadedBy}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center space-x-3">
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={zoomOut}
+                className="h-8 w-8"
+              >
+                <ZoomOut size={16} />
+              </Button>
+              <div className="w-12 text-center text-sm">
+                {Math.round(scale * 100)}%
               </div>
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={zoomIn}
+                className="h-8 w-8"
+              >
+                <ZoomIn size={16} />
+              </Button>
+              <Button 
+                variant={isMarking ? "default" : "outline"}
+                size="icon"
+                onClick={handleToggleMarkingMode}
+                className="h-8 w-8"
+                title={isMarking ? "Avsluta markering" : "Skapa markering"}
+              >
+                <MessageSquare size={16} />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={rotate}
+                className="h-8 w-8"
+              >
+                <Rotate3D size={16} />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={handleDownload}
+                className="h-8 w-8"
+              >
+                <Download size={16} />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={toggleFullscreen}
+                className="h-8 w-8"
+              >
+                {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+              </Button>
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={onClose}
+                className="h-8 w-8"
+              >
+                <X size={16} />
+              </Button>
+            </div>
+          </div>
+          
+          <div 
+            ref={pdfContainerRef}
+            className="flex-1 overflow-auto bg-gray-200 flex items-center justify-center relative"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            style={{ cursor: isMarking ? 'crosshair' : 'default' }}
+          >
+            {pdfUrl ? (
+              <div className="relative" ref={pageRef}>
+                <Document
+                  file={pdfUrl}
+                  onLoadSuccess={onDocumentLoadSuccess}
+                  loading={
+                    <div className="flex flex-col items-center justify-center">
+                      <Loader2 className="h-10 w-10 animate-spin text-primary-600 mb-4" />
+                      <p className="text-gray-600">Laddar dokument...</p>
+                    </div>
+                  }
+                  error={
+                    <div className="flex flex-col items-center justify-center">
+                      <p className="text-red-500 mb-2">Kunde inte ladda dokumentet</p>
+                      <p className="text-gray-600 text-sm">Kontrollera att det är en giltig PDF-fil</p>
+                    </div>
+                  }
+                  className="pdfDocument"
+                >
+                  <Page
+                    pageNumber={pageNumber}
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
+                    scale={scale}
+                    rotate={rotation}
+                    loading={
+                      <div className="h-[500px] w-[400px] bg-gray-100 flex items-center justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+                      </div>
+                    }
+                    className="pdfPage shadow-lg relative"
+                  />
+                  
+                  {/* Visa befintliga markeringar */}
+                  {annotations
+                    .filter(ann => ann.rect.pageNumber === pageNumber)
+                    .map(annotation => (
+                      <div
+                        key={annotation.id}
+                        className={`absolute border-2 transition-all duration-200 ${activeAnnotation?.id === annotation.id ? 'z-10 ring-2 ring-blue-400' : 'z-0'}`}
+                        style={{
+                          left: `${annotation.rect.x}px`,
+                          top: `${annotation.rect.y}px`,
+                          width: `${annotation.rect.width}px`,
+                          height: `${annotation.rect.height}px`,
+                          backgroundColor: `${annotation.color}33`,
+                          borderColor: annotation.color,
+                          boxShadow: activeAnnotation?.id === annotation.id ? '0 0 0 2px rgba(59, 130, 246, 0.5)' : 'none'
+                        }}
+                        onClick={() => setActiveAnnotation(annotation)}
+                      />
+                    ))}
+                  
+                  {/* Visa temporär markering under pågående markering */}
+                  {markingStart && markingEnd && (
+                    <div style={getMarkingRectStyles()} />
+                  )}
+                </Document>
+              </div>
+            ) : (
+              <div className="text-gray-500">Ingen PDF vald</div>
             )}
           </div>
-          <div className="flex items-center space-x-3">
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={zoomOut}
-              className="h-8 w-8"
-            >
-              <ZoomOut size={16} />
-            </Button>
-            <div className="w-12 text-center text-sm">
-              {Math.round(scale * 100)}%
+          
+          {numPages && numPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50">
+              <Button
+                variant="outline"
+                onClick={previousPage}
+                disabled={pageNumber <= 1}
+                className="h-8"
+              >
+                <ChevronLeft size={16} className="mr-1" />
+                Föregående
+              </Button>
+              
+              <div className="text-sm text-gray-600">
+                Sida {pageNumber} av {numPages}
+              </div>
+              
+              <Button
+                variant="outline"
+                onClick={nextPage}
+                disabled={Boolean(numPages && pageNumber >= numPages)}
+                className="h-8"
+              >
+                Nästa
+                <ChevronRight size={16} className="ml-1" />
+              </Button>
             </div>
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={zoomIn}
-              className="h-8 w-8"
-            >
-              <ZoomIn size={16} />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={rotate}
-              className="h-8 w-8"
-            >
-              <Rotate3D size={16} />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={handleDownload}
-              className="h-8 w-8"
-            >
-              <Download size={16} />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={toggleFullscreen}
-              className="h-8 w-8"
-            >
-              {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
-            </Button>
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={onClose}
-              className="h-8 w-8"
-            >
-              <X size={16} />
-            </Button>
-          </div>
-        </div>
-        
-        <div className="flex-1 overflow-auto bg-gray-200 flex items-center justify-center">
-          {pdfUrl ? (
-            <Document
-              file={pdfUrl}
-              onLoadSuccess={onDocumentLoadSuccess}
-              loading={
-                <div className="flex flex-col items-center justify-center">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary-600 mb-4" />
-                  <p className="text-gray-600">Laddar dokument...</p>
-                </div>
-              }
-              error={
-                <div className="flex flex-col items-center justify-center">
-                  <p className="text-red-500 mb-2">Kunde inte ladda dokumentet</p>
-                  <p className="text-gray-600 text-sm">Kontrollera att det är en giltig PDF-fil</p>
-                </div>
-              }
-              className="pdfDocument"
-            >
-              <Page
-                pageNumber={pageNumber}
-                renderTextLayer={false}
-                renderAnnotationLayer={false}
-                scale={scale}
-                rotate={rotation}
-                loading={
-                  <div className="h-[500px] w-[400px] bg-gray-100 flex items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-                  </div>
-                }
-                className="pdfPage shadow-lg"
-              />
-            </Document>
-          ) : (
-            <div className="text-gray-500">Ingen PDF vald</div>
           )}
         </div>
         
-        {numPages && numPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50">
-            <Button
-              variant="outline"
-              onClick={previousPage}
-              disabled={pageNumber <= 1}
-              className="h-8"
-            >
-              <ChevronLeft size={16} className="mr-1" />
-              Föregående
-            </Button>
+        {/* Höger sida - Kommentarspanel */}
+        <div className="w-80 border-l overflow-auto flex flex-col h-full">
+          <div className="p-4 border-b bg-gray-50">
+            <h3 className="font-medium text-lg">Kommentarer</h3>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto">
+            {annotations.length === 0 ? (
+              <div className="p-4 text-gray-500 text-center">
+                <p>Inga kommentarer ännu</p>
+                <p className="text-sm mt-2">Klicka på markeringsknappen för att lägga till en kommentar</p>
+              </div>
+            ) : (
+              <div className="space-y-4 p-4">
+                {annotations.map(annotation => (
+                  <div 
+                    key={annotation.id} 
+                    className={`bg-white border rounded-lg p-3 shadow-sm transition-all duration-200 ${activeAnnotation?.id === annotation.id ? 'ring-2 ring-blue-400' : ''}`}
+                    onClick={() => zoomToAnnotation(annotation)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div 
+                        className="w-3 h-3 rounded-full mr-2" 
+                        style={{ backgroundColor: annotation.color }} 
+                      />
+                      <span className="text-sm font-medium flex-1">
+                        {annotation.rect.pageNumber !== pageNumber && `Sida ${annotation.rect.pageNumber}: `}
+                        {annotation.status === 'open' && 'Öppen'}
+                        {annotation.status === 'resolved' && 'Löst'}
+                        {annotation.status === 'action_required' && 'Kräver åtgärd'}
+                        {annotation.status === 'reviewing' && 'Under granskning'}
+                      </span>
+                      <div className="flex space-x-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateAnnotationStatus(annotation.id, 'resolved');
+                          }}
+                          title="Markera som löst"
+                        >
+                          <Check size={14} className="text-green-600" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateAnnotationStatus(annotation.id, 'action_required');
+                          }}
+                          title="Markera som kräver åtgärd"
+                        >
+                          <AlertCircle size={14} className="text-red-600" />
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-700">{annotation.comment}</p>
+                    <div className="flex justify-between mt-2 text-xs text-gray-500">
+                      <span>{annotation.createdBy}</span>
+                      <span>{new Date(annotation.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {/* Dialog för att lägga till ny kommentar */}
+      {isAddingComment && tempAnnotation && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={cancelMarkingOrComment} />
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-medium mb-4">Lägg till kommentar</h3>
             
-            <div className="text-sm text-gray-600">
-              Sida {pageNumber} av {numPages}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Status</label>
+                <Select
+                  defaultValue="open"
+                  onValueChange={(value: any) => {
+                    setTempAnnotation({
+                      ...tempAnnotation,
+                      status: value,
+                      color: statusColors[value as keyof typeof statusColors]
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Välj status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Öppen</SelectItem>
+                    <SelectItem value="reviewing">Under granskning</SelectItem>
+                    <SelectItem value="action_required">Kräver åtgärd</SelectItem>
+                    <SelectItem value="resolved">Löst</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Kommentar</label>
+                <Textarea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Skriv din kommentar här..."
+                  rows={4}
+                />
+              </div>
             </div>
             
-            <Button
-              variant="outline"
-              onClick={nextPage}
-              disabled={Boolean(numPages && pageNumber >= numPages)}
-              className="h-8"
-            >
-              Nästa
-              <ChevronRight size={16} className="ml-1" />
-            </Button>
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button
+                variant="outline"
+                onClick={cancelMarkingOrComment}
+              >
+                Avbryt
+              </Button>
+              <Button
+                onClick={saveComment}
+                disabled={!newComment.trim()}
+              >
+                Spara
+              </Button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
