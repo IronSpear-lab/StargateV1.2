@@ -125,17 +125,34 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     }
   }, [file, fileUrl]);
   
-  // I en verklig implementation skulle vi hämta annotationer från API baserat på fil-ID
+  // Hämta sparade annotationer från localStorage när en ny fil öppnas
   useEffect(() => {
-    // Här skulle vi hämta annotationer från API
-    // Exempel: fetchAnnotations(fileId)
-    
-    // För nu börjar vi med en tom lista - användaren får lägga till egna annotationer
-    setAnnotations([]);
-    
-    // Rensa också eventuella tidigare aktiva annotationer när en ny fil öppnas
+    // Rensa eventuella tidigare aktiva annotationer
     setActiveAnnotation(null);
-  }, [fileUrl, file]);
+    
+    // Försök hämta annotationer från localStorage för denna fil
+    if (fileData?.fileId) {
+      try {
+        const annotationsKey = `annotations_${fileData.fileId}`;
+        const savedAnnotations = localStorage.getItem(annotationsKey);
+        
+        if (savedAnnotations) {
+          const parsedAnnotations = JSON.parse(savedAnnotations);
+          console.log(`Loaded ${parsedAnnotations.length} annotations from localStorage for file ID: ${fileData.fileId}`);
+          setAnnotations(parsedAnnotations);
+        } else {
+          // Om inga sparade annotationer finns, börja med tom lista
+          setAnnotations([]);
+        }
+      } catch (error) {
+        console.error("Failed to load annotations from localStorage", error);
+        setAnnotations([]);
+      }
+    } else {
+      // Om ingen fil-ID, börja med tom lista
+      setAnnotations([]);
+    }
+  }, [fileData?.fileId, file, fileUrl]);
   
   // Hämta tillgängliga versioner när en fil öppnas
   useEffect(() => {
@@ -307,18 +324,67 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     setNewComment('');
   };
   
-  // Zooma in till en specifik annotation
+  // Zooma in till en specifik annotation med smidig övergång
   const zoomToAnnotation = (annotation: PDFAnnotation) => {
-    if (annotation.rect.pageNumber !== pageNumber) {
-      setPageNumber(annotation.rect.pageNumber);
-    }
-    
     setActiveAnnotation(annotation);
     
-    // Sätt en större skala för bättre zoom
-    setScale(1.5);
-    
-    // Skulle även behöva scroll till positionen, men detta kräver ytterligare implementation
+    // Om på annan sida, byt sida först
+    if (annotation.rect.pageNumber !== pageNumber) {
+      setPageNumber(annotation.rect.pageNumber);
+      
+      // När sidbytet är klart, zooma in och scrolla
+      setTimeout(() => {
+        // Smidig zoomeffekt
+        setScale(1.8); // Lite högre zoom för bättre visning
+        
+        // Scrolla till annotationen med fördröjning så PDF hinner renderas
+        setTimeout(() => {
+          if (pdfContainerRef.current && pageRef.current) {
+            const annotationElement = document.getElementById(`annotation-${annotation.id}`);
+            if (annotationElement) {
+              // Beräkna centrum för annotationen
+              const rect = annotationElement.getBoundingClientRect();
+              const pageRect = pageRef.current.getBoundingClientRect();
+              
+              // Centrera vyn på annotationen
+              const scrollX = rect.left + rect.width/2 - pageRect.left - pdfContainerRef.current.clientWidth/2;
+              const scrollY = rect.top + rect.height/2 - pageRect.top - pdfContainerRef.current.clientHeight/2;
+              
+              // Animeraad scrollning
+              pdfContainerRef.current.scrollTo({
+                left: pdfContainerRef.current.scrollLeft + scrollX,
+                top: pdfContainerRef.current.scrollTop + scrollY,
+                behavior: 'smooth'
+              });
+            }
+          }
+        }, 100);
+      }, 300);
+    } else {
+      // Redan på rätt sida, zooma direkt
+      setScale(1.8);
+      
+      // Scrolla till annotationen
+      setTimeout(() => {
+        if (pdfContainerRef.current && pageRef.current) {
+          const annotationElement = document.getElementById(`annotation-${annotation.id}`);
+          if (annotationElement) {
+            // Centrera vyn på annotationen
+            const rect = annotationElement.getBoundingClientRect();
+            const pageRect = pageRef.current.getBoundingClientRect();
+            
+            const scrollX = rect.left + rect.width/2 - pageRect.left - pdfContainerRef.current.clientWidth/2;
+            const scrollY = rect.top + rect.height/2 - pageRect.top - pdfContainerRef.current.clientHeight/2;
+            
+            pdfContainerRef.current.scrollTo({
+              left: pdfContainerRef.current.scrollLeft + scrollX,
+              top: pdfContainerRef.current.scrollTop + scrollY,
+              behavior: 'smooth'
+            });
+          }
+        }
+      }, 100);
+    }
   };
   
   // Uppdatera status för en kommentar
@@ -338,25 +404,14 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     }
   };
   
-  // Hämta kommentarer från localStorage för denna fil
-  useEffect(() => {
-    if (!fileData?.fileId) return;
-    
-    try {
-      const savedAnnotations = localStorage.getItem(`annotations_${fileData.fileId}`);
-      if (savedAnnotations) {
-        setAnnotations(JSON.parse(savedAnnotations));
-      }
-    } catch (error) {
-      console.error("Failed to load annotations from localStorage", error);
-    }
-  }, [fileData?.fileId]);
-  
   // Spara kommentarer till localStorage när de uppdateras
   useEffect(() => {
-    if (!fileData?.fileId || annotations.length === 0) return;
+    if (!fileData?.fileId || !annotations) return;
     
-    localStorage.setItem(`annotations_${fileData.fileId}`, JSON.stringify(annotations));
+    // Spara även om listan är tom (för att rensa tidigare annotationer)
+    const annotationsKey = `annotations_${fileData.fileId}`;
+    localStorage.setItem(annotationsKey, JSON.stringify(annotations));
+    console.log(`Saved ${annotations.length} annotations to localStorage for file ID: ${fileData.fileId}`);
   }, [annotations, fileData?.fileId]);
 
   // Ladda upp en ny version av filen
@@ -482,51 +537,63 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div 
-        className="absolute inset-0 bg-black bg-opacity-70" 
+        className="absolute inset-0 bg-black bg-opacity-75 backdrop-blur-sm" 
         onClick={isMarking || isAddingComment || showVersionsPanel ? cancelMarkingOrComment : onClose}
       />
       
       <div 
-        className={`relative bg-white rounded-lg shadow-2xl flex ${isFullscreen ? 'w-full h-full rounded-none' : 'w-[90%] max-w-6xl h-[90%]'}`}
+        className={`relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden flex border border-gray-200 dark:border-slate-700 transition-all duration-300 ${
+          isFullscreen 
+            ? 'w-full h-full rounded-none' 
+            : 'w-[92%] max-w-6xl h-[92%] animate-in fade-in-50 zoom-in-95 duration-200'
+        }`}
+        style={{
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+        }}
       >
         {/* Vänster sida - PDF-visare */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex flex-col border-b bg-gray-50">
+          <div className="flex flex-col border-b bg-gradient-to-r from-gray-50 to-white dark:from-slate-900 dark:to-slate-800 shadow-sm">
             {/* Övre delen med filinfo och knappar */}
             <div className="flex items-center justify-between p-4">
               <div className="flex items-center">
-                <h2 className="text-xl font-semibold mr-4">{fileData?.filename || "PDF Document"}</h2>
+                <h2 className="text-xl font-semibold mr-4 text-gray-800 dark:text-white">
+                  {fileData?.filename || "PDF Document"}
+                </h2>
                 {activeVersion && (
-                  <div className="text-sm text-gray-500">
-                    Version: {activeVersion.versionNumber} | Uppladdad: {activeVersion.uploaded} | Av: {activeVersion.uploadedBy}
+                  <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-slate-800 px-3 py-1 rounded-full">
+                    v{activeVersion.versionNumber} | {activeVersion.uploadedBy} | {new Date(activeVersion.uploaded).toLocaleDateString()}
                   </div>
                 )}
               </div>
-              <div className="flex items-center space-x-3">
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  onClick={zoomOut}
-                  className="h-8 w-8"
-                >
-                  <ZoomOut size={16} />
-                </Button>
-                <div className="w-12 text-center text-sm">
-                  {Math.round(scale * 100)}%
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center bg-gray-100 dark:bg-slate-800 rounded-full p-1 mr-1">
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={zoomOut}
+                    className="h-7 w-7 rounded-full hover:bg-white dark:hover:bg-slate-700"
+                  >
+                    <ZoomOut size={15} />
+                  </Button>
+                  <div className="w-12 text-center text-sm font-medium">
+                    {Math.round(scale * 100)}%
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={zoomIn}
+                    className="h-7 w-7 rounded-full hover:bg-white dark:hover:bg-slate-700"
+                  >
+                    <ZoomIn size={15} />
+                  </Button>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  onClick={zoomIn}
-                  className="h-8 w-8"
-                >
-                  <ZoomIn size={16} />
-                </Button>
+                
                 <Button 
                   variant={isMarking ? "default" : "outline"}
                   size="icon"
                   onClick={handleToggleMarkingMode}
-                  className="h-8 w-8"
+                  className={`h-8 w-8 rounded-full ${isMarking ? "bg-primary-500 text-white" : ""}`}
                   title={isMarking ? "Avsluta markering" : "Skapa markering"}
                 >
                   <MessageSquare size={16} />
@@ -535,7 +602,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                   variant="outline" 
                   size="icon"
                   onClick={rotate}
-                  className="h-8 w-8"
+                  className="h-8 w-8 rounded-full"
                 >
                   <Rotate3D size={16} />
                 </Button>
@@ -543,7 +610,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                   variant="outline" 
                   size="icon"
                   onClick={handleDownload}
-                  className="h-8 w-8"
+                  className="h-8 w-8 rounded-full"
                 >
                   <Download size={16} />
                 </Button>
@@ -551,7 +618,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                   variant="outline" 
                   size="icon"
                   onClick={toggleFullscreen}
-                  className="h-8 w-8"
+                  className="h-8 w-8 rounded-full"
                 >
                   {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
                 </Button>
@@ -559,7 +626,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                   variant="outline" 
                   size="icon"
                   onClick={onClose}
-                  className="h-8 w-8"
+                  className="h-8 w-8 rounded-full hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors"
                 >
                   <X size={16} />
                 </Button>
@@ -567,7 +634,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             </div>
             
             {/* Versionsknappar */}
-            <div className="flex items-center justify-between px-4 pb-2">
+            <div className="flex items-center justify-between px-4 pb-3 pt-1">
               <div className="flex space-x-2">
                 {fileVersions.length > 0 && (
                   <>
@@ -575,27 +642,37 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                       variant={activeVersionId === fileVersions[fileVersions.length - 1]?.id ? "default" : "outline"}
                       size="sm"
                       onClick={() => handleChangeVersion(fileVersions[fileVersions.length - 1]?.id)}
-                      className="rounded-md py-1 h-8"
+                      className="rounded-full py-1 h-7 px-3"
                     >
-                      Nuvarande version
+                      <span className="flex items-center">
+                        Nuvarande version
+                        {activeVersionId === fileVersions[fileVersions.length - 1]?.id && (
+                          <Check size={14} className="ml-1" />
+                        )}
+                      </span>
                     </Button>
                     {fileVersions.length > 1 && (
                       <Button
                         variant={activeVersionId === fileVersions[0]?.id ? "destructive" : "outline"}
                         size="sm"
                         onClick={() => handleChangeVersion(fileVersions[0]?.id)}
-                        className="rounded-md py-1 h-8"
+                        className="rounded-full py-1 h-7 px-3"
                       >
-                        Ursprunglig version
+                        <span className="flex items-center">
+                          Ursprunglig version
+                          {activeVersionId === fileVersions[0]?.id && (
+                            <Check size={14} className="ml-1" />
+                          )}
+                        </span>
                       </Button>
                     )}
                   </>
                 )}
                 <Button
-                  variant="outline"
+                  variant="default"
                   size="sm"
                   onClick={handleUploadNewVersion}
-                  className="rounded-md py-1 h-8"
+                  className="rounded-full py-1 h-7 px-3 bg-blue-500 hover:bg-blue-600 text-white"
                 >
                   <Upload size={14} className="mr-1" />
                   Ladda upp ny version
@@ -607,7 +684,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                   variant="secondary"
                   size="sm"
                   onClick={toggleVersionPanel}
-                  className="rounded-md py-1 h-8"
+                  className="rounded-full py-1 h-7 px-3"
                 >
                   Visa versionshistorik
                 </Button>
@@ -662,7 +739,12 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                     .map(annotation => (
                       <div
                         key={annotation.id}
-                        className={`absolute border-2 transition-all duration-200 ${activeAnnotation?.id === annotation.id ? 'z-10 ring-2 ring-blue-400' : 'z-0'}`}
+                        id={`annotation-${annotation.id}`}
+                        className={`absolute border-2 transition-all duration-300 ${
+                          activeAnnotation?.id === annotation.id 
+                            ? 'z-10 ring-4 ring-blue-400 scale-105 shadow-lg' 
+                            : 'z-0 hover:scale-102 hover:shadow-md'
+                        }`}
                         style={{
                           left: `${annotation.rect.x}px`,
                           top: `${annotation.rect.y}px`,
@@ -670,9 +752,12 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                           height: `${annotation.rect.height}px`,
                           backgroundColor: `${annotation.color}33`,
                           borderColor: annotation.color,
-                          boxShadow: activeAnnotation?.id === annotation.id ? '0 0 0 2px rgba(59, 130, 246, 0.5)' : 'none'
+                          boxShadow: activeAnnotation?.id === annotation.id ? '0 0 15px rgba(59, 130, 246, 0.6)' : 'none',
+                          transform: activeAnnotation?.id === annotation.id ? 'scale(1.05)' : 'scale(1)',
+                          transformOrigin: 'center',
+                          cursor: 'pointer'
                         }}
-                        onClick={() => setActiveAnnotation(annotation)}
+                        onClick={() => zoomToAnnotation(annotation)}
                       />
                     ))}
                   
@@ -717,24 +802,27 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         </div>
         
         {/* Höger sida - innehåller antingen kommentarpanelen eller versionspanelen */}
-        <div className="w-80 border-l overflow-hidden flex flex-col h-full">
+        <div className="w-80 border-l border-gray-200 dark:border-slate-700 overflow-hidden flex flex-col h-full bg-gray-50 dark:bg-slate-900">
           {showVersionsPanel ? (
             <>
               {/* Versionspanel */}
-              <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-                <h3 className="font-medium text-lg">Versionshistorik</h3>
+              <div className="p-4 border-b border-gray-200 dark:border-slate-700 bg-gradient-to-r from-gray-50 to-white dark:from-slate-900 dark:to-slate-800 flex justify-between items-center">
+                <h3 className="font-medium text-lg text-gray-800 dark:text-white flex items-center">
+                  <FileText size={18} className="mr-2 text-blue-500" />
+                  Versionshistorik
+                </h3>
                 <Button 
                   variant="ghost"
                   size="sm"
                   onClick={toggleVersionPanel}
-                  className="text-gray-500"
+                  className="text-gray-500 h-7 px-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full"
                 >
                   <X size={16} className="mr-1" />
                   Stäng
                 </Button>
               </div>
               
-              <div className="flex-1 overflow-y-auto p-4">
+              <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white dark:from-slate-900 dark:to-slate-800">
                 <div className="space-y-4">
                   {fileVersions.map((version, index) => {
                     const isLatest = index === fileVersions.length - 1;
@@ -743,21 +831,21 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                     return (
                       <div 
                         key={version.id}
-                        className={`border rounded-lg p-4 transition-all ${
+                        className={`border rounded-xl p-4 transition-all transform ${
                           version.id === activeVersionId 
-                            ? 'bg-blue-50 border-blue-300 shadow-sm' 
-                            : 'bg-white hover:border-blue-200'
+                            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-800 shadow-md scale-[1.02]' 
+                            : 'bg-white dark:bg-slate-800 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-700 hover:shadow-sm'
                         }`}
                       >
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex flex-col">
-                            <h4 className="font-medium flex items-center">
+                            <h4 className="font-medium flex items-center text-gray-800 dark:text-white">
                               Version {version.versionNumber}
-                              {isLatest && <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">Senaste</span>}
-                              {isFirst && <span className="ml-2 text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded-full">Första</span>}
+                              {isLatest && <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded-full">Senaste</span>}
+                              {isFirst && <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-0.5 rounded-full">Första</span>}
                             </h4>
-                            <span className="text-xs text-gray-500 mt-1">
-                              {version.uploadedBy}, {version.uploaded}
+                            <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center">
+                              <span className="font-medium text-gray-700 dark:text-gray-300 mr-1">{version.uploadedBy}</span> • {new Date(version.uploaded).toLocaleDateString()}
                             </span>
                           </div>
                           
@@ -767,24 +855,24 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                                 variant="secondary"
                                 size="sm"
                                 onClick={() => handleChangeVersion(version.id)}
-                                className="text-xs h-7"
+                                className="text-xs h-7 px-2 rounded-full"
                               >
-                                Visa version
+                                Visa
                               </Button>
                             ) : (
-                              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                Aktiv
+                              <span className="text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-2 py-1 rounded-full flex items-center">
+                                <Check size={12} className="mr-1" /> Aktiv
                               </span>
                             )}
                           </div>
                         </div>
                         
-                        <p className="text-sm text-gray-700 mb-2">
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 bg-gray-50 dark:bg-slate-900/50 p-2 rounded-md">
                           {version.description}
                         </p>
                         
-                        <div className="flex items-center text-xs text-gray-500">
-                          <span className="flex items-center">
+                        <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                          <span className="flex items-center bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded-full">
                             <MessageSquare size={12} className="mr-1" />
                             {version.commentCount || 0} kommentarer
                           </span>
@@ -798,33 +886,38 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
           ) : (
             <>
               {/* Kommentarspanel */}
-              <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-                <h3 className="font-medium text-lg">Kommentarer</h3>
+              <div className="p-4 border-b border-gray-200 dark:border-slate-700 bg-gradient-to-r from-gray-50 to-white dark:from-slate-900 dark:to-slate-800 flex justify-between items-center">
+                <h3 className="font-medium text-lg text-gray-800 dark:text-white flex items-center">
+                  <MessageSquare size={18} className="mr-2 text-primary-500" />
+                  Kommentarer
+                </h3>
                 <Button 
-                  variant="ghost"
+                  variant={isMarking ? "default" : "ghost"}
                   size="sm"
                   onClick={handleToggleMarkingMode}
-                  className={isMarking ? "text-primary-600" : ""}
+                  className={`rounded-full h-7 px-2 ${isMarking ? "bg-primary-500 text-white" : "hover:bg-gray-100 dark:hover:bg-slate-800"}`}
                 >
                   <MessageSquare size={16} className="mr-1" />
                   {!isMarking ? "Ny kommentar" : "Avbryt"}
                 </Button>
               </div>
               
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto bg-gradient-to-b from-gray-50 to-white dark:from-slate-900 dark:to-slate-800">
                 {annotations.length === 0 ? (
-                  <div className="p-8 text-gray-500 text-center flex flex-col items-center justify-center h-full">
-                    <MessageSquare size={30} className="text-gray-400 mb-3" />
-                    <p className="font-medium">Inga kommentarer ännu</p>
-                    <p className="text-sm mt-2 max-w-[220px]">
+                  <div className="p-8 text-gray-500 dark:text-gray-400 text-center flex flex-col items-center justify-center h-full">
+                    <div className="bg-gray-100 dark:bg-slate-800 p-5 rounded-full mb-4">
+                      <MessageSquare size={32} className="text-gray-400 dark:text-gray-500" />
+                    </div>
+                    <p className="font-medium text-gray-700 dark:text-gray-300">Inga kommentarer ännu</p>
+                    <p className="text-sm mt-2 max-w-[220px] text-gray-500 dark:text-gray-400">
                       Lägg till kommentarer direkt på ritningen genom att klicka på 
                       <span className="font-medium"> Ny kommentar</span> ovan
                     </p>
                     <Button 
-                      variant="outline"
+                      variant="default"
                       size="sm"
                       onClick={handleToggleMarkingMode}
-                      className="mt-4"
+                      className="mt-4 bg-primary-500 hover:bg-primary-600 rounded-full px-3"
                     >
                       <MessageSquare size={14} className="mr-1" />
                       Lägg till första kommentaren
@@ -833,25 +926,28 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                 ) : (
                   <div className="space-y-4 p-4">
                     <div className="flex justify-between items-center mb-2 px-1">
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded-full">
                         {annotations.length} {annotations.length === 1 ? 'kommentar' : 'kommentarer'}
                       </p>
-                      {/* Här skulle vi kunna lägga till en sortering eller filtrering */}
                     </div>
                     
                     {annotations.map(annotation => (
                       <div 
                         key={annotation.id} 
-                        className={`bg-white border rounded-lg p-3 shadow-sm transition-all duration-200 ${activeAnnotation?.id === annotation.id ? 'ring-2 ring-blue-400' : 'hover:border-blue-200'}`}
+                        className={`bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-3 shadow-sm hover:shadow-md transition-all duration-300 transform ${
+                          activeAnnotation?.id === annotation.id 
+                            ? 'ring-2 ring-blue-400 dark:ring-blue-600 scale-[1.02]' 
+                            : 'hover:border-blue-200 dark:hover:border-blue-800 hover:-translate-y-1'
+                        }`}
                         onClick={() => zoomToAnnotation(annotation)}
                       >
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center">
                             <div 
-                              className="w-3 h-3 rounded-full mr-2" 
+                              className="w-3 h-3 rounded-full mr-2 ring-2 ring-white dark:ring-slate-700" 
                               style={{ backgroundColor: annotation.color }} 
                             />
-                            <span className="text-sm font-medium">
+                            <span className="text-sm font-medium text-gray-800 dark:text-white">
                               {annotation.rect.pageNumber !== pageNumber && `Sida ${annotation.rect.pageNumber}: `}
                               {annotation.status === 'open' && 'Öppen'}
                               {annotation.status === 'resolved' && 'Löst'}
@@ -863,32 +959,34 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                             <Button 
                               variant="ghost" 
                               size="icon" 
-                              className="h-6 w-6" 
+                              className="h-6 w-6 rounded-full hover:bg-green-50 dark:hover:bg-green-900/20" 
                               onClick={(e) => {
                                 e.stopPropagation();
                                 updateAnnotationStatus(annotation.id, 'resolved');
                               }}
                               title="Markera som löst"
                             >
-                              <Check size={14} className="text-green-600" />
+                              <Check size={14} className="text-green-600 dark:text-green-400" />
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="icon" 
-                              className="h-6 w-6" 
+                              className="h-6 w-6 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20" 
                               onClick={(e) => {
                                 e.stopPropagation();
                                 updateAnnotationStatus(annotation.id, 'action_required');
                               }}
                               title="Markera som kräver åtgärd"
                             >
-                              <AlertCircle size={14} className="text-red-600" />
+                              <AlertCircle size={14} className="text-red-600 dark:text-red-400" />
                             </Button>
                           </div>
                         </div>
-                        <p className="text-sm text-gray-700 mb-3">{annotation.comment}</p>
-                        <div className="flex justify-between mt-2 text-xs text-gray-500 border-t pt-2">
-                          <span>{annotation.createdBy}</span>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 bg-gray-50 dark:bg-slate-900/50 p-2 rounded-md">
+                          {annotation.comment}
+                        </p>
+                        <div className="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-slate-700 pt-2">
+                          <span className="font-medium">{annotation.createdBy}</span>
                           <span>{new Date(annotation.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
@@ -903,34 +1001,49 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       
       {/* Dialog för att lägga till ny kommentar */}
       {isAddingComment && tempAnnotation && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={cancelMarkingOrComment} />
-          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-medium">Lägg till kommentar</h3>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center animate-in fade-in-50 duration-200" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute inset-0 bg-black bg-opacity-60 backdrop-blur-sm" onClick={cancelMarkingOrComment} />
+          <div 
+            className="relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md p-6 border border-gray-200 dark:border-slate-700 animate-in zoom-in-95 duration-200" 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+            }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-medium text-gray-800 dark:text-white flex items-center">
+                <MessageSquare size={18} className="mr-2 text-primary-500" />
+                Lägg till kommentar
+              </h3>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={cancelMarkingOrComment}
-                className="h-7 w-7"
+                className="h-7 w-7 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500"
               >
                 <X size={16} />
               </Button>
             </div>
             
-            <p className="text-sm text-gray-500 mb-4">
-              Du markerar ett område på sida {tempAnnotation.rect?.pageNumber}. Lägg till din kommentar nedan.
-            </p>
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-800 dark:text-blue-200 mb-4 flex items-start">
+              <AlertCircle size={16} className="mr-2 mt-0.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+              <span>
+                Du markerar ett område på sida <span className="font-bold">{tempAnnotation.rect?.pageNumber}</span>. 
+                Välj status och lägg till din kommentar nedan.
+              </span>
+            </div>
             
             <div className="space-y-5 mb-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Status</label>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Status</label>
                 <div className="grid grid-cols-4 gap-2">
                   {Object.entries(statusColors).map(([status, color]) => (
                     <div 
                       key={status}
-                      className={`flex flex-col items-center border rounded p-2 cursor-pointer transition-all hover:border-blue-300 ${
-                        tempAnnotation.status === status ? 'ring-2 ring-primary-500 border-primary-400' : ''
+                      className={`flex flex-col items-center border rounded-lg p-2 cursor-pointer transition-all ${
+                        tempAnnotation.status === status 
+                          ? 'ring-2 ring-primary-500 border-primary-400 dark:border-primary-600 bg-primary-50 dark:bg-primary-900/20 transform scale-105' 
+                          : 'hover:border-blue-300 dark:hover:border-blue-700 dark:border-slate-700'
                       }`}
                       onClick={() => {
                         setTempAnnotation({
@@ -941,10 +1054,12 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                       }}
                     >
                       <div 
-                        className="w-5 h-5 rounded-full mb-1"
+                        className="w-6 h-6 rounded-full mb-2 ring-2 ring-white dark:ring-slate-800"
                         style={{ backgroundColor: color }}
                       />
-                      <span className="text-xs text-center">
+                      <span className={`text-xs text-center font-medium ${
+                        tempAnnotation.status === status ? 'text-primary-700 dark:text-primary-400' : 'text-gray-700 dark:text-gray-300'
+                      }`}>
                         {status === 'open' && 'Öppen'}
                         {status === 'resolved' && 'Löst'}
                         {status === 'action_required' && 'Åtgärd'}
@@ -956,31 +1071,34 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
               </div>
               
               <div>
-                <label className="block text-sm font-medium mb-1">Kommentar</label>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Kommentar</label>
                 <Textarea
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   placeholder="Beskriv problemet eller lämna en kommentar..."
                   rows={4}
-                  className="resize-none"
+                  className="resize-none focus:ring-primary-500 dark:bg-slate-800 dark:border-slate-700"
                   autoFocus
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex items-center">
+                  <AlertCircle size={12} className="mr-1" />
                   Kommentaren kommer att vara synlig för alla som har tillgång till denna fil
                 </p>
               </div>
             </div>
             
-            <div className="flex justify-end space-x-3 pt-2 border-t">
+            <div className="flex justify-end space-x-3 pt-3 border-t border-gray-200 dark:border-slate-700">
               <Button
                 variant="outline"
                 onClick={cancelMarkingOrComment}
+                className="rounded-full"
               >
                 Avbryt
               </Button>
               <Button
                 onClick={saveComment}
                 disabled={!newComment.trim()}
+                className="rounded-full bg-primary-500 hover:bg-primary-600"
               >
                 <MessageSquare size={16} className="mr-2" />
                 Spara kommentar
@@ -992,43 +1110,58 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       
       {/* Dialog för att ladda upp ny version */}
       {showUploadVersionDialog && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={closeUploadVersionDialog} />
-          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-medium">Ladda upp ny version</h3>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center animate-in fade-in-50 duration-200" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute inset-0 bg-black bg-opacity-60 backdrop-blur-sm" onClick={closeUploadVersionDialog} />
+          <div 
+            className="relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md p-6 border border-gray-200 dark:border-slate-700 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+            }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-medium text-gray-800 dark:text-white flex items-center">
+                <Upload size={18} className="mr-2 text-blue-500" />
+                Ladda upp ny version
+              </h3>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={closeUploadVersionDialog}
-                className="h-7 w-7"
+                className="h-7 w-7 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500"
               >
                 <X size={16} />
               </Button>
             </div>
             
-            <p className="text-sm text-gray-500 mb-4">
-              Ladda upp en ny version av filen "{fileData?.filename}". Den nya versionen kommer att ersätta den tidigare.
-            </p>
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-800 dark:text-blue-200 mb-4 flex items-start">
+              <AlertCircle size={16} className="mr-2 mt-0.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+              <span>
+                Ladda upp en ny version av filen <span className="font-bold">{fileData?.filename}</span>. 
+                Den nya versionen kommer att läggas till i historiken.
+              </span>
+            </div>
             
             <div className="space-y-5 mb-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Välj fil</label>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Välj fil</label>
                 <div 
-                  className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary-400 transition-colors"
+                  className="border-2 border-dashed rounded-xl p-5 text-center cursor-pointer hover:border-primary-400 dark:hover:border-primary-600 transition-colors bg-gray-50 dark:bg-slate-800/50 dark:border-slate-700"
                   onClick={() => document.getElementById('version-file-upload')?.click()}
                 >
                   {selectedVersionFile ? (
                     <div className="flex items-center justify-center flex-col">
-                      <FileText size={36} className="text-primary-500 mb-2" />
-                      <p className="text-sm font-medium">{selectedVersionFile.name}</p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full mb-3">
+                        <FileText size={36} className="text-blue-500 dark:text-blue-400" />
+                      </div>
+                      <p className="text-sm font-medium text-gray-800 dark:text-white">{selectedVersionFile.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         {(selectedVersionFile.size / 1024 / 1024).toFixed(2)} MB
                       </p>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="mt-2"
+                        className="mt-3 rounded-full"
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedVersionFile(null);
@@ -1040,9 +1173,12 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                     </div>
                   ) : (
                     <div className="flex items-center justify-center flex-col">
-                      <Upload size={36} className="text-gray-400 mb-2" />
-                      <p className="text-sm font-medium">Klicka för att välja fil eller dra och släpp</p>
-                      <p className="text-xs text-gray-500 mt-1">PDF (max 20MB)</p>
+                      <div className="bg-gray-100 dark:bg-slate-800 p-3 rounded-full mb-3">
+                        <Upload size={36} className="text-gray-400 dark:text-gray-500" />
+                      </div>
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Klicka för att välja fil eller dra och släpp</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">PDF (max 20MB)</p>
+                      <p className="mt-3 text-xs text-blue-500 dark:text-blue-400">Klicka eller dra filen hit</p>
                     </div>
                   )}
                   <input
@@ -1056,30 +1192,33 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
               </div>
               
               <div>
-                <label className="block text-sm font-medium mb-1">Beskrivning av ändringar</label>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Beskrivning av ändringar</label>
                 <Textarea
                   value={newVersionDescription}
                   onChange={(e) => setNewVersionDescription(e.target.value)}
                   placeholder="Beskriv vad som har ändrats i denna version..."
                   rows={3}
-                  className="resize-none"
+                  className="resize-none focus:ring-primary-500 dark:bg-slate-800 dark:border-slate-700"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  En kort beskrivning av vad som har ändrats i den nya versionen
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex items-center">
+                  <AlertCircle size={12} className="mr-1" />
+                  En kort beskrivning som visas i versionshistoriken
                 </p>
               </div>
             </div>
             
-            <div className="flex justify-end space-x-3 pt-2 border-t">
+            <div className="flex justify-end space-x-3 pt-3 border-t border-gray-200 dark:border-slate-700">
               <Button
                 variant="outline"
                 onClick={closeUploadVersionDialog}
+                className="rounded-full"
               >
                 Avbryt
               </Button>
               <Button
                 onClick={saveNewVersion}
                 disabled={!selectedVersionFile || !newVersionDescription.trim()}
+                className="rounded-full bg-blue-500 hover:bg-blue-600 text-white"
               >
                 <Upload size={16} className="mr-2" />
                 Ladda upp ny version
