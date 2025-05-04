@@ -393,7 +393,7 @@ export function ModernPDFViewer({ isOpen, onClose, file, fileUrl, fileData }: Mo
                 </Button>
               </div>
               
-              {/* PDF Document */}
+              {/* PDF Document - Simplified iframe version */}
               <div 
                 className="min-h-full flex justify-center py-4 px-2 bg-gray-100"
                 ref={pdfRef}
@@ -401,26 +401,34 @@ export function ModernPDFViewer({ isOpen, onClose, file, fileUrl, fileData }: Mo
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
               >
-                <Document
-                  file={file || fileUrl}
-                  onLoadSuccess={onDocumentLoadSuccess}
-                  onLoadError={onDocumentLoadError}
-                  loading={<div className="flex justify-center my-4">Laddar PDF...</div>}
-                  error={<div className="p-4 text-red-500">Det gick inte att visa PDF-filen.</div>}
-                >
-                  <Page
-                    pageNumber={pageNumber}
-                    scale={scale}
-                    rotate={rotation}
-                    width={containerRef.current?.clientWidth ? containerRef.current.clientWidth - 50 : undefined}
-                    renderTextLayer={true}
-                    renderAnnotationLayer={true}
-                    className="shadow-lg"
-                    loading={<div className="flex justify-center my-4">Laddar sida...</div>}
-                    error={<div className="p-4 text-red-500">Det gick inte att visa sidan.</div>}
+                {/* Use iframe for reliable PDF rendering */}
+                {file && (
+                  <iframe 
+                    src={URL.createObjectURL(file)}
+                    className="w-full h-full border shadow-lg"
+                    style={{ minHeight: '700px' }}
+                    title={file.name || "PDF Document"}
                   />
-                  
-                  {/* Render current annotations */}
+                )}
+                
+                {fileUrl && !file && (
+                  <iframe 
+                    src={fileUrl}
+                    className="w-full h-full border shadow-lg"
+                    style={{ minHeight: '700px' }}
+                    title={fileData?.filename || "PDF Document"}
+                  />
+                )}
+                
+                {/* Fallback message if no file or URL */}
+                {!file && !fileUrl && (
+                  <div className="p-4 text-red-500">
+                    Det gick inte att visa PDF-filen. Ingen giltig fil hittades.
+                  </div>
+                )}
+                
+                {/* Render current annotations as overlay */}
+                <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
                   {currentPageAnnotations.map(annotation => (
                     <div
                       key={annotation.id}
@@ -435,7 +443,6 @@ export function ModernPDFViewer({ isOpen, onClose, file, fileUrl, fileData }: Mo
                         top: `${annotation.rect.y}px`,
                         width: `${annotation.rect.width}px`,
                         height: `${annotation.rect.height}px`,
-                        pointerEvents: 'none'
                       }}
                     />
                   ))}
@@ -449,11 +456,10 @@ export function ModernPDFViewer({ isOpen, onClose, file, fileUrl, fileData }: Mo
                         top: `${Math.min(markingStart.y, markingEnd.y)}px`,
                         width: `${Math.abs(markingEnd.x - markingStart.x)}px`,
                         height: `${Math.abs(markingEnd.y - markingStart.y)}px`,
-                        pointerEvents: 'none'
                       }}
                     />
                   )}
-                </Document>
+                </div>
               </div>
               
               {/* Annotation form */}
