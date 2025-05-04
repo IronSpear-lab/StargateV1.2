@@ -44,7 +44,7 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
 // Vi lägger till typer för annotations
-export interface PDFAnnotation {
+interface PDFAnnotation {
   id: string;
   rect: {
     x: number;
