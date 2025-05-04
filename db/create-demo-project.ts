@@ -1,38 +1,58 @@
-import { db } from './index';
-import { projects } from '../shared/schema';
+import { pool } from './index';
 
 async function createDemoProject() {
   try {
-    // Check if there are any existing projects
-    const existingProjects = await db.query.projects.findMany();
+    console.log('Checking for existing projects...');
     
-    if (existingProjects.length === 0) {
+    // Direct SQL query to check for existing projects
+    const existingProjects = await pool.query('SELECT * FROM projects LIMIT 1');
+    
+    if (existingProjects.rows.length === 0) {
       console.log('Creating demo project...');
 
-      // Get the first user to use as the creator
-      const users = await db.query.users.findMany({ limit: 1 });
+      // Get the current user ID
+      const users = await pool.query('SELECT * FROM users LIMIT 1');
       
-      if (users.length === 0) {
+      if (users.rows.length === 0) {
         console.error('No users found. Please run seed script first.');
         return;
       }
 
-      const user = users[0];
+      const userId = users.rows[0].id;
 
-      // Insert a demo project
-      const result = await db.insert(projects).values({
-        name: 'Demo Project',
-        description: 'A demo project for testing features',
-        createdById: user.id,
-        createdAt: new Date()
-      }).returning();
+      // Insert a demo project with ID 1
+      await pool.query(`
+        INSERT INTO projects (id, name, description, created_by_id, created_at)
+        VALUES (1, 'Demo Project', 'A demo project for testing features', $1, NOW())
+        ON CONFLICT (id) DO NOTHING
+      `, [userId]);
 
-      console.log('Demo project created:', result[0]);
+      console.log('Demo project created with ID 1');
     } else {
-      console.log('Demo projects already exist. Skipping creation.');
+      // Check if project with ID 1 exists
+      const projectWithId1 = await pool.query('SELECT * FROM projects WHERE id = 1');
+      
+      if (projectWithId1.rows.length === 0) {
+        // Get the current user ID
+        const users = await pool.query('SELECT * FROM users LIMIT 1');
+        const userId = users.rows[0].id;
+        
+        // Insert project with specific ID 1
+        await pool.query(`
+          INSERT INTO projects (id, name, description, created_by_id, created_at)
+          VALUES (1, 'Demo Project', 'A demo project for testing features', $1, NOW())
+          ON CONFLICT (id) DO NOTHING
+        `, [userId]);
+        
+        console.log('Created project with specific ID 1');
+      } else {
+        console.log('Project with ID 1 already exists.');
+      }
     }
   } catch (error) {
     console.error('Error creating demo project:', error);
+  } finally {
+    // Don't close the pool as it might be used elsewhere
   }
 }
 

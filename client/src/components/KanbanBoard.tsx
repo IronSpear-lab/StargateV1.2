@@ -484,7 +484,9 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
     const taskData = {
       ...values,
       projectId: parseInt(values.projectId),
-      assigneeId: values.assigneeId ? parseInt(values.assigneeId) : null
+      assigneeId: values.assigneeId ? parseInt(values.assigneeId) : null,
+      createdAt: new Date().toISOString(),
+      createdById: 11 // Default to current user ID
     };
     
     createTaskMutation.mutate(taskData);
