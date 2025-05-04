@@ -13,9 +13,11 @@ import {
   Rotate3D, 
   MessageSquare, 
   Check, 
-  AlertCircle 
+  AlertCircle,
+  Upload,
+  FileText,
+  Loader2
 } from "lucide-react";
-import { Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { 
@@ -105,6 +107,9 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   const [fileVersions, setFileVersions] = useState<FileVersion[]>([]);
   const [activeVersionId, setActiveVersionId] = useState<string | undefined>(undefined);
   const [showVersionsPanel, setShowVersionsPanel] = useState(false);
+  const [showUploadVersionDialog, setShowUploadVersionDialog] = useState(false);
+  const [newVersionDescription, setNewVersionDescription] = useState('');
+  const [selectedVersionFile, setSelectedVersionFile] = useState<File | null>(null);
   
   const pdfContainerRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -327,6 +332,86 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     setAnnotations(updatedAnnotations);
     
     // Här skulle vi göra ett API-anrop för att uppdatera i databasen
+    // Spara till localStorage för demo
+    if (fileData?.fileId) {
+      localStorage.setItem(`annotations_${fileData.fileId}`, JSON.stringify(updatedAnnotations));
+    }
+  };
+  
+  // Hämta kommentarer från localStorage för denna fil
+  useEffect(() => {
+    if (!fileData?.fileId) return;
+    
+    try {
+      const savedAnnotations = localStorage.getItem(`annotations_${fileData.fileId}`);
+      if (savedAnnotations) {
+        setAnnotations(JSON.parse(savedAnnotations));
+      }
+    } catch (error) {
+      console.error("Failed to load annotations from localStorage", error);
+    }
+  }, [fileData?.fileId]);
+  
+  // Spara kommentarer till localStorage när de uppdateras
+  useEffect(() => {
+    if (!fileData?.fileId || annotations.length === 0) return;
+    
+    localStorage.setItem(`annotations_${fileData.fileId}`, JSON.stringify(annotations));
+  }, [annotations, fileData?.fileId]);
+
+  // Ladda upp en ny version av filen
+  const handleUploadNewVersion = () => {
+    setShowUploadVersionDialog(true);
+  };
+  
+  // Stäng versionsuppladdningsdialogrutan
+  const closeUploadVersionDialog = () => {
+    setShowUploadVersionDialog(false);
+    setSelectedVersionFile(null);
+    setNewVersionDescription('');
+  };
+  
+  // Hantera val av fil för ny version
+  const handleVersionFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedVersionFile(e.target.files[0]);
+    }
+  };
+  
+  // Spara en ny version
+  const saveNewVersion = () => {
+    if (!selectedVersionFile || !fileData?.fileId || !user) return;
+    
+    // I en verklig implementation skulle vi skicka filen till server via API
+    // och få tillbaka den nya versionsinformationen
+    
+    // Simulera serverrespons för demo
+    const newVersionNumber = fileVersions.length + 1;
+    const newVersionId = `version${newVersionNumber}`;
+    const now = new Date().toISOString();
+    const newFileUrl = URL.createObjectURL(selectedVersionFile);
+    
+    const newVersion: FileVersion = {
+      id: newVersionId,
+      versionNumber: newVersionNumber,
+      filename: selectedVersionFile.name,
+      fileUrl: newFileUrl,
+      description: newVersionDescription,
+      uploaded: now,
+      uploadedBy: user.username,
+      commentCount: 0
+    };
+    
+    // Uppdatera listan med versioner
+    const updatedVersions = [...fileVersions, newVersion];
+    setFileVersions(updatedVersions);
+    
+    // Byt till den nya versionen
+    setActiveVersionId(newVersionId);
+    setPdfUrl(newFileUrl);
+    
+    // Stäng dialogrutan
+    closeUploadVersionDialog();
   };
 
   const handleDownload = () => {
@@ -482,27 +567,42 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             </div>
             
             {/* Versionsknappar */}
-            {fileVersions.length > 1 && (
-              <div className="flex items-center justify-between px-4 pb-2">
-                <div className="flex space-x-2">
-                  <Button
-                    variant={activeVersionId === fileVersions[fileVersions.length - 1]?.id ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handleChangeVersion(fileVersions[fileVersions.length - 1]?.id)}
-                    className="rounded-md py-1 h-8"
-                  >
-                    Nuvarande version
-                  </Button>
-                  <Button
-                    variant={activeVersionId === fileVersions[0]?.id ? "destructive" : "outline"}
-                    size="sm"
-                    onClick={() => handleChangeVersion(fileVersions[0]?.id)}
-                    className="rounded-md py-1 h-8"
-                  >
-                    Ursprunglig version
-                  </Button>
-                </div>
-                
+            <div className="flex items-center justify-between px-4 pb-2">
+              <div className="flex space-x-2">
+                {fileVersions.length > 0 && (
+                  <>
+                    <Button
+                      variant={activeVersionId === fileVersions[fileVersions.length - 1]?.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleChangeVersion(fileVersions[fileVersions.length - 1]?.id)}
+                      className="rounded-md py-1 h-8"
+                    >
+                      Nuvarande version
+                    </Button>
+                    {fileVersions.length > 1 && (
+                      <Button
+                        variant={activeVersionId === fileVersions[0]?.id ? "destructive" : "outline"}
+                        size="sm"
+                        onClick={() => handleChangeVersion(fileVersions[0]?.id)}
+                        className="rounded-md py-1 h-8"
+                      >
+                        Ursprunglig version
+                      </Button>
+                    )}
+                  </>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUploadNewVersion}
+                  className="rounded-md py-1 h-8"
+                >
+                  <Upload size={14} className="mr-1" />
+                  Ladda upp ny version
+                </Button>
+              </div>
+              
+              {fileVersions.length > 0 && (
                 <Button
                   variant="secondary"
                   size="sm"
@@ -511,8 +611,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                 >
                   Visa versionshistorik
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
           
           <div 
@@ -884,6 +984,105 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
               >
                 <MessageSquare size={16} className="mr-2" />
                 Spara kommentar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Dialog för att ladda upp ny version */}
+      {showUploadVersionDialog && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={closeUploadVersionDialog} />
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-medium">Ladda upp ny version</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={closeUploadVersionDialog}
+                className="h-7 w-7"
+              >
+                <X size={16} />
+              </Button>
+            </div>
+            
+            <p className="text-sm text-gray-500 mb-4">
+              Ladda upp en ny version av filen "{fileData?.filename}". Den nya versionen kommer att ersätta den tidigare.
+            </p>
+            
+            <div className="space-y-5 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Välj fil</label>
+                <div 
+                  className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary-400 transition-colors"
+                  onClick={() => document.getElementById('version-file-upload')?.click()}
+                >
+                  {selectedVersionFile ? (
+                    <div className="flex items-center justify-center flex-col">
+                      <FileText size={36} className="text-primary-500 mb-2" />
+                      <p className="text-sm font-medium">{selectedVersionFile.name}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {(selectedVersionFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedVersionFile(null);
+                        }}
+                      >
+                        <X size={14} className="mr-1" />
+                        Ta bort
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center flex-col">
+                      <Upload size={36} className="text-gray-400 mb-2" />
+                      <p className="text-sm font-medium">Klicka för att välja fil eller dra och släpp</p>
+                      <p className="text-xs text-gray-500 mt-1">PDF (max 20MB)</p>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    id="version-file-upload"
+                    className="hidden"
+                    accept=".pdf"
+                    onChange={handleVersionFileChange}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Beskrivning av ändringar</label>
+                <Textarea
+                  value={newVersionDescription}
+                  onChange={(e) => setNewVersionDescription(e.target.value)}
+                  placeholder="Beskriv vad som har ändrats i denna version..."
+                  rows={3}
+                  className="resize-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  En kort beskrivning av vad som har ändrats i den nya versionen
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3 pt-2 border-t">
+              <Button
+                variant="outline"
+                onClick={closeUploadVersionDialog}
+              >
+                Avbryt
+              </Button>
+              <Button
+                onClick={saveNewVersion}
+                disabled={!selectedVersionFile || !newVersionDescription.trim()}
+              >
+                <Upload size={16} className="mr-2" />
+                Ladda upp ny version
               </Button>
             </div>
           </div>
