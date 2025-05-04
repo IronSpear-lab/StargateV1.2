@@ -1018,6 +1018,18 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     setShowUploadVersionDialog(false);
     setSelectedVersionFile(null);
     setNewVersionDescription('');
+    
+    // Nollställ även input-fältet så att det är tomt nästa gång
+    try {
+      // Försök hitta file input-element och nollställ det
+      const fileInput = document.getElementById('version-file-upload') as HTMLInputElement;
+      if (fileInput) {
+        fileInput.value = '';
+        console.log("File input field reset successfully");
+      }
+    } catch (e) {
+      console.error("Failed to reset file input:", e);
+    }
   };
   
   // Hantera val av fil för ny version
@@ -1224,17 +1236,17 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         const canonicalFileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
         
         // Generera ett konsekvent ID baserat på filnamnet
-        let consistentFileId = '';
+        let currentVersionId = '';
         try {
           // Samma metod som i laddningskoden
-          consistentFileId = `file_${canonicalFileName}_${Buffer.from(canonicalFileName).toString('hex').substring(0, 8)}`;
+          currentVersionId = `file_${canonicalFileName}_${Buffer.from(canonicalFileName).toString('hex').substring(0, 8)}`;
         } catch (error) {
           // Fallback om hashing misslyckas
-          consistentFileId = `file_${canonicalFileName}_fallback`;
+          currentVersionId = `file_${canonicalFileName}_fallback`;
         }
         
         // Använd det konsekventa ID:t för att skapa en pålitlig nyckel
-        const consistentVersionsKey = `pdf_versions_${canonicalFileName}_${consistentFileId}`;
+        const consistentVersionsKey = `pdf_versions_${canonicalFileName}_${currentVersionId}`;
         
         // Spara med den konsekventa nyckeln
         localStorage.setItem(consistentVersionsKey, JSON.stringify(updatedVersions));
@@ -1248,7 +1260,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         }
         
         // För bakåtkompatibilitet, spara även med det eventuellt tidigare ID:t
-        if (fileId && fileId !== consistentFileId) {
+        if (fileId && fileId !== currentVersionId) {
           const legacyVersionsKey = `pdf_versions_${canonicalFileName}_${fileId}`;
           localStorage.setItem(legacyVersionsKey, JSON.stringify(updatedVersions));
           
@@ -1267,11 +1279,22 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       try {
         // Oavsett om fileData har ett fileId, uppdatera alltid mappningen med det konsekventa ID:t
         // för att säkerställa att alla filer använder samma ID-system framöver
+        const canonicalFileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+        let currentConsistentId = '';
+        
+        try {
+          // Generera samma konsekventa ID som tidigare
+          currentConsistentId = `file_${canonicalFileName}_${Buffer.from(canonicalFileName).toString('hex').substring(0, 8)}`;
+        } catch (error) {
+          // Fallback om hashing misslyckas
+          currentConsistentId = `file_${canonicalFileName}_fallback`;
+        }
+        
         const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
-        // Använd det konsekventa ID:t vi genererade ovan
-        fileIdMappings[fileData.filename] = consistentFileId;
+        // Uppdatera mappningen med det konsekventa ID:t
+        fileIdMappings[fileData.filename] = currentConsistentId;
         localStorage.setItem('pdf_file_id_mappings', JSON.stringify(fileIdMappings));
-        console.log(`[${Date.now()}] Updated file ID mapping for ${fileData.filename} with consistent ID: ${consistentFileId}`);
+        console.log(`[${Date.now()}] Updated file ID mapping for ${fileData.filename} with consistent ID: ${currentConsistentId}`);
       } catch (error) {
         console.error("Failed to update file ID mapping:", error);
       }
