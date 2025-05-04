@@ -1,8 +1,11 @@
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { eq, and } from "drizzle-orm";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import { 
   files, 
   folders, 
@@ -12,6 +15,47 @@ import {
   wikiPages,
   taskTimeEntries
 } from "@shared/schema";
+
+// Set up multer for file uploads
+const uploadsDir = path.join(process.cwd(), 'uploads');
+
+// Create uploads directory if it doesn't exist
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const storage_config = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir);
+  },
+  filename: function (req, file, cb) {
+    const uniquePrefix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniquePrefix + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ 
+  storage: storage_config,
+  fileFilter: (req, file, cb) => {
+    // Accept PDF files and common document/image types
+    const allowedFileTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
+    
+    if (allowedFileTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only PDF, images, and Office documents are allowed.'), false);
+    }
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
@@ -105,13 +149,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post(`${apiPrefix}/files`, async (req, res) => {
+  app.post(`${apiPrefix}/files`, upload.single('file'), async (req, res) => {
     try {
-      // In a real implementation, this would handle file uploads with multer
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const { projectId, folderId } = req.body;
+      
+      if (!projectId) {
+        return res.status(400).json({ error: "Project ID is required" });
+      }
+
+      // Get file information
+      const fileType = req.file.mimetype;
+      const fileName = req.file.originalname;
+      const fileSize = req.file.size;
+      const filePath = req.file.path;
+
+      // Create file record in database
       const file = await storage.createFile({
-        ...req.body,
-        uploadedById: req.user!.id
+        name: fileName,
+        fileType,
+        fileSize,
+        filePath,
+        projectId: parseInt(projectId),
+        folderId: folderId ? parseInt(folderId) : undefined,
+        uploadedById: req.user!.id,
+        uploadDate: new Date()
       });
+
       res.status(201).json(file);
     } catch (error) {
       console.error("Error creating file:", error);
@@ -129,6 +196,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching file:", error);
       res.status(500).json({ error: "Failed to fetch file" });
+    }
+  });
+  
+  // Serve uploaded files
+  app.get(`${apiPrefix}/files/:id/content`, async (req, res) => {
+    try {
+      const file = await storage.getFile(parseInt(req.params.id));
+      if (!file) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      
+      // Check if file exists on disk
+      if (!fs.existsSync(file.filePath)) {
+        return res.status(404).json({ error: "File content not found" });
+      }
+      
+      // Set content type
+      res.type(file.fileType);
+      
+      // Stream the file
+      const fileStream = fs.createReadStream(file.filePath);
+      fileStream.pipe(res);
+    } catch (error) {
+      console.error("Error streaming file:", error);
+      res.status(500).json({ error: "Failed to stream file" });
     }
   });
 
