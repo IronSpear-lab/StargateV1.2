@@ -39,6 +39,14 @@ export function PDFViewer({ fileName, fileId, totalPages: initialTotalPages = 1 
   const [numPages, setNumPages] = useState(initialTotalPages);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  
+  // Set initial loading state when PDF URL changes
+  useEffect(() => {
+    if (pdfUrl) {
+      setIsLoading(true);
+      setError(null);
+    }
+  }, [pdfUrl]);
 
   const increasePage = () => {
     if (currentPage < numPages) {
@@ -81,10 +89,10 @@ export function PDFViewer({ fileName, fileId, totalPages: initialTotalPages = 1 
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={decreasePage} disabled={currentPage === 1}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={increasePage} disabled={currentPage === totalPages}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={increasePage} disabled={currentPage === numPages}>
           <ArrowRight className="h-4 w-4" />
         </Button>
-        <span className="text-sm flex items-center">Page {currentPage} of {totalPages}</span>
+        <span className="text-sm flex items-center">Page {currentPage} of {numPages}</span>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={increaseZoom}>
           <ZoomIn className="h-4 w-4" />
         </Button>
@@ -120,11 +128,14 @@ export function PDFViewer({ fileName, fileId, totalPages: initialTotalPages = 1 
             <Document
               file={pdfUrl}
               onLoadSuccess={({ numPages }) => {
-                // In a real implementation, we would update the totalPages state here
+                setNumPages(numPages);
+                setIsLoading(false);
                 console.log(`Document loaded with ${numPages} pages`);
               }}
               onLoadError={(error) => {
                 console.error("Error loading PDF:", error);
+                setIsLoading(false);
+                setError(error instanceof Error ? error : new Error("Failed to load PDF"));
               }}
               loading={
                 <div className="flex flex-col items-center justify-center h-full w-full">
