@@ -339,8 +339,8 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     
     const folderData: FolderFormData = {
       name: newFolderName.trim(),
-      projectId: uploadState.projectId,
-      parentId: uploadState.selectedFolder
+      projectId: parseInt(uploadState.projectId), // Convert string to number
+      parentId: uploadState.selectedFolder ? parseInt(uploadState.selectedFolder) : null
     };
     
     createFolderMutation.mutate(folderData);
