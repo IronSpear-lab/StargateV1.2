@@ -393,37 +393,57 @@ export function ModernPDFViewer({ isOpen, onClose, file, fileUrl, fileData }: Mo
                 </Button>
               </div>
               
-              {/* PDF Document - Simplified iframe version */}
+              {/* PDF Document - Preview and Download Version */}
               <div 
-                className="min-h-full flex justify-center py-4 px-2 bg-gray-100"
+                className="min-h-full flex flex-col items-center justify-center py-8 px-2 bg-gray-100"
                 ref={pdfRef}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
               >
-                {/* Use iframe for reliable PDF rendering */}
-                {file && (
-                  <iframe 
-                    src={URL.createObjectURL(file)}
-                    className="w-full h-full border shadow-lg"
-                    style={{ minHeight: '700px' }}
-                    title={file.name || "PDF Document"}
-                  />
-                )}
-                
-                {fileUrl && !file && (
-                  <iframe 
-                    src={fileUrl}
-                    className="w-full h-full border shadow-lg"
-                    style={{ minHeight: '700px' }}
-                    title={fileData?.filename || "PDF Document"}
-                  />
-                )}
+                {/* PDF Preview */}
+                <div className="bg-white p-8 rounded-lg shadow-lg mb-6 w-full max-w-xl">
+                  <div className="flex items-center justify-center mb-6">
+                    <div className="bg-blue-50 rounded-lg p-4 text-center">
+                      <svg className="w-16 h-16 mx-auto text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  <div className="text-center mb-6">
+                    <h3 className="text-lg font-semibold mb-1">
+                      {fileData?.filename || file?.name || "PDF Dokument"}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Version: {fileData?.version || "1"}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {fileData?.description || ""}
+                    </p>
+                  </div>
+                  
+                  <div className="flex justify-center">
+                    <Button
+                      className="bg-blue-600 hover:bg-blue-700"
+                      onClick={handleDownload}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Ladda ner PDF
+                    </Button>
+                  </div>
+                </div>
                 
                 {/* Fallback message if no file or URL */}
                 {!file && !fileUrl && (
-                  <div className="p-4 text-red-500">
-                    Det gick inte att visa PDF-filen. Ingen giltig fil hittades.
+                  <div className="text-center p-8 text-red-500">
+                    <div className="mb-4">
+                      <svg className="w-12 h-12 mx-auto text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <p className="font-medium">Det gick inte att visa PDF-filen</p>
+                    <p className="text-sm mt-2">Ingen giltig fil hittades</p>
                   </div>
                 )}
                 
