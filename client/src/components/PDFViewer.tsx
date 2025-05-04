@@ -22,17 +22,9 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 
-// We need to provide the PDF.js worker explicitly
-// Try to use the local worker first, and fall back to CDN if needed
-try {
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.mjs',
-    import.meta.url,
-  ).toString();
-} catch (err) {
-  console.warn('Failed to set local PDF worker, falling back to CDN worker');
-  pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.js`;
-}
+// Set PDF worker
+// React PDF version 8 uses PDF.js v3.11.174
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
 interface PDFViewerProps {
   fileName: string;
