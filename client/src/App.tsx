@@ -11,6 +11,8 @@ import TimelinePage from "@/pages/timeline-page";
 import KanbanPage from "@/pages/kanban-page";
 import WikiPage from "@/pages/wiki-page";
 import SettingsPage from "@/pages/settings-page";
+import ProjectsPage from "@/pages/projects-page";
+import ProjectDetailPage from "@/pages/project-detail-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 

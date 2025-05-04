@@ -11,7 +11,8 @@ import {
   Settings, 
   LogOut, 
   Menu, 
-  X
+  X,
+  Briefcase
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -49,6 +50,7 @@ export function Sidebar({ className }: SidebarProps) {
 
   const navItems = [
     { href: "/", label: "Dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
+    { href: "/projects", label: "Projects", icon: <Briefcase className="w-5 h-5" /> },
     { href: "/files", label: "Files", icon: <FolderClosed className="w-5 h-5" /> },
     { href: "/tasks", label: "Tasks", icon: <CheckSquare className="w-5 h-5" /> },
     { href: "/timeline", label: "Timeline", icon: <Calendar className="w-5 h-5" /> },
