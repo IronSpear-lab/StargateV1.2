@@ -19,6 +19,7 @@ import TimeTrackingPage from "@/pages/time-tracking-page-fixed";
 import NotificationsPage from "@/pages/notifications-page";
 import TeamPage from "@/pages/team-page";
 import HelpPage from "@/pages/help-page";
+import VaultPage from "@/pages/vault-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 
@@ -43,6 +44,8 @@ function Router() {
       <ProtectedRoute path="/help" component={HelpPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
       <ProtectedRoute path="/profile" component={SettingsPage} />
+      <ProtectedRoute path="/vault" component={VaultPage} />
+      <ProtectedRoute path="/vault/:section" component={VaultPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
