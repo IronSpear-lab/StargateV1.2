@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
+import { storeFileForReuse, getStoredFileById } from "@/lib/file-utils";
 
 // Konfigurera worker för react-pdf - använder CDN för att undvika byggproblem
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -114,23 +115,45 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   const pdfContainerRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
 
-  // Om en File-objekt skickas in, skapa en URL för den och spara File-objektet
+  // Om en File-objekt skickas in, spara den i vår persistenta lagring och skapa en URL
   useEffect(() => {
     if (file) {
       console.log("File provided to PDF Viewer:", file.name, file.size, "bytes");
       
-      // Spara filen för att använda den som fallback genom hela applicationen
-      // Vi sparar filen globalt för att kunna använda den när vi skapar nya versioner
-      (window as any).currentPdfFile = file;
+      // Persistent lagring av filen för att kunna återanvända den mellan sessioner
+      const saveFileForLaterUse = async () => {
+        try {
+          // Lagra i IndexedDB för att kunna använda den i senare sessioner
+          const fileId = await storeFileForReuse(file, {
+            fromPdfViewer: true,
+            uploadDate: new Date().toISOString()
+          });
+          
+          console.log(`[${Date.now()}] File ${file.name} stored for reuse with ID: ${fileId}`);
+          
+          // Spara även en referens till fileId med filnamnet
+          const pdfIdMapping = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+          pdfIdMapping[file.name] = fileId;
+          localStorage.setItem('pdf_file_id_mappings', JSON.stringify(pdfIdMapping));
+          
+          // Spara även globalt för användning i denna session
+          (window as any).currentPdfFile = file;
+          (window as any).currentPdfFileId = fileId;
+        } catch (error) {
+          console.error("Failed to store file for reuse:", error);
+        }
+      };
       
+      saveFileForLaterUse();
+      
+      // Skapa en URL för omedelbar användning
       const url = URL.createObjectURL(file);
-      console.log(`Created URL for file ${file.name}:`, url);
+      console.log(`[${Date.now()}] Created URL for file ${file.name}:`, url);
       setPdfUrl(url);
       
       // Vi revokar inte URL:en när komponenten unmountas, för att PDFen ska kunna
       // fortsätta visas om komponenten renderas om
       // Detta kan leda till minnesläckage, men är OK för demosyften
-      // I en produktion skulle vi hantera detta på serversidan
     } else if (fileUrl) {
       setPdfUrl(fileUrl);
     }
@@ -1033,7 +1056,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   };
 
   // Hantera byte av version
-  const handleChangeVersion = (versionId: string) => {
+  const handleChangeVersion = async (versionId: string) => {
     const selectedVersion = fileVersions.find(v => v.id === versionId);
     if (!selectedVersion) {
       console.error("Could not find version with id:", versionId);
@@ -1043,12 +1066,48 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     // VIKTIGT: Vi måste använda den ursprungliga filen för alla versioner
     // Eftersom blob-URLer inte är beständiga mellan sessioner
     try {
-      // Använd den original-fil som vi sparar i window-objektet
-      // Detta är en demo-lösning - i verklig produktion skulle vi hämta specifika versioner från servern
-      const originalFile = (window as any).currentPdfFile;
+      // Försök först att använda filen från det globala window-objektet (om den finns)
+      let originalFile = (window as any).currentPdfFile;
+      
+      // Om ingen fil finns i minnet, försök hämta från persistent lagring i IndexedDB
+      if (!originalFile && fileData) {
+        console.log(`[${Date.now()}] No file in memory, attempting to retrieve from IndexedDB`);
+        
+        // Försök hämta filId från mappning
+        try {
+          // Kolla om vi har ett fileId i vår metadata-mappning
+          const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+          const persistentFileId = fileIdMappings[fileData.filename];
+          
+          if (persistentFileId) {
+            console.log(`[${Date.now()}] Found persistent fileId for ${fileData.filename}: ${persistentFileId}`);
+            
+            // Hämta filen från IndexedDB
+            try {
+              const storedFile = await getStoredFileById(persistentFileId);
+              if (storedFile) {
+                console.log(`[${Date.now()}] Successfully retrieved file from IndexedDB: ${storedFile.name}`);
+                originalFile = storedFile.file;
+                
+                // Uppdatera även global referens för framtida användning
+                (window as any).currentPdfFile = originalFile;
+                (window as any).currentPdfFileId = persistentFileId;
+              } else {
+                console.error(`[${Date.now()}] Failed to retrieve file from IndexedDB`);
+              }
+            } catch (error) {
+              console.error(`[${Date.now()}] Error retrieving file from IndexedDB:`, error);
+            }
+          } else {
+            console.log(`[${Date.now()}] No fileId mapping found for ${fileData.filename}`);
+          }
+        } catch (error) {
+          console.error(`[${Date.now()}] Error checking file mappings:`, error);
+        }
+      }
       
       if (originalFile) {
-        console.log(`[${Date.now()}] Using original file for version ${selectedVersion.versionNumber}`);
+        console.log(`[${Date.now()}] Using file for version ${selectedVersion.versionNumber}: ${originalFile.name}`);
         
         // Skapa en ny URL för filen med en timestamp så att React renderar om
         try {
@@ -1071,6 +1130,10 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         setPdfUrl(currentFileUrl + '#' + Date.now());
       } else {
         console.error(`[${Date.now()}] No file or URL available for version change`);
+        
+        // Försök visa ett meddelande till användaren
+        alert("Det går inte att visa denna version. Vänligen ladda upp filen igen.");
+        return;
       }
     } catch (error) {
       console.error(`[${Date.now()}] Error during version change:`, error);
