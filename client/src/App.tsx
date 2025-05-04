@@ -15,7 +15,7 @@ import ProjectsPage from "@/pages/projects-page";
 import ProjectDetailPage from "@/pages/project-detail-page";
 import GanttPage from "@/pages/gantt-page";
 import AnalyticsPage from "@/pages/analytics-page";
-import TimeTrackingPage from "@/pages/time-tracking-page";
+import TimeTrackingPage from "@/pages/time-tracking-page-fixed";
 import NotificationsPage from "@/pages/notifications-page";
 import TeamPage from "@/pages/team-page";
 import HelpPage from "@/pages/help-page";
@@ -40,6 +40,7 @@ function Router() {
       <ProtectedRoute path="/team" component={TeamPage} />
       <ProtectedRoute path="/help" component={HelpPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
+      <ProtectedRoute path="/profile" component={SettingsPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>

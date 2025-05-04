@@ -12,12 +12,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
+import { Sidebar } from "@/components/Sidebar";
+import { Header } from "@/components/Header";
 
 export default function TimeTrackingPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("today");
   const [isTracking, setIsTracking] = useState(false);
   const [timer, setTimer] = useState("00:00:00");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
   
   // Mock data for time entries
   const timeEntries = [
@@ -97,30 +104,36 @@ export default function TimeTrackingPage() {
   };
 
   return (
-    <main className="flex-1 p-6 overflow-y-auto">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-900">Time Tracking</h1>
-          <p className="text-neutral-500">Track your time and monitor your productivity</p>
-        </div>
-        <div className="flex items-center space-x-2 mt-4 md:mt-0">
-          <Select defaultValue="week">
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select period" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="day">Today</SelectItem>
-              <SelectItem value="week">This Week</SelectItem>
-              <SelectItem value="month">This Month</SelectItem>
-              <SelectItem value="year">This Year</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button>
-            <BarChart2 className="mr-2 h-4 w-4" />
-            Report
-          </Button>
-        </div>
-      </div>
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar className={isSidebarOpen ? "" : "hidden"} />
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header title="Time Tracking" onToggleSidebar={toggleSidebar} />
+        
+        <main className="flex-1 p-6 overflow-y-auto">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-semibold text-neutral-900">Time Tracking</h1>
+              <p className="text-neutral-500">Track your time and monitor your productivity</p>
+            </div>
+            <div className="flex items-center space-x-2 mt-4 md:mt-0">
+              <Select defaultValue="week">
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Select period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="day">Today</SelectItem>
+                  <SelectItem value="week">This Week</SelectItem>
+                  <SelectItem value="month">This Month</SelectItem>
+                  <SelectItem value="year">This Year</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button>
+                <BarChart2 className="mr-2 h-4 w-4" />
+                Report
+              </Button>
+            </div>
+          </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2">

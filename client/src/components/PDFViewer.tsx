@@ -23,7 +23,7 @@ import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 
 // We need to provide the PDF.js worker explicitly
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.js`;
 
 interface PDFViewerProps {
   fileName: string;
@@ -46,6 +46,20 @@ export function PDFViewer({ fileName, fileId, totalPages: initialTotalPages = 1 
       setIsLoading(true);
       setError(null);
       console.log("Loading PDF from URL:", pdfUrl);
+      
+      // Try to pre-fetch the PDF file to ensure it exists
+      fetch(pdfUrl)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+          }
+          // No need to process the response here, just checking if it's available
+        })
+        .catch(err => {
+          console.error("Error pre-fetching PDF:", err);
+          setError(err);
+          setIsLoading(false);
+        });
     }
   }, [pdfUrl]);
 
