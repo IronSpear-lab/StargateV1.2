@@ -235,10 +235,15 @@ export default function RitningarPage() {
     // I en riktig implementering skulle vi skicka filerna till en API-endpoint
     console.log("Uppladdade filer:", files);
     
-    toast({
-      title: "Filer uppladdade",
-      description: `${files.length} fil(er) har laddats upp.`,
-    });
+    // Simulera att vi lägger till den uppladdade filen i tabellen
+    // I en verklig implementation skulle detta hanteras av en API-anrop
+    setTimeout(() => {
+      toast({
+        title: "Filer uppladdade",
+        description: `${files.length} fil(er) har laddats upp framgångsrikt.`,
+        variant: "default",
+      });
+    }, 300);
   };
 
   return (
@@ -350,14 +355,14 @@ export default function RitningarPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Filnamn</TableHead>
-                    <TableHead>Version</TableHead>
-                    <TableHead>Innehållsbeskrivning</TableHead>
-                    <TableHead>Uppladdad</TableHead>
-                    <TableHead>Uppladdad av</TableHead>
-                    <TableHead>Nummer</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Annat</TableHead>
+                    <TableHead className="w-[200px]">Filnamn</TableHead>
+                    <TableHead className="w-[80px]">Version</TableHead>
+                    <TableHead className="w-[200px]">Innehållsbeskrivning</TableHead>
+                    <TableHead className="w-[140px]">Uppladdad</TableHead>
+                    <TableHead className="w-[160px]">Uppladdad av</TableHead>
+                    <TableHead className="w-[100px]">Nummer</TableHead>
+                    <TableHead className="w-[120px]">Status</TableHead>
+                    <TableHead className="w-[120px]">Annat</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -372,23 +377,23 @@ export default function RitningarPage() {
                   ) : (
                     filteredRitningar.map((ritning) => (
                       <TableRow key={ritning.id}>
-                        <TableCell className="py-2">
+                        <TableCell className="py-2 w-[200px]">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 mr-3 text-red-500">
                               <FileText size={20} />
                             </div>
-                            <div className="text-sm text-blue-600 hover:underline cursor-pointer">
+                            <div className="text-sm text-blue-600 hover:underline cursor-pointer whitespace-nowrap">
                               {ritning.filename}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>{ritning.version}</TableCell>
-                        <TableCell>{ritning.description}</TableCell>
-                        <TableCell>{ritning.uploaded}</TableCell>
-                        <TableCell>{ritning.uploadedBy}</TableCell>
-                        <TableCell>{ritning.number}</TableCell>
-                        <TableCell>{ritning.status}</TableCell>
-                        <TableCell>{ritning.annat}</TableCell>
+                        <TableCell className="w-[80px]">{ritning.version}</TableCell>
+                        <TableCell className="w-[200px]">{ritning.description}</TableCell>
+                        <TableCell className="w-[140px]">{ritning.uploaded}</TableCell>
+                        <TableCell className="w-[160px]">{ritning.uploadedBy}</TableCell>
+                        <TableCell className="w-[100px]">{ritning.number}</TableCell>
+                        <TableCell className="w-[120px]">{ritning.status}</TableCell>
+                        <TableCell className="w-[120px]">{ritning.annat}</TableCell>
                       </TableRow>
                     ))
                   )}

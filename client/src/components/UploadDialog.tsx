@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { X, Upload, CloudUpload } from "lucide-react";
+import { X, Upload, CloudUpload, FileText } from "lucide-react";
 
 interface UploadDialogProps {
   isOpen: boolean;
@@ -35,13 +35,21 @@ export function UploadDialog({ isOpen, onClose, onUpload }: UploadDialogProps) {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setFiles(Array.from(e.target.files));
+      const fileList = Array.from(e.target.files);
+      setFiles(fileList);
+      console.log("Filer valda:", fileList.map(f => f.name));
     }
   };
 
   const handleSubmit = () => {
     if (files.length > 0) {
+      // Visa namnet på filen som laddas upp i konsolen
+      console.log("Laddar upp filer:", files.map(f => f.name));
+      
+      // Skicka filerna till föräldrakomponenten för uppladdning
       onUpload(files);
+      
+      // Återställ filer och stäng dialogen
       setFiles([]);
       onClose();
     }
@@ -110,13 +118,27 @@ export function UploadDialog({ isOpen, onClose, onUpload }: UploadDialogProps) {
           )}
         </div>
         
+        {files.length > 0 && (
+          <div className="mt-2 mb-4">
+            <h3 className="font-medium text-sm mb-2">Valda filer:</h3>
+            <ul className="text-sm text-gray-700 space-y-1">
+              {files.map((file, index) => (
+                <li key={index} className="flex items-center">
+                  <FileText size={16} className="text-red-500 mr-2" />
+                  <span>{file.name}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        
         <div className="flex justify-end space-x-2">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button 
             disabled={files.length === 0} 
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
             onClick={handleSubmit}
           >
             Upload
