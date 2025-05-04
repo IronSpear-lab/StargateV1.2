@@ -212,9 +212,9 @@ export function Sidebar({ className }: SidebarProps) {
               icon: <FolderClosed className="w-4 h-4" />,
               children: [
                 {
-                  href: "#",
+                  href: "/vault/files/ritningar",
                   label: "1. Ritningar",
-                  active: false,
+                  active: location === "/vault/files/ritningar",
                   indent: 3,
                   icon: <FolderClosed className="w-3 h-3" />,
                   children: []
