@@ -102,186 +102,93 @@ export function Sidebar({ className }: SidebarProps) {
   const navItems: NavItemType[] = [
     {
       href: "/",
-      label: "Home",
-      icon: <Home className="w-5 h-5" />,
+      label: "Dashboard",
+      icon: <LayoutDashboard className="w-5 h-5" />,
       active: location === "/"
     },
     {
-      href: "/dashboard",
-      label: "Dashboard",
-      icon: <LayoutDashboard className="w-5 h-5" />,
-      active: location === "/dashboard"
-    },
-    {
-      href: "/planning",
+      href: "#", // No direct planning page
       label: "Planning",
-      icon: <Calendar className="w-5 h-5" />,
-      active: location.startsWith("/planning"),
+      icon: <Briefcase className="w-5 h-5" />,
+      active: location === "/kanban" || location === "/gantt" || 
+              location === "/planning/kanban" || location === "/planning/gantt-chart",
       children: [
         {
-          href: "/planning/kanban",
+          href: "/kanban", // Match the route in App.tsx
           label: "Kanban",
           icon: <Columns className="w-4 h-4" />,
-          active: location === "/planning/kanban",
+          active: location === "/kanban" || location === "/planning/kanban",
           indent: 1
         },
         {
-          href: "/planning/gantt-chart",
+          href: "/gantt", // Match the route in App.tsx
           label: "Gantt Chart",
           icon: <BarChart2 className="w-4 h-4" />,
-          active: location === "/planning/gantt-chart",
+          active: location === "/gantt" || location === "/planning/gantt-chart",
           indent: 1
         }
       ]
     },
     {
-      href: "/communication",
+      href: "/notifications", // Changed to a route that exists in App.tsx
       label: "Communication",
       icon: <MessageSquare className="w-5 h-5" />,
-      active: location.startsWith("/communication")
+      active: location === "/notifications"
     },
     {
-      href: "/viewer",
-      label: "Viewer",
+      href: "/files", // Changed to match the files route in App.tsx
+      label: "Files",
       icon: <FileText className="w-5 h-5" />,
-      active: location.startsWith("/viewer"),
+      active: location === "/files",
       badge: "1"
     },
     {
-      href: "/vault",
-      label: "Vault",
-      icon: <FolderClosed className="w-5 h-5" />,
-      active: location.startsWith("/vault"),
-      children: [
-        {
-          href: "/vault/home",
-          label: "Home",
-          icon: <Home className="w-4 h-4" />,
-          active: location === "/vault/home",
-          indent: 1
-        },
-        {
-          href: "/vault/comments",
-          label: "Comments",
-          icon: <MessageSquare className="w-4 h-4" />,
-          active: location === "/vault/comments",
-          indent: 1
-        },
-        {
-          href: "/vault/review-reports",
-          label: "Review Reports",
-          icon: <FileText className="w-4 h-4" />,
-          active: location === "/vault/review-reports",
-          indent: 1
-        },
-        {
-          href: "/vault/files",
-          label: "Files",
-          icon: <FolderClosed className="w-4 h-4" />,
-          active: location === "/vault/files" || location.startsWith("/vault/files/"),
-          indent: 1,
-          children: [
-            {
-              href: "/vault/files/01-organization",
-              label: "01. Organization",
-              icon: <FileText className="w-4 h-4" />,
-              active: location === "/vault/files/01-organization",
-              indent: 2
-            },
-            {
-              href: "/vault/files/02-preparation",
-              label: "02. Preparation",
-              icon: <FileText className="w-4 h-4" />,
-              active: location === "/vault/files/02-preparation",
-              indent: 2
-            },
-            {
-              href: "/vault/files/03-admin",
-              label: "03. Admin",
-              icon: <FileText className="w-4 h-4" />,
-              active: location === "/vault/files/03-admin",
-              indent: 2
-            },
-            {
-              href: "/vault/files/banker",
-              label: "Banker",
-              icon: <FileText className="w-4 h-4" />,
-              active: location === "/vault/files/banker",
-              indent: 2,
-              children: [
-                {
-                  href: "/vault/files/banker/1-invoices",
-                  label: "1. Invoices",
-                  icon: <FileText className="w-3 h-3" />,
-                  active: location === "/vault/files/banker/1-invoices",
-                  indent: 3
-                },
-                {
-                  href: "/vault/files/banker/2-bankutdrag",
-                  label: "2. Bankutdrag",
-                  icon: <FileText className="w-3 h-3" />,
-                  active: location === "/vault/files/banker/2-bankutdrag",
-                  indent: 3
-                },
-                {
-                  href: "/vault/files/banker/3-underlag",
-                  label: "3. Underlag",
-                  icon: <FileText className="w-3 h-3" />,
-                  active: location === "/vault/files/banker/3-underlag",
-                  indent: 3
-                },
-                {
-                  href: "/vault/files/banker/4-egenkontroller",
-                  label: "4. Egenkontroller",
-                  icon: <FileText className="w-3 h-3" />,
-                  active: location === "/vault/files/banker/4-egenkontroller",
-                  indent: 3
-                }
-              ]
-            },
-            {
-              href: "/vault/files/05-faktura",
-              label: "05. Faktura",
-              icon: <FileText className="w-4 h-4" />,
-              active: location === "/vault/files/05-faktura",
-              indent: 2
-            },
-            {
-              href: "/vault/files/06-offert",
-              label: "06. Offert",
-              icon: <FileText className="w-4 h-4" />,
-              active: location === "/vault/files/06-offert",
-              indent: 2
-            }
-          ]
-        },
-        {
-          href: "/vault/personnel",
-          label: "Personnel",
-          icon: <Users className="w-4 h-4" />,
-          active: location === "/vault/personnel",
-          indent: 1
-        },
-        {
-          href: "/vault/meetings",
-          label: "Meetings",
-          icon: <Users className="w-4 h-4" />,
-          active: location === "/vault/meetings",
-          indent: 1
-        }
-      ]
+      href: "/tasks", // Match tasks route
+      label: "Tasks",
+      icon: <CheckSquare className="w-5 h-5" />,
+      active: location === "/tasks",
     },
     {
-      href: "/support",
-      label: "Support",
+      href: "/timeline", // Match timeline route
+      label: "Timeline",
+      icon: <Calendar className="w-5 h-5" />,
+      active: location === "/timeline",
+    },
+    {
+      href: "/team", // Match team route
+      label: "Team",
+      icon: <Users className="w-5 h-5" />,
+      active: location === "/team",
+    },
+    {
+      href: "/wiki", // Match wiki route
+      label: "Wiki",
+      icon: <BookOpen className="w-5 h-5" />,
+      active: location === "/wiki",
+    },
+    {
+      href: "/time-tracking", // Match time-tracking route
+      label: "Time Tracking",
+      icon: <Clock className="w-5 h-5" />,
+      active: location === "/time-tracking",
+    },
+    {
+      href: "/analytics", // Match analytics route
+      label: "Analytics",
+      icon: <PieChart className="w-5 h-5" />,
+      active: location === "/analytics",
+    },
+    {
+      href: "/help", // Match help route
+      label: "Help",
       icon: <HelpCircle className="w-5 h-5" />,
-      active: location === "/support"
+      active: location === "/help",
     },
     {
-      href: "/settings",
+      href: "/settings", // Match settings route
       label: "Settings",
       icon: <Settings className="w-5 h-5" />,
-      active: location === "/settings"
+      active: location === "/settings",
     }
   ];
 
