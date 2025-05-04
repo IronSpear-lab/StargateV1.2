@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -12,22 +12,36 @@ import {
   Maximize,
   Pen, 
   Highlighter, 
-  MessageSquare
+  MessageSquare,
+  FileQuestion,
+  Loader2
 } from "lucide-react";
 import { CommentList } from "./CommentList";
 import { Separator } from "@/components/ui/separator";
+import { pdfjs, Document, Page } from "react-pdf";
+import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+import 'react-pdf/dist/esm/Page/TextLayer.css';
+
+// Set the worker source
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
 interface PDFViewerProps {
   fileName: string;
+  fileId?: string | number;
   totalPages?: number;
 }
 
-export function PDFViewer({ fileName, totalPages = 12 }: PDFViewerProps) {
+export function PDFViewer({ fileName, fileId, totalPages: initialTotalPages = 1 }: PDFViewerProps) {
+  // For real file access, we'd use the fileId to generate a URL to the file content
+  const pdfUrl = fileId ? `/api/files/${fileId}/content` : null;
   const [currentPage, setCurrentPage] = useState(1);
   const [zoom, setZoom] = useState(100);
+  const [numPages, setNumPages] = useState(initialTotalPages);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
   const increasePage = () => {
-    if (currentPage < totalPages) {
+    if (currentPage < numPages) {
       setCurrentPage(prev => prev + 1);
     }
   };
@@ -93,37 +107,63 @@ export function PDFViewer({ fileName, totalPages = 12 }: PDFViewerProps) {
       </div>
       
       <div className="p-4 bg-neutral-100 h-96 flex items-center justify-center overflow-auto">
-        <div 
-          className="bg-white shadow-md w-full max-w-2xl h-full flex flex-col items-center justify-center p-8 relative"
-          style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'center center' }}
-        >
-          <div className="w-full mb-6">
-            <h2 className="text-xl font-bold mb-3 text-center">Project Requirements Document</h2>
-            <Separator className="my-4" />
-            <p className="text-sm mb-2">
-              <strong>Project Overview:</strong> ValvXlstart is a comprehensive project management platform designed to streamline collaboration and document workflows.
-            </p>
-            <p className="text-sm mb-2">
-              <strong>Objectives:</strong> Create an intuitive interface that integrates file management, task tracking, and team collaboration in a single platform.
-            </p>
-            <p className="text-sm text-neutral-500 italic">
-              [PDF content would display here]
-            </p>
+        {!pdfUrl ? (
+          <div className="text-center">
+            <FileQuestion className="h-16 w-16 mx-auto text-neutral-400 mb-4" />
+            <p className="text-neutral-500">No file selected or preview not available</p>
           </div>
-          
-          <div className="absolute bottom-20 right-20 bg-yellow-100 p-3 rounded-md shadow-md" style={{ width: "200px" }}>
-            <div className="flex items-start gap-2">
-              <div className="w-8 h-8 rounded-full bg-yellow-200 flex items-center justify-center text-yellow-700 text-sm font-medium">
-                AS
-              </div>
-              <div>
-                <p className="text-sm font-medium">Alex Smith</p>
-                <p className="text-xs text-neutral-600">Please review the technical requirements section</p>
-                <p className="text-xs text-neutral-500 mt-1">Yesterday at 3:45 PM</p>
+        ) : (
+          <div 
+            className="bg-white shadow-md w-full max-w-2xl h-full flex flex-col items-center justify-center p-2 relative"
+            style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'center center' }}
+          >
+            <Document
+              file={pdfUrl}
+              onLoadSuccess={({ numPages }) => {
+                // In a real implementation, we would update the totalPages state here
+                console.log(`Document loaded with ${numPages} pages`);
+              }}
+              onLoadError={(error) => {
+                console.error("Error loading PDF:", error);
+              }}
+              loading={
+                <div className="flex flex-col items-center justify-center h-full w-full">
+                  <Loader2 className="h-8 w-8 text-primary-600 animate-spin mb-2" />
+                  <p className="text-sm text-neutral-500">Loading PDF...</p>
+                </div>
+              }
+              error={
+                <div className="flex flex-col items-center justify-center h-full w-full">
+                  <p className="text-sm text-red-500 mb-2">Failed to load PDF document</p>
+                  <p className="text-xs text-neutral-500">Please check if the file exists and is a valid PDF</p>
+                </div>
+              }
+              className="w-full h-full overflow-auto"
+            >
+              <Page 
+                pageNumber={currentPage} 
+                renderTextLayer={true}
+                renderAnnotationLayer={true}
+                scale={zoom / 100}
+                className="page-container"
+              />
+            </Document>
+            
+            {/* Example annotation - this would be dynamic in a real implementation */}
+            <div className="absolute bottom-20 right-20 bg-yellow-100 p-3 rounded-md shadow-md" style={{ width: "200px" }}>
+              <div className="flex items-start gap-2">
+                <div className="w-8 h-8 rounded-full bg-yellow-200 flex items-center justify-center text-yellow-700 text-sm font-medium">
+                  AS
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Alex Smith</p>
+                  <p className="text-xs text-neutral-600">Please review this section</p>
+                  <p className="text-xs text-neutral-500 mt-1">Yesterday at 3:45 PM</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
       
       <CardContent className="p-0">
