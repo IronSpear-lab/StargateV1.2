@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { X, ChevronLeft, ChevronRight, Download, Maximize, Minimize, ZoomIn, ZoomOut, Rotate3D } from "lucide-react";
 import { Loader2 } from "lucide-react";
 
-// Konfigurera worker för react-pdf
-pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
+// Konfigurera worker för react-pdf - använder CDN för att undvika byggproblem
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 interface PDFViewerProps {
   isOpen: boolean;
