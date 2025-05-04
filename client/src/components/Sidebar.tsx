@@ -67,7 +67,12 @@ export function Sidebar({ className }: SidebarProps) {
     "-Vault": true,
     "-Vault-Files": true,
     "-Vault-Files-01- Organisation": true,
-    "-Vault-Files-01- Organisation-01- Arkitekt": true
+    "-Vault-Files-01- Organisation-01- Arkitekt": true,
+    "-Vault-Files-01- Organisation-01- Arkitekt-1. Ritningar": true,
+    "-Vault-Files-01- Organisation-01- Arkitekt-2. DWG & IFC": true,
+    "-Vault-Files-01- Organisation-01- Arkitekt-3. Beskrivningar": true,
+    "-Vault-Files-01- Organisation-01- Arkitekt-4. Underlag": true,
+    "-Vault-Files-01- Organisation-01- Arkitekt-5. Egenkontroller": true
   });
 
   useEffect(() => {
@@ -197,39 +202,44 @@ export function Sidebar({ className }: SidebarProps) {
                   icon: <FolderClosed className="w-3 h-3" />,
                   children: [
                     {
-                      href: "/vault/files/1",
+                      href: "#",
                       label: "1. Ritningar",
                       active: false,
                       indent: 4,
-                      icon: <FileText className="w-3 h-3" />
+                      icon: <FolderClosed className="w-3 h-3" />,
+                      children: []
                     },
                     {
-                      href: "/vault/files/2",
+                      href: "#",
                       label: "2. DWG & IFC",
                       active: false,
                       indent: 4,
-                      icon: <FileText className="w-3 h-3" />
+                      icon: <FolderClosed className="w-3 h-3" />,
+                      children: []
                     },
                     {
-                      href: "/vault/files/3",
+                      href: "#",
                       label: "3. Beskrivningar",
                       active: false,
                       indent: 4,
-                      icon: <FileText className="w-3 h-3" />
+                      icon: <FolderClosed className="w-3 h-3" />,
+                      children: []
                     },
                     {
-                      href: "/vault/files/4",
+                      href: "#",
                       label: "4. Underlag",
                       active: false,
                       indent: 4,
-                      icon: <FileText className="w-3 h-3" />
+                      icon: <FolderClosed className="w-3 h-3" />,
+                      children: []
                     },
                     {
-                      href: "/vault/files/5",
+                      href: "#",
                       label: "5. Egenkontroller",
                       active: false,
                       indent: 4,
-                      icon: <FileText className="w-3 h-3" />
+                      icon: <FolderClosed className="w-3 h-3" />,
+                      children: []
                     }
                   ]
                 },
