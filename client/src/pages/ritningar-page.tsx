@@ -493,9 +493,9 @@ export default function RitningarPage() {
         </div>
       </div>
       
-      {/* PDF-visare */}
+      {/* Enkel PDF-visare */}
       {selectedFile && (
-        <PDFViewer
+        <SimplePDFViewer
           isOpen={!!selectedFile}
           onClose={() => setSelectedFile(null)}
           file={selectedFile.file}
