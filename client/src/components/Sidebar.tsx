@@ -2,9 +2,11 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { 
+  Home, 
   LayoutDashboard, 
   FolderClosed, 
   CheckSquare, 
+  FileText,
   Calendar, 
   Columns, 
   BookOpen, 
@@ -15,13 +17,15 @@ import {
   Briefcase,
   BarChart2,
   ChevronRight,
+  ChevronDown,
   Users,
   Clock,
   PieChart,
   Bell,
-  UserCircle,
+  MessageSquare,
   HelpCircle,
-  CircleUser
+  CircleUser,
+  Search
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -30,6 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
 
 interface SidebarProps {
   className?: string;
@@ -41,22 +46,29 @@ type NavItemType = {
   icon: React.ReactNode;
   badge?: string;
   active?: boolean;
+  indent?: number;
+  children?: NavItemType[];
 };
 
-type NavGroupType = {
-  title: string;
-  items: NavItemType[];
-};
+interface NavGroupProps {
+  item: NavItemType;
+  isOpen: boolean;
+  onToggle: () => void;
+  location: string;
+}
 
 export function Sidebar({ className }: SidebarProps) {
   const { user, logoutMutation } = useAuth();
   const [location] = useLocation();
   const isMobile = useMobile();
   const [isOpen, setIsOpen] = useState(!isMobile);
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    dashboard: true,
-    projectManagement: true,
-    collaboration: true
+  const [openItems, setOpenItems] = useState<Record<string, boolean>>({
+    "-Vault": true,
+    "-Vault-Files": true,
+    "-Vault-Files-Banker": true,
+    "-Planning": false,
+    "-Communication": false,
+    "-Personnel": false
   });
 
   useEffect(() => {
@@ -71,10 +83,10 @@ export function Sidebar({ className }: SidebarProps) {
     setIsOpen(!isOpen);
   };
 
-  const toggleGroup = (groupName: string) => {
-    setOpenGroups(prev => ({
+  const toggleItem = (itemName: string) => {
+    setOpenItems(prev => ({
       ...prev,
-      [groupName]: !prev[groupName]
+      [itemName]: !prev[itemName]
     }));
   };
 
@@ -86,120 +98,174 @@ export function Sidebar({ className }: SidebarProps) {
       .toUpperCase();
   };
 
-  const navGroups: NavGroupType[] = [
+  // Define nested navigation based on the image
+  const navItems: NavItemType[] = [
     {
-      title: "Dashboard",
-      items: [
-        { 
-          href: "/", 
-          label: "Overview", 
-          icon: <LayoutDashboard className="w-5 h-5" />,
-          active: location === "/" 
+      href: "/",
+      label: "Home",
+      icon: <Home className="w-5 h-5" />,
+      active: location === "/"
+    },
+    {
+      href: "/dashboard",
+      label: "Dashboard",
+      icon: <LayoutDashboard className="w-5 h-5" />,
+      active: location === "/dashboard"
+    },
+    {
+      href: "/planning",
+      label: "Planning",
+      icon: <Calendar className="w-5 h-5" />,
+      active: location.startsWith("/planning")
+    },
+    {
+      href: "/communication",
+      label: "Communication",
+      icon: <MessageSquare className="w-5 h-5" />,
+      active: location.startsWith("/communication")
+    },
+    {
+      href: "/viewer",
+      label: "Viewer",
+      icon: <FileText className="w-5 h-5" />,
+      active: location.startsWith("/viewer"),
+      badge: "1"
+    },
+    {
+      href: "/vault",
+      label: "Vault",
+      icon: <FolderClosed className="w-5 h-5" />,
+      active: location.startsWith("/vault"),
+      children: [
+        {
+          href: "/vault/home",
+          label: "Home",
+          icon: <Home className="w-4 h-4" />,
+          active: location === "/vault/home",
+          indent: 1
         },
-        { 
-          href: "/analytics", 
-          label: "Analytics", 
-          icon: <PieChart className="w-5 h-5" />,
-          active: location === "/analytics" 
+        {
+          href: "/vault/comments",
+          label: "Comments",
+          icon: <MessageSquare className="w-4 h-4" />,
+          active: location === "/vault/comments",
+          indent: 1
+        },
+        {
+          href: "/vault/review-reports",
+          label: "Review Reports",
+          icon: <FileText className="w-4 h-4" />,
+          active: location === "/vault/review-reports",
+          indent: 1
+        },
+        {
+          href: "/vault/files",
+          label: "Files",
+          icon: <FolderClosed className="w-4 h-4" />,
+          active: location === "/vault/files" || location.startsWith("/vault/files/"),
+          indent: 1,
+          children: [
+            {
+              href: "/vault/files/01-organization",
+              label: "01. Organization",
+              icon: <FileText className="w-4 h-4" />,
+              active: location === "/vault/files/01-organization",
+              indent: 2
+            },
+            {
+              href: "/vault/files/02-preparation",
+              label: "02. Preparation",
+              icon: <FileText className="w-4 h-4" />,
+              active: location === "/vault/files/02-preparation",
+              indent: 2
+            },
+            {
+              href: "/vault/files/03-admin",
+              label: "03. Admin",
+              icon: <FileText className="w-4 h-4" />,
+              active: location === "/vault/files/03-admin",
+              indent: 2
+            },
+            {
+              href: "/vault/files/banker",
+              label: "Banker",
+              icon: <FileText className="w-4 h-4" />,
+              active: location === "/vault/files/banker",
+              indent: 2,
+              children: [
+                {
+                  href: "/vault/files/banker/1-invoices",
+                  label: "1. Invoices",
+                  icon: <FileText className="w-3 h-3" />,
+                  active: location === "/vault/files/banker/1-invoices",
+                  indent: 3
+                },
+                {
+                  href: "/vault/files/banker/2-bankutdrag",
+                  label: "2. Bankutdrag",
+                  icon: <FileText className="w-3 h-3" />,
+                  active: location === "/vault/files/banker/2-bankutdrag",
+                  indent: 3
+                },
+                {
+                  href: "/vault/files/banker/3-underlag",
+                  label: "3. Underlag",
+                  icon: <FileText className="w-3 h-3" />,
+                  active: location === "/vault/files/banker/3-underlag",
+                  indent: 3
+                },
+                {
+                  href: "/vault/files/banker/4-egenkontroller",
+                  label: "4. Egenkontroller",
+                  icon: <FileText className="w-3 h-3" />,
+                  active: location === "/vault/files/banker/4-egenkontroller",
+                  indent: 3
+                }
+              ]
+            },
+            {
+              href: "/vault/files/05-faktura",
+              label: "05. Faktura",
+              icon: <FileText className="w-4 h-4" />,
+              active: location === "/vault/files/05-faktura",
+              indent: 2
+            },
+            {
+              href: "/vault/files/06-offert",
+              label: "06. Offert",
+              icon: <FileText className="w-4 h-4" />,
+              active: location === "/vault/files/06-offert",
+              indent: 2
+            }
+          ]
+        },
+        {
+          href: "/vault/personnel",
+          label: "Personnel",
+          icon: <Users className="w-4 h-4" />,
+          active: location === "/vault/personnel",
+          indent: 1
+        },
+        {
+          href: "/vault/meetings",
+          label: "Meetings",
+          icon: <Users className="w-4 h-4" />,
+          active: location === "/vault/meetings",
+          indent: 1
         }
       ]
     },
     {
-      title: "Project Management",
-      items: [
-        { 
-          href: "/projects", 
-          label: "Projects", 
-          icon: <Briefcase className="w-5 h-5" />,
-          badge: "4",
-          active: location === "/projects" 
-        },
-        { 
-          href: "/tasks", 
-          label: "Tasks", 
-          icon: <CheckSquare className="w-5 h-5" />,
-          badge: "8",
-          active: location === "/tasks" 
-        },
-        { 
-          href: "/timeline", 
-          label: "Timeline", 
-          icon: <Calendar className="w-5 h-5" />,
-          active: location === "/timeline" 
-        },
-        { 
-          href: "/gantt", 
-          label: "Gantt Chart", 
-          icon: <BarChart2 className="w-5 h-5" />,
-          active: location === "/gantt" 
-        },
-        { 
-          href: "/kanban", 
-          label: "Kanban Board", 
-          icon: <Columns className="w-5 h-5" />,
-          active: location === "/kanban" 
-        },
-        { 
-          href: "/time-tracking", 
-          label: "Time Tracking", 
-          icon: <Clock className="w-5 h-5" />,
-          active: location === "/time-tracking" 
-        }
-      ]
+      href: "/support",
+      label: "Support",
+      icon: <HelpCircle className="w-5 h-5" />,
+      active: location === "/support"
     },
     {
-      title: "Collaboration",
-      items: [
-        { 
-          href: "/files", 
-          label: "Files", 
-          icon: <FolderClosed className="w-5 h-5" />,
-          active: location === "/files" 
-        },
-        { 
-          href: "/wiki", 
-          label: "Wiki", 
-          icon: <BookOpen className="w-5 h-5" />,
-          active: location === "/wiki" 
-        },
-        { 
-          href: "/team", 
-          label: "Team", 
-          icon: <Users className="w-5 h-5" />,
-          active: location === "/team" 
-        }
-      ]
-    }
-  ];
-
-  const accountItems: NavItemType[] = [
-    { 
-      href: "/profile", 
-      label: "Profile", 
-      icon: <CircleUser className="w-5 h-5" />,
-      active: location === "/profile"
-    },
-    { 
-      href: "/notifications", 
-      label: "Notifications", 
-      icon: <Bell className="w-5 h-5" />,
-      badge: "3",
-      active: location === "/notifications"
-    },
-    { 
-      href: "/settings", 
-      label: "Settings", 
+      href: "/settings",
+      label: "Settings",
       icon: <Settings className="w-5 h-5" />,
       active: location === "/settings"
-    }
-  ];
-  
-  const helpItems: NavItemType[] = [
-    { 
-      href: "/help", 
-      label: "Help Center", 
-      icon: <HelpCircle className="w-5 h-5" />,
-      active: location === "/help"
     }
   ];
 
@@ -214,60 +280,112 @@ export function Sidebar({ className }: SidebarProps) {
     );
   }
 
-  const NavItem = ({ item }: { item: NavItemType }) => (
-    <Link href={item.href} 
-      className={cn(
-        "flex items-center justify-between px-3 py-2 rounded-md transition-colors duration-150",
-        item.active
-          ? "bg-primary-50 text-primary-700 font-medium" 
-          : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
-      )}
-    >
-      <div className="flex items-center">
-        <span className={cn(
-          "flex items-center justify-center mr-3",
-          item.active ? "text-primary-700" : "text-neutral-500"
-        )}>
-          {item.icon}
-        </span>
-        <span className={cn(
-          "text-sm",
-          item.active ? "text-primary-700" : "text-neutral-600"
-        )}>{item.label}</span>
-      </div>
-      {item.badge && (
-        <Badge variant="outline" className={cn(
-          "ml-auto text-xs py-0.5 px-2 rounded-full",
-          item.active 
-            ? "bg-primary-100 text-primary-700 border-primary-200" 
-            : "bg-neutral-100 text-neutral-600 border-neutral-200"
-        )}>
-          {item.badge}
-        </Badge>
-      )}
-    </Link>
-  );
-
-  const NavGroup = ({ group, name }: { group: NavGroupType, name: string }) => (
-    <Collapsible open={openGroups[name]} onOpenChange={() => toggleGroup(name)}>
-      <CollapsibleTrigger asChild>
-        <button className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-          <span>{group.title}</span>
-          <ChevronRight className={cn(
-            "h-4 w-4 transition-transform duration-200",
-            openGroups[name] ? "rotate-90" : ""
-          )} />
-        </button>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="space-y-1 mt-1 mb-3">
-          {group.items.map((item) => (
-            <NavItem key={item.href} item={item} />
-          ))}
+  // Recursive function to render navigation items
+  const renderNavItems = (items: NavItemType[], parentKey: string = '') => {
+    return items.map((item, index) => {
+      const itemKey = `${parentKey}-${item.label}`;
+      const hasChildren = item.children && item.children.length > 0;
+      const isItemOpen = openItems[itemKey] !== undefined ? openItems[itemKey] : false;
+      
+      // Calculate indentation based on level
+      let indentClass = '';
+      if (item.indent === 1) indentClass = 'pl-4';
+      else if (item.indent === 2) indentClass = 'pl-8';
+      else if (item.indent === 3) indentClass = 'pl-12';
+      
+      return (
+        <div key={itemKey}>
+          {hasChildren ? (
+            <Collapsible open={isItemOpen} onOpenChange={() => toggleItem(itemKey)}>
+              <CollapsibleTrigger asChild>
+                <button 
+                  className={cn(
+                    "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150",
+                    item.active
+                      ? "bg-primary-50 text-primary-700 font-medium" 
+                      : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900",
+                    indentClass
+                  )}
+                >
+                  <div className="flex items-center">
+                    <span className={cn(
+                      "flex items-center justify-center mr-3",
+                      item.active ? "text-primary-700" : "text-neutral-500"
+                    )}>
+                      {item.icon}
+                    </span>
+                    <span className={cn(
+                      "text-sm",
+                      item.active ? "text-primary-700" : "text-neutral-600"
+                    )}>
+                      {item.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    {item.badge && (
+                      <Badge variant="outline" className={cn(
+                        "text-xs py-0.5 px-2 rounded-full mr-2",
+                        item.active 
+                          ? "bg-primary-100 text-primary-700 border-primary-200" 
+                          : "bg-neutral-100 text-neutral-600 border-neutral-200"
+                      )}>
+                        {item.badge}
+                      </Badge>
+                    )}
+                    <ChevronRight className={cn(
+                      "h-4 w-4 transition-transform duration-200",
+                      isItemOpen ? "rotate-90" : ""
+                    )} />
+                  </div>
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-1 mb-1">
+                  {renderNavItems(item.children!, itemKey)}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          ) : (
+            <Link 
+              href={item.href}
+              className={cn(
+                "flex items-center justify-between px-3 py-2 rounded-md transition-colors duration-150",
+                item.active
+                  ? "bg-primary-50 text-primary-700 font-medium" 
+                  : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900",
+                indentClass
+              )}
+            >
+              <div className="flex items-center">
+                <span className={cn(
+                  "flex items-center justify-center mr-3",
+                  item.active ? "text-primary-700" : "text-neutral-500"
+                )}>
+                  {item.icon}
+                </span>
+                <span className={cn(
+                  "text-sm",
+                  item.active ? "text-primary-700" : "text-neutral-600"
+                )}>
+                  {item.label}
+                </span>
+              </div>
+              {item.badge && (
+                <Badge variant="outline" className={cn(
+                  "ml-auto text-xs py-0.5 px-2 rounded-full",
+                  item.active 
+                    ? "bg-primary-100 text-primary-700 border-primary-200" 
+                    : "bg-neutral-100 text-neutral-600 border-neutral-200"
+                )}>
+                  {item.badge}
+                </Badge>
+              )}
+            </Link>
+          )}
         </div>
-      </CollapsibleContent>
-    </Collapsible>
-  );
+      );
+    });
+  };
 
   return (
     <>
@@ -279,7 +397,7 @@ export function Sidebar({ className }: SidebarProps) {
       )}
       <aside 
         className={cn(
-          "w-72 bg-white h-full shadow-md transition-all duration-300 overflow-y-auto z-50 flex flex-col",
+          "w-64 bg-white h-full shadow-md transition-all duration-300 overflow-y-auto z-50 flex flex-col",
           isMobile ? "fixed left-0 top-0" : "sticky top-0",
           className
         )}
@@ -292,7 +410,7 @@ export function Sidebar({ className }: SidebarProps) {
                   <path d="M12 2L20 7V17L12 22L4 17V7L12 2Z" fill="currentColor"/>
                 </svg>
               </div>
-              <span className="ml-2 text-primary-900 text-xl font-bold">ValvXl</span>
+              <span className="ml-2 text-primary-900 text-xl font-bold">ValvX</span>
             </div>
             {isMobile && (
               <button 
@@ -305,58 +423,40 @@ export function Sidebar({ className }: SidebarProps) {
           </div>
         </div>
         
-        <div className="p-4 border-b border-neutral-200">
+        <div className="p-3 border-b border-neutral-200">
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-neutral-400" />
+            <Input 
+              placeholder="Search" 
+              className="pl-8 h-9 text-sm"
+            />
+          </div>
+        </div>
+        
+        <div className="flex-1 py-2 overflow-y-auto">
+          <div className="space-y-1">
+            {renderNavItems(navItems)}
+          </div>
+        </div>
+        
+        <div className="p-3 border-t border-neutral-200 mt-auto">
           <div className="flex items-center">
-            <Avatar className="h-10 w-10 border-2 border-primary-100">
-              <AvatarFallback className="bg-primary-50 text-primary-700">
-                {user ? getInitials(user.username) : '--'}
+            <Avatar className="h-8 w-8 border border-neutral-200">
+              <AvatarFallback className="bg-neutral-100 text-neutral-700 text-xs">
+                {user ? getInitials(user.username) : 'U'}
               </AvatarFallback>
             </Avatar>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-neutral-900">{user?.username || 'User'}</p>
-              <p className="text-xs text-neutral-500">{user?.role || 'User'}</p>
+            <div className="ml-2 overflow-hidden">
+              <p className="text-sm font-medium text-neutral-900 truncate">{user?.username || 'User'}</p>
+              <p className="text-xs text-neutral-500 truncate">maria@valvxl.se</p>
             </div>
+            <button 
+              className="ml-auto text-neutral-400 hover:text-neutral-600"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
-        </div>
-        
-        <div className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
-          {navGroups.map((group, index) => (
-            <NavGroup key={index} group={group} name={Object.keys(openGroups)[index]} />
-          ))}
-          
-          <div className="pt-2">
-            <Separator className="mb-4" />
-            
-            <div className="px-3 py-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-              Account
-            </div>
-            <div className="space-y-1 mt-1 mb-3">
-              {accountItems.map((item) => (
-                <NavItem key={item.href} item={item} />
-              ))}
-            </div>
-            
-            <Separator className="mb-4 mt-4" />
-            
-            <div className="space-y-1 mt-1 mb-3">
-              {helpItems.map((item) => (
-                <NavItem key={item.href} item={item} />
-              ))}
-            </div>
-          </div>
-        </div>
-        
-        <div className="p-4 border-t border-neutral-200 mt-auto">
-          <Button 
-            variant="ghost"
-            className="flex items-center w-full justify-start text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100" 
-            onClick={handleLogout}
-            disabled={logoutMutation.isPending}
-          >
-            <LogOut className="mr-3 h-5 w-5" />
-            <span>Logout</span>
-            {logoutMutation.isPending && <span className="ml-auto">...</span>}
-          </Button>
         </div>
       </aside>
     </>
