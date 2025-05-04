@@ -102,32 +102,17 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     }
   }, [file, fileUrl]);
   
-  // Ladda dummy-annotationer för demo (skulle ersättas med API-anrop i en verklig implementation)
+  // I en verklig implementation skulle vi hämta annotationer från API baserat på fil-ID
   useEffect(() => {
-    // Simulera inläsning av annotationer från API
-    const dummyAnnotations: PDFAnnotation[] = [
-      {
-        id: '1',
-        rect: { x: 100, y: 150, width: 80, height: 60, pageNumber: 1 },
-        color: statusColors.action_required,
-        comment: 'Denna del behöver justeras för att matcha ritningsstandarder',
-        status: 'action_required',
-        createdBy: 'Anna Svensson',
-        createdAt: '2025-05-01T10:30:00Z'
-      },
-      {
-        id: '2',
-        rect: { x: 250, y: 300, width: 100, height: 70, pageNumber: 1 },
-        color: statusColors.resolved,
-        comment: 'Mått korrigerade enligt specifikation',
-        status: 'resolved',
-        createdBy: 'Erik Johansson',
-        createdAt: '2025-05-02T14:15:00Z'
-      }
-    ];
+    // Här skulle vi hämta annotationer från API
+    // Exempel: fetchAnnotations(fileId)
     
-    setAnnotations(dummyAnnotations);
-  }, []);
+    // För nu börjar vi med en tom lista - användaren får lägga till egna annotationer
+    setAnnotations([]);
+    
+    // Rensa också eventuella tidigare aktiva annotationer när en ny fil öppnas
+    setActiveAnnotation(null);
+  }, [fileUrl, file]);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -504,36 +489,67 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         
         {/* Höger sida - Kommentarspanel */}
         <div className="w-80 border-l overflow-auto flex flex-col h-full">
-          <div className="p-4 border-b bg-gray-50">
+          <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
             <h3 className="font-medium text-lg">Kommentarer</h3>
+            <Button 
+              variant="ghost"
+              size="sm"
+              onClick={handleToggleMarkingMode}
+              className={isMarking ? "text-primary-600" : ""}
+            >
+              <MessageSquare size={16} className="mr-1" />
+              {!isMarking ? "Ny kommentar" : "Avbryt"}
+            </Button>
           </div>
           
           <div className="flex-1 overflow-y-auto">
             {annotations.length === 0 ? (
-              <div className="p-4 text-gray-500 text-center">
-                <p>Inga kommentarer ännu</p>
-                <p className="text-sm mt-2">Klicka på markeringsknappen för att lägga till en kommentar</p>
+              <div className="p-8 text-gray-500 text-center flex flex-col items-center justify-center h-full">
+                <MessageSquare size={30} className="text-gray-400 mb-3" />
+                <p className="font-medium">Inga kommentarer ännu</p>
+                <p className="text-sm mt-2 max-w-[220px]">
+                  Lägg till kommentarer direkt på ritningen genom att klicka på 
+                  <span className="font-medium"> Ny kommentar</span> ovan
+                </p>
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  onClick={handleToggleMarkingMode}
+                  className="mt-4"
+                >
+                  <MessageSquare size={14} className="mr-1" />
+                  Lägg till första kommentaren
+                </Button>
               </div>
             ) : (
               <div className="space-y-4 p-4">
+                <div className="flex justify-between items-center mb-2 px-1">
+                  <p className="text-sm text-gray-500">
+                    {annotations.length} {annotations.length === 1 ? 'kommentar' : 'kommentarer'}
+                  </p>
+                  {/* Här skulle vi kunna lägga till en sortering eller filtrering */}
+                </div>
+                
                 {annotations.map(annotation => (
                   <div 
                     key={annotation.id} 
-                    className={`bg-white border rounded-lg p-3 shadow-sm transition-all duration-200 ${activeAnnotation?.id === annotation.id ? 'ring-2 ring-blue-400' : ''}`}
+                    className={`bg-white border rounded-lg p-3 shadow-sm transition-all duration-200 ${activeAnnotation?.id === annotation.id ? 'ring-2 ring-blue-400' : 'hover:border-blue-200'}`}
                     onClick={() => zoomToAnnotation(annotation)}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <div 
-                        className="w-3 h-3 rounded-full mr-2" 
-                        style={{ backgroundColor: annotation.color }} 
-                      />
-                      <span className="text-sm font-medium flex-1">
-                        {annotation.rect.pageNumber !== pageNumber && `Sida ${annotation.rect.pageNumber}: `}
-                        {annotation.status === 'open' && 'Öppen'}
-                        {annotation.status === 'resolved' && 'Löst'}
-                        {annotation.status === 'action_required' && 'Kräver åtgärd'}
-                        {annotation.status === 'reviewing' && 'Under granskning'}
-                      </span>
+                      <div className="flex items-center">
+                        <div 
+                          className="w-3 h-3 rounded-full mr-2" 
+                          style={{ backgroundColor: annotation.color }} 
+                        />
+                        <span className="text-sm font-medium">
+                          {annotation.rect.pageNumber !== pageNumber && `Sida ${annotation.rect.pageNumber}: `}
+                          {annotation.status === 'open' && 'Öppen'}
+                          {annotation.status === 'resolved' && 'Löst'}
+                          {annotation.status === 'action_required' && 'Kräver åtgärd'}
+                          {annotation.status === 'reviewing' && 'Under granskning'}
+                        </span>
+                      </div>
                       <div className="flex space-x-1">
                         <Button 
                           variant="ghost" 
@@ -561,8 +577,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                         </Button>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-700">{annotation.comment}</p>
-                    <div className="flex justify-between mt-2 text-xs text-gray-500">
+                    <p className="text-sm text-gray-700 mb-3">{annotation.comment}</p>
+                    <div className="flex justify-between mt-2 text-xs text-gray-500 border-t pt-2">
                       <span>{annotation.createdBy}</span>
                       <span>{new Date(annotation.createdAt).toLocaleDateString()}</span>
                     </div>
@@ -579,31 +595,53 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         <div className="fixed inset-0 z-[60] flex items-center justify-center">
           <div className="absolute inset-0 bg-black bg-opacity-50" onClick={cancelMarkingOrComment} />
           <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-            <h3 className="text-lg font-medium mb-4">Lägg till kommentar</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-medium">Lägg till kommentar</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={cancelMarkingOrComment}
+                className="h-7 w-7"
+              >
+                <X size={16} />
+              </Button>
+            </div>
             
-            <div className="space-y-4">
+            <p className="text-sm text-gray-500 mb-4">
+              Du markerar ett område på sida {tempAnnotation.rect?.pageNumber}. Lägg till din kommentar nedan.
+            </p>
+            
+            <div className="space-y-5 mb-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Status</label>
-                <Select
-                  defaultValue="open"
-                  onValueChange={(value: any) => {
-                    setTempAnnotation({
-                      ...tempAnnotation,
-                      status: value,
-                      color: statusColors[value as keyof typeof statusColors]
-                    });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Välj status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open">Öppen</SelectItem>
-                    <SelectItem value="reviewing">Under granskning</SelectItem>
-                    <SelectItem value="action_required">Kräver åtgärd</SelectItem>
-                    <SelectItem value="resolved">Löst</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="grid grid-cols-4 gap-2">
+                  {Object.entries(statusColors).map(([status, color]) => (
+                    <div 
+                      key={status}
+                      className={`flex flex-col items-center border rounded p-2 cursor-pointer transition-all hover:border-blue-300 ${
+                        tempAnnotation.status === status ? 'ring-2 ring-primary-500 border-primary-400' : ''
+                      }`}
+                      onClick={() => {
+                        setTempAnnotation({
+                          ...tempAnnotation,
+                          status: status as PDFAnnotation['status'],
+                          color
+                        });
+                      }}
+                    >
+                      <div 
+                        className="w-5 h-5 rounded-full mb-1"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="text-xs text-center">
+                        {status === 'open' && 'Öppen'}
+                        {status === 'resolved' && 'Löst'}
+                        {status === 'action_required' && 'Åtgärd'}
+                        {status === 'reviewing' && 'Granskas'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
               
               <div>
@@ -611,13 +649,18 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                 <Textarea
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Skriv din kommentar här..."
+                  placeholder="Beskriv problemet eller lämna en kommentar..."
                   rows={4}
+                  className="resize-none"
+                  autoFocus
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Kommentaren kommer att vara synlig för alla som har tillgång till denna fil
+                </p>
               </div>
             </div>
             
-            <div className="flex justify-end space-x-3 mt-6">
+            <div className="flex justify-end space-x-3 pt-2 border-t">
               <Button
                 variant="outline"
                 onClick={cancelMarkingOrComment}
@@ -628,7 +671,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                 onClick={saveComment}
                 disabled={!newComment.trim()}
               >
-                Spara
+                <MessageSquare size={16} className="mr-2" />
+                Spara kommentar
               </Button>
             </div>
           </div>
