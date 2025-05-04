@@ -116,7 +116,23 @@ export function Sidebar({ className }: SidebarProps) {
       href: "/planning",
       label: "Planning",
       icon: <Calendar className="w-5 h-5" />,
-      active: location.startsWith("/planning")
+      active: location.startsWith("/planning"),
+      children: [
+        {
+          href: "/planning/kanban",
+          label: "Kanban",
+          icon: <Columns className="w-4 h-4" />,
+          active: location === "/planning/kanban",
+          indent: 1
+        },
+        {
+          href: "/planning/gantt-chart",
+          label: "Gantt Chart",
+          icon: <BarChart2 className="w-4 h-4" />,
+          active: location === "/planning/gantt-chart",
+          indent: 1
+        }
+      ]
     },
     {
       href: "/communication",
