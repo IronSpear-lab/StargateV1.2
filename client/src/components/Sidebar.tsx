@@ -525,7 +525,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               {hasChildren ? (
                 <button 
                   className={cn(
-                    "flex items-center justify-center w-full py-2 rounded-md transition-colors duration-150",
+                    "flex items-center justify-center w-full py-2 rounded-md transition-colors duration-150 sidebar-nav-item",
                     item.active
                       ? "bg-primary/10 text-primary font-medium" 
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -544,7 +544,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 <Link 
                   href={item.href}
                   className={cn(
-                    "flex items-center justify-center py-2 rounded-md transition-colors duration-150 w-full",
+                    "flex items-center justify-center py-2 rounded-md transition-colors duration-150 w-full sidebar-nav-item",
                     item.active
                       ? "bg-primary/10 text-primary font-medium" 
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",

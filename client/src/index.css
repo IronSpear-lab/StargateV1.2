@@ -173,6 +173,23 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+  
+  /* Sidofält i dark mode - ljusare text och ikoner */
+  .dark aside.dark\:bg-slate-900 {
+    @apply text-white;
+  }
+  
+  .dark aside svg {
+    color: white !important;
+  }
+
+  .dark aside span[class*="text-muted-foreground"] {
+    color: rgba(255, 255, 255, 0.9) !important;
+  }
+  
+  .dark aside .text-muted-foreground {
+    color: rgba(255, 255, 255, 0.9) !important;
+  }
 
   /* TreeView Styles */
   .tree-view ul {
