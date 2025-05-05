@@ -124,7 +124,7 @@ export function Sidebar({ className }: SidebarProps) {
           indent: 1
         },
         {
-          href: "/gantt", // Match the route in App.tsx
+          href: "/planning/gantt-chart", // Match the route in App.tsx
           label: "Gantt Chart",
           icon: <BarChart2 className="w-4 h-4" />,
           active: location === "/gantt" || location === "/planning/gantt-chart",
