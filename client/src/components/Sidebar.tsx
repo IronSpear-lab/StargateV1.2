@@ -35,6 +35,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import { ModeToggle } from "@/components/mode-toggle";
 
 interface SidebarProps {
   className?: string;
@@ -408,37 +409,33 @@ export function Sidebar({ className }: SidebarProps) {
     <>
       {isMobile && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 dark:bg-black dark:bg-opacity-70"
           onClick={() => setIsOpen(false)}
         />
       )}
       <aside 
         className={cn(
-          "w-64 bg-white h-full shadow-md transition-all duration-300 overflow-y-auto z-50 flex flex-col",
+          "w-64 bg-background h-full shadow-md transition-all duration-300 overflow-y-auto z-50 flex flex-col border-r border-border",
           isMobile ? "fixed left-0 top-0" : "sticky top-0",
           className
         )}
       >
-        <div className="p-4 border-b border-neutral-200">
+        <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center text-white">
+              <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center text-white dark:text-primary-foreground">
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M12 2L20 7V17L12 22L4 17V7L12 2Z" fill="currentColor"/>
                 </svg>
               </div>
-              <span className="ml-2 text-blue-900 text-xl font-bold">ValvX</span>
+              <span className="ml-2 text-foreground text-xl font-bold">ValvX</span>
             </div>
             <div className="flex space-x-1 items-center">
-              <button className="p-1 text-gray-500 hover:text-blue-700">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-                </svg>
-              </button>
+              <ModeToggle />
               {isMobile && (
                 <button 
                   onClick={toggleSidebar} 
-                  className="p-1 text-neutral-500 hover:text-neutral-700"
+                  className="p-1 text-muted-foreground hover:text-foreground"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -447,9 +444,9 @@ export function Sidebar({ className }: SidebarProps) {
           </div>
         </div>
         
-        <div className="p-3 border-b border-neutral-200">
+        <div className="p-3 border-b border-border">
           <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-neutral-400" />
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input 
               placeholder="Search" 
               className="pl-8 h-9 text-sm"
@@ -467,39 +464,37 @@ export function Sidebar({ className }: SidebarProps) {
           <div className="space-y-1 mt-1">
             <Link 
               href="/support"
-              className="flex items-center px-3 py-2 rounded-md text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+              className="flex items-center px-3 py-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
             >
-              <HelpCircle className="w-5 h-5 mr-3 text-neutral-500" />
+              <HelpCircle className="w-5 h-5 mr-3 text-muted-foreground" />
               <span className="text-sm">Support</span>
             </Link>
             <Link 
               href="/settings"
-              className="flex items-center px-3 py-2 rounded-md text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+              className="flex items-center px-3 py-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
             >
-              <Settings className="w-5 h-5 mr-3 text-neutral-500" />
+              <Settings className="w-5 h-5 mr-3 text-muted-foreground" />
               <span className="text-sm">Settings</span>
             </Link>
           </div>
         </div>
         
-        <div className="p-3 border-t border-neutral-200">
+        <div className="p-3 border-t border-border">
           <div className="flex items-center">
-            <Avatar className="h-8 w-8 border border-neutral-200">
-              <AvatarFallback className="bg-neutral-100 text-neutral-700 text-xs">
+            <Avatar className="h-8 w-8 border border-border">
+              <AvatarFallback className="bg-muted text-foreground text-xs">
                 FH
               </AvatarFallback>
             </Avatar>
             <div className="ml-2 overflow-hidden">
-              <p className="text-sm font-medium text-neutral-900 truncate">Fredrik H.</p>
-              <p className="text-xs text-neutral-500 truncate">fredrik@valvx.com</p>
+              <p className="text-sm font-medium text-foreground truncate">Fredrik H.</p>
+              <p className="text-xs text-muted-foreground truncate">fredrik@valvx.com</p>
             </div>
             <button 
-              className="ml-auto text-neutral-400 hover:text-neutral-600 p-1"
+              className="ml-auto text-muted-foreground hover:text-foreground p-1 transition-colors"
               onClick={handleLogout}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
+              <LogOut className="h-4 w-4" />
             </button>
           </div>
         </div>
