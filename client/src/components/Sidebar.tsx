@@ -491,7 +491,8 @@ export function Sidebar({ className }: SidebarProps) {
           className
         )}
       >
-        <div className="p-4 border-b border-border">
+        {/* Top Header with Logo */}
+        <div className={cn("border-b border-border", isOpen ? "p-4" : "p-2")}>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center text-white dark:text-primary-foreground">
@@ -499,31 +500,60 @@ export function Sidebar({ className }: SidebarProps) {
                   <path d="M12 2L20 7V17L12 22L4 17V7L12 2Z" fill="currentColor"/>
                 </svg>
               </div>
-              <span className={cn(
-                "ml-2 text-foreground text-xl font-bold transition-opacity duration-200",
-                !isOpen && !isMobile ? "opacity-0 w-0" : ""
-              )}>ValvX</span>
+              {isOpen && (
+                <span className="ml-2 text-foreground text-xl font-bold">ValvX</span>
+              )}
             </div>
-            <div className="flex space-x-1 items-center">
-              <ModeToggle />
+            {isOpen && (
+              <div className="flex space-x-1 items-center">
+                <ModeToggle />
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-9 w-9 rounded-full"
+                  onClick={toggleSidebar}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                    <path d="m15 18-6-6 6-6"/>
+                  </svg>
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Expansion Button - visas endast i minimerat läge */}
+        {!isOpen && (
+          <div className="flex justify-center py-2">
+            <div className="relative group">
               <Button 
                 variant="ghost" 
                 size="icon" 
                 className="h-9 w-9 rounded-full"
                 onClick={toggleSidebar}
               >
-                {isOpen ? 
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-                    <path d="m15 18-6-6 6-6"/>
-                  </svg> : 
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-                    <path d="m9 18 6-6-6-6"/>
-                  </svg>
-                }
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                  <path d="m9 18 6-6-6-6"/>
+                </svg>
               </Button>
+              <div className="absolute left-full ml-2 px-2 py-1 rounded-md bg-popover shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+                Expand Sidebar
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Dark mode toggle - bara i minimerat läge */}
+        {!isOpen && (
+          <div className="flex justify-center py-2">
+            <div className="relative group">
+              <ModeToggle />
+              <div className="absolute left-full ml-2 px-2 py-1 rounded-md bg-popover shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+                Toggle Theme
+              </div>
+            </div>
+          </div>
+        )}
         
         {isOpen ? (
           <div className="p-3 border-b border-border">
