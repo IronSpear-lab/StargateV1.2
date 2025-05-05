@@ -813,10 +813,10 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         annotationElement.className = "annotation-element";
         annotationElement.style.position = "absolute";
         // Lägg till padding-offset för att matcha vår wrapper
-        annotationElement.style.left = `${Number(annotation.rect.x) + 200}px`;
-        annotationElement.style.top = `${Number(annotation.rect.y) + 200}px`;
-        annotationElement.style.width = `${annotation.rect.width}px`;
-        annotationElement.style.height = `${annotation.rect.height}px`;
+        annotationElement.style.left = `${(Number(annotation.rect.x) + 200) * scale}px`;
+        annotationElement.style.top = `${(Number(annotation.rect.y) + 200) * scale}px`;
+        annotationElement.style.width = `${annotation.rect.width * scale}px`;
+        annotationElement.style.height = `${annotation.rect.height * scale}px`;
         annotationElement.style.border = `2px solid ${annotation.color}`;
         annotationElement.style.backgroundColor = `${annotation.color}33`;
         annotationElement.style.zIndex = "100";
@@ -840,10 +840,10 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             marker.id = markerId;
             marker.className = "annotation-marker";
             marker.style.position = "absolute";
-            marker.style.left = `${Number(annotation.rect.x) + 190}px`; 
-            marker.style.top = `${Number(annotation.rect.y) + 190}px`;
-            marker.style.width = `${annotation.rect.width + 20}px`;
-            marker.style.height = `${annotation.rect.height + 20}px`;
+            marker.style.left = `${(Number(annotation.rect.x) + 190) * scale}px`; 
+            marker.style.top = `${(Number(annotation.rect.y) + 190) * scale}px`;
+            marker.style.width = `${(annotation.rect.width + 20) * scale}px`;
+            marker.style.height = `${(annotation.rect.height + 20) * scale}px`;
             marker.style.zIndex = "1000";
             marker.style.border = `3px solid ${annotation.color}`;
             marker.style.borderRadius = "5px";
