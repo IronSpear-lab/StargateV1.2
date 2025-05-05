@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { storeFileForReuse, getStoredFileById } from "@/lib/file-utils";
-import { getConsistentFileId, getLatestPdfVersion } from "@/lib/pdf-utils";
+import { getConsistentFileId, getLatestPdfVersion, addPdfViewerAnimations } from "@/lib/pdf-utils";
 
 // Konfigurera worker för react-pdf - använder CDN för att undvika byggproblem
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -780,91 +780,107 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     console.log("Zooming to annotation:", annotation);
     
     try {
-      // Först, sätt zoomnivån till ett fast värde för att ge konsistent visning
+      // Säkerställ att CSS-stilmallen med våra anpassningar finns
+      addPdfViewerAnimations();
+      
+      // Lägg till ID på container-element för referens
+      if (pdfContainerRef.current && !pdfContainerRef.current.id) {
+        pdfContainerRef.current.id = "pdf-viewer-container";
+        pdfContainerRef.current.className += " pdfViewerContainer";
+      }
+      
+      if (pageRef.current && !pageRef.current.id) {
+        pageRef.current.id = "pdf-page-container";
+      }
+      
+      // Sätt zoom med större marginaler
       setScale(1.5);
       
-      // Vänta tills zoomen appliceras innan vi försöker scrolla
+      // Skapa en unik ID för denna annotation om den inte redan har ett ID-element
+      const annotationElementId = `annotation-${annotation.id}`;
+      
+      // Hitta eller skapa ett element för annotationen
+      let annotationElement = document.getElementById(annotationElementId);
+      
+      // Om elementet inte finns, skapa det
+      if (!annotationElement && pageRef.current) {
+        annotationElement = document.createElement('div');
+        annotationElement.id = annotationElementId;
+        annotationElement.className = "annotation-element";
+        annotationElement.style.position = "absolute";
+        annotationElement.style.left = `${annotation.rect.x}px`;
+        annotationElement.style.top = `${annotation.rect.y}px`;
+        annotationElement.style.width = `${annotation.rect.width}px`;
+        annotationElement.style.height = `${annotation.rect.height}px`;
+        annotationElement.style.border = `2px solid ${annotation.color}`;
+        annotationElement.style.backgroundColor = `${annotation.color}33`;
+        annotationElement.style.zIndex = "100";
+        annotationElement.style.pointerEvents = "none";
+        pageRef.current.appendChild(annotationElement);
+      }
+      
+      // Vänta tills allt är renderat innan scrollning
       setTimeout(() => {
-        try {
-          // Hitta sidnumret för annotationen
-          const pageNumber = annotation.rect.pageNumber || 1;
-          
-          // Hitta den faktiska PDF-sidan
-          const pageElement = document.querySelector(`.react-pdf__Page[data-page-number="${pageNumber}"]`);
-          
-          if (!pageElement) {
-            console.error("Could not find page element for annotation:", pageNumber);
-            return;
-          }
-          
-          // Beräkna position på sidan där annotationen ligger
-          const annotX = annotation.rect.x;
-          const annotY = annotation.rect.y;
-          
-          // Hitta PDF-visningens container element
-          const pdfViewer = document.querySelector('.pdf-viewer');
-          
-          if (!pdfViewer) {
-            console.error("Could not find PDF viewer container");
-            return;
-          }
-          
-          // Beräkna offset för sidan inom dokumentet
-          const pageRect = pageElement.getBoundingClientRect();
-          const viewerRect = pdfViewer.getBoundingClientRect();
-          
-          // Skapa visuell markör
-          const annotElement = document.createElement('div');
-          annotElement.id = `temp-marker-${annotation.id}`;
-          annotElement.style.cssText = `
-            position: absolute;
-            left: ${annotX - 10}px;
-            top: ${annotY - 10}px;
-            width: ${Math.max(annotation.rect.width + 20, 40)}px;
-            height: ${Math.max(annotation.rect.height + 20, 40)}px;
-            border: 4px solid #fa5c7c;
-            background-color: rgba(250, 92, 124, 0.3);
-            border-radius: 4px;
-            z-index: 9999;
-            pointer-events: none;
-            box-shadow: 0 0 15px rgba(250, 92, 124, 0.6);
-          `;
-          
-          // Lägg till markören i sidans container
-          const pageContainer = document.querySelector(`.react-pdf__Page[data-page-number="${pageNumber}"] .react-pdf__Page__annotations`);
-          if (pageContainer) {
-            pageContainer.appendChild(annotElement);
-          } else {
-            pageElement.appendChild(annotElement);
-          }
-          
-          // Beräkna exakt var PDF-viewern behöver scrolla för att visa annotationen
-          // Använd scrollIntoView för att navigera till elementet
-          annotElement.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-            inline: 'center'
-          });
-          
-          // Ta bort markören efter en stund
-          setTimeout(() => {
-            if (annotElement.parentNode) {
-              annotElement.parentNode.removeChild(annotElement);
+        // Kontrollera att container och element fortfarande finns
+        if (pdfContainerRef.current && pdfContainerRef.current.id && annotationElement) {
+          try {
+            // Skapa en tillfällig mer synlig markör
+            const markerId = `marker-${annotation.id}`;
+            const existingMarker = document.getElementById(markerId);
+            if (existingMarker && existingMarker.parentNode) {
+              existingMarker.parentNode.removeChild(existingMarker);
             }
-          }, 2500);
-          
-          // Logga för felsökning
-          console.log("Scrolled to annotation:", {
-            annotation: annotation,
-            pageNumber: pageNumber,
-            position: { x: annotX, y: annotY }
-          });
-        } catch (error) {
-          console.error("Error scrolling to annotation:", error);
+            
+            const marker = document.createElement('div');
+            marker.id = markerId;
+            marker.className = "annotation-marker";
+            marker.style.position = "absolute";
+            marker.style.left = `${annotation.rect.x - 10}px`;
+            marker.style.top = `${annotation.rect.y - 10}px`;
+            marker.style.width = `${annotation.rect.width + 20}px`;
+            marker.style.height = `${annotation.rect.height + 20}px`;
+            marker.style.zIndex = "1000";
+            
+            // Lägg till markören nära annotationen
+            if (pageRef.current) {
+              pageRef.current.appendChild(marker);
+            }
+            
+            // Använd den förbättrade centreringsfunktionen
+            const containerRect = pdfContainerRef.current.getBoundingClientRect();
+            const annotRect = annotationElement.getBoundingClientRect();
+            
+            // Beräkna scroll-position för att få elementet i mitten
+            const scrollLeft = annotationElement.offsetLeft - pdfContainerRef.current.offsetLeft - 
+              (containerRect.width / 2 - annotRect.width / 2);
+            const scrollTop = annotationElement.offsetTop - pdfContainerRef.current.offsetTop - 
+              (containerRect.height / 2 - annotRect.height / 2);
+            
+            // Gör scrollningen
+            pdfContainerRef.current.scrollTo({
+              left: Math.max(0, scrollLeft),
+              top: Math.max(0, scrollTop),
+              behavior: 'smooth'
+            });
+            
+            // Ta bort markören efter några sekunder
+            setTimeout(() => {
+              if (marker.parentNode) {
+                marker.parentNode.removeChild(marker);
+              }
+            }, 3000);
+            
+            console.log("Centered on annotation:", {
+              annotation: annotation,
+              scrollPosition: { left: scrollLeft, top: scrollTop }
+            });
+          } catch (error) {
+            console.error("Error during annotation centering:", error);
+          }
         }
       }, 500);
     } catch (error) {
-      console.error("Failed to zoom to annotation:", error);
+      console.error("Failed to zoom and center on annotation:", error);
     }
   };
   
@@ -1595,7 +1611,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
           
           <div 
             ref={pdfContainerRef}
-            className="flex-1 overflow-auto bg-gray-200 flex items-center justify-center relative"
+            className="flex-1 overflow-auto bg-gray-200 flex items-center justify-center relative pdfViewerContainer"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}

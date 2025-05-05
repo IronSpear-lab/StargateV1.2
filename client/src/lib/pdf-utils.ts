@@ -118,7 +118,116 @@ export function addPdfViewerAnimations() {
           transform: translateY(-10px);
         }
       }
+      
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+          opacity: 0.8;
+        }
+        50% {
+          transform: scale(1.1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 0.8;
+        }
+      }
+      
+      .pdfViewerContainer {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+      }
+      
+      .pdfPage {
+        margin: 200px !important;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+      
+      /* Lägg till specifika styling för annotation marker */
+      .annotation-marker {
+        position: absolute;
+        z-index: 1000;
+        border: 4px solid #fa5c7c;
+        background-color: rgba(250, 92, 124, 0.2);
+        border-radius: 4px;
+        pointer-events: none;
+        animation: pulse 2s ease-in-out infinite;
+        box-shadow: 0 0 15px rgba(250, 92, 124, 0.5);
+      }
     `;
     document.head.appendChild(style);
+  }
+}
+
+/**
+ * Centrera på ett element med ID i en scrollande container
+ * @param elementId Element ID att centrera på
+ * @param containerId Container element ID som innehåller det scrollbara innehållet
+ * @param options Extra alternativ för centrering
+ */
+export function centerElementInView(
+  elementId: string, 
+  containerId: string, 
+  options: { 
+    smooth?: boolean, 
+    addMarker?: boolean, 
+    markerDuration?: number 
+  } = {}
+) {
+  const { smooth = true, addMarker = true, markerDuration = 3000 } = options;
+  
+  // Säkerställ att CSS-animationerna finns
+  addPdfViewerAnimations();
+  
+  try {
+    const element = document.getElementById(elementId);
+    const container = document.getElementById(containerId);
+    
+    if (!element || !container) {
+      console.error("Could not find element or container for centering:", { elementId, containerId });
+      return false;
+    }
+    
+    // Beräkna elementets position relativt till containern
+    const elementRect = element.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    
+    // Beräkna scroll-position för att centrera elementet
+    const scrollX = element.offsetLeft - container.offsetLeft - (containerRect.width - elementRect.width) / 2;
+    const scrollY = element.offsetTop - container.offsetTop - (containerRect.height - elementRect.height) / 2;
+    
+    // Utför scrollningen
+    container.scrollTo({
+      left: Math.max(0, scrollX),
+      top: Math.max(0, scrollY),
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+    
+    // Lägg till en temporär visuell markör om önskat
+    if (addMarker) {
+      const marker = document.createElement('div');
+      marker.className = 'annotation-marker';
+      marker.style.left = `${element.offsetLeft}px`;
+      marker.style.top = `${element.offsetTop}px`;
+      marker.style.width = `${elementRect.width}px`;
+      marker.style.height = `${elementRect.height}px`;
+      
+      element.parentElement?.appendChild(marker);
+      
+      // Ta bort markören efter angiven tid
+      setTimeout(() => {
+        if (marker.parentElement) {
+          marker.parentElement.removeChild(marker);
+        }
+      }, markerDuration);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Error centering element in view:", error);
+    return false;
   }
 }
