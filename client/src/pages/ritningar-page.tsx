@@ -434,7 +434,7 @@ export default function RitningarPage() {
         <Header title="Ritningar" onToggleSidebar={toggleSidebar} />
         
         <div className="container px-6 py-6">
-          <div className="flex items-center text-sm mb-4 text-blue-600">
+          <div className="flex items-center text-sm mb-4 text-blue-600 dark:text-blue-400">
             <Home size={14} className="mr-1" />
             <span>Vault</span>
             <ChevronRight size={14} className="mx-1" />
@@ -450,12 +450,12 @@ export default function RitningarPage() {
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-semibold">Ritningar</h1>
             <div className="flex space-x-2">
-              <Button variant="outline" className="border-blue-500 text-blue-700 hover:bg-blue-50">
+              <Button variant="outline" className="border-blue-500 dark:border-blue-400 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Folder
               </Button>
               <Button 
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white"
                 onClick={() => setShowUploadDialog(true)}
               >
                 <Upload className="mr-2 h-4 w-4" />
@@ -471,12 +471,12 @@ export default function RitningarPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-4 border-b border-gray-200">
-              <h2 className="text-sm font-medium text-gray-700">Sök efter ritningar</h2>
+          <div className="bg-background rounded-lg shadow border border-border">
+            <div className="p-4 border-b border-border">
+              <h2 className="text-sm font-medium text-foreground">Sök efter ritningar</h2>
               <div className="mt-2 flex space-x-4">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Sök..."
                     className="pl-9"
@@ -559,11 +559,11 @@ export default function RitningarPage() {
                       <TableRow key={ritning.id}>
                         <TableCell className="py-2 w-[200px]">
                           <div className="flex items-center">
-                            <div className="flex-shrink-0 mr-3 text-red-500">
+                            <div className="flex-shrink-0 mr-3 text-red-500 dark:text-red-400">
                               <FileText size={20} />
                             </div>
                             <div 
-                              className="text-sm text-blue-600 hover:underline cursor-pointer whitespace-nowrap"
+                              className="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer whitespace-nowrap"
                               onClick={() => handleFileClick(ritning)}
                             >
                               {ritning.filename}
