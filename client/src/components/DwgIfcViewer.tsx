@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+
 import { Upload, FileText, Loader2, XCircle, ZoomIn, ZoomOut, RotateCw, RefreshCw, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,8 +10,8 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 
-// We'll use a placeholder for IFC parsing
-// In a real implementation, we would import IfcAPI from web-ifc/web-ifc-api
+// We're using Three.js for our 3D viewing needs
+// In a real implementation, we would use a specialized IFC/DWG library
 
 // Simple types for our file storage
 type FileEntry = {
