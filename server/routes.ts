@@ -188,7 +188,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get(`${apiPrefix}/files/:id`, async (req, res) => {
     try {
-      const file = await storage.getFile(parseInt(req.params.id));
+      // Validate id is a number
+      const fileId = parseInt(req.params.id);
+      if (isNaN(fileId)) {
+        return res.status(400).json({ error: "Invalid file ID" });
+      }
+      
+      const file = await storage.getFile(fileId);
       if (!file) {
         return res.status(404).json({ error: "File not found" });
       }
@@ -202,7 +208,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Serve uploaded files
   app.get(`${apiPrefix}/files/:id/content`, async (req, res) => {
     try {
-      const file = await storage.getFile(parseInt(req.params.id));
+      // Validate id is a number
+      const fileId = parseInt(req.params.id);
+      if (isNaN(fileId)) {
+        return res.status(400).json({ error: "Invalid file ID" });
+      }
+      
+      const file = await storage.getFile(fileId);
       if (!file) {
         return res.status(404).json({ error: "File not found" });
       }
@@ -424,6 +436,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user projects:", error);
       res.status(500).json({ error: "Failed to fetch user projects" });
+    }
+  });
+  
+  // Recent files API
+  app.get(`${apiPrefix}/files/recent`, async (req, res) => {
+    try {
+      const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
+      
+      if (projectId && isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project ID" });
+      }
+      
+      // In a real implementation, this would fetch recent files from storage
+      // For now, we'll just return an empty array
+      res.json([]);
+    } catch (error) {
+      console.error("Error fetching recent files:", error);
+      res.status(500).json({ error: "Failed to fetch recent files" });
     }
   });
   
