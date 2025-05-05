@@ -1,0 +1,75 @@
+Create a fully enhanced **Project Leader Dashboard** based on the existing layout of the regular user dashboard.
+
+🚫 Critical Constraints:
+- Do **not** change or affect the regular user dashboard in any way
+- This version is only available when `user.role === "project_leader"`
+- Reuse the existing dashboard layout: grid of widgets, top bar with "Reset Dashboard", "Add Widget", and new "Manage Project" button
+- Maintain support for light/dark mode, widget expand/collapse/close, and vertical stacking for more than 4 widgets
+
+✅ Add the following **futuristic, visual widgets**, styled in a modern and professional way, consistent with the rest of the UI:
+
+---
+
+### 📊 1. **Budget vs Cost Widget**
+- Interactive line chart comparing:
+  - **Planned Budget** (e.g., green)
+  - **Actual Cost** (e.g., red)
+- X-axis: timeline (weeks/months)
+- Y-axis: amount (currency)
+- Features:
+  - Smooth curves, hover tooltips
+  - “This week” summary: e.g., "+2.5% over budget"
+  - Optional [View Financial Report] button
+  - Expandable to full-width (`col-span-2`)
+
+---
+
+### 📈 2. **Revenue Overview Widget**
+- Comparison of **Current Week vs Previous Week**
+- Curved graph (two lines), smooth and visually appealing
+- Highlight this week’s earnings and deltas
+- Example UI: “Current Week: $58,254 | Previous Week: $69,524”
+- Button: [View Statements]
+
+---
+
+### ⚙️ 3. **KPI Metrics Widget**
+- Small cards for project KPIs:
+  - Avg. Task Duration
+  - Budget Accuracy
+  - Task Completion Rate
+- Each with value, change %, optional sparkline
+
+---
+
+### 🔮 4. **AI Forecast Widget**
+- Display predicted risks or alerts, e.g.:
+  - “You may exceed budget in 3 weeks”
+  - “4 tasks are trending late”
+- Styled as a list of predictions with icons/indicators
+
+---
+
+🛠️ **Technical Implementation**
+- Use React + Tailwind CSS
+- Use a charting lib like Chart.js or Recharts (or use SVG if needed)
+- Widgets should support:
+  - Expand to full width
+  - Light/dark themes
+  - Dynamic insertion via "Add Widget"
+- Data can be mock for now
+- Widget components should be standalone and reusable
+- Place all in `ProjectLeaderDashboard.tsx`
+
+✅ **Top Bar Buttons**:
+- [Manage Project] – opens modal with:
+  - Edit project settings (name, desc, deadline)
+  - Add/remove participants and roles
+  - Archive/delete project if completed
+- [Reset Dashboard]
+- [Add Widget]
+- [Light/Dark Mode Toggle]
+
+⚠️ Make sure **none** of this logic or UI is shared with the regular dashboard.
+
+This dashboard is a **role-based, high-visual, leadership-only** interface intended to help project leads quickly understand status, trends, and financial health of their projects.
