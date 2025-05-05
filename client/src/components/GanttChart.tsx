@@ -219,21 +219,29 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
   useEffect(() => {
     if (tasksData) {
       const processedTasks: GanttTask[] = tasksData.map((task: any) => {
-        // Determine color based on status
-        let color = 'bg-primary-500';
-        switch (task.status) {
-          case 'todo':
-            color = 'bg-neutral-400';
-            break;
-          case 'in_progress':
-            color = 'bg-amber-500';
-            break;
-          case 'review':
+        // Determine color based on task type (Task, Milestone, Phase)
+        let color = 'bg-blue-500';
+        let taskType = task.type || 'TASK'; // Default to TASK if no type is specified
+        
+        switch (taskType.toUpperCase()) {
+          case 'TASK':
             color = 'bg-blue-500';
             break;
-          case 'done':
-            color = 'bg-green-500';
+          case 'MILESTONE':
+            color = 'bg-orange-500';
             break;
+          case 'PHASE':
+            color = 'bg-purple-500';
+            break;
+          default:
+            color = 'bg-blue-500';
+        }
+        
+        // Apply status-based opacity to indicate progress
+        if (task.status === 'done') {
+          color += ' opacity-80';
+        } else if (task.status === 'in_progress') {
+          color += ' opacity-90';
         }
 
         return {
@@ -245,7 +253,7 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
           dueDate: task.dueDate ? parseISO(task.dueDate) : null,
           status: task.status,
           assigneeId: task.assigneeId,
-          type: task.type,
+          type: taskType,
           priority: task.priority,
           dependencies: task.dependencies || [],
           dependents: task.dependents || [],
