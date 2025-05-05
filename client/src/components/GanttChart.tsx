@@ -662,7 +662,8 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
       justifyContent: 'space-between',
       fontWeight: 500,
       fontSize: '0.85rem',
-      transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+      transition: 'all 0.2s ease',
+      backdropFilter: 'blur(8px)'
     };
 
     // Customize based on task type
@@ -921,7 +922,7 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
                                 
                                 {task.type?.toUpperCase() === 'MILESTONE' ? (
                                   <span>
-                                    <Diamond className="h-3 w-3 text-white" />
+                                    <div className="w-3 h-3 bg-white transform rotate-45" />
                                   </span>
                                 ) : (
                                   <span className="px-1 truncate">{task.title}</span>
@@ -934,17 +935,48 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <div className="space-y-1">
-                                <p className="font-semibold">{task.title}</p>
-                                {task.startDate && task.endDate && (
-                                  <p className="text-xs">
-                                    {format(typeof task.startDate === 'string' ? parseISO(task.startDate) : task.startDate, 'MMM d')} - 
-                                    {format(typeof task.endDate === 'string' ? parseISO(task.endDate) : task.endDate, 'MMM d, yyyy')}
-                                  </p>
-                                )}
-                                {task.description && <p className="text-xs max-w-xs">{task.description}</p>}
-                                <p className="text-xs">Status: {task.status}</p>
-                                {task.assigneeName && <p className="text-xs">Assigned to: {task.assigneeName}</p>}
+                              <div className="space-y-2 max-w-sm">
+                                <div className="flex items-center gap-2">
+                                  <div className={cn(
+                                    "h-3 w-3",
+                                    task.type?.toUpperCase() === 'MILESTONE' ? "transform rotate-45 bg-orange-500" :
+                                    task.type?.toUpperCase() === 'PHASE' ? "rounded-sm bg-purple-500" : 
+                                    "rounded-sm bg-blue-500"
+                                  )}></div>
+                                  <p className="font-semibold">{task.title}</p>
+                                </div>
+                                
+                                <div className="bg-neutral-50 p-2 rounded-md border">
+                                  {task.startDate && task.endDate && (
+                                    <div className="flex gap-2 items-center mb-1">
+                                      <Calendar className="h-3 w-3 text-neutral-500" />
+                                      <p className="text-xs text-neutral-700">
+                                        {format(typeof task.startDate === 'string' ? parseISO(task.startDate) : task.startDate, 'MMM d')} - 
+                                        {format(typeof task.endDate === 'string' ? parseISO(task.endDate) : task.endDate, 'MMM d, yyyy')}
+                                      </p>
+                                    </div>
+                                  )}
+                                  
+                                  <div className="flex justify-between items-center mb-1">
+                                    <span className="text-xs bg-neutral-200 text-neutral-700 px-1.5 py-0.5 rounded-full capitalize">
+                                      {task.status}
+                                    </span>
+                                    <span className="text-xs text-neutral-600 capitalize">Type: {task.type || 'Task'}</span>
+                                  </div>
+                                  
+                                  {task.assigneeName && 
+                                    <p className="text-xs text-neutral-600 mt-1">
+                                      Assigned to: <span className="font-medium">{task.assigneeName}</span>
+                                    </p>
+                                  }
+                                </div>
+                                
+                                {task.description && 
+                                  <div>
+                                    <p className="text-xs text-neutral-500 font-medium">Description:</p>
+                                    <p className="text-xs max-w-xs mt-1 text-neutral-700">{task.description}</p>
+                                  </div>
+                                }
                               </div>
                             </TooltipContent>
                           </Tooltip>
@@ -1089,9 +1121,21 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="TASK">Task</SelectItem>
-                      <SelectItem value="MILESTONE">Milestone</SelectItem>
-                      <SelectItem value="PHASE">Phase</SelectItem>
+                      <SelectItem value="TASK" className="flex items-center gap-2">
+                        <div className="h-3 w-3 rounded-sm bg-blue-500"></div>
+                        <span>Task</span>
+                        <span className="text-xs text-neutral-500 ml-1">- Standard work item</span>
+                      </SelectItem>
+                      <SelectItem value="MILESTONE" className="flex items-center gap-2">
+                        <div className="h-3 w-3 transform rotate-45 bg-orange-500"></div>
+                        <span>Milestone</span>
+                        <span className="text-xs text-neutral-500 ml-1">- Key project event</span>
+                      </SelectItem>
+                      <SelectItem value="PHASE" className="flex items-center gap-2">
+                        <div className="h-3 w-3 rounded-sm bg-purple-500"></div>
+                        <span>Phase</span>
+                        <span className="text-xs text-neutral-500 ml-1">- Project period</span>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
