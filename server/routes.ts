@@ -441,45 +441,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Recent files API
   app.get(`${apiPrefix}/files/recent`, async (req, res) => {
-    try {
-      // Add some example files to keep the frontend happy
-      // This is a temporary solution until we implement actual file storage
-      res.json([
-        {
-          id: "101",
-          name: "System Architecture.pdf",
-          fileType: "pdf",
-          fileSize: 3450000,
-          lastModified: new Date().toISOString(),
-          folder: "Documentation",
-          uploadedBy: "System",
-          uploadedById: "system"
-        },
-        {
-          id: "102",
-          name: "Project Timeline.xlsx",
-          fileType: "xlsx", 
-          fileSize: 1250000,
-          lastModified: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // Yesterday
-          folder: "Planning",
-          uploadedBy: "System",
-          uploadedById: "system"
-        },
-        {
-          id: "103",
-          name: "Building Plan.dwg",
-          fileType: "dwg",
-          fileSize: 5380000,
-          lastModified: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(), // 2 days ago
-          folder: "Drawings",
-          uploadedBy: "System",
-          uploadedById: "system"
-        }
-      ]);
-    } catch (error) {
-      console.error("Error fetching recent files:", error);
-      res.status(500).json({ error: "Failed to fetch recent files" });
-    }
+    // Ignore any parameters for now - just return sample data
+    // No try/catch needed here as we're not doing any async operations that could fail
+    res.json([
+      {
+        id: "101",
+        name: "System Architecture.pdf",
+        fileType: "pdf",
+        fileSize: 3450000,
+        lastModified: new Date().toISOString(),
+        folder: "Documentation",
+        uploadedBy: "System",
+        uploadedById: "system"
+      },
+      {
+        id: "102",
+        name: "Project Timeline.xlsx",
+        fileType: "xlsx", 
+        fileSize: 1250000,
+        lastModified: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // Yesterday
+        folder: "Planning",
+        uploadedBy: "System",
+        uploadedById: "system"
+      },
+      {
+        id: "103",
+        name: "Building Plan.dwg",
+        fileType: "dwg",
+        fileSize: 5380000,
+        lastModified: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(), // 2 days ago
+        folder: "Drawings",
+        uploadedBy: "System",
+        uploadedById: "system"
+      }
+    ]);
   });
   
   // Calendar events API
