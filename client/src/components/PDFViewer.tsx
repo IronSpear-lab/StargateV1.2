@@ -597,6 +597,19 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
     setPageNumber(1);
+    
+    // Centrera PDFen i viewern efter laddning
+    setTimeout(() => {
+      if (pdfContainerRef.current) {
+        // Centrera horisontellt
+        pdfContainerRef.current.scrollTo({
+          left: (pdfContainerRef.current.scrollWidth - pdfContainerRef.current.clientWidth) / 2,
+          top: 0,
+          behavior: 'auto'
+        });
+        console.log("PDF centered after loading");
+      }
+    }, 300);
   };
 
   const changePage = (offset: number) => {
@@ -654,7 +667,15 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   };
   
   // Avslutar markeringen och visar dialogrutan för att lägga till kommentar
-  const handleMouseUp = () => {
+  const handleMouseUp = (e?: React.MouseEvent) => {
+    // Hantera drag-to-pan
+    if (isDragging) {
+      setIsDragging(false);
+      if (e) e.preventDefault();
+      return;
+    }
+    
+    // Hantera markering för annotationer
     if (!isMarking || !markingStart || !markingEnd) return;
     
     // Om markeringen är för liten, ignorera den
@@ -1707,17 +1728,46 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             ref={pdfContainerRef}
             className="flex-1 bg-gray-200 pdfViewerContainer" 
             style={{ 
-              cursor: isMarking ? 'crosshair' : 'default',
+              cursor: isMarking ? 'crosshair' : isDragging ? 'grabbing' : 'grab',
               overflow: 'auto', // Säkerställ att scrollning fungerar i alla riktningar
               width: '100%',
               height: '100%',
               position: 'relative',
               display: 'flex', 
-              alignItems: 'flex-start', 
-              justifyContent: 'flex-start'
+              alignItems: 'center', 
+              justifyContent: 'center'
             }}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
+            onMouseDown={(e) => {
+              // Hantera både markeringar och drag-to-pan
+              if (isMarking) {
+                // Original mouseDown för markeringar
+                handleMouseDown(e);
+              } else {
+                // Drag-to-pan
+                if (pdfContainerRef.current) {
+                  setIsDragging(true);
+                  setDragStart({ x: e.clientX, y: e.clientY });
+                  setScrollPosition({
+                    x: pdfContainerRef.current.scrollLeft,
+                    y: pdfContainerRef.current.scrollTop
+                  });
+                }
+              }
+            }}
+            onMouseMove={(e) => {
+              // Hantera både markeringar och drag-to-pan
+              if (isMarking) {
+                // Original mouseMove för markeringar
+                handleMouseMove(e);
+              } else if (isDragging && pdfContainerRef.current) {
+                // Drag-to-pan
+                const dx = e.clientX - dragStart.x;
+                const dy = e.clientY - dragStart.y;
+                
+                pdfContainerRef.current.scrollLeft = scrollPosition.x - dx;
+                pdfContainerRef.current.scrollTop = scrollPosition.y - dy;
+              }
+            }}
             onMouseUp={handleMouseUp}
           >
             {file ? (
