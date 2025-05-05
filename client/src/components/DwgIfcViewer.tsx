@@ -553,7 +553,7 @@ export function DwgIfcViewer() {
                       {selectedFile.name.toLowerCase().endsWith('.dwg') ? 'CAD Drawing' : 'BIM Model'}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      • {formatFileSize(new Blob([selectedFile.data]).size)}
+                      • File uploaded successfully
                     </p>
                   </div>
                 </div>
