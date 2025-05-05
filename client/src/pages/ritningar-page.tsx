@@ -226,7 +226,11 @@ export default function RitningarPage() {
   const [versionFilter, setVersionFilter] = useState("all");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
-  const [ritningarData, setRitningarData] = useState<Ritning[]>(mockRitningar);
+  // Hämta sparade ritningar från localStorage om de finns, annars använd mockdata
+  const [ritningarData, setRitningarData] = useState<Ritning[]>(() => {
+    const savedRitningar = localStorage.getItem('saved_ritningar');
+    return savedRitningar ? JSON.parse(savedRitningar) : mockRitningar;
+  });
   const [selectedFile, setSelectedFile] = useState<{
     file: File | null;
     fileUrl?: string;
@@ -284,7 +288,11 @@ export default function RitningarPage() {
     }));
     
     // Uppdatera listan med ritningar
-    setRitningarData([...newRitningar, ...ritningarData]);
+    const updatedRitningar = [...newRitningar, ...ritningarData];
+    setRitningarData(updatedRitningar);
+    
+    // Spara till localStorage så att det finns kvar mellan sessioner
+    localStorage.setItem('saved_ritningar', JSON.stringify(updatedRitningar));
     
     // Visa bekräftelse
     setTimeout(() => {
