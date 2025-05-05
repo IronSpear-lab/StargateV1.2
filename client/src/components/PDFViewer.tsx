@@ -1685,6 +1685,14 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                       }
                       className="pdfPage shadow-lg relative"
                       width={window.innerWidth > 768 ? window.innerWidth * 0.5 : window.innerWidth * 0.8}
+                      onRenderSuccess={() => {
+                        // Uppdatera positionerna för alla annotations när sidan renderas om
+                        // Detta händer även när fönsterstorlek eller zoom ändras
+                        if (annotations && annotations.length > 0) {
+                          // Tvinga omrendering av annotationer genom att uppdatera state
+                          setAnnotations([...annotations]);
+                        }
+                      }}
                     />
                   </div>
                   
@@ -1702,10 +1710,10 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                         }`}
                         style={{
                           position: 'absolute',
-                          left: `${Number(annotation.rect.x) + 200}px`, // Lägg till padding för att matcha pdf-page-wrapper
-                          top: `${Number(annotation.rect.y) + 200}px`, // Lägg till padding för att matcha pdf-page-wrapper
-                          width: `${annotation.rect.width}px`,
-                          height: `${annotation.rect.height}px`,
+                          left: `${(Number(annotation.rect.x) + 200) * scale}px`, // Justera med zoom-faktorn
+                          top: `${(Number(annotation.rect.y) + 200) * scale}px`, // Justera med zoom-faktorn
+                          width: `${annotation.rect.width * scale}px`,
+                          height: `${annotation.rect.height * scale}px`,
                           backgroundColor: `${annotation.color}33`,
                           borderColor: annotation.color,
                           boxShadow: activeAnnotation?.id === annotation.id ? '0 0 15px rgba(59, 130, 246, 0.6)' : 'none',
