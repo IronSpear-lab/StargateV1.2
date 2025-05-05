@@ -290,7 +290,7 @@ export function Sidebar({ className }: SidebarProps) {
     return (
       <button 
         onClick={toggleSidebar} 
-        className="fixed top-4 left-4 z-50 p-2 text-neutral-500 hover:text-neutral-700 md:hidden"
+        className="fixed top-4 left-4 z-50 p-2 text-muted-foreground hover:text-foreground md:hidden"
       >
         <Menu className="w-6 h-6" />
       </button>
@@ -320,21 +320,21 @@ export function Sidebar({ className }: SidebarProps) {
                   className={cn(
                     "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150",
                     item.active
-                      ? "bg-primary-50 text-primary-700 font-medium" 
-                      : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900",
+                      ? "bg-primary/10 text-primary font-medium" 
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     indentClass
                   )}
                 >
                   <div className="flex items-center">
                     <span className={cn(
                       "flex items-center justify-center mr-3",
-                      item.active ? "text-primary-700" : "text-neutral-500"
+                      item.active ? "text-primary" : "text-muted-foreground"
                     )}>
                       {item.icon}
                     </span>
                     <span className={cn(
                       "text-sm",
-                      item.active ? "text-primary-700" : "text-neutral-600"
+                      item.active ? "text-primary" : "text-muted-foreground"
                     )}>
                       {item.label}
                     </span>
@@ -344,8 +344,8 @@ export function Sidebar({ className }: SidebarProps) {
                       <Badge variant="outline" className={cn(
                         "text-xs py-0.5 px-2 rounded-full mr-2",
                         item.active 
-                          ? "bg-primary-100 text-primary-700 border-primary-200" 
-                          : "bg-neutral-100 text-neutral-600 border-neutral-200"
+                          ? "bg-primary/10 text-primary border-primary/20" 
+                          : "bg-muted text-muted-foreground border-border"
                       )}>
                         {item.badge}
                       </Badge>
@@ -369,21 +369,21 @@ export function Sidebar({ className }: SidebarProps) {
               className={cn(
                 "flex items-center justify-between px-3 py-2 rounded-md transition-colors duration-150",
                 item.active
-                  ? "bg-primary-50 text-primary-700 font-medium" 
-                  : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900",
+                  ? "bg-primary/10 text-primary font-medium" 
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 indentClass
               )}
             >
               <div className="flex items-center">
                 <span className={cn(
                   "flex items-center justify-center mr-3",
-                  item.active ? "text-primary-700" : "text-neutral-500"
+                  item.active ? "text-primary" : "text-muted-foreground"
                 )}>
                   {item.icon}
                 </span>
                 <span className={cn(
                   "text-sm",
-                  item.active ? "text-primary-700" : "text-neutral-600"
+                  item.active ? "text-primary" : "text-muted-foreground"
                 )}>
                   {item.label}
                 </span>
@@ -392,8 +392,8 @@ export function Sidebar({ className }: SidebarProps) {
                 <Badge variant="outline" className={cn(
                   "ml-auto text-xs py-0.5 px-2 rounded-full",
                   item.active 
-                    ? "bg-primary-100 text-primary-700 border-primary-200" 
-                    : "bg-neutral-100 text-neutral-600 border-neutral-200"
+                    ? "bg-primary/10 text-primary border-primary/20" 
+                    : "bg-muted text-muted-foreground border-border"
                 )}>
                   {item.badge}
                 </Badge>

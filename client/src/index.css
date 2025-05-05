@@ -44,6 +44,14 @@
   min-height: 100%;
 }
 
+/* Dark mode PDF viewer */
+.dark .pdfViewerContainer {
+  background-color: #1a1a1a;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -157,7 +165,7 @@
   }
 
   body {
-    @apply font-sans antialiased bg-neutral-100 text-neutral-900;
+    @apply font-sans antialiased bg-background text-foreground;
   }
 
   /* TreeView Styles */
@@ -166,13 +174,13 @@
   }
 
   .tree-view .folder-icon::before {
-    @apply mr-2 text-neutral-400;
+    @apply mr-2 text-muted-foreground;
     font-family: "Font Awesome 6 Free";
     content: "\f07b";
   }
 
   .tree-view .file-icon::before {
-    @apply mr-2 text-neutral-400;
+    @apply mr-2 text-muted-foreground;
     font-family: "Font Awesome 6 Free";
     content: "\f15b";
   }
@@ -202,14 +210,14 @@
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-neutral-100;
+    @apply bg-muted;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-neutral-400 rounded;
+    @apply bg-muted-foreground/50 rounded;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-neutral-500;
+    @apply bg-muted-foreground;
   }
 }
