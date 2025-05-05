@@ -2,8 +2,27 @@ import { useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, FileText, Folder } from "lucide-react";
+import { 
+  ChevronRight, 
+  FileText, 
+  Folder, 
+  FolderPlus,
+  PlusCircle
+} from "lucide-react";
 import { format } from "date-fns";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 // Sample data for inbox comments
 const inboxComments = [
@@ -47,8 +66,27 @@ const recentFiles = [
   { id: 17, name: "Underlag Temp.pdf", date: new Date(2023, 1, 3), type: "pdf" }
 ];
 
+// Sample data for projects and folders
+const projects = [
+  { id: 1, name: "Project Alpha" },
+  { id: 2, name: "Project Beta" },
+  { id: 3, name: "Project Gamma" }
+];
+
+interface FolderLocation {
+  projectId: number;
+  parentId: number | null;
+}
+
 export default function VaultPage() {
   const [activeTab, setActiveTab] = useState("home");
+  const [isAddFolderOpen, setIsAddFolderOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState<FolderLocation>({
+    projectId: 1,
+    parentId: null
+  });
+  const { toast } = useToast();
 
   const getFileIcon = (type: string) => {
     switch (type) {
@@ -90,59 +128,168 @@ export default function VaultPage() {
         return 'bg-gray-500';
     }
   };
+  
+  const handleCreateFolder = () => {
+    if (!newFolderName.trim()) {
+      toast({
+        title: "Error",
+        description: "Folder name cannot be empty",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Här skulle vi normalt skicka en API-förfrågan för att skapa mappen
+    // För nu visar vi bara en bekräftelse och stänger dialogen
+    toast({
+      title: "Success",
+      description: `Folder "${newFolderName}" created in ${
+        projects.find(p => p.id === selectedLocation.projectId)?.name || "Project"
+      }${selectedLocation.parentId ? " as subfolder" : ""}`,
+    });
+    
+    // Återställ form och stäng dialog
+    setNewFolderName("");
+    setIsAddFolderOpen(false);
+  };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-background">
       <Sidebar />
       <div className="flex-1 overflow-auto">
         <div className="p-6">
-          <div className="mb-6">
-            <nav className="flex mb-4 text-sm" aria-label="Breadcrumb">
-              <ol className="inline-flex items-center space-x-1 md:space-x-2">
-                <li className="inline-flex items-center">
-                  <a href="#" className="inline-flex items-center text-gray-500 hover:text-blue-600">
-                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
-                    </svg>
-                    Home
-                  </a>
-                </li>
-                <li>
-                  <div className="flex items-center">
-                    <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"></path>
-                    </svg>
-                    <a href="#" className="ml-1 text-blue-500 hover:text-blue-700 md:ml-2">Vault</a>
+          <div className="mb-6 flex justify-between items-center">
+            <div>
+              <nav className="flex mb-4 text-sm" aria-label="Breadcrumb">
+                <ol className="inline-flex items-center space-x-1 md:space-x-2">
+                  <li className="inline-flex items-center">
+                    <a href="#" className="inline-flex items-center text-muted-foreground hover:text-primary">
+                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+                      </svg>
+                      Home
+                    </a>
+                  </li>
+                  <li>
+                    <div className="flex items-center">
+                      <svg className="w-5 h-5 text-muted-foreground" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"></path>
+                      </svg>
+                      <a href="#" className="ml-1 text-primary hover:text-primary/80 md:ml-2">Vault</a>
+                    </div>
+                  </li>
+                </ol>
+              </nav>
+              <h1 className="text-2xl font-semibold text-foreground">Vault</h1>
+            </div>
+            
+            {/* Add Folder Button */}
+            <Dialog open={isAddFolderOpen} onOpenChange={setIsAddFolderOpen}>
+              <DialogTrigger asChild>
+                <Button className="flex items-center gap-2" size="sm">
+                  <FolderPlus className="h-4 w-4" />
+                  <span>Add Folder</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New Folder</DialogTitle>
+                  <DialogDescription>
+                    Add a new folder to organize your files in the project.
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="folderName">Folder Name</Label>
+                    <Input 
+                      id="folderName" 
+                      value={newFolderName}
+                      onChange={(e) => setNewFolderName(e.target.value)}
+                      placeholder="Enter folder name" 
+                    />
                   </div>
-                </li>
-              </ol>
-            </nav>
-            <h1 className="text-2xl font-semibold text-gray-900">Vault</h1>
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="project">Project</Label>
+                    <Select 
+                      value={selectedLocation.projectId.toString()} 
+                      onValueChange={(value) => 
+                        setSelectedLocation({ ...selectedLocation, projectId: parseInt(value) })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a project" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {projects.map((project) => (
+                          <SelectItem key={project.id} value={project.id.toString()}>
+                            {project.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="parentFolder">Parent Folder (Optional)</Label>
+                    <Select 
+                      value={selectedLocation.parentId?.toString() || ""} 
+                      onValueChange={(value) => 
+                        setSelectedLocation({ 
+                          ...selectedLocation, 
+                          parentId: value ? parseInt(value) : null 
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Root Folder" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Root Folder</SelectItem>
+                        <SelectItem value="1">Documents</SelectItem>
+                        <SelectItem value="2">Images</SelectItem>
+                        <SelectItem value="3">Contracts</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsAddFolderOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreateFolder}>
+                    Create Folder
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Inbox Comments Section */}
-            <Card className="bg-white shadow-sm">
+            <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg font-medium flex items-center">
                   <span>Inbox Comments</span>
-                  <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white">
+                  <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
                     4
                   </span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="border-t border-gray-200">
+                <div className="border-t border-border">
                   {inboxComments.slice(0, 15).map((comment) => (
                     <div 
                       key={comment.id} 
-                      className="flex items-center justify-between py-2 px-4 border-b border-gray-100 hover:bg-gray-50"
+                      className="flex items-center justify-between py-2 px-4 border-b border-border hover:bg-muted/50"
                     >
                       <div className="flex items-center">
                         <div className={`w-4 h-4 rounded-sm ${getCommentStatusColor(comment.color)} mr-4`} />
-                        <span className="text-sm font-medium text-gray-700">{comment.code}</span>
+                        <span className="text-sm font-medium text-foreground">{comment.code}</span>
                       </div>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-muted-foreground">
                         {format(comment.date, 'MMM d, yyyy')}
                       </span>
                     </div>
@@ -150,29 +297,29 @@ export default function VaultPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-end pt-2 pb-2">
-                <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800 text-xs flex items-center">
+                <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80 text-xs flex items-center">
                   View All <ChevronRight className="ml-1 h-3 w-3" />
                 </Button>
               </CardFooter>
             </Card>
 
             {/* Recent Files Section */}
-            <Card className="bg-white shadow-sm">
+            <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg font-medium">Recent files</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="border-t border-gray-200">
+                <div className="border-t border-border">
                   {recentFiles.slice(0, 15).map((file) => (
                     <div 
                       key={file.id} 
-                      className="flex items-center justify-between py-2 px-4 border-b border-gray-100 hover:bg-gray-50"
+                      className="flex items-center justify-between py-2 px-4 border-b border-border hover:bg-muted/50"
                     >
                       <div className="flex items-center overflow-hidden">
                         {getFileIcon(file.type)}
-                        <span className="text-sm font-medium text-gray-700 truncate">{file.name}</span>
+                        <span className="text-sm font-medium text-foreground truncate">{file.name}</span>
                       </div>
-                      <span className="text-xs text-gray-500 flex-shrink-0">
+                      <span className="text-xs text-muted-foreground flex-shrink-0">
                         {format(file.date, 'MMM d, yyyy')}
                       </span>
                     </div>
@@ -180,7 +327,7 @@ export default function VaultPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-end pt-2 pb-2">
-                <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800 text-xs flex items-center">
+                <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80 text-xs flex items-center">
                   View All <ChevronRight className="ml-1 h-3 w-3" />
                 </Button>
               </CardFooter>
