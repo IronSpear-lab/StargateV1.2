@@ -537,16 +537,15 @@ export function DwgIfcViewer() {
                           <p className="text-xs text-muted-foreground">{formatDate(file.date)}</p>
                         </div>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <div 
+                        className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
                           deleteFile(file.id);
                         }}
                       >
                         <XCircle className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                      </Button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -568,15 +567,15 @@ export function DwgIfcViewer() {
           ) : (
             <>
               <div className="absolute top-2 right-2 z-10 flex items-center gap-2">
-                <Button variant="outline" size="icon" onClick={zoomIn}>
+                <div className="rounded p-1 border bg-background cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700" onClick={zoomIn}>
                   <ZoomIn className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={zoomOut}>
+                </div>
+                <div className="rounded p-1 border bg-background cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700" onClick={zoomOut}>
                   <ZoomOut className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={resetView}>
+                </div>
+                <div className="rounded p-1 border bg-background cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700" onClick={resetView}>
                   <RotateCw className="h-4 w-4" />
-                </Button>
+                </div>
               </div>
               <div 
                 ref={viewerContainerRef} 
