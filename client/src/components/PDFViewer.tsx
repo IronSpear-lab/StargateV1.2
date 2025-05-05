@@ -1321,8 +1321,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     
     return {
       position: 'absolute' as const,
-      left: `${left}px`,
-      top: `${top}px`,
+      left: `${left + 200}px`, // Lägg till padding för att matcha pdf-page-wrapper
+      top: `${top + 200}px`, // Lägg till padding för att matcha pdf-page-wrapper
       width: `${width}px`,
       height: `${height}px`,
       background: 'rgba(114, 124, 245, 0.3)',
@@ -1616,11 +1616,14 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
           
           <div 
             ref={pdfContainerRef}
-            className="flex-1 overflow-auto bg-gray-200 flex items-center justify-center relative pdfViewerContainer"
+            className="flex-1 overflow-auto bg-gray-200 flex items-center justify-center relative pdfViewerContainer" 
+            style={{ 
+              cursor: isMarking ? 'crosshair' : 'default',
+              overflowX: 'scroll' // Säkerställ att horisontell scrollning alltid är aktiverad
+            }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
-            style={{ cursor: isMarking ? 'crosshair' : 'default' }}
           >
             {file ? (
               <div className="relative" ref={pageRef}>
