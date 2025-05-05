@@ -822,6 +822,8 @@ const ModernGanttChart: React.FC = () => {
   // Bekräfta radering av uppgift
   const confirmDeleteTask = () => {
     if (taskToDelete) {
+      console.log("Deleting task:", taskToDelete);
+      
       // Radera från den lokala listan - detta påverkar inte Kanban-uppgifter
       setTasks(prev => {
         // Hitta och ta bort alla barn rekursivt
@@ -844,14 +846,21 @@ const ModernGanttChart: React.FC = () => {
         // Beräkna antalet uppgifter som tas bort
         const deletedCount = taskIds.size;
         
+        // Skapa den nya filtrerade listan
+        const filteredTasks = prev.filter(t => !taskIds.has(t.id));
+        
+        console.log("Original tasks:", prev.length);
+        console.log("Tasks to delete:", taskIds.size);
+        console.log("Remaining tasks:", filteredTasks.length);
+        
         // Visa bekräftelse med toast
         toast({
           title: "Uppgift borttagen",
           description: `${taskToDelete.name} ${deletedCount > 1 ? `och ${deletedCount - 1} relaterade uppgifter` : ''} har tagits bort från Gantt-diagrammet.`,
         });
         
-        // Returnera en ny lista utan de borttagna uppgifterna
-        return prev.filter(t => !taskIds.has(t.id));
+        // Returnera den nya filtrerade listan
+        return filteredTasks;
       });
       
       // Återställ dialogen
