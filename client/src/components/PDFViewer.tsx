@@ -808,8 +808,9 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         annotationElement.id = annotationElementId;
         annotationElement.className = "annotation-element";
         annotationElement.style.position = "absolute";
-        annotationElement.style.left = `${annotation.rect.x}px`;
-        annotationElement.style.top = `${annotation.rect.y}px`;
+        // Lägg till padding-offset för att matcha vår wrapper
+        annotationElement.style.left = `${Number(annotation.rect.x) + 200}px`;
+        annotationElement.style.top = `${Number(annotation.rect.y) + 200}px`;
         annotationElement.style.width = `${annotation.rect.width}px`;
         annotationElement.style.height = `${annotation.rect.height}px`;
         annotationElement.style.border = `2px solid ${annotation.color}`;
@@ -835,8 +836,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             marker.id = markerId;
             marker.className = "annotation-marker";
             marker.style.position = "absolute";
-            marker.style.left = `${annotation.rect.x - 10}px`;
-            marker.style.top = `${annotation.rect.y - 10}px`;
+            marker.style.left = `${Number(annotation.rect.x) + 190}px`; // 200 - 10 för att få positionen rätt
+            marker.style.top = `${Number(annotation.rect.y) + 190}px`; // 200 - 10 för att få positionen rätt
             marker.style.width = `${annotation.rect.width + 20}px`;
             marker.style.height = `${annotation.rect.height + 20}px`;
             marker.style.zIndex = "1000";
@@ -1636,19 +1637,22 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                   }
                   className="pdfDocument"
                 >
-                  <Page
-                    pageNumber={pageNumber}
-                    renderTextLayer={false}
-                    renderAnnotationLayer={false}
-                    scale={scale}
-                    rotate={rotation}
-                    loading={
-                      <div className="h-[500px] w-[400px] bg-gray-100 flex items-center justify-center">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-                      </div>
-                    }
-                    className="pdfPage shadow-lg relative"
-                  />
+                  <div className="pdf-page-wrapper" style={{ padding: "200px" }}>
+                    <Page
+                      pageNumber={pageNumber}
+                      renderTextLayer={false}
+                      renderAnnotationLayer={false}
+                      scale={scale}
+                      rotate={rotation}
+                      loading={
+                        <div className="h-[500px] w-[400px] bg-gray-100 flex items-center justify-center">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+                        </div>
+                      }
+                      className="pdfPage shadow-lg relative"
+                      width={window.innerWidth > 768 ? window.innerWidth * 0.5 : window.innerWidth * 0.8}
+                    />
+                  </div>
                   
                   {/* Visa befintliga markeringar */}
                   {annotations
@@ -1664,8 +1668,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                         }`}
                         style={{
                           position: 'absolute',
-                          left: `${annotation.rect.x}px`,
-                          top: `${annotation.rect.y}px`,
+                          left: `${Number(annotation.rect.x) + 200}px`, // Lägg till padding för att matcha pdf-page-wrapper
+                          top: `${Number(annotation.rect.y) + 200}px`, // Lägg till padding för att matcha pdf-page-wrapper
                           width: `${annotation.rect.width}px`,
                           height: `${annotation.rect.height}px`,
                           backgroundColor: `${annotation.color}33`,
