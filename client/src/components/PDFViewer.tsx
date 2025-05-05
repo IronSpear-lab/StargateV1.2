@@ -815,25 +815,23 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             const containerCenterX = pdfContainer.offsetWidth / 2;
             const containerCenterY = pdfContainer.offsetHeight / 2;
             
-            // 4. Beräkna position för annotationen relativt till PDF-dokumentet
-            // Detta tar hänsyn till både position på sidan och dokumentets scroll-position
-            const annotX = (annotRect.left - pageRect.left);
-            const annotY = (annotRect.top - pageRect.top);
+            // Enklare och stabilare metod - beräkna allt relativt till PDF-sidan
+
+            // 1. Få nuvarande position på PDF-sidan i dokumentet
+            const pageLeft = pageRect.left;
+            const pageTop = pageRect.top;
             
-            // 5. Beräkna centrum för annotationen
-            const annotCenterX = annotX + (annotRect.width / 2);
-            const annotCenterY = annotY + (annotRect.height / 2);
+            // 2. Beräkna PDF-sidans position i scroll-koordinatsystemet
+            const pageScrollLeft = pageLeft - pdfContainer.getBoundingClientRect().left + pdfContainer.scrollLeft;
+            const pageScrollTop = pageTop - pdfContainer.getBoundingClientRect().top + pdfContainer.scrollTop;
             
-            // 6. Beräkna skillnaden mellan annotationens position och önskad centrerad position
-            // Detta är nyckeln till korrekt centrering - vi måste använda rätt offset som tar 
-            // hänsyn till behållarens befintliga scroll-position
-            const deltaX = annotCenterX - containerCenterX;
-            const deltaY = annotCenterY - containerCenterY;
+            // 3. Beräkna centrum för annotationen på själva PDF-sidan 
+            const annotRelativeX = annotation.rect.x + (annotation.rect.width / 2);
+            const annotRelativeY = annotation.rect.y + (annotation.rect.height / 2);
             
-            // 7. Beräkna slutliga scrollposition
-            // Lägg till delta (offset) till nuvarande scroll-position
-            const scrollX = pdfContainer.scrollLeft + deltaX;
-            const scrollY = pdfContainer.scrollTop + deltaY;
+            // 4. Beräkna exakt scrollposition som centrerar annotationen i behållaren
+            const scrollX = pageScrollLeft + annotRelativeX - containerCenterX;
+            const scrollY = pageScrollTop + annotRelativeY - containerCenterY;
             
             // 6. Använd en säker scrollningsmetod med centrerad annotation
             pdfContainer.scrollTo({
@@ -844,7 +842,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             
             console.log("Applied safe scrolling to", { 
               scrollX, scrollY, 
-              annotCenterX, annotCenterY,
+              annotRelativeX, annotRelativeY,
+              pageScrollLeft, pageScrollTop,
               containerCenterX, containerCenterY
             });
           } catch (scrollError) {
