@@ -702,7 +702,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                       });
                       setIsTaskDialogOpen(true);
                     }}
-                    className="w-full text-center py-2 px-3 bg-white bg-opacity-60 hover:bg-opacity-80 rounded-md text-neutral-600 text-sm flex items-center justify-center gap-1 mt-2"
+                    className="w-full text-center py-2 px-3 bg-background hover:bg-muted rounded-md text-muted-foreground text-sm flex items-center justify-center gap-1 mt-2"
                   >
                     <PlusCircle className="h-4 w-4" />
                     Add new card
