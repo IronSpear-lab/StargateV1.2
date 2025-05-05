@@ -747,7 +747,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       )}
       <aside 
         className={cn(
-          "bg-background h-full shadow-md transition-all duration-300 overflow-y-auto z-50 flex flex-col border-r border-border",
+          "bg-white dark:bg-white/5 h-full shadow-md transition-all duration-300 overflow-y-auto z-50 flex flex-col border-r border-border",
           isOpen ? "w-64" : "w-20",
           isMobile ? "fixed left-0 top-0" : "sticky top-0",
           className
@@ -798,7 +798,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                   <path d="m9 18 6-6-6-6"/>
                 </svg>
               </Button>
-              <div className="absolute left-full ml-2 px-3 py-2 rounded-md bg-background border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+              <div className="absolute left-full ml-2 px-3 py-2 rounded-md bg-white dark:bg-white/5 border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
                 Expand Sidebar
               </div>
             </div>
@@ -810,7 +810,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           <div className="flex justify-center py-2">
             <div className="relative group">
               <ModeToggle />
-              <div className="absolute left-full ml-2 px-3 py-2 rounded-md bg-background border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+              <div className="absolute left-full ml-2 px-3 py-2 rounded-md bg-white dark:bg-white/5 border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
                 Toggle Theme
               </div>
             </div>
