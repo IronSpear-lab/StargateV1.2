@@ -856,7 +856,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             const annotRect = annotationElement.getBoundingClientRect();
             
             // Beräkna scroll-position för att få elementet i mitten
-            const scrollLeft = annotationElement.offsetLeft - pdfContainerRef.current.offsetLeft - 
+            // Viktigt: Justera beräkningen för att ta hänsyn till padding och skalning
+            const scrollLeft = annotationElement.offsetLeft - 
               (containerRect.width / 2 - annotRect.width / 2);
             const scrollTop = annotationElement.offsetTop - pdfContainerRef.current.offsetTop - 
               (containerRect.height / 2 - annotRect.height / 2);
@@ -1616,19 +1617,19 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
           
           <div 
             ref={pdfContainerRef}
-            className="flex-1 overflow-auto bg-gray-200 flex items-center justify-center relative pdfViewerContainer" 
+            className="flex-1 bg-gray-200 relative pdfViewerContainer" 
             style={{ 
               cursor: isMarking ? 'crosshair' : 'default',
-              overflow: 'scroll', // Säkerställ att både horisontell och vertikal scrollning alltid är aktiverad
-              minWidth: '100%',
-              position: 'relative'
+              overflow: 'auto', // Säkerställ att scrollning fungerar i alla riktningar
+              width: '100%',
+              height: '100%'
             }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
           >
             {file ? (
-              <div className="relative" ref={pageRef}>
+              <div className="flex items-center justify-center" ref={pageRef}>
                 <Document
                   file={file}
                   onLoadSuccess={onDocumentLoadSuccess}
