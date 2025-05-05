@@ -50,18 +50,30 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
           const ritningar = JSON.parse(savedRitningar);
           
           // Konvertera ritningar till filformat som widget förväntar sig
+          // Hämta sparade file-id mappningar om de finns
+          const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+          
           ritningar.forEach((ritning: any) => {
             if (ritning.filename) {
+              // Skapa konsekvent file ID baserat på filnamn (samma metod som i PDFViewer)
+              const canonicalFileName = ritning.filename.replace(/\s+/g, '_').toLowerCase();
+              
+              // Prioritetsordning för fileId: 
+              // 1. ID från mappningar (skapade av PDF-visaren)
+              // 2. Ritningens fileId (från uppladdningen)
+              // 3. Ett fallback-id baserat på filnamn
+              const consistentFileId = fileIdMappings[ritning.filename] || ritning.fileId || `file_${canonicalFileName}_${ritning.id}`;
+              
               uploadedFiles.push({
                 id: ritning.id.toString(),
                 name: ritning.filename,
                 fileType: "pdf",
                 fileSize: 2450000, // Kan inte veta exakt storlek utan att lagra det
-                lastModified: new Date().toISOString(),
+                lastModified: new Date().toISOString(), 
                 folder: "Ritningar",
                 uploadedBy: ritning.uploadedBy || "Du",
                 uploadedById: "currentUser",
-                fileId: ritning.fileId // Inkludera fileId om den finns
+                fileId: consistentFileId // Använd konsekvent fileId
               });
             }
           });

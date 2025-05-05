@@ -260,6 +260,9 @@ export default function RitningarPage() {
         console.log(`[${Date.now()}] Detected viewFile parameter: ${fileIdParam}`);
         
         try {
+          // Försök hämta mappningar
+          const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+          
           // Försök att hämta filen från persistent lagring
           const storedFileData = await getStoredFileAsync(fileIdParam);
           
@@ -267,7 +270,20 @@ export default function RitningarPage() {
             console.log(`[${Date.now()}] Successfully loaded file from storage: ${fileIdParam}`);
             
             // Hitta ritningsdatan för den här filen om den finns
-            const matchingRitning = ritningarData.find(r => r.fileId === fileIdParam);
+            let matchingRitning = ritningarData.find(r => r.fileId === fileIdParam);
+            
+            // Om vi inte hittar ritningen med exakt fileId, leta efter en matching med filnamn
+            if (!matchingRitning && storedFileData.name) {
+              // Kolla om vi har en mappning för detta filnamn i våra mappningar
+              const canonicalFileName = storedFileData.name.replace(/\s+/g, '_').toLowerCase();
+              
+              // Hitta ritning baserat på filnamn istället
+              matchingRitning = ritningarData.find(r => 
+                r.filename === storedFileData.name || 
+                fileIdMappings[r.filename] === fileIdParam || 
+                `file_${r.filename.replace(/\s+/g, '_').toLowerCase()}_${r.id}` === fileIdParam
+              );
+            }
             
             setSelectedFile({
               file: storedFileData.file,
@@ -372,14 +388,37 @@ export default function RitningarPage() {
   
   // Öppna PDF-visaren när användaren klickar på en fil
   const handleFileClick = async (ritning: Ritning) => {
+    // Hämta sparade file-id mappningar om de finns
+    const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+    
+    // Skapa ett konsekvent filID baserat på filnamn
+    const canonicalFileName = ritning.filename.replace(/\s+/g, '_').toLowerCase();
+    
+    // Prioritetsordning för fileId
+    const consistentFileId = fileIdMappings[ritning.filename] || ritning.fileId || `file_${canonicalFileName}_${ritning.id}`;
+    
+    // Uppdatera mappningen så att vi har det nyaste fileId till nästa gång
+    if (ritning.filename && consistentFileId) {
+      fileIdMappings[ritning.filename] = consistentFileId;
+      localStorage.setItem('pdf_file_id_mappings', JSON.stringify(fileIdMappings));
+      
+      // Om ritningen inte hade ett fileId tidigare, uppdatera det i lokala data
+      if (!ritning.fileId) {
+        const updatedRitning = { ...ritning, fileId: consistentFileId };
+        const updatedRitningar = ritningarData.map(r => r.id === ritning.id ? updatedRitning : r);
+        setRitningarData(updatedRitningar);
+        localStorage.setItem('saved_ritningar', JSON.stringify(updatedRitningar));
+      }
+    }
+  
     // För uppladdade filer, använd den lagrade filen
-    if (ritning.fileId && ritning.fileId.startsWith('file_')) {
+    if (consistentFileId && consistentFileId.startsWith('file_')) {
       try {
         // Använd asynkron version för att hämta från persistent lagring om det behövs
-        const storedFileData = await getStoredFileAsync(ritning.fileId);
+        const storedFileData = await getStoredFileAsync(consistentFileId);
         
         if (storedFileData) {
-          console.log(`[${Date.now()}] Successfully loaded file from storage for viewing: ${ritning.fileId}`);
+          console.log(`[${Date.now()}] Successfully loaded file from storage for viewing: ${consistentFileId}`);
           setSelectedFile({
             file: storedFileData.file,
             fileUrl: storedFileData.url,
@@ -393,7 +432,7 @@ export default function RitningarPage() {
           });
           return;
         } else {
-          console.error(`[${Date.now()}] Could not find stored file with ID: ${ritning.fileId}`);
+          console.error(`[${Date.now()}] Could not find stored file with ID: ${consistentFileId}`);
           toast({
             title: "Kunde inte hitta filen",
             description: "Den uppladdade filen finns inte längre tillgänglig.",
@@ -401,7 +440,7 @@ export default function RitningarPage() {
           });
         }
       } catch (error) {
-        console.error(`[${Date.now()}] Error loading file with ID ${ritning.fileId}:`, error);
+        console.error(`[${Date.now()}] Error loading file with ID ${consistentFileId}:`, error);
         toast({
           title: "Fel vid laddning av fil",
           description: "Ett fel uppstod när filen skulle laddas. Försök igen senare.",
