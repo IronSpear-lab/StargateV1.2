@@ -133,31 +133,31 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
       id: 'backlog',
       title: 'Backlog',
       tasks: [],
-      bgColor: 'bg-neutral-100'
+      bgColor: 'bg-muted'
     },
     {
       id: 'todo',
       title: 'To Do',
       tasks: [],
-      bgColor: 'bg-yellow-100'
+      bgColor: 'bg-amber-100 dark:bg-amber-950/30'
     },
     {
       id: 'in_progress',
       title: 'In Progress',
       tasks: [],
-      bgColor: 'bg-blue-100'
+      bgColor: 'bg-blue-100 dark:bg-blue-950/30'
     },
     {
       id: 'review',
       title: 'Testing',
       tasks: [],
-      bgColor: 'bg-purple-100'
+      bgColor: 'bg-purple-100 dark:bg-purple-950/30'
     },
     {
       id: 'done',
       title: 'Done',
       tasks: [],
-      bgColor: 'bg-green-100'
+      bgColor: 'bg-green-100 dark:bg-green-950/30'
     }
   ]);
 
@@ -331,72 +331,72 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
 
   // Get colors for task attributes
   const getTaskColors = (task: any) => {
-    let typeBg = 'bg-neutral-100';
-    let typeColor = 'text-neutral-700';
-    let borderColor = 'border-neutral-500';
-    let priorityColor = 'text-neutral-500';
+    let typeBg = 'bg-primary/20';
+    let typeColor = 'text-primary';
+    let borderColor = 'border-muted-foreground';
+    let priorityColor = 'text-muted-foreground';
     
-    // Type colors
+    // Type colors - using theme tokens for better dark mode support
     if (task.type) {
       switch (task.type.toLowerCase()) {
         case 'feature':
-          typeBg = 'bg-primary-100';
-          typeColor = 'text-primary-700';
+          typeBg = 'bg-primary/20 dark:bg-primary/30';
+          typeColor = 'text-primary dark:text-primary-foreground';
           break;
         case 'bug':
-          typeBg = 'bg-red-100';
-          typeColor = 'text-red-700';
+          typeBg = 'bg-destructive/20 dark:bg-destructive/30';
+          typeColor = 'text-destructive dark:text-destructive-foreground';
           break;
         case 'design':
-          typeBg = 'bg-purple-100';
-          typeColor = 'text-purple-700';
+          typeBg = 'bg-purple-200 dark:bg-purple-900/30';
+          typeColor = 'text-purple-700 dark:text-purple-300';
           break;
         case 'research':
-          typeBg = 'bg-info-100';
-          typeColor = 'text-info-700';
+          typeBg = 'bg-blue-200 dark:bg-blue-900/30';
+          typeColor = 'text-blue-700 dark:text-blue-300';
           break;
         case 'setup':
-          typeBg = 'bg-success-100';
-          typeColor = 'text-success-700';
+          typeBg = 'bg-emerald-200 dark:bg-emerald-900/30';
+          typeColor = 'text-emerald-700 dark:text-emerald-300';
           break;
         case 'planning':
-          typeBg = 'bg-warning-100';
-          typeColor = 'text-warning-700';
+          typeBg = 'bg-amber-200 dark:bg-amber-900/30';
+          typeColor = 'text-amber-700 dark:text-amber-300';
           break;
       }
     }
     
-    // Priority colors
+    // Priority colors with dark mode support
     if (task.priority) {
       switch (task.priority.toLowerCase()) {
         case 'high':
-          priorityColor = 'text-red-600';
+          priorityColor = 'text-red-600 dark:text-red-400';
           break;
         case 'medium':
-          priorityColor = 'text-amber-600';
+          priorityColor = 'text-amber-600 dark:text-amber-400';
           break;
         case 'low':
-          priorityColor = 'text-green-600';
+          priorityColor = 'text-green-600 dark:text-green-400';
           break;
       }
     }
     
-    // Status colors for the border
+    // Status colors for the border with dark mode support
     switch (task.status) {
       case 'backlog':
-        borderColor = 'border-neutral-500';
+        borderColor = 'border-neutral-500 dark:border-neutral-400';
         break;
       case 'todo':
-        borderColor = 'border-yellow-500';
+        borderColor = 'border-amber-500 dark:border-amber-400';
         break;
       case 'in_progress':
-        borderColor = 'border-blue-500';
+        borderColor = 'border-blue-500 dark:border-blue-400';
         break;
       case 'review':
-        borderColor = 'border-purple-500';
+        borderColor = 'border-purple-500 dark:border-purple-400';
         break;
       case 'done':
-        borderColor = 'border-green-500';
+        borderColor = 'border-green-500 dark:border-green-400';
         break;
     }
     
@@ -633,8 +633,8 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
             {columns.map(column => (
               <div key={column.id} className={`kanban-column rounded-md shadow-sm min-w-[280px] max-w-[320px] w-full flex flex-col`}>
                 <div className={`flex items-center justify-between p-3 ${column.bgColor} rounded-t-md`}>
-                  <h3 className="font-medium">{column.title}</h3>
-                  <span className="text-sm bg-white bg-opacity-50 rounded-full px-2">{column.tasks.length}</span>
+                  <h3 className="font-medium text-foreground">{column.title}</h3>
+                  <span className="text-sm bg-background/50 dark:bg-background/30 rounded-full px-2 text-foreground">{column.tasks.length}</span>
                 </div>
                 
                 <DroppableColumn id={`column-${column.id}`} className={`space-y-3 min-h-[100px] flex-1 p-3 ${column.bgColor} rounded-b-md droppable-area`}>
@@ -645,13 +645,13 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                     {column.tasks.map(task => (
                       <Draggable key={task.id} id={task.id.toString()}>
                         <Card 
-                          className={`kanban-card shadow-sm border-l-4 ${task.borderColor} cursor-grab hover:shadow-md transition-shadow bg-white`}
+                          className={`kanban-card shadow-sm border-l-4 ${task.borderColor} cursor-grab hover:shadow-md transition-shadow bg-card dark:bg-card/95`}
                           onClick={() => handleTaskClick(task)}
                         >
                           <CardContent className="p-3">
                             <div className="flex justify-between items-start">
                               {task.type ? (
-                                <span className={`text-xs font-medium px-2 py-1 rounded ${task.typeBg} ${task.typeColor}`}>
+                                <span className={`text-xs font-medium px-2 py-1 rounded bg-primary/20 text-primary dark:bg-primary/30 dark:text-primary-foreground`}>
                                   {task.type}
                                 </span>
                               ) : (
@@ -663,21 +663,21 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                                 </span>
                               )}
                             </div>
-                            <h4 className="font-medium mt-2">{task.title}</h4>
+                            <h4 className="font-medium mt-2 text-foreground">{task.title}</h4>
                             {task.description && (
-                              <p className="text-xs text-neutral-600 mt-1 line-clamp-2">{task.description}</p>
+                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{task.description}</p>
                             )}
                             <div className="flex items-center justify-between mt-3">
                               {task.assigneeId ? (
                                 <div className="flex">
-                                  <div className={`w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center text-xs font-semibold text-primary-700`}>
+                                  <div className={`w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-semibold text-primary`}>
                                     {task.assigneeInitials}
                                   </div>
                                 </div>
                               ) : (
                                 <div></div>
                               )}
-                              <div className="text-xs text-neutral-500">{task.dueDateDisplay}</div>
+                              <div className="text-xs text-muted-foreground">{task.dueDateDisplay}</div>
                             </div>
                           </CardContent>
                         </Card>
@@ -714,11 +714,11 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
           
           <DragOverlay>
             {activeId && activeTask && (
-              <Card className={`kanban-card shadow-md border-l-4 ${activeTask.borderColor} cursor-grabbing w-[280px]`}>
+              <Card className={`kanban-card shadow-md border-l-4 ${activeTask.borderColor} cursor-grabbing w-[280px] bg-card dark:bg-card/95`}>
                 <CardContent className="p-3">
                   <div className="flex justify-between items-start">
                     {activeTask.type ? (
-                      <span className={`text-xs font-medium px-2 py-1 rounded ${activeTask.typeBg} ${activeTask.typeColor}`}>
+                      <span className={`text-xs font-medium px-2 py-1 rounded bg-primary/20 text-primary dark:bg-primary/30 dark:text-primary-foreground`}>
                         {activeTask.type}
                       </span>
                     ) : (
@@ -730,21 +730,21 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                       </span>
                     )}
                   </div>
-                  <h4 className="font-medium mt-2">{activeTask.title}</h4>
+                  <h4 className="font-medium mt-2 text-foreground">{activeTask.title}</h4>
                   {activeTask.description && (
-                    <p className="text-xs text-neutral-600 mt-1 line-clamp-2">{activeTask.description}</p>
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{activeTask.description}</p>
                   )}
                   <div className="flex items-center justify-between mt-3">
                     {activeTask.assigneeId ? (
                       <div className="flex">
-                        <div className={`w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center text-xs font-semibold text-primary-700`}>
+                        <div className={`w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-semibold text-primary`}>
                           {activeTask.assigneeInitials}
                         </div>
                       </div>
                     ) : (
                       <div></div>
                     )}
-                    <div className="text-xs text-neutral-500">{activeTask.dueDateDisplay}</div>
+                    <div className="text-xs text-muted-foreground">{activeTask.dueDateDisplay}</div>
                   </div>
                 </CardContent>
               </Card>
@@ -910,7 +910,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Unassigned</SelectItem>
+                          <SelectItem value="unassigned">Unassigned</SelectItem>
                           {users.map((user: any) => (
                             <SelectItem key={user.id} value={user.id.toString()}>
                               {user.username}
