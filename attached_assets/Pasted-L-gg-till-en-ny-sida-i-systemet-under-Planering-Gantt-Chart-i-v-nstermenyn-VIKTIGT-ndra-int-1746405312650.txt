@@ -1,0 +1,42 @@
+Lägg till en ny sida i systemet under "Planering > Gantt Chart" i vänstermenyn. VIKTIGT: Ändra **inte** något i själva sidomenyns layout eller utseende – bara koppla en ny vy korrekt via routing.
+
+Den nya sidan ska innehålla ett modernt, funktionellt och snyggt Gantt-diagram inspirerat av layouten i det bifogade exemplet (bild). Det får INTE vara kopplat till den befintliga Kanban-funktionen. All data ska hanteras separat, med egen local state i React.
+
+**Gantt-modulen ska innehålla:**
+
+✅ **Tabell till vänster:**
+- Kolumner: ID, Projekt, Typ (TASK, MILESTONE, PHASE), Namn (Subject), Status, Startdatum, Slutdatum, Duration
+- Sorteringsfunktion för start- och slutdatum
+- Möjlighet att expandera/minimera faser (PHASE) som visar eller döljer underliggande tasks
+- Välstrukturad med sticky header och scrollbar om innehållet är stort
+
+✅ **Gantt-diagram till höger:**
+- Visar varje rad som horisontell stapel (TASK eller PHASE)
+- Milestones som romber i orange
+- Vertikal röd linje för "dagens datum"
+- Pilar för beroenden mellan uppgifter
+- Horisontell scroll om innehållet överstiger skärmens bredd
+- Färgkodning: blå = pågående, grå = framtida, grön = klar, röd = försenad
+
+✅ **Knappar/funktioner överst (actions):**
+- [ + Create ] – öppnar ett formulär/modal för att skapa ny task, milestone eller fas
+- [ Include Projects ▾ ] – dropdown för att filtrera vilka projekt som visas
+- [ Baseline ] – knapp som markerar baseline-position för tasks (kan visas som grå skuggning under stapeln)
+- [ Filter ▾ ] – dropdown för att filtrera på status, typ, datumintervall
+- [ 🔍 Zoom controls ] – +/- knappar för att zooma mellan dag/vecka/månad
+- [ Export as PDF or Excel ] – valfri, men bra att ha-knapp om det hinns med
+
+✅ **Datamodell (lokal, inte kopplat till Kanban):**
+```ts
+{
+  id: number;
+  project: string;
+  type: "TASK" | "MILESTONE" | "PHASE";
+  name: string;
+  status: "New" | "Ongoing" | "Completed" | "Delayed";
+  startDate: string;
+  endDate: string;
+  duration: number;
+  dependencies?: number[];
+  children?: Task[]; // för PHASE
+}
