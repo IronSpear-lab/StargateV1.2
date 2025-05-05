@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import DashboardPage from "@/pages/dashboard-page";
+import ProjectLeaderDashboardPage from "@/pages/project-leader-dashboard-page";
 import FilesPage from "@/pages/files-page";
 import TasksPage from "@/pages/tasks-page";
 import TimelinePage from "@/pages/timeline-page";
@@ -30,6 +31,7 @@ function Router() {
   return (
     <Switch>
       <ProtectedRoute path="/" component={DashboardPage} />
+      <ProtectedRoute path="/project-leader-dashboard" component={ProjectLeaderDashboardPage} />
       <ProtectedRoute path="/analytics" component={AnalyticsPage} />
       <ProtectedRoute path="/projects" component={ProjectsPage} />
       <ProtectedRoute path="/projects/:id" component={ProjectDetailPage} />
