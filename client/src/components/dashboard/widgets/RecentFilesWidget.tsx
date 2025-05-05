@@ -36,16 +36,45 @@ interface RecentFilesWidgetProps {
 }
 
 export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetProps) {
-  // Fetch recent files from API
+  // Fetch recent files from API & localStorage
   const { data: files, isLoading } = useQuery({
     queryKey: ['recent-files', projectId],
     queryFn: async () => {
-      // In real implementation, fetch from API
+      // Först hämta alla uppladdade filer från ritningar-sidan via localStorage
+      const savedRitningar = localStorage.getItem('saved_ritningar');
+      const uploadedFiles: File[] = [];
+      
+      if (savedRitningar) {
+        try {
+          const ritningar = JSON.parse(savedRitningar);
+          
+          // Konvertera ritningar till filformat som widget förväntar sig
+          ritningar.forEach((ritning: any) => {
+            if (ritning.filename) {
+              uploadedFiles.push({
+                id: ritning.fileId || ritning.id.toString(),
+                name: ritning.filename,
+                fileType: "pdf",
+                fileSize: 2450000, // Kan inte veta exakt storlek utan att lagra det
+                lastModified: new Date().toISOString(),
+                folder: "Ritningar",
+                uploadedBy: ritning.uploadedBy || "Du",
+                uploadedById: "currentUser"
+              });
+            }
+          });
+        } catch (error) {
+          console.error('Failed to parse saved ritningar:', error);
+        }
+      }
+      
+      // Sedan försök hämta från API
       try {
         const response = await fetch(`/api/files/recent${projectId ? `?projectId=${projectId}` : ''}`);
         if (!response.ok) {
-          // Return sample data for demonstration
+          // Om API-anropet misslyckas, använd bara uppladdade filer + mockdata
           return [
+            ...uploadedFiles,
             {
               id: "1",
               name: "Project Requirements.pdf",
@@ -75,23 +104,29 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
               folder: "Finance",
               uploadedBy: "Jamie Watson",
               uploadedById: "user3",
-            },
-            {
-              id: "4",
-              name: "UI Design Mockups.png",
-              fileType: "png",
-              fileSize: 4300000,
-              lastModified: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
-              folder: "Design",
-              uploadedBy: "Alex Johnson",
-              uploadedById: "user1",
             }
           ] as File[];
         }
-        return await response.json();
+        
+        // Om API-anropet lyckas, kombinera API-resultatet med uppladdade filer
+        const apiFiles = await response.json();
+        return [...uploadedFiles, ...apiFiles];
       } catch (error) {
         console.error("Error fetching recent files:", error);
-        return [];
+        // Returnera bara uppladdade filer + mockdata vid fel
+        return [
+          ...uploadedFiles,
+          {
+            id: "1",
+            name: "Project Requirements.pdf",
+            fileType: "pdf",
+            fileSize: 2450000,
+            lastModified: new Date(new Date().setHours(new Date().getHours() - 2)).toISOString(),
+            folder: "Documentation",
+            uploadedBy: "Alex Johnson",
+            uploadedById: "user1",
+          }
+        ];
       }
     }
   });
@@ -190,6 +225,7 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
           variant="ghost" 
           size="sm" 
           className="h-7 px-2 text-blue-600 text-xs font-normal"
+          onClick={() => window.location.href = "/vault"}
         >
           View Vault
         </Button>
@@ -205,9 +241,24 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
           <div className="space-y-1">
             {files.slice(0, limit).map((file: File) => (
               <div key={file.id}>
-                <div className="flex py-2.5 px-3 rounded-md hover:bg-gray-50 transition-colors cursor-pointer group">
+                <div 
+                  className="flex py-2.5 px-3 rounded-md hover:bg-gray-50 transition-colors cursor-pointer group"
+                  onClick={() => {
+                    // Hantera klick på olika typer av filer
+                    if (file.folder === "Ritningar" && file.fileType.toLowerCase() === "pdf") {
+                      // Navigera till ritningar-sidan
+                      window.location.href = "/ritningar";
+                    } else if (file.fileType.toLowerCase() === "pdf") {
+                      // Andra PDF-filer
+                      window.location.href = "/vault";
+                    } else {
+                      // Alla andra filer
+                      window.location.href = "/vault";
+                    }
+                  }}
+                >
                   <div className="mr-3 mt-1">
-                    <File className="h-4 w-4 text-gray-500" />
+                    {getFileIcon(file.fileType)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2">
@@ -242,7 +293,11 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
             <h3 className="text-sm font-medium text-gray-600">No recent files</h3>
             <p className="text-xs text-gray-500 mt-1">
               There are no recent files in the vault.
-              <Button variant="link" className="h-auto p-0 text-xs text-blue-600">
+              <Button 
+                variant="link" 
+                className="h-auto p-0 text-xs text-blue-600 ml-1"
+                onClick={() => window.location.href = "/ritningar"}
+              >
                 Upload a file
               </Button>
             </p>

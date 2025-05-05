@@ -99,15 +99,9 @@ export function Sidebar({ className }: SidebarProps) {
   const navItems: NavItemType[] = [
     {
       href: "/",
-      label: "Home",
-      icon: <Home className="w-5 h-5" />,
-      active: location === "/"
-    },
-    {
-      href: "/dashboard",
       label: "Dashboard",
       icon: <LayoutDashboard className="w-5 h-5" />,
-      active: location === "/dashboard"
+      active: location === "/"
     },
     {
       href: "#", // No direct planning page
