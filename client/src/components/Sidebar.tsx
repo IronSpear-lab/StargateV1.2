@@ -17,6 +17,7 @@ import {
   Briefcase,
   BarChart2,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
   Users,
   Clock,
@@ -415,7 +416,8 @@ export function Sidebar({ className }: SidebarProps) {
       )}
       <aside 
         className={cn(
-          "w-64 bg-background h-full shadow-md transition-all duration-300 overflow-y-auto z-50 flex flex-col border-r border-border",
+          "bg-background h-full shadow-md transition-all duration-300 overflow-y-auto z-50 flex flex-col border-r border-border",
+          isOpen ? "w-64" : "w-20",
           isMobile ? "fixed left-0 top-0" : "sticky top-0",
           className
         )}
@@ -428,18 +430,28 @@ export function Sidebar({ className }: SidebarProps) {
                   <path d="M12 2L20 7V17L12 22L4 17V7L12 2Z" fill="currentColor"/>
                 </svg>
               </div>
-              <span className="ml-2 text-foreground text-xl font-bold">ValvX</span>
+              <span className={cn(
+                "ml-2 text-foreground text-xl font-bold transition-opacity duration-200",
+                !isOpen && !isMobile ? "opacity-0 w-0" : ""
+              )}>ValvX</span>
             </div>
             <div className="flex space-x-1 items-center">
               <ModeToggle />
-              {isMobile && (
-                <button 
-                  onClick={toggleSidebar} 
-                  className="p-1 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              )}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-9 w-9 rounded-full"
+                onClick={toggleSidebar}
+              >
+                {isOpen ? 
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                    <path d="m15 18-6-6 6-6"/>
+                  </svg> : 
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                    <path d="m9 18 6-6-6-6"/>
+                  </svg>
+                }
+              </Button>
             </div>
           </div>
         </div>

@@ -74,9 +74,18 @@ const projects = [
 
 // Lista av tillgängliga föräldramappar för undermappar
 const parentFolders = [
-  { id: 1, name: "Documents" },
-  { id: 2, name: "Images" },
-  { id: 3, name: "Contracts" }
+  { id: 1, name: "Files", path: "files", isRoot: true },
+  { id: 2, name: "01- Organisation", path: "files/01-organisation", parentId: 1 },
+  { id: 3, name: "02- Projektering", path: "files/02-projektering", parentId: 1 },
+  { id: 4, name: "00- Gemensam", path: "files/00-gemensam", parentId: 1 },
+  { id: 5, name: "01- Arkitekt", path: "files/01-arkitekt", parentId: 1 },
+  { id: 6, name: "1. Ritningar", path: "files/01-arkitekt/ritningar", parentId: 5 },
+  { id: 7, name: "2. DWG & IFC", path: "files/01-arkitekt/dwg-ifc", parentId: 5 },
+  { id: 8, name: "3. Beskrivningar", path: "files/01-arkitekt/beskrivningar", parentId: 5 },
+  { id: 9, name: "4. Underlag", path: "files/01-arkitekt/underlag", parentId: 5 },
+  { id: 10, name: "5. Egenkontroller", path: "files/01-arkitekt/egenkontroller", parentId: 5 },
+  { id: 11, name: "02- Akustik", path: "files/02-akustik", parentId: 1 },
+  { id: 12, name: "02- Brand", path: "files/02-brand", parentId: 1 },
 ];
 
 interface FolderLocation {
@@ -241,27 +250,49 @@ export default function VaultPage() {
                   
                   <div className="grid gap-2">
                     <Label htmlFor="parentFolder" className="font-medium">Parent Folder (Optional)</Label>
-                    <Select 
-                      value={selectedLocation.parentId?.toString() || "root"} 
-                      onValueChange={(value) => 
-                        setSelectedLocation({ 
-                          ...selectedLocation, 
-                          parentId: value !== "root" ? parseInt(value) : null 
-                        })
-                      }
-                    >
+                    <div className="relative">
                       <SelectTrigger>
                         <SelectValue placeholder="Root Folder" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-80">
                         <SelectItem value="root">Root Folder</SelectItem>
-                        {parentFolders.map((folder) => (
-                          <SelectItem key={folder.id} value={folder.id.toString()}>
-                            {folder.name}
-                          </SelectItem>
-                        ))}
+                        {/* Files huvudnivå */}
+                        {parentFolders
+                          .filter(folder => folder.isRoot)
+                          .map(folder => (
+                            <SelectItem key={folder.id} value={folder.id.toString()}>
+                              {folder.name}
+                            </SelectItem>
+                          ))
+                        }
+                        {/* Första nivåns undermappar */}
+                        {parentFolders
+                          .filter(folder => folder.parentId === 1 && !folder.isRoot)
+                          .map(folder => (
+                            <SelectItem 
+                              key={folder.id} 
+                              value={folder.id.toString()}
+                              className="pl-6"
+                            >
+                              {folder.name}
+                            </SelectItem>
+                          ))
+                        }
+                        {/* 01-Arkitektmappar (nivå 2) */}
+                        {parentFolders
+                          .filter(folder => folder.parentId === 5)
+                          .map(folder => (
+                            <SelectItem 
+                              key={folder.id} 
+                              value={folder.id.toString()}
+                              className="pl-10"
+                            >
+                              {folder.name}
+                            </SelectItem>
+                          ))
+                        }
                       </SelectContent>
-                    </Select>
+                    </div>
                   </div>
                 </div>
                 
