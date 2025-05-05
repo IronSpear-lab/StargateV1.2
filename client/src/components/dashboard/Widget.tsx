@@ -11,6 +11,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+// Define the width and height types at the module level
+export type WidthType = "full" | "half" | "third" | "quarter";
+export type HeightType = "small" | "medium" | "large" | "auto";
+
 interface WidgetProps {
   id: string;
   title: string;
@@ -20,10 +24,10 @@ interface WidgetProps {
   onRemove: (id: string) => void;
   onEdit?: (id: string) => void;
   className?: string;
-  width?: string; // "full", "half", "third", "quarter"
-  height?: string; // "small", "medium", "large", "auto"
+  width?: WidthType;
+  height?: HeightType;
   noPadding?: boolean;
-  onResize?: (id: string, newWidth: string, newHeight: string) => void;
+  onResize?: (id: string, newWidth: WidthType, newHeight: HeightType) => void;
 }
 
 export function Widget({
@@ -101,23 +105,27 @@ export function Widget({
     if (expanded) setExpanded(false);
   };
 
+  // Safely type the current values
+  const safeWidth = (currentWidth as WidthType) || "half";
+  const safeHeight = (currentHeight as HeightType) || "medium";
+  
   // Determine widget size classes
   const widthClasses = {
     full: "col-span-12",
     half: "col-span-12 md:col-span-6",
     third: "col-span-12 md:col-span-4",
     quarter: "col-span-12 md:col-span-3",
-  }[currentWidth] || "col-span-12";
+  }[safeWidth] || "col-span-12";
 
   const heightClasses = {
     small: collapsed ? "h-[42px]" : "h-[200px]",
     medium: collapsed ? "h-[42px]" : "h-[320px]",
     large: collapsed ? "h-[42px]" : "h-[500px]",
     auto: collapsed ? "h-[42px]" : "h-auto",
-  }[currentHeight] || "h-[320px]";
+  }[safeHeight] || "h-[320px]";
   
   // Handle resize
-  const handleResize = (newWidth: string, newHeight: string) => {
+  const handleResize = (newWidth: WidthType, newHeight: HeightType) => {
     setCurrentWidth(newWidth);
     setCurrentHeight(newHeight);
     
@@ -214,14 +222,45 @@ export function Widget({
                   Edit widget
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem
-                onClick={() => window.localStorage.setItem(`widget-${id}-position`, JSON.stringify({ width, height }))}
-              >
-                Save position
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={toggleExpanded}>
                 {expanded ? "Collapse" : "Expand"}
               </DropdownMenuItem>
+              
+              {/* Widget Width Submenu */}
+              <DropdownMenuItem className="font-semibold">
+                Set Width:
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleResize("full" as WidthType, safeHeight)}>
+                Full Width
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleResize("half" as WidthType, safeHeight)}>
+                Half Width
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleResize("third" as WidthType, safeHeight)}>
+                Third Width
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleResize("quarter" as WidthType, safeHeight)}>
+                Quarter Width
+              </DropdownMenuItem>
+              
+              {/* Widget Height Submenu */}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="font-semibold">
+                Set Height:
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleResize(safeWidth, "small" as HeightType)}>
+                Small Height
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleResize(safeWidth, "medium" as HeightType)}>
+                Medium Height
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleResize(safeWidth, "large" as HeightType)}>
+                Large Height
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleResize(safeWidth, "auto" as HeightType)}>
+                Auto Height
+              </DropdownMenuItem>
+              
               <DropdownMenuItem>Refresh data</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
