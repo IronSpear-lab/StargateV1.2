@@ -119,6 +119,10 @@ export default function ProjectLeaderDashboardPage() {
   const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  
+  // Track user's projects
+  const [userProjects, setUserProjects] = useState<{id: number; name: string}[]>([]);
+  const [currentProjectId, setCurrentProjectId] = useState<number | undefined>();
 
   const form = useForm<ProjectSettingsFormValues>({
     defaultValues: {
@@ -174,15 +178,24 @@ export default function ProjectLeaderDashboardPage() {
   // Default project ID (first project in list)
   const defaultProjectId = projects && projects.length > 0 ? projects[0].id : undefined;
   
-  // Current project state for dropdown
-  const [currentProjectId, setCurrentProjectId] = useState<number | undefined>(defaultProjectId);
-  
   // Update current project when projects load initially
   useEffect(() => {
     if (defaultProjectId && !currentProjectId) {
       setCurrentProjectId(defaultProjectId);
     }
-  }, [defaultProjectId, currentProjectId]);
+    
+    // Update userProjects from fetched data
+    if (projects && projects.length > 0) {
+      setUserProjects(projects);
+    } else if (userProjects.length === 0) {
+      // Create a default project if no projects exist
+      const defaultProj = { id: 1, name: "My Project" };
+      setUserProjects([defaultProj]);
+      if (!currentProjectId) {
+        setCurrentProjectId(1);
+      }
+    }
+  }, [projects, defaultProjectId, currentProjectId]);
   
   // Get current project object
   const currentProject = projects.find((p: { id: number; name: string }) => p.id === currentProjectId) || 

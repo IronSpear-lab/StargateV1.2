@@ -158,11 +158,14 @@ export default function DashboardPage() {
 
   // Add a new widget to the dashboard
   const handleAddWidget = (widgetType: WidgetType) => {
+    // Always use the current project ID
+    const projectId = currentProjectId || (userProjects.length > 0 ? userProjects[0].id : undefined);
+
     const newWidget: WidgetInstance = {
       id: uuidv4(),
       type: widgetType.id,
       title: widgetType.name,
-      projectId: defaultProjectId,
+      projectId: projectId,
       width: widgetType.defaultWidth,
       height: widgetType.defaultHeight
     };
@@ -209,21 +212,24 @@ export default function DashboardPage() {
 
   // Render the appropriate widget component based on type
   const renderWidget = (widget: WidgetInstance) => {
+    // Always use the current selected project ID
+    const projectId = currentProjectId || (userProjects.length > 0 ? userProjects[0].id : undefined);
+    
     switch (widget.type) {
       case "custom-text":
         return <CustomTextWidget id={widget.id} />;
       case "calendar":
-        return <CalendarWidget projectId={widget.projectId} />;
+        return <CalendarWidget projectId={projectId} />;
       case "messages":
         return <MessagesWidget limit={5} />;
       case "deadlines":
-        return <DeadlinesWidget projectId={widget.projectId} />;
+        return <DeadlinesWidget projectId={projectId} />;
       case "field-tasks":
         return <FieldTasksWidget limit={5} />;
       case "recent-files":
-        return <RecentFilesWidget projectId={widget.projectId} />;
+        return <RecentFilesWidget projectId={projectId} />;
       case "tasks-overview":
-        return <TasksOverviewWidget projectId={widget.projectId} />;
+        return <TasksOverviewWidget projectId={projectId} />;
       default:
         return (
           <div className="flex items-center justify-center h-full">
@@ -238,7 +244,19 @@ export default function DashboardPage() {
       <Sidebar className={isSidebarOpen ? "" : "hidden"} />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header title="Dashboard" onToggleSidebar={toggleSidebar} />
+        <Header 
+          title="Dashboard" 
+          onToggleSidebar={toggleSidebar} 
+          currentProject={currentProject}
+          availableProjects={userProjects} 
+          onProjectChange={(projectId) => {
+            setCurrentProjectId(projectId);
+            toast({
+              title: "Project changed",
+              description: `Switched to ${userProjects.find(p => p.id === projectId)?.name || 'new project'}`,
+            });
+          }}
+        />
         
         <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-background">
           <div className="max-w-7xl mx-auto py-5 px-4 sm:px-6">
