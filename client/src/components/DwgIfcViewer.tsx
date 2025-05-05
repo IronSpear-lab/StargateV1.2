@@ -22,13 +22,25 @@ type FileEntry = {
   date: Date;
 };
 
+// Define our viewer interface for better type safety
+interface Viewer {
+  scene: THREE.Scene;
+  camera: THREE.PerspectiveCamera;
+  renderer: THREE.WebGLRenderer;
+  buildingGroup: THREE.Group;
+  buildingMaterial: THREE.MeshPhongMaterial;
+  roofMaterial: THREE.MeshPhongMaterial;
+  animationFrameId?: number;
+  dispose: () => void;
+}
+
 export function DwgIfcViewer() {
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileEntry | null>(null);
   const viewerContainerRef = useRef<HTMLDivElement>(null);
-  const viewerRef = useRef<any>(null);
+  const viewerRef = useRef<Viewer | null>(null);
   const { toast } = useToast();
 
   // Load stored files on mount
@@ -75,27 +87,32 @@ export function DwgIfcViewer() {
   useEffect(() => {
     if (viewerContainerRef.current && !viewerRef.current) {
       try {
-        // Initialize our Three.js viewer
-        
-        // For now, we'll use Three.js as a fallback/placeholder
+        // Initialize Three.js viewer
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xf0f0f0);
+        scene.background = new THREE.Color(0xf5f5f5);
         
-        const camera = new THREE.PerspectiveCamera(75, 2, 0.1, 1000);
+        // Create camera
+        const camera = new THREE.PerspectiveCamera(
+          60, 
+          viewerContainerRef.current.clientWidth / viewerContainerRef.current.clientHeight, 
+          0.1, 
+          1000
+        );
         camera.position.z = 5;
         
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        // Create renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(viewerContainerRef.current.clientWidth, viewerContainerRef.current.clientHeight);
-        renderer.setClearColor(0xf0f0f0, 1);
         
         // Clear any existing canvas
         while (viewerContainerRef.current.firstChild) {
           viewerContainerRef.current.removeChild(viewerContainerRef.current.firstChild);
         }
         
+        // Add the canvas to the DOM
         viewerContainerRef.current.appendChild(renderer.domElement);
         
-        // Add some light to the scene
+        // Add lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
         
@@ -103,7 +120,7 @@ export function DwgIfcViewer() {
         directionalLight.position.set(0, 10, 10);
         scene.add(directionalLight);
         
-        // Create a more complex "building-like" structure instead of just a cube
+        // Create a building-like 3D model
         const buildingGroup = new THREE.Group();
         
         // Base/foundation
@@ -138,30 +155,13 @@ export function DwgIfcViewer() {
         roof.rotation.y = Math.PI / 4; // 45 degrees
         buildingGroup.add(roof);
         
-        // Interior walls
-        const wallGeometry = new THREE.BoxGeometry(1.4, 1.3, 0.05);
-        const wallMaterial = new THREE.MeshPhongMaterial({ 
-          color: 0x0acf97,
-          wireframe: true,
-          shininess: 20
-        });
-        
-        // Horizontal wall
-        const wallH = new THREE.Mesh(wallGeometry, wallMaterial);
-        wallH.position.set(0, -0.1, 0);
-        buildingGroup.add(wallH);
-        
-        // Vertical wall
-        const wallV = new THREE.Mesh(wallGeometry, wallMaterial);
-        wallV.position.set(0, -0.1, 0);
-        wallV.rotation.y = Math.PI / 2; // 90 degrees
-        buildingGroup.add(wallV);
-        
         scene.add(buildingGroup);
         
         // Animation loop
+        let animationFrameId: number;
+        
         const animate = () => {
-          requestAnimationFrame(animate);
+          animationFrameId = requestAnimationFrame(animate);
           
           buildingGroup.rotation.y += 0.005;
           
@@ -187,10 +187,29 @@ export function DwgIfcViewer() {
           camera,
           renderer,
           buildingGroup,
-          isXeokit: false, // Flag indicating we're using the fallback
+          buildingMaterial,
+          roofMaterial,
           dispose: () => {
+            if (animationFrameId) {
+              cancelAnimationFrame(animationFrameId);
+            }
             window.removeEventListener('resize', handleResize);
             renderer.dispose();
+            
+            // Dispose geometries and materials
+            buildingGeometry.dispose();
+            baseGeometry.dispose();
+            roofGeometry.dispose();
+            
+            if (baseMaterial instanceof THREE.Material) {
+              baseMaterial.dispose();
+            }
+            if (buildingMaterial instanceof THREE.Material) {
+              buildingMaterial.dispose();
+            }
+            if (roofMaterial instanceof THREE.Material) {
+              roofMaterial.dispose();
+            }
           }
         };
         
@@ -200,7 +219,6 @@ export function DwgIfcViewer() {
             viewerRef.current.dispose();
             viewerRef.current = null;
           }
-          window.removeEventListener('resize', handleResize);
         };
       } catch (err) {
         console.error('Failed to initialize viewer:', err);
@@ -270,51 +288,48 @@ export function DwgIfcViewer() {
       
       // Apply visual changes based on file type
       const extension = fileEntry.name.split('.').pop()?.toLowerCase();
-      if (viewerRef.current && viewerRef.current.buildingGroup) {
+      
+      if (viewerRef.current && viewerRef.current.buildingMaterial) {
         if (extension === 'dwg') {
-          // Update the building materials for DWG files (blue theme)
-          const buildingMaterial = viewerRef.current.buildingGroup.children[1].material;
-          if (buildingMaterial) {
-            buildingMaterial.color.set(0x3182ce); // Blue
-          }
+          // Update main building for DWG files (blue theme)
+          viewerRef.current.buildingMaterial.color.set(0x3182ce); // Blue
+          viewerRef.current.buildingMaterial.wireframe = true;
+          viewerRef.current.buildingMaterial.transparent = true;
+          viewerRef.current.buildingMaterial.opacity = 0.8;
           
-          // Update wall colors
-          const walls = [viewerRef.current.buildingGroup.children[3], viewerRef.current.buildingGroup.children[4]];
-          walls.forEach(wall => {
-            if (wall && wall.material) {
-              wall.material.color.set(0x4299e1); // Lighter blue
-            }
-          });
+          // Trigger an immediate render
+          viewerRef.current.renderer.render(
+            viewerRef.current.scene, 
+            viewerRef.current.camera
+          );
           
           // Add informational message about DWG files
           toast({
-            title: "DWG File Uploaded",
-            description: `${file.name} har laddats upp. I en riktig implementation skulle en interaktiv CAD-ritning visas nu.`,
+            title: "DWG-fil uppladdad",
+            description: `${file.name} har laddats upp. Titta på den blå 3D-modellen.`,
           });
         } else if (extension === 'ifc') {
-          // Update the building materials for IFC files (green theme)
-          const buildingMaterial = viewerRef.current.buildingGroup.children[1].material;
-          if (buildingMaterial) {
-            buildingMaterial.color.set(0x38a169); // Green
-          }
+          // Update main building for IFC files (green theme)
+          viewerRef.current.buildingMaterial.color.set(0x38a169); // Green
+          viewerRef.current.buildingMaterial.wireframe = true;
+          viewerRef.current.buildingMaterial.transparent = true;
+          viewerRef.current.buildingMaterial.opacity = 0.8;
           
-          // Update wall colors
-          const walls = [viewerRef.current.buildingGroup.children[3], viewerRef.current.buildingGroup.children[4]];
-          walls.forEach(wall => {
-            if (wall && wall.material) {
-              wall.material.color.set(0x48bb78); // Lighter green
-            }
-          });
+          // Trigger an immediate render
+          viewerRef.current.renderer.render(
+            viewerRef.current.scene, 
+            viewerRef.current.camera
+          );
           
           // Add informational message about IFC files
           toast({
-            title: "IFC File Uploaded",
-            description: `${file.name} har laddats upp. I en riktig implementation skulle en interaktiv BIM-modell visas nu.`,
+            title: "IFC-fil uppladdad",
+            description: `${file.name} har laddats upp. Titta på den gröna 3D-modellen.`,
           });
         } else {
           toast({
-            title: "File uploaded",
-            description: `${file.name} has been uploaded successfully.`,
+            title: "Fil uppladdad",
+            description: `${file.name} har laddats upp.`,
           });
         }
       } else {
@@ -340,50 +355,53 @@ export function DwgIfcViewer() {
     // 2. Load it into the viewer (XeoKit or similar)
     // 3. Setup the scene, camera, and controls
     
-    // For now, we'll just show different colors and styles based on file type
-    if (viewerRef.current && viewerRef.current.buildingGroup) {
-      // Get file extension
-      const extension = file.name.split('.').pop()?.toLowerCase();
-      
+    // Get file extension and update the 3D model appearance based on file type
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    
+    if (viewerRef.current?.buildingMaterial) {
       if (extension === 'dwg') {
-        // Update the building materials for DWG files (blue theme)
-        const buildingMaterial = viewerRef.current.buildingGroup.children[1].material;
-        if (buildingMaterial) {
-          buildingMaterial.color.set(0x3182ce); // Blue
+        // Update main building for DWG files (blue theme)
+        viewerRef.current.buildingMaterial.color.set(0x3182ce); // Blue
+        viewerRef.current.buildingMaterial.wireframe = true;
+        viewerRef.current.buildingMaterial.opacity = 0.8;
+        
+        // Update roof color
+        if (viewerRef.current.roofMaterial) {
+          viewerRef.current.roofMaterial.color.set(0x63b3ed); // Lighter blue
         }
         
-        // Update wall colors
-        const walls = [viewerRef.current.buildingGroup.children[3], viewerRef.current.buildingGroup.children[4]];
-        walls.forEach(wall => {
-          if (wall && wall.material) {
-            wall.material.color.set(0x4299e1); // Lighter blue
-          }
-        });
+        // Force a render
+        viewerRef.current.renderer.render(
+          viewerRef.current.scene,
+          viewerRef.current.camera
+        );
         
-        // Add informational message about DWG files
+        // Show info message
         toast({
-          title: "DWG File Selected",
-          description: "In a fully implemented viewer, this would show an interactive CAD drawing.",
+          title: "DWG-fil vald",
+          description: "Interaktiv visning av en CAD-ritning skulle visas här i en färdig implementation.",
         });
       } else if (extension === 'ifc') {
-        // Update the building materials for IFC files (green theme)
-        const buildingMaterial = viewerRef.current.buildingGroup.children[1].material;
-        if (buildingMaterial) {
-          buildingMaterial.color.set(0x38a169); // Green
+        // Update main building for IFC files (green theme)
+        viewerRef.current.buildingMaterial.color.set(0x38a169); // Green
+        viewerRef.current.buildingMaterial.wireframe = true;
+        viewerRef.current.buildingMaterial.opacity = 0.8;
+        
+        // Update roof color
+        if (viewerRef.current.roofMaterial) {
+          viewerRef.current.roofMaterial.color.set(0x68d391); // Lighter green
         }
         
-        // Update wall colors
-        const walls = [viewerRef.current.buildingGroup.children[3], viewerRef.current.buildingGroup.children[4]];
-        walls.forEach(wall => {
-          if (wall && wall.material) {
-            wall.material.color.set(0x48bb78); // Lighter green
-          }
-        });
+        // Force a render
+        viewerRef.current.renderer.render(
+          viewerRef.current.scene,
+          viewerRef.current.camera
+        );
         
-        // Add informational message about IFC files
+        // Show info message
         toast({
-          title: "IFC File Selected",
-          description: "In a fully implemented viewer, this would show an interactive BIM model.",
+          title: "IFC-fil vald",
+          description: "Interaktiv visning av en BIM-modell skulle visas här i en färdig implementation.",
         });
       }
     }
