@@ -26,7 +26,8 @@ import {
   HelpCircle,
   CircleUser,
   Search,
-  Box
+  Box,
+  Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -50,6 +51,8 @@ type NavItemType = {
   active?: boolean;
   indent?: number;
   children?: NavItemType[];
+  type?: 'folder' | 'file' | 'link'; // För att kunna identifiera mappar och visa plustecken
+  onAddClick?: () => void;
 };
 
 interface NavGroupProps {
@@ -97,13 +100,24 @@ export function Sidebar({ className }: SidebarProps) {
       .toUpperCase();
   };
 
+  // Funktion för att hantera "Lägg till mapp" i olika mappar
+  const handleAddFolder = (parentName: string) => {
+    // Skapa en dialog eller använd en funktion för att öppna "Lägg till mapp"-dialogen 
+    // med den valda föräldern
+    console.log(`Lägg till mapp under: ${parentName}`);
+    
+    // I en riktig implementation skulle detta öppna din befintliga dialogruta för mapp-skapande
+    // och förifylla parentName som den förälder där mappen ska placeras
+  };
+  
   // Define nested navigation based on the image
   const navItems: NavItemType[] = [
     {
       href: "/",
       label: "Dashboard",
       icon: <LayoutDashboard className="w-5 h-5" />,
-      active: location === "/"
+      active: location === "/",
+      type: "link"
     },
     {
       href: "#", // No direct planning page
@@ -175,6 +189,8 @@ export function Sidebar({ className }: SidebarProps) {
           active: location.startsWith("/vault/files"),
           indent: 1,
           icon: <FileText className="w-4 h-4" />,
+          type: "folder",
+          onAddClick: () => handleAddFolder("Files"),
           children: [
             {
               href: "#",
@@ -182,6 +198,8 @@ export function Sidebar({ className }: SidebarProps) {
               active: false,
               indent: 2,
               icon: <FolderClosed className="w-4 h-4" />,
+              type: "folder",
+              onAddClick: () => handleAddFolder("01- Organisation"),
               children: []
             },
             {
@@ -190,6 +208,8 @@ export function Sidebar({ className }: SidebarProps) {
               active: false,
               indent: 2,
               icon: <FolderClosed className="w-4 h-4" />,
+              type: "folder",
+              onAddClick: () => handleAddFolder("02- Projektering"),
               children: []
             },
             {
@@ -198,6 +218,8 @@ export function Sidebar({ className }: SidebarProps) {
               active: false,
               indent: 2,
               icon: <FolderClosed className="w-4 h-4" />,
+              type: "folder",
+              onAddClick: () => handleAddFolder("00- Gemensam"),
               children: []
             },
             {
@@ -206,6 +228,8 @@ export function Sidebar({ className }: SidebarProps) {
               active: false,
               indent: 2,
               icon: <FolderClosed className="w-4 h-4" />,
+              type: "folder",
+              onAddClick: () => handleAddFolder("01- Arkitekt"),
               children: [
                 {
                   href: "/vault/files/ritningar",
@@ -213,6 +237,8 @@ export function Sidebar({ className }: SidebarProps) {
                   active: location === "/vault/files/ritningar",
                   indent: 3,
                   icon: <FolderClosed className="w-3 h-3" />,
+                  type: "folder",
+                  onAddClick: () => handleAddFolder("1. Ritningar"),
                   children: []
                 },
                 {
@@ -221,6 +247,8 @@ export function Sidebar({ className }: SidebarProps) {
                   active: false,
                   indent: 3,
                   icon: <FolderClosed className="w-3 h-3" />,
+                  type: "folder",
+                  onAddClick: () => handleAddFolder("2. DWG & IFC"),
                   children: []
                 },
                 {
@@ -229,6 +257,8 @@ export function Sidebar({ className }: SidebarProps) {
                   active: false,
                   indent: 3,
                   icon: <FolderClosed className="w-3 h-3" />,
+                  type: "folder",
+                  onAddClick: () => handleAddFolder("3. Beskrivningar"),
                   children: []
                 },
                 {
@@ -237,6 +267,8 @@ export function Sidebar({ className }: SidebarProps) {
                   active: false,
                   indent: 3,
                   icon: <FolderClosed className="w-3 h-3" />,
+                  type: "folder",
+                  onAddClick: () => handleAddFolder("4. Underlag"),
                   children: []
                 },
                 {
@@ -245,6 +277,8 @@ export function Sidebar({ className }: SidebarProps) {
                   active: false,
                   indent: 3,
                   icon: <FolderClosed className="w-3 h-3" />,
+                  type: "folder",
+                  onAddClick: () => handleAddFolder("5. Egenkontroller"),
                   children: []
                 }
               ]
@@ -255,6 +289,8 @@ export function Sidebar({ className }: SidebarProps) {
               active: false,
               indent: 2,
               icon: <FolderClosed className="w-4 h-4" />,
+              type: "folder",
+              onAddClick: () => handleAddFolder("02- Akustik"),
               children: []
             },
             {
@@ -263,6 +299,8 @@ export function Sidebar({ className }: SidebarProps) {
               active: false,
               indent: 2,
               icon: <FolderClosed className="w-4 h-4" />,
+              type: "folder",
+              onAddClick: () => handleAddFolder("02- Brand"),
               children: []
             }
           ]
@@ -361,19 +399,48 @@ export function Sidebar({ className }: SidebarProps) {
               {/* Tooltip som visas vid hover (endast för när sidebar är minimerad) */}
               <div className="absolute left-full top-0 min-w-32 ml-2 z-50 bg-background border border-border rounded-md py-1 shadow-md transition-opacity duration-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible">
                 {hasChildren ? (
-                  <div className="px-3 py-1 whitespace-nowrap">{item.label}</div>
+                  <div className="flex items-center justify-between px-3 py-1 whitespace-nowrap">
+                    <span>{item.label}</span>
+                    {/* Plus-ikon för mappar i minimerat läge */}
+                    {item.type === "folder" && item.onAddClick && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          item.onAddClick?.();
+                        }}
+                        className="ml-2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
                 ) : (
-                  <div className="px-3 py-1 whitespace-nowrap">
-                    {item.label}
-                    {item.badge && (
-                      <Badge variant="outline" className={cn(
-                        "text-xs py-0.5 px-2 rounded-full ml-2",
-                        item.active 
-                          ? "bg-primary/10 text-primary border-primary/20" 
-                          : "bg-muted text-muted-foreground border-border"
-                      )}>
-                        {item.badge}
-                      </Badge>
+                  <div className="flex items-center justify-between px-3 py-1 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <span>{item.label}</span>
+                      {item.badge && (
+                        <Badge variant="outline" className={cn(
+                          "text-xs py-0.5 px-2 rounded-full ml-2",
+                          item.active 
+                            ? "bg-primary/10 text-primary border-primary/20" 
+                            : "bg-muted text-muted-foreground border-border"
+                        )}>
+                          {item.badge}
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    {/* Plus-ikon för mappar i minimerat läge */}
+                    {item.type === "folder" && item.onAddClick && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          item.onAddClick?.();
+                        }}
+                        className="ml-2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
                     )}
                   </div>
                 )}
@@ -438,6 +505,20 @@ export function Sidebar({ className }: SidebarProps) {
                         {item.badge}
                       </Badge>
                     )}
+                    
+                    {/* Lägg till plustecken för mappar */}
+                    {item.type === "folder" && item.onAddClick && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation(); // Förhindra att mappknappen klickas
+                          item.onAddClick?.();
+                        }}
+                        className="mr-1 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    )}
+                    
                     <ChevronRight className={cn(
                       "h-4 w-4 transition-transform duration-200",
                       isItemOpen ? "rotate-90" : ""
@@ -452,41 +533,58 @@ export function Sidebar({ className }: SidebarProps) {
               </CollapsibleContent>
             </Collapsible>
           ) : (
-            <Link 
-              href={item.href}
-              className={cn(
-                "flex items-center justify-between px-3 py-2 rounded-md transition-colors duration-150",
-                item.active
-                  ? "bg-primary/10 text-primary font-medium" 
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                indentClass
+            <div className={cn(
+              "flex items-center justify-between px-3 py-2 rounded-md transition-colors duration-150",
+              item.active
+                ? "bg-primary/10" 
+                : "hover:bg-muted",
+              indentClass
+            )}>
+              <Link 
+                href={item.href}
+                className={cn(
+                  "flex items-center justify-between flex-grow",
+                  item.active
+                    ? "text-primary font-medium" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <div className="flex items-center">
+                  <span className={cn(
+                    "flex items-center justify-center mr-3",
+                    item.active ? "text-primary" : "text-muted-foreground"
+                  )}>
+                    {item.icon}
+                  </span>
+                  <span className={cn(
+                    "text-sm",
+                    item.active ? "text-primary" : "text-muted-foreground"
+                  )}>
+                    {item.label}
+                  </span>
+                </div>
+                {item.badge && (
+                  <Badge variant="outline" className={cn(
+                    "ml-auto text-xs py-0.5 px-2 rounded-full",
+                    item.active 
+                      ? "bg-primary/10 text-primary border-primary/20" 
+                      : "bg-muted text-muted-foreground border-border"
+                  )}>
+                    {item.badge}
+                  </Badge>
+                )}
+              </Link>
+              
+              {/* Plus-ikon för mappar */}
+              {item.type === "folder" && item.onAddClick && (
+                <button
+                  onClick={() => item.onAddClick?.()}
+                  className="ml-1 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <Plus className="h-3 w-3" />
+                </button>
               )}
-            >
-              <div className="flex items-center">
-                <span className={cn(
-                  "flex items-center justify-center mr-3",
-                  item.active ? "text-primary" : "text-muted-foreground"
-                )}>
-                  {item.icon}
-                </span>
-                <span className={cn(
-                  "text-sm",
-                  item.active ? "text-primary" : "text-muted-foreground"
-                )}>
-                  {item.label}
-                </span>
-              </div>
-              {item.badge && (
-                <Badge variant="outline" className={cn(
-                  "ml-auto text-xs py-0.5 px-2 rounded-full",
-                  item.active 
-                    ? "bg-primary/10 text-primary border-primary/20" 
-                    : "bg-muted text-muted-foreground border-border"
-                )}>
-                  {item.badge}
-                </Badge>
-              )}
-            </Link>
+            </div>
           )}
         </div>
       );

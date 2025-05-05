@@ -199,14 +199,8 @@ export default function VaultPage() {
               <h1 className="text-2xl font-semibold text-foreground">Vault</h1>
             </div>
             
-            {/* Add Folder Button */}
+            {/* Add Folder Dialog (knappen borttagen, dialogens funktionalitet behålls för sidebar) */}
             <Dialog open={isAddFolderOpen} onOpenChange={setIsAddFolderOpen}>
-              <DialogTrigger asChild>
-                <Button className="flex items-center gap-2" size="sm">
-                  <FolderPlus className="h-4 w-4" />
-                  <span>Add Folder</span>
-                </Button>
-              </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>Create New Folder</DialogTitle>
