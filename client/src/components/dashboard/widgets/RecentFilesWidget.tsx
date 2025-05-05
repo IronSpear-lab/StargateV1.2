@@ -28,6 +28,7 @@ interface File {
   folder: string;
   uploadedBy: string;
   uploadedById: string;
+  fileId?: string; // ID för att referera till filen i file-utils lagringen
 }
 
 interface RecentFilesWidgetProps {
@@ -52,14 +53,15 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
           ritningar.forEach((ritning: any) => {
             if (ritning.filename) {
               uploadedFiles.push({
-                id: ritning.fileId || ritning.id.toString(),
+                id: ritning.id.toString(),
                 name: ritning.filename,
                 fileType: "pdf",
                 fileSize: 2450000, // Kan inte veta exakt storlek utan att lagra det
                 lastModified: new Date().toISOString(),
                 folder: "Ritningar",
                 uploadedBy: ritning.uploadedBy || "Du",
-                uploadedById: "currentUser"
+                uploadedById: "currentUser",
+                fileId: ritning.fileId // Inkludera fileId om den finns
               });
             }
           });

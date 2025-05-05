@@ -249,6 +249,66 @@ export default function RitningarPage() {
     };
   } | null>(null);
   
+  // Hämta eventuella URL-parametrar för att direkt öppna en fil
+  useEffect(() => {
+    const checkUrlParams = async () => {
+      // Kontrollera om vi har en viewFile-parameter i URL:en
+      const params = new URLSearchParams(window.location.search);
+      const fileIdParam = params.get('viewFile');
+      
+      if (fileIdParam) {
+        console.log(`[${Date.now()}] Detected viewFile parameter: ${fileIdParam}`);
+        
+        try {
+          // Försök att hämta filen från persistent lagring
+          const storedFileData = await getStoredFileAsync(fileIdParam);
+          
+          if (storedFileData) {
+            console.log(`[${Date.now()}] Successfully loaded file from storage: ${fileIdParam}`);
+            
+            // Hitta ritningsdatan för den här filen om den finns
+            const matchingRitning = ritningarData.find(r => r.fileId === fileIdParam);
+            
+            setSelectedFile({
+              file: storedFileData.file,
+              fileUrl: storedFileData.url,
+              fileData: matchingRitning ? {
+                filename: matchingRitning.filename,
+                version: matchingRitning.version,
+                description: matchingRitning.description,
+                uploaded: matchingRitning.uploaded,
+                uploadedBy: matchingRitning.uploadedBy
+              } : {
+                // Standardvärden om vi inte hittar matchande ritningsdata
+                filename: storedFileData.name,
+                version: "1",
+                description: "Uppladdad fil",
+                uploaded: new Date().toLocaleString(),
+                uploadedBy: "Du"
+              }
+            });
+          } else {
+            console.error(`[${Date.now()}] Could not load file with ID: ${fileIdParam}`);
+            toast({
+              title: "Kunde inte hitta filen",
+              description: "Filen du försöker visa finns inte längre tillgänglig.",
+              variant: "destructive",
+            });
+          }
+        } catch (error) {
+          console.error(`[${Date.now()}] Error loading file: ${error}`);
+          toast({
+            title: "Fel vid laddning av fil",
+            description: "Ett fel uppstod när filen skulle laddas. Försök igen senare.",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+    
+    checkUrlParams();
+  }, []);
+  
   // I en riktig implementation skulle denna query hämta data från API:et
   // const { data: ritningar = [], isLoading } = useQuery({
   //   queryKey: ['/api/ritningar'],
@@ -311,28 +371,48 @@ export default function RitningarPage() {
   };
   
   // Öppna PDF-visaren när användaren klickar på en fil
-  const handleFileClick = (ritning: Ritning) => {
+  const handleFileClick = async (ritning: Ritning) => {
     // För uppladdade filer, använd den lagrade filen
     if (ritning.fileId && ritning.fileId.startsWith('file_')) {
-      const storedFileData = getStoredFile(ritning.fileId);
-      if (storedFileData) {
-        setSelectedFile({
-          file: storedFileData.file,
-          fileUrl: storedFileData.url,
-          fileData: {
-            filename: ritning.filename,
-            version: ritning.version,
-            description: ritning.description,
-            uploaded: ritning.uploaded,
-            uploadedBy: ritning.uploadedBy
-          }
+      try {
+        // Använd asynkron version för att hämta från persistent lagring om det behövs
+        const storedFileData = await getStoredFileAsync(ritning.fileId);
+        
+        if (storedFileData) {
+          console.log(`[${Date.now()}] Successfully loaded file from storage for viewing: ${ritning.fileId}`);
+          setSelectedFile({
+            file: storedFileData.file,
+            fileUrl: storedFileData.url,
+            fileData: {
+              filename: ritning.filename,
+              version: ritning.version,
+              description: ritning.description,
+              uploaded: ritning.uploaded,
+              uploadedBy: ritning.uploadedBy
+            }
+          });
+          return;
+        } else {
+          console.error(`[${Date.now()}] Could not find stored file with ID: ${ritning.fileId}`);
+          toast({
+            title: "Kunde inte hitta filen",
+            description: "Den uppladdade filen finns inte längre tillgänglig.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error(`[${Date.now()}] Error loading file with ID ${ritning.fileId}:`, error);
+        toast({
+          title: "Fel vid laddning av fil",
+          description: "Ett fel uppstod när filen skulle laddas. Försök igen senare.",
+          variant: "destructive",
         });
-        return;
       }
     }
     
     // För befintliga/mock-filer, använd exempelfilen
     const fileUrl = getUploadedFileUrl(ritning.id);
+    console.log(`[${Date.now()}] Using example file URL for file: ${ritning.filename}`);
     setSelectedFile({
       file: null,
       fileUrl,
