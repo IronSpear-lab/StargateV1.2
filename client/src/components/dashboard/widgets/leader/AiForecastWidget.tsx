@@ -100,11 +100,11 @@ export function AiForecastWidget({ projectId }: AiForecastWidgetProps) {
   };
 
   return (
-    <Card className="w-full h-full flex flex-col bg-white dark:bg-gray-800 overflow-hidden">
+    <Card className="w-full h-full flex flex-col bg-white dark:bg-background overflow-hidden">
       <CardContent className="p-4 flex-1 flex flex-col">
         <div className="flex items-center mb-4">
           <AlertCircle className="h-5 w-5 text-primary mr-2" />
-          <h3 className="text-md font-semibold text-gray-900 dark:text-gray-100">AI Project Forecast</h3>
+          <h3 className="text-md font-semibold text-foreground dark:text-foreground">AI Project Forecast</h3>
         </div>
         
         {isLoading ? (
@@ -127,7 +127,7 @@ export function AiForecastWidget({ projectId }: AiForecastWidgetProps) {
                     </div>
                     <div>
                       <p className={`text-sm ${style.textColor}`}>{prediction.message}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-xs text-foreground/70 dark:text-foreground/70 mt-1">
                         {prediction.daysAhead === 0 
                           ? 'Predicted for today' 
                           : prediction.daysAhead === 1 
@@ -141,9 +141,9 @@ export function AiForecastWidget({ projectId }: AiForecastWidgetProps) {
             })}
             
             {predictions.length === 0 && (
-              <div className="text-center py-6 text-gray-500 dark:text-gray-400">
+              <div className="text-center py-6 text-foreground/70 dark:text-foreground/70">
                 <div className="mb-2">
-                  <AlertTriangle className="h-10 w-10 mx-auto text-gray-400 dark:text-gray-500" />
+                  <AlertTriangle className="h-10 w-10 mx-auto text-foreground/40 dark:text-foreground/40" />
                 </div>
                 <p>No predictions available at this time</p>
                 <p className="text-sm">Check back later for AI-generated insights</p>
@@ -152,7 +152,7 @@ export function AiForecastWidget({ projectId }: AiForecastWidgetProps) {
           </div>
         )}
         
-        <div className="mt-4 pt-2 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+        <div className="mt-4 pt-2 border-t border-border text-xs text-foreground/70 dark:text-foreground/70">
           <p>Predictions based on historical project data and current trends</p>
         </div>
       </CardContent>
