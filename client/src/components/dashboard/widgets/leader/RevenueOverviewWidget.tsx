@@ -120,16 +120,16 @@ export function RevenueOverviewWidget() {
                   data={data}
                   margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                   <XAxis 
                     dataKey="day" 
-                    tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
-                    axisLine={{ stroke: 'var(--border)' }}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    axisLine={{ stroke: 'hsl(var(--border))' }}
                     tickLine={false}
                   />
                   <YAxis 
                     tickFormatter={(value) => `${value/1000}k`}
-                    tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
                     axisLine={false}
                     tickLine={false}
                     width={35}
@@ -138,7 +138,7 @@ export function RevenueOverviewWidget() {
                     formatter={(value) => [formatCurrency(value as number), '']}
                     labelFormatter={(label) => `${label}`}
                     contentStyle={{
-                      backgroundColor: 'var(--background)',
+                      backgroundColor: 'hsl(var(--background))',
                       border: 'none',
                       borderRadius: '0.375rem',
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
@@ -148,19 +148,19 @@ export function RevenueOverviewWidget() {
                     type="monotone" 
                     dataKey="previous" 
                     name="Previous Week"
-                    stroke="var(--primary)" 
+                    stroke="hsl(var(--chart-1))" 
                     strokeWidth={3}
                     dot={false}
-                    activeDot={{ r: 6, fill: "var(--primary)" }}
+                    activeDot={{ r: 6, fill: "hsl(var(--chart-1))" }}
                   />
                   <Line 
                     type="monotone" 
                     dataKey="current" 
                     name="Current Week"
-                    stroke="var(--emerald-500)" 
+                    stroke="hsl(var(--chart-2))" 
                     strokeWidth={3}
                     dot={false}
-                    activeDot={{ r: 6, fill: "var(--emerald-500)" }}
+                    activeDot={{ r: 6, fill: "hsl(var(--chart-2))" }}
                   />
                 </LineChart>
               </ResponsiveContainer>
