@@ -184,35 +184,35 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
   const getFileTypeStyle = (fileType: string) => {
     switch(fileType.toLowerCase()) {
       case 'pdf':
-        return "bg-[#fa5c7c]/10 text-[#fa5c7c] border-[#fa5c7c]/20";
+        return "bg-[#fa5c7c]/10 text-[#fa5c7c] border-[#fa5c7c]/20 dark:bg-[#fa5c7c]/20 dark:border-[#fa5c7c]/30";
       case 'png':
       case 'jpg':
       case 'jpeg':
       case 'gif':
       case 'svg':
-        return "bg-[#0acf97]/10 text-[#0acf97] border-[#0acf97]/20";
+        return "bg-[#0acf97]/10 text-[#0acf97] border-[#0acf97]/20 dark:bg-[#0acf97]/20 dark:border-[#0acf97]/30";
       case 'xlsx':
       case 'xls':
       case 'csv':
-        return "bg-[#727cf5]/10 text-[#727cf5] border-[#727cf5]/20";
+        return "bg-[#727cf5]/10 text-[#727cf5] border-[#727cf5]/20 dark:bg-[#727cf5]/20 dark:border-[#727cf5]/30";
       case 'doc':
       case 'docx':
       case 'txt':
-        return "bg-[#727cf5]/10 text-[#727cf5] border-[#727cf5]/20";
+        return "bg-[#727cf5]/10 text-[#727cf5] border-[#727cf5]/20 dark:bg-[#727cf5]/20 dark:border-[#727cf5]/30";
       case 'mp3':
       case 'wav':
       case 'ogg':
-        return "bg-[#ffc35a]/10 text-[#ffc35a] border-[#ffc35a]/20";
+        return "bg-[#ffc35a]/10 text-[#ffc35a] border-[#ffc35a]/20 dark:bg-[#ffc35a]/20 dark:border-[#ffc35a]/30";
       case 'mp4':
       case 'avi':
       case 'mov':
-        return "bg-[#fa5c7c]/10 text-[#fa5c7c] border-[#fa5c7c]/20";
+        return "bg-[#fa5c7c]/10 text-[#fa5c7c] border-[#fa5c7c]/20 dark:bg-[#fa5c7c]/20 dark:border-[#fa5c7c]/30";
       case 'zip':
       case 'rar':
       case '7z':
-        return "bg-[#ffc35a]/10 text-[#ffc35a] border-[#ffc35a]/20";
+        return "bg-[#ffc35a]/10 text-[#ffc35a] border-[#ffc35a]/20 dark:bg-[#ffc35a]/20 dark:border-[#ffc35a]/30";
       default:
-        return "bg-gray-100 text-gray-700 border-gray-200";
+        return "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
     }
   };
 
@@ -226,7 +226,7 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
         <Button 
           variant="ghost" 
           size="sm" 
-          className="h-7 px-2 text-blue-600 text-xs font-normal"
+          className="h-7 px-2 text-blue-600 dark:text-blue-400 text-xs font-normal"
           onClick={() => window.location.href = "/vault"}
         >
           View Vault
@@ -236,15 +236,15 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
       <ScrollArea className="flex-1 pr-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
-            <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-            <span className="ml-2 text-sm text-gray-500">Loading files...</span>
+            <div className="animate-spin h-5 w-5 border-2 border-blue-500 dark:border-blue-400 border-t-transparent rounded-full"></div>
+            <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Loading files...</span>
           </div>
         ) : files && files.length > 0 ? (
           <div className="space-y-1">
             {files.slice(0, limit).map((file: File) => (
               <div key={file.id}>
                 <div 
-                  className="flex py-2.5 px-3 rounded-md hover:bg-gray-50 transition-colors cursor-pointer group"
+                  className="flex py-2.5 px-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer group"
                   onClick={() => {
                     // Hantera klick på olika typer av filer
                     if (file.fileType.toLowerCase() === "pdf" && file.fileId) {
@@ -264,13 +264,13 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2">
-                      <div className="text-sm font-medium text-gray-900 truncate">{file.name}</div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{file.name}</div>
                       <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", getFileTypeStyle(file.fileType))}>
                         {file.fileType.toUpperCase()}
                       </Badge>
                     </div>
                     
-                    <div className="mt-1 flex justify-between items-center text-xs text-gray-500">
+                    <div className="mt-1 flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
                       <div className="flex items-center">
                         <span className="truncate">{formatFileSize(file.fileSize)}</span>
                         <span className="mx-1.5">•</span>
@@ -283,7 +283,7 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
                       </div>
                     </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity ml-2" />
+                  <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity ml-2" />
                 </div>
                 <Separator className="my-1" />
               </div>
@@ -291,13 +291,13 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-[200px] text-center p-4">
-            <FolderOpen className="h-8 w-8 text-gray-300 mb-2" />
-            <h3 className="text-sm font-medium text-gray-600">No recent files</h3>
-            <p className="text-xs text-gray-500 mt-1">
+            <FolderOpen className="h-8 w-8 text-gray-300 dark:text-gray-600 mb-2" />
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300">No recent files</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               There are no recent files in the vault.
               <Button 
                 variant="link" 
-                className="h-auto p-0 text-xs text-blue-600 ml-1"
+                className="h-auto p-0 text-xs text-blue-600 dark:text-blue-400 ml-1"
                 onClick={() => window.location.href = "/ritningar"}
               >
                 Upload a file
