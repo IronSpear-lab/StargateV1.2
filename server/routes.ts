@@ -440,10 +440,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Recent files API
-  app.get(`${apiPrefix}/files/recent`, async (req, res) => {
-    // Ignore any parameters for now - just return sample data
-    // No try/catch needed here as we're not doing any async operations that could fail
-    res.json([
+  app.get(`${apiPrefix}/files/recent`, (req, res) => {
+    // Just return empty array to avoid errors
+    return res.json([]);
+  });
+  
+  // Adding a different endpoint for testing
+  app.get(`${apiPrefix}/test-files`, (req, res) => {
+    return res.json([
       {
         id: "101",
         name: "System Architecture.pdf",
@@ -451,26 +455,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileSize: 3450000,
         lastModified: new Date().toISOString(),
         folder: "Documentation",
-        uploadedBy: "System",
-        uploadedById: "system"
-      },
-      {
-        id: "102",
-        name: "Project Timeline.xlsx",
-        fileType: "xlsx", 
-        fileSize: 1250000,
-        lastModified: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // Yesterday
-        folder: "Planning",
-        uploadedBy: "System",
-        uploadedById: "system"
-      },
-      {
-        id: "103",
-        name: "Building Plan.dwg",
-        fileType: "dwg",
-        fileSize: 5380000,
-        lastModified: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(), // 2 days ago
-        folder: "Drawings",
         uploadedBy: "System",
         uploadedById: "system"
       }

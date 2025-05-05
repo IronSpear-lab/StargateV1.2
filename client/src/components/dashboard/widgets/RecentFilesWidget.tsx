@@ -70,9 +70,9 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
         }
       }
       
-      // Sedan försök hämta från API
+      // Sedan försök hämta från API - använd vår nya test-files endpoint
       try {
-        const response = await fetch('/api/files/recent');
+        const response = await fetch('/api/test-files');
         if (!response.ok) {
           // Om API-anropet misslyckas, använd bara uppladdade filer + mockdata
           return [
