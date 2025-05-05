@@ -249,6 +249,8 @@ const ModernGanttChart: React.FC = () => {
     start: startOfMonth(new Date()),
     end: endOfMonth(addMonths(new Date(), 3))
   });
+  // Zooming state for Gantt chart
+  const [zoomLevel, setZoomLevel] = useState<number>(30); // Standard width per day in pixels
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
@@ -257,8 +259,10 @@ const ModernGanttChart: React.FC = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<GanttTask | null>(null);
   
-  // Dialog för att skapa nya uppgifter
+  // Dialog för att skapa nya uppgifter eller redigera befintliga
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [newTask, setNewTask] = useState<Partial<GanttTask>>({
     type: 'TASK',
     status: 'New',
@@ -421,7 +425,7 @@ const ModernGanttChart: React.FC = () => {
     
     const width = task.type === 'MILESTONE' 
       ? 10 
-      : Math.max((endIdx - startIdx) * 30, 30);
+      : Math.max((endIdx - startIdx) * zoomLevel, zoomLevel);
     
     let barColor = '';
     
@@ -444,7 +448,7 @@ const ModernGanttChart: React.FC = () => {
     
     const style: React.CSSProperties = {
       position: 'absolute',
-      left: `${startIdx * 30}px`,
+      left: `${startIdx * zoomLevel}px`,
       top: '5px',
       width: task.type === 'MILESTONE' ? '10px' : `${width}px`,
       height: '20px',
@@ -457,6 +461,7 @@ const ModernGanttChart: React.FC = () => {
       overflow: 'hidden',
       whiteSpace: 'nowrap',
       border: task.type === 'PHASE' ? '2px solid #333' : 'none',
+      cursor: 'pointer',
     };
     
     if (task.type !== 'MILESTONE') {
@@ -508,9 +513,9 @@ const ModernGanttChart: React.FC = () => {
       }
       
       // Beräkna koordinater för pilen
-      const startX = startTaskEndIdx * 30 + (startTask.type === 'MILESTONE' ? 5 : 0);
+      const startX = startTaskEndIdx * zoomLevel + (startTask.type === 'MILESTONE' ? 5 : 0);
       const startY = 15;
-      const endX = endTaskStartIdx * 30;
+      const endX = endTaskStartIdx * zoomLevel;
       const endY = 15;
       
       // Skapa en böjd linje
@@ -529,7 +534,28 @@ const ModernGanttChart: React.FC = () => {
     return dependencyLines.filter(Boolean) as ArrowStyle[];
   };
   
-  // Hantera skapande av ny uppgift
+  // Hantera klick på uppgift för att visa/redigera den
+  const handleTaskClick = (task: GanttTask) => {
+    // Initiera redigeringsläge för uppgiften
+    setIsEditMode(true);
+    setEditingTaskId(task.id);
+    
+    // Fyll formuläret med befintlig data
+    setNewTask({
+      type: task.type,
+      status: task.status,
+      project: task.project,
+      name: task.name,
+      startDate: task.startDate,
+      endDate: task.endDate,
+      duration: task.duration
+    });
+    
+    // Visa dialogen
+    setShowCreateDialog(true);
+  };
+  
+  // Hantera skapande eller uppdatering av uppgift
   const saveNewTask = () => {
     if (!newTask.name || !newTask.startDate || (!newTask.endDate && newTask.type !== 'MILESTONE')) {
       toast({
@@ -548,32 +574,65 @@ const ModernGanttChart: React.FC = () => {
       ? 0 
       : differenceInDays(parseISO(endDate!), parseISO(newTask.startDate!)) + 1;
     
-    const taskId = Math.max(...flattenedTasks.map(t => t.id)) + 1;
-    
-    const newTaskItem: GanttTask = {
-      id: taskId,
-      project: newTask.project!,
-      type: newTask.type as "TASK" | "MILESTONE" | "PHASE",
-      name: newTask.name!,
-      status: newTask.status as "New" | "Ongoing" | "Completed" | "Delayed",
-      startDate: newTask.startDate!,
-      endDate: endDate!,
-      duration
-    };
-    
-    setTasks(prev => [...prev, newTaskItem]);
-    
-    toast({
-      title: "Uppgift skapad",
-      description: `${newTaskItem.type} "${newTaskItem.name}" har lagts till i Gantt-diagrammet.`,
-    });
+    // Om vi redigerar en befintlig uppgift
+    if (isEditMode && editingTaskId !== null) {
+      setTasks(prev => prev.map(task => {
+        if (task.id === editingTaskId) {
+          return {
+            ...task,
+            type: newTask.type as "TASK" | "MILESTONE" | "PHASE",
+            name: newTask.name!,
+            status: newTask.status as "New" | "Ongoing" | "Completed" | "Delayed",
+            project: newTask.project!,
+            startDate: newTask.startDate!,
+            endDate: endDate!,
+            duration
+          };
+        }
+        return task;
+      }));
+      
+      toast({
+        title: "Uppgift uppdaterad",
+        description: `${newTask.type} "${newTask.name}" har uppdaterats i Gantt-diagrammet.`,
+      });
+      
+      // Återställ redigeringsläge
+      setIsEditMode(false);
+      setEditingTaskId(null);
+    } 
+    // Skapa en ny uppgift
+    else {
+      const taskId = flattenedTasks.length > 0 
+        ? Math.max(...flattenedTasks.map(t => t.id)) + 1 
+        : 1;
+      
+      const newTaskItem: GanttTask = {
+        id: taskId,
+        project: newTask.project!,
+        type: newTask.type as "TASK" | "MILESTONE" | "PHASE",
+        name: newTask.name!,
+        status: newTask.status as "New" | "Ongoing" | "Completed" | "Delayed",
+        startDate: newTask.startDate!,
+        endDate: endDate!,
+        duration
+      };
+      
+      setTasks(prev => [...prev, newTaskItem]);
+      
+      toast({
+        title: "Uppgift skapad",
+        description: `${newTaskItem.type} "${newTaskItem.name}" har lagts till i Gantt-diagrammet.`,
+      });
+    }
     
     cancelCreateTask();
   };
   
-  // Avbryt skapande av ny uppgift
+  // Avbryt skapande eller redigering av uppgift
   const cancelCreateTask = () => {
     setShowCreateDialog(false);
+    // Återställ formuläret
     setNewTask({
       type: 'TASK',
       status: 'New',
@@ -583,6 +642,9 @@ const ModernGanttChart: React.FC = () => {
       endDate: '',
       duration: 0
     });
+    // Återställ redigeringsläge
+    setIsEditMode(false);
+    setEditingTaskId(null);
   };
   
   // Hantera radering av uppgift
