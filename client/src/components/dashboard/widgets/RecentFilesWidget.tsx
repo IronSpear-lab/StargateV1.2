@@ -72,7 +72,7 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
       
       // Sedan försök hämta från API
       try {
-        const response = await fetch(`/api/files/recent${projectId ? `?projectId=${projectId}` : ''}`);
+        const response = await fetch('/api/files/recent');
         if (!response.ok) {
           // Om API-anropet misslyckas, använd bara uppladdade filer + mockdata
           return [
