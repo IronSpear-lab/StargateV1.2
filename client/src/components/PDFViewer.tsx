@@ -651,17 +651,19 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     
     // Hämta position relativt till PDF-sidan
     if (pageRef.current) {
-      const rect = pageRef.current.getBoundingClientRect();
       const pdfPage = pageRef.current.querySelector('.react-pdf__Page') as HTMLElement;
       
       if (pdfPage) {
         const pageRect = pdfPage.getBoundingClientRect();
         
         // Beräkna position med exakt offset från PDF-innehållet, inte från wrapper
-        const x = e.clientX - pageRect.left;
-        const y = e.clientY - pageRect.top;
+        const x = (e.clientX - pageRect.left) / scale; // Dela med scale för att få ursprunglig position
+        const y = (e.clientY - pageRect.top) / scale;  // Dela med scale för att få ursprunglig position
         
-        console.log("Starting marking at exact position:", { x, y, 
+        console.log("Starting marking at exact position:", { 
+          x, 
+          y, 
+          scale,
           clientX: e.clientX, 
           clientY: e.clientY, 
           pageLeft: pageRect.left, 
@@ -685,8 +687,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         const pageRect = pdfPage.getBoundingClientRect();
         
         // Beräkna position med exakt offset från PDF-innehållet
-        const x = e.clientX - pageRect.left;
-        const y = e.clientY - pageRect.top;
+        const x = (e.clientX - pageRect.left) / scale; // Dela med scale för att få ursprunglig position
+        const y = (e.clientY - pageRect.top) / scale;  // Dela med scale för att få ursprunglig position
         
         setMarkingEnd({ x, y });
       }
@@ -1458,10 +1460,10 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     
     return {
       position: 'absolute' as const,
-      left: `${left}px`, // Nu utan offset
-      top: `${top}px`, // Nu utan offset
-      width: `${width}px`,
-      height: `${height}px`,
+      left: `${left * scale}px`, // Skalad position
+      top: `${top * scale}px`, // Skalad position
+      width: `${width * scale}px`, // Skalad bredd
+      height: `${height * scale}px`, // Skalad höjd
       background: 'rgba(114, 124, 245, 0.3)',
       border: '2px dashed #727cf5',
       pointerEvents: 'none' as const
@@ -1822,73 +1824,75 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                     position: "relative", // Behåll markeringar inom detta element
                     display: "inline-block" // Försäkra oss om att vi kan scrolla i alla riktningar
                   }}>
-                    <Page
-                      pageNumber={pageNumber}
-                      renderTextLayer={false}
-                      renderAnnotationLayer={false}
-                      scale={scale}
-                      rotate={rotation}
-                      loading={
-                        <div className="h-[500px] w-[400px] bg-gray-100 flex items-center justify-center">
-                          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-                        </div>
-                      }
-                      className="pdfPage shadow-lg relative"
-                      width={undefined}  // Låt den anpassa sig efter innehållaren
-                      onRenderSuccess={() => {
-                        // Uppdatera positionerna för alla annotations när sidan renderas om
-                        // Detta händer även när fönsterstorlek eller zoom ändras
-                        if (annotations && annotations.length > 0) {
-                          // Tvinga omrendering av annotationer genom att uppdatera state
-                          setAnnotations([...annotations]);
+                    <div className="relative">
+                      <Page
+                        pageNumber={pageNumber}
+                        renderTextLayer={false}
+                        renderAnnotationLayer={false}
+                        scale={scale}
+                        rotate={rotation}
+                        loading={
+                          <div className="h-[500px] w-[400px] bg-gray-100 flex items-center justify-center">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+                          </div>
                         }
-                      }}
-                    />
+                        className="pdfPage shadow-lg relative"
+                        width={undefined}  // Låt den anpassa sig efter innehållaren
+                        onRenderSuccess={() => {
+                          // Uppdatera positionerna för alla annotations när sidan renderas om
+                          // Detta händer även när fönsterstorlek eller zoom ändras
+                          if (annotations && annotations.length > 0) {
+                            // Tvinga omrendering av annotationer genom att uppdatera state
+                            setAnnotations([...annotations]);
+                          }
+                        }}
+                      />
+                      
+                      {/* Visa befintliga markeringar inuti samma div som PDF-sidan */}
+                      {annotations
+                        .filter(ann => ann.rect.pageNumber === pageNumber)
+                        .map(annotation => (
+                          <div
+                            key={annotation.id}
+                            id={`annotation-${annotation.id}`}
+                            className={`annotation border-2 transition-all duration-300 ${
+                              activeAnnotation?.id === annotation.id 
+                                ? 'z-20 ring-4 ring-blue-400 scale-105 shadow-lg' 
+                                : 'z-10 hover:scale-102 hover:shadow-md'
+                            }`}
+                            style={{
+                              position: 'absolute',
+                              left: `${Number(annotation.rect.x)}px`,
+                              top: `${Number(annotation.rect.y)}px`,
+                              width: `${annotation.rect.width}px`,
+                              height: `${annotation.rect.height}px`,
+                              backgroundColor: `${annotation.color}33`,
+                              borderColor: annotation.color,
+                              boxShadow: activeAnnotation?.id === annotation.id ? '0 0 15px rgba(59, 130, 246, 0.6)' : 'none',
+                              transform: activeAnnotation?.id === annotation.id ? 'scale(1.05)' : 'scale(1)',
+                              transformOrigin: 'center',
+                              cursor: 'pointer',
+                              pointerEvents: 'auto'
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation(); // Förhindra att klicket når underliggande element
+                              zoomToAnnotation(annotation);
+                            }}
+                          >
+                            {/* Lägg till en liten indikator i hörnet som alltid syns tydligt */}
+                            <div 
+                              className="absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800"
+                              style={{ backgroundColor: annotation.color }}
+                            />
+                          </div>
+                        ))}
+                        
+                      {/* Visa temporär markering under pågående markering */}
+                      {markingStart && markingEnd && (
+                        <div style={getMarkingRectStyles()} />
+                      )}
+                    </div>
                   </div>
-                  
-                  {/* Visa befintliga markeringar */}
-                  {annotations
-                    .filter(ann => ann.rect.pageNumber === pageNumber)
-                    .map(annotation => (
-                      <div
-                        key={annotation.id}
-                        id={`annotation-${annotation.id}`}
-                        className={`absolute border-2 transition-all duration-300 ${
-                          activeAnnotation?.id === annotation.id 
-                            ? 'z-20 ring-4 ring-blue-400 scale-105 shadow-lg' 
-                            : 'z-10 hover:scale-102 hover:shadow-md'
-                        }`}
-                        style={{
-                          position: 'absolute',
-                          left: `${Number(annotation.rect.x) * scale}px`, // Nu utan +200 offset
-                          top: `${Number(annotation.rect.y) * scale}px`, // Nu utan +200 offset
-                          width: `${annotation.rect.width * scale}px`,
-                          height: `${annotation.rect.height * scale}px`,
-                          backgroundColor: `${annotation.color}33`,
-                          borderColor: annotation.color,
-                          boxShadow: activeAnnotation?.id === annotation.id ? '0 0 15px rgba(59, 130, 246, 0.6)' : 'none',
-                          transform: activeAnnotation?.id === annotation.id ? 'scale(1.05)' : 'scale(1)',
-                          transformOrigin: 'center',
-                          cursor: 'pointer',
-                          pointerEvents: 'auto' 
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation(); // Förhindra att klicket når underliggande element
-                          zoomToAnnotation(annotation);
-                        }}
-                      >
-                        {/* Lägg till en liten indikator i hörnet som alltid syns tydligt */}
-                        <div 
-                          className="absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800"
-                          style={{ backgroundColor: annotation.color }}
-                        />
-                      </div>
-                    ))}
-                  
-                  {/* Visa temporär markering under pågående markering */}
-                  {markingStart && markingEnd && (
-                    <div style={getMarkingRectStyles()} />
-                  )}
                 </Document>
               </div>
             ) : (
