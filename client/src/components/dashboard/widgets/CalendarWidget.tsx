@@ -485,7 +485,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
                         setCreateDialogOpen(true);
                       }}
                     >
-                      <div className="text-[10px] text-gray-400 py-3 px-1 w-full border border-dashed border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer">
+                      <div className="text-[10px] text-foreground/50 dark:text-foreground/50 py-3 px-1 w-full border border-dashed border-border rounded-md hover:bg-muted cursor-pointer">
                         <Plus className="h-3 w-3 mx-auto mb-1" />
                         Add
                       </div>
@@ -550,12 +550,12 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
                       </div>
                       
                       {event.description && (
-                        <div className="text-xs text-gray-500 mb-2 line-clamp-2">
+                        <div className="text-xs text-foreground/60 dark:text-foreground/60 mb-2 line-clamp-2">
                           {event.description}
                         </div>
                       )}
                       
-                      <div className="flex items-center text-xs text-gray-500">
+                      <div className="flex items-center text-xs text-foreground/60 dark:text-foreground/60">
                         <Clock className="h-3 w-3 mr-1" />
                         <span>
                           {format(parseISO(event.start), "HH:mm")} - {format(parseISO(event.end), "HH:mm")}
@@ -658,7 +658,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
               size="sm"
               className={cn(
                 "h-7 px-2 text-xs rounded-none",
-                viewMode === "week" ? "bg-primary hover:bg-primary/90" : "hover:bg-gray-50"
+                viewMode === "week" ? "bg-primary hover:bg-primary/90" : "hover:bg-muted"
               )}
               onClick={() => setViewMode("week")}
             >
@@ -669,7 +669,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
               size="sm"
               className={cn(
                 "h-7 px-2 text-xs rounded-none",
-                viewMode === "month" ? "bg-primary hover:bg-primary/90" : "hover:bg-gray-50"
+                viewMode === "month" ? "bg-primary hover:bg-primary/90" : "hover:bg-muted"
               )}
               onClick={() => setViewMode("month")}
             >
@@ -875,21 +875,21 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label className="text-xs text-gray-500">Date & Time</Label>
+                        <Label className="text-xs text-foreground/70 dark:text-foreground/70">Date & Time</Label>
                         <div className="text-sm mt-1 flex items-center">
-                          <CalendarIcon className="h-4 w-4 mr-2 text-gray-400" />
+                          <CalendarIcon className="h-4 w-4 mr-2 text-foreground/50 dark:text-foreground/50" />
                           {format(parseISO(selectedEvent.start), "MMM d, yyyy")}
                         </div>
                         
                         <div className="text-sm mt-1 flex items-center">
-                          <Clock className="h-4 w-4 mr-2 text-gray-400" />
+                          <Clock className="h-4 w-4 mr-2 text-foreground/50 dark:text-foreground/50" />
                           {format(parseISO(selectedEvent.start), "HH:mm")} - 
                           {format(parseISO(selectedEvent.end), "HH:mm")}
                         </div>
                       </div>
                       
                       <div>
-                        <Label className="text-xs text-gray-500">Details</Label>
+                        <Label className="text-xs text-foreground/70 dark:text-foreground/70">Details</Label>
                         <div className="text-sm mt-1">
                           <Badge 
                             variant="outline" 
@@ -905,7 +905,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
                         
                         {selectedEvent.location && (
                           <div className="text-sm mt-2">
-                            <span className="text-gray-500">Location:</span> {selectedEvent.location}
+                            <span className="text-foreground/70 dark:text-foreground/70">Location:</span> {selectedEvent.location}
                           </div>
                         )}
                       </div>
