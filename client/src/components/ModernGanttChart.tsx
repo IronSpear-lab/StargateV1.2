@@ -243,7 +243,17 @@ const StatusIcon = ({ status }: { status: string }) => {
 
 const ModernGanttChart: React.FC = () => {
   const { toast } = useToast();
-  const [tasks, setTasks] = useState<GanttTask[]>(initialTasks);
+  // Läs uppgifter från localStorage, om de finns, annars använd initialTasks
+  const [tasks, setTasks] = useState<GanttTask[]>(() => {
+    try {
+      const savedTasks = localStorage.getItem('gantt_tasks');
+      return savedTasks ? JSON.parse(savedTasks) : initialTasks;
+    } catch (error) {
+      console.error('Error loading tasks from localStorage:', error);
+      return initialTasks;
+    }
+  });
+  
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
     start: startOfMonth(new Date()),
@@ -285,6 +295,16 @@ const ModernGanttChart: React.FC = () => {
     });
   };
   
+  // Spara uppgifter till localStorage när de ändras
+  useEffect(() => {
+    try {
+      localStorage.setItem('gantt_tasks', JSON.stringify(tasks));
+      console.log('Gantt tasks saved to localStorage:', tasks.length, 'tasks');
+    } catch (error) {
+      console.error('Error saving tasks to localStorage:', error);
+    }
+  }, [tasks]);
+
   // Generera dagar för tidslinjen baserat på datumintervall
   const days = useMemo(() => {
     return eachDayOfInterval({
