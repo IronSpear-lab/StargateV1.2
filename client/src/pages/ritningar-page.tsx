@@ -277,9 +277,9 @@ export default function RitningarPage() {
       description: "Ny uppladdad fil", 
       uploaded: timeString,
       uploadedBy: "Du",
-      number: "(New)",
-      status: "(Active)",
-      annat: "(PDF)",
+      number: `${ritningarData.length + index + 1}`.padStart(3, '0'),
+      status: "Active",
+      annat: "PDF",
       fileId: fileIds[index] // Spara ID:t från fillagringen
     }));
     
