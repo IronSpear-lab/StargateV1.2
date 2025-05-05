@@ -99,8 +99,8 @@ export function BudgetCostWidget({ projectId }: BudgetCostWidgetProps) {
                       <stop offset="95%" stopColor="#10B981" stopOpacity={0.1}/>
                     </linearGradient>
                     <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#EF4444" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#EF4444" stopOpacity={0.1}/>
+                      <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="var(--primary)" stopOpacity={0.1}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
@@ -140,7 +140,7 @@ export function BudgetCostWidget({ projectId }: BudgetCostWidgetProps) {
                   <Area 
                     type="monotone" 
                     dataKey="actualCost" 
-                    stroke="#EF4444" 
+                    stroke="var(--primary)" 
                     strokeWidth={2}
                     fillOpacity={1} 
                     fill="url(#colorCost)" 
@@ -156,7 +156,7 @@ export function BudgetCostWidget({ projectId }: BudgetCostWidgetProps) {
           <Button 
             variant="outline" 
             size="sm" 
-            className="w-full justify-between"
+            className="w-full justify-between text-primary hover:bg-primary/10 hover:text-primary"
           >
             View Financial Report <ExternalLink className="h-4 w-4 ml-2" />
           </Button>

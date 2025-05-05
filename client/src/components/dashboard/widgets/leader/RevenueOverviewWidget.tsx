@@ -83,7 +83,7 @@ export function RevenueOverviewWidget() {
             <Button 
               variant="outline" 
               size="sm" 
-              className="text-xs py-1 px-3 h-8"
+              className="text-xs py-1 px-3 h-8 text-primary hover:bg-primary/10 hover:text-primary"
             >
               View Statements <ExternalLink className="h-3 w-3 ml-1" />
             </Button>
@@ -148,10 +148,10 @@ export function RevenueOverviewWidget() {
                     type="monotone" 
                     dataKey="previous" 
                     name="Previous Week"
-                    stroke="#818CF8" 
+                    stroke="var(--primary)" 
                     strokeWidth={3}
                     dot={false}
-                    activeDot={{ r: 6 }}
+                    activeDot={{ r: 6, fill: "var(--primary)" }}
                   />
                   <Line 
                     type="monotone" 
