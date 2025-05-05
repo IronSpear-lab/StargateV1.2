@@ -1619,7 +1619,9 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             className="flex-1 overflow-auto bg-gray-200 flex items-center justify-center relative pdfViewerContainer" 
             style={{ 
               cursor: isMarking ? 'crosshair' : 'default',
-              overflowX: 'scroll' // Säkerställ att horisontell scrollning alltid är aktiverad
+              overflow: 'scroll', // Säkerställ att både horisontell och vertikal scrollning alltid är aktiverad
+              minWidth: '100%',
+              position: 'relative'
             }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
@@ -1644,7 +1646,11 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                   }
                   className="pdfDocument"
                 >
-                  <div className="pdf-page-wrapper" style={{ padding: "200px" }}>
+                  <div className="pdf-page-wrapper" style={{ 
+                    padding: "200px", // Lägg till marginaler runt dokumentet
+                    background: "transparent", // Genomskinlig bakgrund för att visa grid
+                    position: "relative" // Behåll markeringar inom detta element
+                  }}>
                     <Page
                       pageNumber={pageNumber}
                       renderTextLayer={false}
