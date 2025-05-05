@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 
-import { Upload, FileText, Loader2, XCircle, ZoomIn, ZoomOut, RotateCw, RefreshCw, Info } from 'lucide-react';
+import { Upload, FileText, Loader2, XCircle, ZoomIn, ZoomOut, RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,10 +10,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 
-// We're using Three.js for our 3D viewing needs
-// In a real implementation, we would use a specialized IFC/DWG library
-
-// Simple types for our file storage
+// Simple type for our file storage
 type FileEntry = {
   id: string;
   name: string;
@@ -22,17 +19,15 @@ type FileEntry = {
   date: Date;
 };
 
-// Define our viewer interface for better type safety
-interface Viewer {
+// Define a simple structure to hold our ThreeJS objects
+type ThreeViewer = {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
-  buildingGroup: THREE.Group;
-  buildingMaterial: THREE.MeshPhongMaterial;
-  roofMaterial: THREE.MeshPhongMaterial;
-  animationFrameId?: number;
+  cube: THREE.Mesh;
+  animationId?: number;
   dispose: () => void;
-}
+};
 
 export function DwgIfcViewer() {
   const [files, setFiles] = useState<FileEntry[]>([]);
@@ -40,7 +35,7 @@ export function DwgIfcViewer() {
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileEntry | null>(null);
   const viewerContainerRef = useRef<HTMLDivElement>(null);
-  const viewerRef = useRef<Viewer | null>(null);
+  const viewerRef = useRef<ThreeViewer | null>(null);
   const { toast } = useToast();
 
   // Load stored files on mount
@@ -83,137 +78,117 @@ export function DwgIfcViewer() {
     loadStoredFiles();
   }, []);
 
-  // Initialize the viewer when the component mounts
+  // Initialize a very simple ThreeJS viewer with just a cube
   useEffect(() => {
+    // Only create viewer if container exists and we don't already have a viewer
     if (viewerContainerRef.current && !viewerRef.current) {
+      console.log("Initializing 3D viewer...");
+      
       try {
-        // Initialize Three.js viewer
+        // Create scene
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xf5f5f5);
+        scene.background = new THREE.Color(0xf0f0f0); // Light gray background
         
         // Create camera
         const camera = new THREE.PerspectiveCamera(
-          60, 
-          viewerContainerRef.current.clientWidth / viewerContainerRef.current.clientHeight, 
-          0.1, 
-          1000
+          75,  // Field of view
+          viewerContainerRef.current.clientWidth / viewerContainerRef.current.clientHeight, // Aspect ratio
+          0.1,  // Near clipping plane
+          1000  // Far clipping plane
         );
-        camera.position.z = 5;
+        camera.position.z = 5; // Position camera
         
-        // Create renderer
+        // Create WebGL renderer
         const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(viewerContainerRef.current.clientWidth, viewerContainerRef.current.clientHeight);
+        renderer.setSize(
+          viewerContainerRef.current.clientWidth,
+          viewerContainerRef.current.clientHeight
+        );
         
-        // Clear any existing canvas
+        // Clear container and add new canvas
         while (viewerContainerRef.current.firstChild) {
           viewerContainerRef.current.removeChild(viewerContainerRef.current.firstChild);
         }
-        
-        // Add the canvas to the DOM
         viewerContainerRef.current.appendChild(renderer.domElement);
         
-        // Add lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        // Add lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
         scene.add(ambientLight);
         
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(0, 10, 10);
+        directionalLight.position.set(1, 1, 1);
         scene.add(directionalLight);
         
-        // Create a building-like 3D model
-        const buildingGroup = new THREE.Group();
-        
-        // Base/foundation
-        const baseGeometry = new THREE.BoxGeometry(4, 0.2, 4);
-        const baseMaterial = new THREE.MeshPhongMaterial({ color: 0xcccccc });
-        const base = new THREE.Mesh(baseGeometry, baseMaterial);
-        base.position.y = -0.8;
-        buildingGroup.add(base);
-        
-        // Main building
-        const buildingGeometry = new THREE.BoxGeometry(3, 1.5, 3);
-        const buildingMaterial = new THREE.MeshPhongMaterial({ 
-          color: 0x727cf5,
-          wireframe: true,
-          transparent: true,
-          opacity: 0.7,
-          shininess: 30
+        // Create a simple cube
+        const geometry = new THREE.BoxGeometry(2, 2, 2);
+        const material = new THREE.MeshPhongMaterial({
+          color: 0x6366f1, // Indigo color
+          wireframe: false
         });
-        const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
-        building.position.y = 0;
-        buildingGroup.add(building);
         
-        // Roof
-        const roofGeometry = new THREE.ConeGeometry(2.2, 1, 4);
-        const roofMaterial = new THREE.MeshPhongMaterial({ 
-          color: 0xfa5c7c,
-          wireframe: true,
-          shininess: 50
-        });
-        const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-        roof.position.y = 1.25;
-        roof.rotation.y = Math.PI / 4; // 45 degrees
-        buildingGroup.add(roof);
+        const cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
         
-        scene.add(buildingGroup);
-        
-        // Animation loop
-        let animationFrameId: number;
+        // Animation function
+        let animationId: number;
         
         const animate = () => {
-          animationFrameId = requestAnimationFrame(animate);
+          animationId = requestAnimationFrame(animate);
           
-          buildingGroup.rotation.y += 0.005;
+          // Rotate cube
+          cube.rotation.x += 0.01;
+          cube.rotation.y += 0.01;
           
+          // Render scene
           renderer.render(scene, camera);
         };
         
+        // Start animation
         animate();
         
         // Handle window resize
         const handleResize = () => {
-          if (viewerContainerRef.current) {
-            camera.aspect = viewerContainerRef.current.clientWidth / viewerContainerRef.current.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(viewerContainerRef.current.clientWidth, viewerContainerRef.current.clientHeight);
-          }
+          if (!viewerContainerRef.current) return;
+          
+          const width = viewerContainerRef.current.clientWidth;
+          const height = viewerContainerRef.current.clientHeight;
+          
+          camera.aspect = width / height;
+          camera.updateProjectionMatrix();
+          renderer.setSize(width, height);
         };
         
         window.addEventListener('resize', handleResize);
         
-        // Store references
+        // Store all viewer objects for later access
         viewerRef.current = {
           scene,
           camera,
           renderer,
-          buildingGroup,
-          buildingMaterial,
-          roofMaterial,
+          cube,
+          animationId,
           dispose: () => {
-            if (animationFrameId) {
-              cancelAnimationFrame(animationFrameId);
+            console.log("Disposing 3D viewer...");
+            if (animationId) {
+              cancelAnimationFrame(animationId);
             }
+            
             window.removeEventListener('resize', handleResize);
-            renderer.dispose();
             
             // Dispose geometries and materials
-            buildingGeometry.dispose();
-            baseGeometry.dispose();
-            roofGeometry.dispose();
+            geometry.dispose();
+            if (material instanceof THREE.Material) {
+              material.dispose();
+            }
             
-            if (baseMaterial instanceof THREE.Material) {
-              baseMaterial.dispose();
-            }
-            if (buildingMaterial instanceof THREE.Material) {
-              buildingMaterial.dispose();
-            }
-            if (roofMaterial instanceof THREE.Material) {
-              roofMaterial.dispose();
-            }
+            // Clean up renderer
+            renderer.dispose();
           }
         };
         
-        // Clean up on unmount
+        console.log("3D viewer initialized successfully");
+        
+        // Clean up function
         return () => {
           if (viewerRef.current) {
             viewerRef.current.dispose();
@@ -221,8 +196,8 @@ export function DwgIfcViewer() {
           }
         };
       } catch (err) {
-        console.error('Failed to initialize viewer:', err);
-        setError('Failed to initialize the 3D viewer. Please try refreshing the page.');
+        console.error("Failed to initialize 3D viewer:", err);
+        setError("Kunde inte initiera 3D-visaren. Vänligen försök ladda om sidan.");
       }
     }
   }, []);
@@ -289,42 +264,38 @@ export function DwgIfcViewer() {
       // Apply visual changes based on file type
       const extension = fileEntry.name.split('.').pop()?.toLowerCase();
       
-      if (viewerRef.current && viewerRef.current.buildingMaterial) {
+      if (viewerRef.current && viewerRef.current.cube) {
         if (extension === 'dwg') {
-          // Update main building for DWG files (blue theme)
-          viewerRef.current.buildingMaterial.color.set(0x3182ce); // Blue
-          viewerRef.current.buildingMaterial.wireframe = true;
-          viewerRef.current.buildingMaterial.transparent = true;
-          viewerRef.current.buildingMaterial.opacity = 0.8;
+          // Change cube color for DWG files (blue)
+          if (viewerRef.current.cube.material instanceof THREE.Material) {
+            viewerRef.current.cube.material.color.set(0x3182ce); // Blue
+          }
           
-          // Trigger an immediate render
+          // Force a render update
           viewerRef.current.renderer.render(
             viewerRef.current.scene, 
             viewerRef.current.camera
           );
           
-          // Add informational message about DWG files
           toast({
             title: "DWG-fil uppladdad",
-            description: `${file.name} har laddats upp. Titta på den blå 3D-modellen.`,
+            description: `${file.name} har laddats upp. Titta på den blå kuben.`,
           });
         } else if (extension === 'ifc') {
-          // Update main building for IFC files (green theme)
-          viewerRef.current.buildingMaterial.color.set(0x38a169); // Green
-          viewerRef.current.buildingMaterial.wireframe = true;
-          viewerRef.current.buildingMaterial.transparent = true;
-          viewerRef.current.buildingMaterial.opacity = 0.8;
+          // Change cube color for IFC files (green)
+          if (viewerRef.current.cube.material instanceof THREE.Material) {
+            viewerRef.current.cube.material.color.set(0x38a169); // Green
+          }
           
-          // Trigger an immediate render
+          // Force a render update
           viewerRef.current.renderer.render(
             viewerRef.current.scene, 
             viewerRef.current.camera
           );
           
-          // Add informational message about IFC files
           toast({
             title: "IFC-fil uppladdad",
-            description: `${file.name} har laddats upp. Titta på den gröna 3D-modellen.`,
+            description: `${file.name} har laddats upp. Titta på den gröna kuben.`,
           });
         } else {
           toast({
@@ -334,13 +305,13 @@ export function DwgIfcViewer() {
         }
       } else {
         toast({
-          title: "File uploaded",
-          description: `${file.name} has been uploaded successfully.`,
+          title: "Fil uppladdad",
+          description: `${file.name} har laddats upp.`,
         });
       }
     } catch (err) {
       console.error('Error handling file upload:', err);
-      setError('Failed to upload the file. Please try again.');
+      setError('Kunde inte ladda upp filen. Försök igen.');
     } finally {
       setLoading(false);
     }
@@ -355,22 +326,17 @@ export function DwgIfcViewer() {
     // 2. Load it into the viewer (XeoKit or similar)
     // 3. Setup the scene, camera, and controls
     
-    // Get file extension and update the 3D model appearance based on file type
+    // Get file extension and update cube color based on file type
     const extension = file.name.split('.').pop()?.toLowerCase();
     
-    if (viewerRef.current?.buildingMaterial) {
+    if (viewerRef.current?.cube) {
       if (extension === 'dwg') {
-        // Update main building for DWG files (blue theme)
-        viewerRef.current.buildingMaterial.color.set(0x3182ce); // Blue
-        viewerRef.current.buildingMaterial.wireframe = true;
-        viewerRef.current.buildingMaterial.opacity = 0.8;
-        
-        // Update roof color
-        if (viewerRef.current.roofMaterial) {
-          viewerRef.current.roofMaterial.color.set(0x63b3ed); // Lighter blue
+        // Change cube color for DWG files (blue)
+        if (viewerRef.current.cube.material instanceof THREE.Material) {
+          viewerRef.current.cube.material.color.set(0x3182ce); // Blue
         }
         
-        // Force a render
+        // Force a render update
         viewerRef.current.renderer.render(
           viewerRef.current.scene,
           viewerRef.current.camera
@@ -382,17 +348,12 @@ export function DwgIfcViewer() {
           description: "Interaktiv visning av en CAD-ritning skulle visas här i en färdig implementation.",
         });
       } else if (extension === 'ifc') {
-        // Update main building for IFC files (green theme)
-        viewerRef.current.buildingMaterial.color.set(0x38a169); // Green
-        viewerRef.current.buildingMaterial.wireframe = true;
-        viewerRef.current.buildingMaterial.opacity = 0.8;
-        
-        // Update roof color
-        if (viewerRef.current.roofMaterial) {
-          viewerRef.current.roofMaterial.color.set(0x68d391); // Lighter green
+        // Change cube color for IFC files (green)
+        if (viewerRef.current.cube.material instanceof THREE.Material) {
+          viewerRef.current.cube.material.color.set(0x38a169); // Green
         }
         
-        // Force a render
+        // Force a render update
         viewerRef.current.renderer.render(
           viewerRef.current.scene,
           viewerRef.current.camera
