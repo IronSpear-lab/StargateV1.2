@@ -779,87 +779,92 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   const doZoomAndScroll = (annotation: PDFAnnotation) => {
     console.log("Zooming to annotation:", annotation);
     
-    if (pdfContainerRef.current && pageRef.current) {
-      const pdfContainer = pdfContainerRef.current;
-      const pageContainer = pageRef.current;
-      
-      // STEG 1: Skapa en wrapper med position:relative runt PDF-containern för att kunna använda absolut positionering
-      const originalStyles = {
-        overflow: pdfContainer.style.overflow,
-        position: pdfContainer.style.position,
-        width: pdfContainer.style.width,
-        height: pdfContainer.style.height,
-        transform: pdfContainer.style.transform
-      };
-      
-      // Förbered PDF-containern för att kunna panorera obegränsat
-      pdfContainer.style.overflow = "hidden";
-      
-      // STEG 2: Zooma in till önskad nivå
+    try {
+      // Först, sätt zoomnivån till ett fast värde för att ge konsistent visning
       setScale(1.5);
       
-      // STEG 3: Efter kort fördröjning, beräkna och tillämpa panorering
+      // Vänta tills zoomen appliceras innan vi försöker scrolla
       setTimeout(() => {
         try {
-          // Beräkna vilken position elementet skulle ha för att vara centrerat
-          const viewportWidth = pdfContainer.clientWidth;
-          const viewportHeight = pdfContainer.clientHeight;
+          // Hitta sidnumret för annotationen
+          const pageNumber = annotation.rect.pageNumber || 1;
           
-          // Denna beräkning är viktig för att kunna centrera objekt som är nära kanterna
-          const viewportCenterX = viewportWidth / 2;
-          const viewportCenterY = viewportHeight / 2;
+          // Hitta den faktiska PDF-sidan
+          const pageElement = document.querySelector(`.react-pdf__Page[data-page-number="${pageNumber}"]`);
           
-          // Ta reda på elementets position
-          const elementX = annotation.rect.x;
-          const elementY = annotation.rect.y;
-          
-          // Beräkna hur mycket vi behöver förskjuta PDF-sidan
-          // Denna beräkning ser till att elementet kommer att centreras 
-          // även om det är nära kanten
-          const offsetX = elementX - viewportCenterX;
-          const offsetY = elementY - viewportCenterY;
-          
-          console.log("Panning to center annotation:", {
-            viewport: { width: viewportWidth, height: viewportHeight, centerX: viewportCenterX, centerY: viewportCenterY },
-            element: { x: elementX, y: elementY },
-            offset: { x: offsetX, y: offsetY }
-          });
-          
-          // Skapa en markör för visualisering
-          const marker = document.createElement('div');
-          marker.id = `temp-marker-${annotation.id}`;
-          marker.style.position = 'absolute';
-          marker.style.left = `${annotation.rect.x - 10}px`;
-          marker.style.top = `${annotation.rect.y - 10}px`;
-          marker.style.width = `${Math.max(annotation.rect.width + 20, 40)}px`;
-          marker.style.height = `${Math.max(annotation.rect.height + 20, 40)}px`;
-          marker.style.border = '4px solid #fa5c7c';
-          marker.style.backgroundColor = 'rgba(250, 92, 124, 0.3)';
-          marker.style.borderRadius = '4px';
-          marker.style.zIndex = '1000';
-          marker.style.boxShadow = '0 0 10px rgba(250, 92, 124, 0.5)';
-          pageContainer.appendChild(marker);
-          
-          // Använda window.scrollTo för att panorera till rätt position
-          // Detta hanterar även element på kanten som annars inte kan centreras
-          if (pageContainer.parentElement) {
-            pageContainer.parentElement.scrollTo({
-              left: Math.max(0, offsetX - 50), // Lite marginal
-              top: Math.max(0, offsetY - 50),
-              behavior: 'smooth'
-            });
+          if (!pageElement) {
+            console.error("Could not find page element for annotation:", pageNumber);
+            return;
           }
+          
+          // Beräkna position på sidan där annotationen ligger
+          const annotX = annotation.rect.x;
+          const annotY = annotation.rect.y;
+          
+          // Hitta PDF-visningens container element
+          const pdfViewer = document.querySelector('.pdf-viewer');
+          
+          if (!pdfViewer) {
+            console.error("Could not find PDF viewer container");
+            return;
+          }
+          
+          // Beräkna offset för sidan inom dokumentet
+          const pageRect = pageElement.getBoundingClientRect();
+          const viewerRect = pdfViewer.getBoundingClientRect();
+          
+          // Skapa visuell markör
+          const annotElement = document.createElement('div');
+          annotElement.id = `temp-marker-${annotation.id}`;
+          annotElement.style.cssText = `
+            position: absolute;
+            left: ${annotX - 10}px;
+            top: ${annotY - 10}px;
+            width: ${Math.max(annotation.rect.width + 20, 40)}px;
+            height: ${Math.max(annotation.rect.height + 20, 40)}px;
+            border: 4px solid #fa5c7c;
+            background-color: rgba(250, 92, 124, 0.3);
+            border-radius: 4px;
+            z-index: 9999;
+            pointer-events: none;
+            box-shadow: 0 0 15px rgba(250, 92, 124, 0.6);
+          `;
+          
+          // Lägg till markören i sidans container
+          const pageContainer = document.querySelector(`.react-pdf__Page[data-page-number="${pageNumber}"] .react-pdf__Page__annotations`);
+          if (pageContainer) {
+            pageContainer.appendChild(annotElement);
+          } else {
+            pageElement.appendChild(annotElement);
+          }
+          
+          // Beräkna exakt var PDF-viewern behöver scrolla för att visa annotationen
+          // Använd scrollIntoView för att navigera till elementet
+          annotElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'center'
+          });
           
           // Ta bort markören efter en stund
           setTimeout(() => {
-            if (pageContainer && pageContainer.contains(marker)) {
-              pageContainer.removeChild(marker);
+            if (annotElement.parentNode) {
+              annotElement.parentNode.removeChild(annotElement);
             }
-          }, 2000);
+          }, 2500);
+          
+          // Logga för felsökning
+          console.log("Scrolled to annotation:", {
+            annotation: annotation,
+            pageNumber: pageNumber,
+            position: { x: annotX, y: annotY }
+          });
         } catch (error) {
-          console.error("Error during annotation panning:", error);
+          console.error("Error scrolling to annotation:", error);
         }
-      }, 300); // Fördröjning för att zoomen ska hinna appliceras
+      }, 500);
+    } catch (error) {
+      console.error("Failed to zoom to annotation:", error);
     }
   };
   
