@@ -379,7 +379,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
               className={cn(
                 "min-h-[80px] p-1 border border-gray-100 rounded-sm",
                 !isSameMonth(day, currentDate) && "opacity-40 bg-gray-50",
-                isSameDay(day, today) && "bg-blue-50/50"
+                isSameDay(day, today) && "bg-primary/10"
               )}
               onClick={() => {
                 setSelectedDay(day);
@@ -390,7 +390,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
                 <span 
                   className={cn(
                     "inline-flex h-6 w-6 items-center justify-center text-xs rounded-full",
-                    isSameDay(day, today) && "bg-[#727cf5] text-white"
+                    isSameDay(day, today) && "bg-primary text-white"
                   )}
                 >
                   {format(day, "d")}
@@ -438,7 +438,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
                 <div 
                   className={cn(
                     "mx-auto flex h-6 w-6 items-center justify-center rounded-full text-xs",
-                    isToday(day) && "bg-[#727cf5] text-white",
+                    isToday(day) && "bg-primary text-white",
                     !isToday(day) && "text-gray-700"
                   )}
                 >
