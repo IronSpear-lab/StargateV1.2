@@ -314,10 +314,13 @@ export function Sidebar({ className }: SidebarProps) {
       
       // Om sidofältet är minimerat och inte är mobilvy
       if (!isOpen && !isMobile) {
+        const isHovered = item.active; // Vi använder 'active' för att simulera hover i detta exempel
+        
         return (
           <div key={itemKey} className="relative group">
-            {hasChildren ? (
-              <div>
+            <div className="flex w-full">
+              {/* Ikon till vänster */}
+              {hasChildren ? (
                 <button 
                   className={cn(
                     "flex items-center justify-center w-full py-2 rounded-md transition-colors duration-150",
@@ -335,47 +338,62 @@ export function Sidebar({ className }: SidebarProps) {
                     {item.icon}
                   </span>
                 </button>
-                <div className="absolute left-full top-0 ml-2 px-2 py-1 rounded-md bg-popover shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
-                  {item.label}
-                </div>
-                {isItemOpen && (
-                  <div className="pl-0">
-                    {renderNavItems(item.children!, itemKey)}
+              ) : (
+                <Link 
+                  href={item.href}
+                  className={cn(
+                    "flex items-center justify-center py-2 rounded-md transition-colors duration-150 w-full",
+                    item.active
+                      ? "bg-primary/10 text-primary font-medium" 
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    "px-0 mx-auto"
+                  )}
+                >
+                  <span className={cn(
+                    "flex items-center justify-center",
+                    item.active ? "text-primary" : "text-muted-foreground"
+                  )}>
+                    {item.icon}
+                  </span>
+                </Link>
+              )}
+              
+              {/* Tooltip som visas vid hover (endast för när sidebar är minimerad) */}
+              <div className="absolute left-full top-0 min-w-32 ml-2 z-50 bg-background border border-border rounded-md py-1 shadow-md transition-opacity duration-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible">
+                {hasChildren ? (
+                  <div className="px-3 py-1 whitespace-nowrap">{item.label}</div>
+                ) : (
+                  <div className="px-3 py-1 whitespace-nowrap">
+                    {item.label}
+                    {item.badge && (
+                      <Badge variant="outline" className={cn(
+                        "text-xs py-0.5 px-2 rounded-full ml-2",
+                        item.active 
+                          ? "bg-primary/10 text-primary border-primary/20" 
+                          : "bg-muted text-muted-foreground border-border"
+                      )}>
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+                
+                {/* Om det är en undermenygrupp och den är öppen, visa undermenyerna */}
+                {hasChildren && isItemOpen && (
+                  <div className="border-t border-border pt-1 mt-1">
+                    {item.children!.map((child, idx) => (
+                      <Link 
+                        key={idx}
+                        href={child.href}
+                        className="block px-3 py-1 hover:bg-muted whitespace-nowrap"
+                      >
+                        {child.label}
+                      </Link>
+                    ))}
                   </div>
                 )}
               </div>
-            ) : (
-              <Link 
-                href={item.href}
-                className={cn(
-                  "flex items-center justify-center py-2 rounded-md transition-colors duration-150",
-                  item.active
-                    ? "bg-primary/10 text-primary font-medium" 
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  "px-0 mx-auto"
-                )}
-              >
-                <span className={cn(
-                  "flex items-center justify-center",
-                  item.active ? "text-primary" : "text-muted-foreground"
-                )}>
-                  {item.icon}
-                </span>
-                <div className="absolute left-full top-0 ml-2 px-2 py-1 rounded-md bg-popover shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
-                  {item.label}
-                  {item.badge && (
-                    <Badge variant="outline" className={cn(
-                      "text-xs py-0.5 px-2 rounded-full ml-2",
-                      item.active 
-                        ? "bg-primary/10 text-primary border-primary/20" 
-                        : "bg-muted text-muted-foreground border-border"
-                    )}>
-                      {item.badge}
-                    </Badge>
-                  )}
-                </div>
-              </Link>
-            )}
+            </div>
           </div>
         );
       }
@@ -536,7 +554,7 @@ export function Sidebar({ className }: SidebarProps) {
                   <path d="m9 18 6-6-6-6"/>
                 </svg>
               </Button>
-              <div className="absolute left-full ml-2 px-2 py-1 rounded-md bg-popover shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+              <div className="absolute left-full ml-2 px-3 py-2 rounded-md bg-background border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
                 Expand Sidebar
               </div>
             </div>
@@ -548,7 +566,7 @@ export function Sidebar({ className }: SidebarProps) {
           <div className="flex justify-center py-2">
             <div className="relative group">
               <ModeToggle />
-              <div className="absolute left-full ml-2 px-2 py-1 rounded-md bg-popover shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+              <div className="absolute left-full ml-2 px-3 py-2 rounded-md bg-background border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
                 Toggle Theme
               </div>
             </div>
@@ -571,7 +589,7 @@ export function Sidebar({ className }: SidebarProps) {
               <Button variant="ghost" size="icon" className="h-9 w-9">
                 <Search className="h-4 w-4 text-muted-foreground" />
               </Button>
-              <div className="absolute left-full ml-2 px-2 py-1 rounded-md bg-popover shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+              <div className="absolute left-full ml-2 px-3 py-2 rounded-md bg-background border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
                 Search
               </div>
             </div>
@@ -598,7 +616,7 @@ export function Sidebar({ className }: SidebarProps) {
               {isOpen ? (
                 <span className="text-sm">Support</span>
               ) : (
-                <div className="absolute left-full top-0 ml-2 px-2 py-1 rounded-md bg-popover shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+                <div className="absolute left-full top-0 ml-2 px-3 py-2 rounded-md bg-background border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
                   Support
                 </div>
               )}
@@ -615,7 +633,7 @@ export function Sidebar({ className }: SidebarProps) {
               {isOpen ? (
                 <span className="text-sm">Settings</span>
               ) : (
-                <div className="absolute left-full top-0 ml-2 px-2 py-1 rounded-md bg-popover shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+                <div className="absolute left-full top-0 ml-2 px-3 py-2 rounded-md bg-background border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
                   Settings
                 </div>
               )}
@@ -650,7 +668,7 @@ export function Sidebar({ className }: SidebarProps) {
                     FH
                   </AvatarFallback>
                 </Avatar>
-                <div className="absolute left-full bottom-0 ml-2 px-2 py-1 rounded-md bg-popover shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+                <div className="absolute left-full bottom-0 ml-2 px-3 py-2 rounded-md bg-background border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
                   <p className="text-sm font-medium">Fredrik H.</p>
                   <p className="text-xs text-muted-foreground">fredrik@valvx.com</p>
                 </div>
