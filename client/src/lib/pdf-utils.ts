@@ -139,11 +139,24 @@ export function addPdfViewerAnimations() {
         width: 100%;
         height: 100%;
         overflow: auto;
+        display: flex;
+        align-items: flex-start;
+        justify-content: flex-start;
       }
       
       .pdfPage {
         margin: 200px !important;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        max-width: 100%;
+        height: auto;
+      }
+      
+      .pdf-page-wrapper {
+        padding: 200px;
+        background: transparent;
+        position: relative;
+        display: inline-block;
+        min-width: fit-content;
       }
       
       /* Lägg till specifika styling för annotation marker */
@@ -174,10 +187,11 @@ export function centerElementInView(
   options: { 
     smooth?: boolean, 
     addMarker?: boolean, 
-    markerDuration?: number 
+    markerDuration?: number,
+    scale?: number
   } = {}
 ) {
-  const { smooth = true, addMarker = true, markerDuration = 3000 } = options;
+  const { smooth = true, addMarker = true, markerDuration = 3000, scale = 1 } = options;
   
   // Säkerställ att CSS-animationerna finns
   addPdfViewerAnimations();
@@ -196,8 +210,9 @@ export function centerElementInView(
     const containerRect = container.getBoundingClientRect();
     
     // Beräkna scroll-position för att centrera elementet
-    const scrollX = element.offsetLeft - container.offsetLeft - (containerRect.width - elementRect.width) / 2;
-    const scrollY = element.offsetTop - container.offsetTop - (containerRect.height - elementRect.height) / 2;
+    // Anpassad till att ta hänsyn till zoom-nivå
+    const scrollX = (element.offsetLeft * scale) - container.offsetLeft - (containerRect.width - (elementRect.width * scale)) / 2;
+    const scrollY = (element.offsetTop * scale) - container.offsetTop - (containerRect.height - (elementRect.height * scale)) / 2;
     
     // Utför scrollningen
     container.scrollTo({
@@ -210,10 +225,10 @@ export function centerElementInView(
     if (addMarker) {
       const marker = document.createElement('div');
       marker.className = 'annotation-marker';
-      marker.style.left = `${element.offsetLeft}px`;
-      marker.style.top = `${element.offsetTop}px`;
-      marker.style.width = `${elementRect.width}px`;
-      marker.style.height = `${elementRect.height}px`;
+      marker.style.left = `${element.offsetLeft * scale}px`;
+      marker.style.top = `${element.offsetTop * scale}px`;
+      marker.style.width = `${elementRect.width * scale}px`;
+      marker.style.height = `${elementRect.height * scale}px`;
       
       element.parentElement?.appendChild(marker);
       

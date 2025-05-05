@@ -29,7 +29,12 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { storeFileForReuse, getStoredFileById } from "@/lib/file-utils";
-import { getConsistentFileId, getLatestPdfVersion, addPdfViewerAnimations } from "@/lib/pdf-utils";
+import { 
+  getConsistentFileId, 
+  getLatestPdfVersion, 
+  addPdfViewerAnimations,
+  centerElementInView 
+} from "@/lib/pdf-utils";
 
 // Konfigurera worker för react-pdf - använder CDN för att undvika byggproblem
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -827,8 +832,9 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         pageRef.current.id = "pdf-page-container";
       }
       
-      // Sätt zoom med större marginaler
-      setScale(1.5);
+      // Sätt zoom med större marginaler - använd 1.5 för att zooma in mer
+      const zoomScale = 1.5;
+      setScale(zoomScale);
       
       // Skapa en unik ID för denna annotation om den inte redan har ett ID-element
       const annotationElementId = `annotation-${annotation.id}`;
@@ -843,10 +849,10 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         annotationElement.className = "annotation-element";
         annotationElement.style.position = "absolute";
         // Lägg till padding-offset för att matcha vår wrapper
-        annotationElement.style.left = `${(Number(annotation.rect.x) + 200) * scale}px`;
-        annotationElement.style.top = `${(Number(annotation.rect.y) + 200) * scale}px`;
-        annotationElement.style.width = `${annotation.rect.width * scale}px`;
-        annotationElement.style.height = `${annotation.rect.height * scale}px`;
+        annotationElement.style.left = `${(Number(annotation.rect.x) + 200) * zoomScale}px`;
+        annotationElement.style.top = `${(Number(annotation.rect.y) + 200) * zoomScale}px`;
+        annotationElement.style.width = `${annotation.rect.width * zoomScale}px`;
+        annotationElement.style.height = `${annotation.rect.height * zoomScale}px`;
         annotationElement.style.border = `2px solid ${annotation.color}`;
         annotationElement.style.backgroundColor = `${annotation.color}33`;
         annotationElement.style.zIndex = "100";
@@ -870,10 +876,10 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             marker.id = markerId;
             marker.className = "annotation-marker";
             marker.style.position = "absolute";
-            marker.style.left = `${(Number(annotation.rect.x) + 190) * scale}px`; 
-            marker.style.top = `${(Number(annotation.rect.y) + 190) * scale}px`;
-            marker.style.width = `${(annotation.rect.width + 20) * scale}px`;
-            marker.style.height = `${(annotation.rect.height + 20) * scale}px`;
+            marker.style.left = `${(Number(annotation.rect.x) + 190) * zoomScale}px`; 
+            marker.style.top = `${(Number(annotation.rect.y) + 190) * zoomScale}px`;
+            marker.style.width = `${(annotation.rect.width + 20) * zoomScale}px`;
+            marker.style.height = `${(annotation.rect.height + 20) * zoomScale}px`;
             marker.style.zIndex = "1000";
             marker.style.border = `3px solid ${annotation.color}`;
             marker.style.borderRadius = "5px";
@@ -902,16 +908,21 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             const containerRect = pdfContainerRef.current.getBoundingClientRect();
             const annotRect = annotationElement.getBoundingClientRect();
             
-            // Beräkna scroll-position för att få elementet i mitten
-            // Uppdaterad beräkning för att säkerställa korrekt centrering
-            const scrollLeft = annotationElement.offsetLeft - (containerRect.width / 2) + (annotRect.width / 2);
-            const scrollTop = annotationElement.offsetTop - (containerRect.height / 2) + (annotRect.height / 2);
+            // Använd vår förbättrade centerElementInView-funktion som tar hänsyn till zoom-nivå
+            // Uppdaterad beräkning för att säkerställa korrekt centrering med zoom-skala
+            const elementId = annotationElementId;
+            const containerId = pdfContainerRef.current.id || "pdf-viewer-container";
             
-            // Gör scrollningen med negativa minvärden för att tillåta scrollning åt alla håll
-            pdfContainerRef.current.scrollTo({
-              left: scrollLeft,
-              top: scrollTop,
-              behavior: 'smooth'
+            // Kontrollera att ID är satt på container
+            if (!pdfContainerRef.current.id) {
+              pdfContainerRef.current.id = containerId;
+            }
+            
+            // Anropa den förbättrade centreringsfunktionen som tar hänsyn till zoom-nivå
+            centerElementInView(elementId, containerId, {
+              scale: zoomScale,
+              smooth: true,
+              addMarker: false // Vi skapar redan en egen marker
             });
             
             // Ta bort markören efter några sekunder
@@ -921,9 +932,11 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
               }
             }, 3000);
             
-            console.log("Centered on annotation:", {
+            console.log("Centered on annotation using centerElementInView:", {
               annotation: annotation,
-              scrollPosition: { left: scrollLeft, top: scrollTop }
+              scale: zoomScale,
+              elementId: elementId,
+              containerId: containerId
             });
           } catch (error) {
             console.error("Error during annotation centering:", error);
