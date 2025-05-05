@@ -46,6 +46,7 @@ function Router() {
       <ProtectedRoute path="/help" component={HelpPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
       <ProtectedRoute path="/profile" component={SettingsPage} />
+      <ProtectedRoute path="/ritningar" component={RitningarPage} />
       <ProtectedRoute path="/vault/files/ritningar" component={RitningarPage} />
       <ProtectedRoute path="/vault" component={VaultPage} />
       <ProtectedRoute path="/vault/:section" component={VaultPage} />
