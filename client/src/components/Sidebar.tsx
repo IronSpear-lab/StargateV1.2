@@ -747,7 +747,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       )}
       <aside 
         className={cn(
-          "bg-white dark:bg-white/5 h-full shadow-md transition-all duration-300 overflow-y-auto z-50 flex flex-col border-r border-border",
+          "bg-white dark:bg-slate-900 h-full shadow-md transition-all duration-300 overflow-y-auto z-50 flex flex-col border-r border-border",
           isOpen ? "w-64" : "w-20",
           isMobile ? "fixed left-0 top-0" : "sticky top-0",
           className
