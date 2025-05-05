@@ -219,16 +219,59 @@ export default function ProjectLeaderDashboardPage() {
 
   // Open project settings modal
   const handleManageProjectClick = () => {
+    // Set form values based on current project
+    form.setValue('name', currentProject.name);
+    form.setValue('description', '');
+    form.setValue('deadline', '');
+    
     setIsProjectSettingsOpen(true);
   };
 
   // Handle project settings form submission
   const onSubmitProjectSettings = (data: ProjectSettingsFormValues) => {
-    // In a real app, this would save to the backend
-    toast({
-      title: "Project settings updated",
-      description: "The project settings have been saved successfully",
-    });
+    // Update current project name in the list
+    if (currentProjectId && data.name.trim()) {
+      // Create a new project object with the updated name
+      const updatedCurrentProject = { 
+        ...currentProject, 
+        name: data.name.trim() 
+      };
+      
+      // In a real app, this would also save to the backend via API call
+      
+      // Create a mock project if we don't have any (first project creation)
+      if (projects.length === 0) {
+        const newProject = {
+          id: 1,
+          name: data.name.trim()
+        };
+        
+        // Create a new projects array with the new project
+        const updatedProjects = [newProject];
+        // @ts-ignore - We know we're only adding to the projects array
+        setProjects(updatedProjects);
+        setCurrentProjectId(1);
+        
+        toast({
+          title: "Project created",
+          description: `Project "${data.name}" has been created`,
+        });
+      } else {
+        // Find the project that needs to be updated
+        const updatedProjects = projects.map((p: { id: number; name: string }) => 
+          p.id === currentProjectId ? { ...p, name: data.name.trim() } : p
+        );
+        
+        // @ts-ignore - We know we're only modifying the name
+        setProjects(updatedProjects);
+        
+        toast({
+          title: "Project settings updated",
+          description: "The project settings have been saved successfully",
+        });
+      }
+    }
+    
     setIsProjectSettingsOpen(false);
   };
 

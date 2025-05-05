@@ -87,6 +87,32 @@ export default function DashboardPage() {
   const [isWidgetGalleryOpen, setIsWidgetGalleryOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  
+  // Project state for dropdown 
+  const [userProjects, setUserProjects] = useState<{ id: number; name: string }[]>([]);
+  const [currentProjectId, setCurrentProjectId] = useState<number | undefined>();
+  
+  // Fetch user's projects
+  const { data: fetchedProjects = [] } = useQuery({
+    queryKey: ['/api/user-projects'],
+    queryFn: async () => {
+      const response = await fetch('/api/user-projects');
+      if (!response.ok) {
+        return [];
+      }
+      return response.json();
+    }
+  });
+  
+  // Update projects state when data is fetched
+  useEffect(() => {
+    if (fetchedProjects.length > 0) {
+      setUserProjects(fetchedProjects);
+      if (!currentProjectId) {
+        setCurrentProjectId(fetchedProjects[0].id);
+      }
+    }
+  }, [fetchedProjects, currentProjectId]);
 
   // Load saved widgets from localStorage on first render
   // or use default widgets if none exist
@@ -119,20 +145,12 @@ export default function DashboardPage() {
     }
   }, [widgets]);
 
-  // Fetch user's projects
-  const { data: projects } = useQuery({
-    queryKey: ['/api/user-projects'],
-    queryFn: async () => {
-      const response = await fetch('/api/user-projects');
-      if (!response.ok) {
-        return [];
-      }
-      return response.json();
-    }
-  });
-
   // Default project ID (first project in list)
-  const defaultProjectId = projects && projects.length > 0 ? projects[0].id : undefined;
+  const defaultProjectId = userProjects && userProjects.length > 0 ? userProjects[0].id : undefined;
+  
+  // Get current project object
+  const currentProject = userProjects.find((p: { id: number; name: string }) => p.id === currentProjectId) || 
+    (userProjects.length > 0 ? userProjects[0] : { id: 0, name: "No Project" });
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
