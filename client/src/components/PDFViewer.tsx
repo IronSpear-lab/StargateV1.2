@@ -330,7 +330,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   useEffect(() => {
     if (!isOpen || !fileData) return;
     
-    // VIKTIG ÄNDRING: Använd den nya funktionen från pdf-utils för att få ett konsekvent ID
+    // VIKTIG ÄNDRING: PDF-visaren väljer och visar nu automatiskt senaste versionen
+    // istället för att visa versionsvalsdialogen för användaren
     const canonicalFileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
     
     // Använd vår nya hjälpfunktion från pdf-utils för att få ett konsekvent ID
@@ -391,18 +392,19 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
           // Se först om den nuvarande versionen fortfarande finns
           const versionExists = savedVersions.some(v => v.id === activeVersionId);
           
-          if (!versionExists || !activeVersionId) {
-            // Om ingen version är vald eller om den valda versionen inte finns, välj den senaste
-            const latestVersion = savedVersions[savedVersions.length - 1];
-            console.log(`[${Date.now()}] Auto-selecting latest version: ${latestVersion.id}`);
-            setActiveVersionId(latestVersion.id);
-            
-            // Säkerställ att PDF URL är uppdaterad om det behövs
-            if (latestVersion.fileUrl && (!pdfUrl || !versionExists)) {
-              console.log(`[${Date.now()}] Updating PDF URL to match selected version`);
-              setPdfUrl(latestVersion.fileUrl);
-            }
+          // Automatiskt välj den senaste versionen och ladda den
+          const latestVersion = savedVersions[savedVersions.length - 1];
+          console.log(`[${Date.now()}] Auto-selecting latest version: ${latestVersion.id}`);
+          setActiveVersionId(latestVersion.id);
+          
+          // Säkerställ att PDF URL är uppdaterad
+          if (latestVersion.fileUrl) {
+            console.log(`[${Date.now()}] Updating PDF URL to match selected version`);
+            setPdfUrl(latestVersion.fileUrl);
           }
+          
+          // Automatiskt kör handleChangeVersion för att faktiskt ladda den valda versionen
+          handleChangeVersion(latestVersion.id);
           
           // Hämta faktiska filen från IndexedDB om möjligt
           updateFileBinaryIfNeeded(savedVersions);
@@ -442,9 +444,12 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                 
                 setFileVersions(legacyVersions);
                 
-                // Välj senaste versionen
+                // Välj senaste versionen och ladda den direkt
                 const latestVersion = legacyVersions[legacyVersions.length - 1];
                 setActiveVersionId(latestVersion.id);
+                
+                // Automatiskt kör handleChangeVersion för att faktiskt ladda den valda versionen
+                handleChangeVersion(latestVersion.id);
                 
                 // Hämta faktiska filen från IndexedDB om möjligt
                 updateFileBinaryIfNeeded(legacyVersions);
@@ -481,9 +486,12 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
               
               setFileVersions(altVersions);
               
-              // Välj senaste versionen
+              // Välj senaste versionen och ladda den direkt
               const latestVersion = altVersions[altVersions.length - 1];
               setActiveVersionId(latestVersion.id);
+              
+              // Automatiskt kör handleChangeVersion för att faktiskt ladda den valda versionen
+              handleChangeVersion(latestVersion.id);
               
               // Hämta faktiska filen från IndexedDB om möjligt
               updateFileBinaryIfNeeded(altVersions);
@@ -516,6 +524,9 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     const initialVersions = [initialVersion];
     setFileVersions(initialVersions);
     setActiveVersionId(initialVersion.id);
+    
+    // Automatiskt kör handleChangeVersion för att faktiskt ladda den valda versionen
+    handleChangeVersion(initialVersion.id);
     
     // Spara denna första version till localStorage
     try {
