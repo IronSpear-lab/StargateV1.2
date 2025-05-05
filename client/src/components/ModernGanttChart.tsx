@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ZoomIn, ZoomOut, Filter, Plus, FileDown, ChevronDown, ChevronRight, CircleDashed, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+import { ZoomIn, ZoomOut, Filter, Plus, FileDown, ChevronDown, ChevronRight, CircleDashed, CheckCircle2, Clock, AlertTriangle, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -250,6 +250,10 @@ const ModernGanttChart: React.FC = () => {
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  
+  // State för att hantera borttagning av uppgift
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<GanttTask | null>(null);
   
   // Dialog för att skapa nya uppgifter
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -554,6 +558,44 @@ const ModernGanttChart: React.FC = () => {
       endDate: '',
       duration: 0
     });
+  };
+  
+  // Hantera radering av uppgift
+  const handleDeleteClick = (task: GanttTask) => {
+    setTaskToDelete(task);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  // Bekräfta radering av uppgift
+  const confirmDeleteTask = () => {
+    if (taskToDelete) {
+      // Radera från den lokala listan - detta påverkar inte Kanban-uppgifter
+      setTasks(prev => {
+        // Hitta och ta bort alla barn rekursivt
+        const taskIds = new Set<number>();
+        
+        // Identifiera alla uppgifter som ska tas bort (uppgiften och alla barn)
+        const findTasksToDelete = (taskId: number) => {
+          taskIds.add(taskId);
+          
+          // Hitta alla direkta barn till denna uppgift
+          const children = prev.filter(t => t.parentId === taskId);
+          
+          // Lägg till alla barnens ID och fortsätt neråt i hierarkin
+          children.forEach(child => findTasksToDelete(child.id));
+        };
+        
+        // Starta med den valda uppgiften
+        findTasksToDelete(taskToDelete.id);
+        
+        // Returnera en ny lista utan de borttagna uppgifterna
+        return prev.filter(t => !taskIds.has(t.id));
+      });
+      
+      // Återställ dialogen
+      setIsDeleteDialogOpen(false);
+      setTaskToDelete(null);
+    }
   };
   
   return (
