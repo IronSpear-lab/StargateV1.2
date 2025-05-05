@@ -115,6 +115,36 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   
   const pdfContainerRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
+  const [windowSize, setWindowSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight
+  });
+
+  // Hantera fönsterändring för att göra PDF-visaren responsiv
+  useEffect(() => {
+    function handleResize() {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+      
+      // Tvinga uppdatering av annotations när fönsterstorlek ändras
+      if (annotations && annotations.length > 0) {
+        setAnnotations([...annotations]);
+      }
+    }
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [annotations]);
+  
+  // När skala ändras, uppdatera alla annotations för att behålla position och storlek
+  useEffect(() => {
+    if (annotations && annotations.length > 0) {
+      // Tvinga omrendering av annotations för att applicera ny skala
+      setAnnotations([...annotations]);
+    }
+  }, [scale]);
 
   // När en ny PDF-fil öppnas, rensa annotations och versioner och lagra filen
   useEffect(() => {
@@ -1684,7 +1714,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                         </div>
                       }
                       className="pdfPage shadow-lg relative"
-                      width={window.innerWidth > 768 ? window.innerWidth * 0.5 : window.innerWidth * 0.8}
+                      width={undefined}  // Låt den anpassa sig efter innehållaren
                       onRenderSuccess={() => {
                         // Uppdatera positionerna för alla annotations när sidan renderas om
                         // Detta händer även när fönsterstorlek eller zoom ändras
