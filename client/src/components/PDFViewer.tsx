@@ -588,8 +588,10 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     // Hämta position relativt till PDF-sidan
     if (pageRef.current) {
       const rect = pageRef.current.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      
+      // Beräkna position med hänsyn till padding (200px)
+      const x = e.clientX - rect.left - 200;
+      const y = e.clientY - rect.top - 200;
       
       setMarkingStart({ x, y });
       setMarkingEnd({ x, y }); // Initialisera slutposition också
@@ -602,8 +604,10 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     
     if (pageRef.current) {
       const rect = pageRef.current.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      
+      // Beräkna position med hänsyn till padding (200px)
+      const x = e.clientX - rect.left - 200;
+      const y = e.clientY - rect.top - 200;
       
       setMarkingEnd({ x, y });
     }
