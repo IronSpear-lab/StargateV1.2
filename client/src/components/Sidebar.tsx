@@ -38,6 +38,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { ModeToggle } from "@/components/mode-toggle";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
 
 interface SidebarProps {
   className?: string;
@@ -62,7 +65,80 @@ interface NavGroupProps {
   location: string;
 }
 
-export function Sidebar({ className }: SidebarProps) {
+// Folder creation dialog component
+function AddFolderDialog({ 
+  isOpen, 
+  onClose, 
+  parentFolderName, 
+  onCreateFolder 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  parentFolderName: string;
+  onCreateFolder: (folderName: string, parentName: string) => void;
+}) {
+  const [folderName, setFolderName] = useState("");
+  const { toast } = useToast();
+  
+  const handleSubmit = () => {
+    if (!folderName.trim()) {
+      toast({
+        title: "Fel",
+        description: "Mappnamn kan inte vara tomt",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    onCreateFolder(folderName, parentFolderName);
+    setFolderName(""); // Återställ formuläret
+    onClose();
+  };
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Skapa ny mapp</DialogTitle>
+          <DialogDescription>
+            Skapa en ny mapp under "{parentFolderName}"
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="folderName">Mappnamn</Label>
+            <Input
+              id="folderName"
+              value={folderName}
+              onChange={(e) => setFolderName(e.target.value)}
+              placeholder="Ange mappnamn"
+              autoFocus
+            />
+          </div>
+        </div>
+        
+        <DialogFooter className="sm:justify-end">
+          <Button 
+            type="button" 
+            variant="secondary" 
+            onClick={onClose}
+          >
+            Avbryt
+          </Button>
+          <Button 
+            type="submit" 
+            onClick={handleSubmit}
+          >
+            Skapa mapp
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function Sidebar({ className }: SidebarProps): JSX.Element {
   const { user, logoutMutation } = useAuth();
   const [location] = useLocation();
   const isMobile = useMobile();
@@ -72,6 +148,12 @@ export function Sidebar({ className }: SidebarProps) {
     "-Vault": true,
     "-Vault-Files": true
   });
+  const [folderDialogOpen, setFolderDialogOpen] = useState(false);
+  const [selectedParentFolder, setSelectedParentFolder] = useState("");
+  const { toast } = useToast();
+  
+  // State för att lagra mappar som användaren har skapat
+  const [userCreatedFolders, setUserCreatedFolders] = useState<{name: string; parent: string}[]>([]);
 
   useEffect(() => {
     setIsOpen(!isMobile);
@@ -92,26 +174,83 @@ export function Sidebar({ className }: SidebarProps) {
     }));
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
-      .toUpperCase();
+  const getInitials = (username: string) => {
+    // Om användarnamnet innehåller mellanslag, använd första bokstaven i varje ord
+    // Annars, använd de två första bokstäverna
+    if (username.includes(' ')) {
+      return username
+        .split(' ')
+        .map(part => part[0])
+        .join('')
+        .toUpperCase();
+    } else {
+      return username.slice(0, 2).toUpperCase();
+    }
   };
 
   // Funktion för att hantera "Lägg till mapp" i olika mappar
   const handleAddFolder = (parentName: string) => {
-    // Skapa en dialog eller använd en funktion för att öppna "Lägg till mapp"-dialogen 
-    // med den valda föräldern
-    console.log(`Lägg till mapp under: ${parentName}`);
-    
-    // I en riktig implementation skulle detta öppna din befintliga dialogruta för mapp-skapande
-    // och förifylla parentName som den förälder där mappen ska placeras
+    setSelectedParentFolder(parentName);
+    setFolderDialogOpen(true);
   };
   
-  // Define nested navigation based on the image
-  const navItems: NavItemType[] = [
+  // Funktion för att skapa en ny mapp
+  const createFolder = (folderName: string, parentName: string) => {
+    // Spara den nya mappen i state så att den visas i sidofältet
+    setUserCreatedFolders(prev => [...prev, { name: folderName, parent: parentName }]);
+    
+    // Visa meddelande om att mappen har skapats
+    toast({
+      title: "Mapp skapad",
+      description: `Mappen "${folderName}" har skapats under "${parentName}"`,
+    });
+    
+    // I en riktig implementation skulle vi också göra en API-anrop för att spara mappen i databasen
+  };
+  
+  // Funktion för att hitta den rätta föräldern för en nyskapad mapp och uppdatera den
+  const findParentAndAddFolder = (
+    items: NavItemType[], 
+    parentName: string, 
+    newFolder: { name: string, parent: string }
+  ): NavItemType[] => {
+    return items.map(item => {
+      // Om denna mapp är föräldern, lägg till den nya mappen som ett barn
+      if (item.label === parentName && item.type === "folder") {
+        // Skapa en kopia med den nya mappen
+        return {
+          ...item,
+          children: [
+            ...(item.children || []),
+            {
+              href: "#",
+              label: newFolder.name,
+              active: false,
+              indent: (item.indent || 0) + 1,
+              icon: <FolderClosed className={`w-4 h-4`} />,
+              type: "folder",
+              onAddClick: () => handleAddFolder(newFolder.name),
+              children: []
+            }
+          ]
+        };
+      }
+      
+      // Om detta objekt har barn, sök rekursivt
+      if (item.children && item.children.length > 0) {
+        return {
+          ...item,
+          children: findParentAndAddFolder(item.children, parentName, newFolder)
+        };
+      }
+      
+      // Annars returnera objektet oförändrat
+      return item;
+    });
+  };
+  
+  // Lista med de grundläggande navigationslänkarna
+  const baseNavItems: NavItemType[] = [
     {
       href: "/",
       label: "Dashboard",
@@ -324,6 +463,22 @@ export function Sidebar({ className }: SidebarProps) {
       ]
     }
   ];
+  
+  // Skapa slutliga navigationsobjektet med användar-skapade mappar
+  const getNavItems = (): NavItemType[] => {
+    // Börja med kopian av grundnavigationen
+    let navCopy = [...baseNavItems];
+    
+    // Lägg till alla användar-skapade mappar
+    userCreatedFolders.forEach(folder => {
+      navCopy = findParentAndAddFolder(navCopy, folder.parent, folder);
+    });
+    
+    return navCopy;
+  };
+  
+  // Hämta den aktiva navigationslistan
+  const navItems = getNavItems();
 
   if (!isOpen && isMobile) {
     return (
@@ -397,53 +552,35 @@ export function Sidebar({ className }: SidebarProps) {
               )}
               
               {/* Tooltip som visas vid hover (endast för när sidebar är minimerad) */}
-              <div className="absolute left-full top-0 min-w-32 ml-2 z-50 bg-background border border-border rounded-md py-1 shadow-md transition-opacity duration-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible">
-                {hasChildren ? (
-                  <div className="flex items-center justify-between px-3 py-1 whitespace-nowrap">
-                    <span>{item.label}</span>
-                    {/* Plus-ikon för mappar i minimerat läge */}
-                    {item.type === "folder" && item.onAddClick && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          item.onAddClick?.();
-                        }}
-                        className="ml-2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                      >
-                        <Plus className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between px-3 py-1 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <span>{item.label}</span>
-                      {item.badge && (
-                        <Badge variant="outline" className={cn(
-                          "text-xs py-0.5 px-2 rounded-full ml-2",
-                          item.active 
-                            ? "bg-primary/10 text-primary border-primary/20" 
-                            : "bg-muted text-muted-foreground border-border"
-                        )}>
-                          {item.badge}
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    {/* Plus-ikon för mappar i minimerat läge */}
-                    {item.type === "folder" && item.onAddClick && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          item.onAddClick?.();
-                        }}
-                        className="ml-2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                      >
-                        <Plus className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
-                )}
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 bg-background border border-border rounded-md shadow-md transition-opacity duration-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible">
+                <div className="py-2 px-3 whitespace-nowrap flex items-center justify-between">
+                  <span className="font-medium text-sm">{item.label}</span>
+                  
+                  {/* Plus-ikon för mappar i minimerat läge */}
+                  {item.type === "folder" && item.onAddClick && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        item.onAddClick?.();
+                      }}
+                      className="ml-3 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
+                  )}
+                  
+                  {/* Badge (om det finns) */}
+                  {item.badge && (
+                    <Badge variant="outline" className={cn(
+                      "text-xs py-0.5 px-2 rounded-full ml-2",
+                      item.active 
+                        ? "bg-primary/10 text-primary border-primary/20" 
+                        : "bg-muted text-muted-foreground border-border"
+                    )}>
+                      {item.badge}
+                    </Badge>
+                  )}
+                </div>
                 
                 {/* Om det är en undermenygrupp och den är öppen, visa undermenyerna */}
                 {hasChildren && isItemOpen && (
@@ -694,87 +831,85 @@ export function Sidebar({ className }: SidebarProps) {
           </div>
         )}
         
-        <div className="flex-1 py-2 overflow-y-auto">
-          <div className="space-y-1">
-            {renderNavItems(navItems)}
-          </div>
+        <div className="py-2 flex-1 overflow-y-auto">
+          {renderNavItems(navItems)}
         </div>
         
-        <div className={cn("py-1 mt-auto", isOpen ? "px-3" : "px-0")}>
-          <div className="space-y-1 mt-1">
-            <Link 
-              href="/support"
-              className={cn(
-                isOpen 
-                  ? "flex items-center px-3 py-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" 
-                  : "flex items-center justify-center py-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground relative group"
-              )}
-            >
-              <HelpCircle className={cn("w-5 h-5", isOpen ? "mr-3" : "")} />
-              {isOpen ? (
-                <span className="text-sm">Support</span>
-              ) : (
-                <div className="absolute left-full top-0 ml-2 px-3 py-2 rounded-md bg-background border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
-                  Support
+        <div className={cn(
+          "border-t border-border mt-auto",
+          isOpen ? "p-3" : "py-3 px-0"
+        )}>
+          <Button 
+            onClick={handleLogout}
+            size="sm"
+            variant="ghost"
+            className={cn(
+              "text-muted-foreground hover:text-foreground",
+              isOpen ? "w-full justify-start" : "mx-auto"
+            )}
+          >
+            <div className="relative group flex items-center">
+              <LogOut className="h-4 w-4" />
+              {isOpen && <span className="ml-2 text-sm">Logga ut</span>}
+              
+              {!isOpen && (
+                <div className="absolute left-full ml-2 px-3 py-2 rounded-md bg-background border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+                  Logga ut
                 </div>
               )}
-            </Link>
-            <Link 
-              href="/settings"
-              className={cn(
-                isOpen 
-                  ? "flex items-center px-3 py-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" 
-                  : "flex items-center justify-center py-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground relative group"
-              )}
-            >
-              <Settings className={cn("w-5 h-5", isOpen ? "mr-3" : "")} />
-              {isOpen ? (
-                <span className="text-sm">Settings</span>
-              ) : (
-                <div className="absolute left-full top-0 ml-2 px-3 py-2 rounded-md bg-background border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
-                  Settings
-                </div>
-              )}
-            </Link>
-          </div>
-        </div>
-        
-        <div className="border-t border-border p-3">
-          {isOpen ? (
-            <div className="flex items-center">
-              <Avatar className="h-8 w-8 border border-border">
-                <AvatarFallback className="bg-muted text-foreground text-xs">
-                  FH
+            </div>
+          </Button>
+          
+          <Separator className="my-3" />
+          
+          <div className={cn(
+            "flex items-center",
+            isOpen ? "px-1" : "px-2 flex-col space-y-2"
+          )}>
+            <div className="relative group">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src="https://github.com/shadcn.png" />
+                <AvatarFallback>
+                  {user ? getInitials(user.username) : "??"}
                 </AvatarFallback>
               </Avatar>
-              <div className="ml-2 overflow-hidden">
-                <p className="text-sm font-medium text-foreground truncate">Fredrik H.</p>
-                <p className="text-xs text-muted-foreground truncate">fredrik@valvx.com</p>
-              </div>
-              <button 
-                className="ml-auto text-muted-foreground hover:text-foreground p-1 transition-colors"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
+              
+              {!isOpen && (
+                <div className="absolute left-full ml-2 px-3 py-2 rounded-md bg-background border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+                  {user ? user.username : "Ej inloggad"}
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="flex justify-center">
-              <div className="relative group">
-                <Avatar className="h-8 w-8 border border-border">
-                  <AvatarFallback className="bg-muted text-foreground text-xs">
-                    FH
-                  </AvatarFallback>
-                </Avatar>
-                <div className="absolute left-full bottom-0 ml-2 px-3 py-2 rounded-md bg-background border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
-                  <p className="text-sm font-medium">Fredrik H.</p>
-                  <p className="text-xs text-muted-foreground">fredrik@valvx.com</p>
+            
+            {isOpen && (
+              <div className="ml-2">
+                <div className="text-sm font-medium">
+                  {user ? user.username : "Ej inloggad"}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {user ? user.role || "Användare" : "Logga in"}
                 </div>
               </div>
-            </div>
-          )}
+            )}
+            
+            {isOpen && (
+              <div className="ml-auto">
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Settings className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </aside>
+      
+      {/* Dialog för att skapa mapp */}
+      <AddFolderDialog
+        isOpen={folderDialogOpen}
+        onClose={() => setFolderDialogOpen(false)}
+        parentFolderName={selectedParentFolder}
+        onCreateFolder={createFolder}
+      />
     </>
   );
 }
