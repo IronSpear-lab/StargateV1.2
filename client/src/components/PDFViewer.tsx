@@ -815,15 +815,27 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             const containerCenterX = pdfContainer.offsetWidth / 2;
             const containerCenterY = pdfContainer.offsetHeight / 2;
             
-            // 4. Beräkna centrum för annotationen
-            const annotCenterX = (annotRect.left - pageRect.left) + (annotRect.width / 2);
-            const annotCenterY = (annotRect.top - pageRect.top) + (annotRect.height / 2);
+            // 4. Beräkna position för annotationen relativt till PDF-dokumentet
+            // Detta tar hänsyn till både position på sidan och dokumentets scroll-position
+            const annotX = (annotRect.left - pageRect.left);
+            const annotY = (annotRect.top - pageRect.top);
             
-            // 5. Beräkna hur mycket vi behöver skrolla för att centrera annotationen
-            const scrollX = pdfContainer.scrollLeft + (annotCenterX - containerCenterX);
-            const scrollY = pdfContainer.scrollTop + (annotCenterY - containerCenterY);
+            // 5. Beräkna centrum för annotationen
+            const annotCenterX = annotX + (annotRect.width / 2);
+            const annotCenterY = annotY + (annotRect.height / 2);
             
-            // 6. Använd en säker scrollningsmetod
+            // 6. Beräkna skillnaden mellan annotationens position och önskad centrerad position
+            // Detta är nyckeln till korrekt centrering - vi måste använda rätt offset som tar 
+            // hänsyn till behållarens befintliga scroll-position
+            const deltaX = annotCenterX - containerCenterX;
+            const deltaY = annotCenterY - containerCenterY;
+            
+            // 7. Beräkna slutliga scrollposition
+            // Lägg till delta (offset) till nuvarande scroll-position
+            const scrollX = pdfContainer.scrollLeft + deltaX;
+            const scrollY = pdfContainer.scrollTop + deltaY;
+            
+            // 6. Använd en säker scrollningsmetod med centrerad annotation
             pdfContainer.scrollTo({
               left: Math.max(0, scrollX),
               top: Math.max(0, scrollY),
