@@ -256,10 +256,61 @@ export function DwgIfcViewer() {
       // Select the newly uploaded file
       setSelectedFile(fileEntry);
       
-      toast({
-        title: "File uploaded",
-        description: `${file.name} has been uploaded successfully.`,
-      });
+      // Apply visual changes based on file type
+      const extension = fileEntry.name.split('.').pop()?.toLowerCase();
+      if (viewerRef.current && viewerRef.current.buildingGroup) {
+        if (extension === 'dwg') {
+          // Update the building materials for DWG files (blue theme)
+          const buildingMaterial = viewerRef.current.buildingGroup.children[1].material;
+          if (buildingMaterial) {
+            buildingMaterial.color.set(0x3182ce); // Blue
+          }
+          
+          // Update wall colors
+          const walls = [viewerRef.current.buildingGroup.children[3], viewerRef.current.buildingGroup.children[4]];
+          walls.forEach(wall => {
+            if (wall && wall.material) {
+              wall.material.color.set(0x4299e1); // Lighter blue
+            }
+          });
+          
+          // Add informational message about DWG files
+          toast({
+            title: "DWG File Uploaded",
+            description: `${file.name} har laddats upp. I en riktig implementation skulle en interaktiv CAD-ritning visas nu.`,
+          });
+        } else if (extension === 'ifc') {
+          // Update the building materials for IFC files (green theme)
+          const buildingMaterial = viewerRef.current.buildingGroup.children[1].material;
+          if (buildingMaterial) {
+            buildingMaterial.color.set(0x38a169); // Green
+          }
+          
+          // Update wall colors
+          const walls = [viewerRef.current.buildingGroup.children[3], viewerRef.current.buildingGroup.children[4]];
+          walls.forEach(wall => {
+            if (wall && wall.material) {
+              wall.material.color.set(0x48bb78); // Lighter green
+            }
+          });
+          
+          // Add informational message about IFC files
+          toast({
+            title: "IFC File Uploaded",
+            description: `${file.name} har laddats upp. I en riktig implementation skulle en interaktiv BIM-modell visas nu.`,
+          });
+        } else {
+          toast({
+            title: "File uploaded",
+            description: `${file.name} has been uploaded successfully.`,
+          });
+        }
+      } else {
+        toast({
+          title: "File uploaded",
+          description: `${file.name} has been uploaded successfully.`,
+        });
+      }
     } catch (err) {
       console.error('Error handling file upload:', err);
       setError('Failed to upload the file. Please try again.');
