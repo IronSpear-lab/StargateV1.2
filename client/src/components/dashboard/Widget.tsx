@@ -20,9 +20,10 @@ interface WidgetProps {
   onRemove: (id: string) => void;
   onEdit?: (id: string) => void;
   className?: string;
-  width?: string; // "full", "half", "third"
-  height?: string; // "small", "medium", "large"
+  width?: string; // "full", "half", "third", "quarter"
+  height?: string; // "small", "medium", "large", "auto"
   noPadding?: boolean;
+  onResize?: (id: string, newWidth: string, newHeight: string) => void;
 }
 
 export function Widget({
@@ -37,10 +38,37 @@ export function Widget({
   width = "half",
   height = "medium",
   noPadding = false,
+  onResize,
 }: WidgetProps) {
   const [expanded, setExpanded] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [dragging, setDragging] = useState(false);
+  // Initialize with stored size or props
+  const [currentWidth, setCurrentWidth] = useState(() => {
+    const storedSize = window.localStorage.getItem(`widget-${id}-size`);
+    if (storedSize) {
+      try {
+        const { width: storedWidth } = JSON.parse(storedSize);
+        return storedWidth || width;
+      } catch (e) {
+        return width;
+      }
+    }
+    return width;
+  });
+  
+  const [currentHeight, setCurrentHeight] = useState(() => {
+    const storedSize = window.localStorage.getItem(`widget-${id}-size`);
+    if (storedSize) {
+      try {
+        const { height: storedHeight } = JSON.parse(storedSize);
+        return storedHeight || height;
+      } catch (e) {
+        return height;
+      }
+    }
+    return height;
+  });
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData("widget-id", id);
@@ -79,14 +107,30 @@ export function Widget({
     half: "col-span-12 md:col-span-6",
     third: "col-span-12 md:col-span-4",
     quarter: "col-span-12 md:col-span-3",
-  }[width] || "col-span-12";
+  }[currentWidth] || "col-span-12";
 
   const heightClasses = {
     small: collapsed ? "h-[42px]" : "h-[200px]",
     medium: collapsed ? "h-[42px]" : "h-[320px]",
     large: collapsed ? "h-[42px]" : "h-[500px]",
     auto: collapsed ? "h-[42px]" : "h-auto",
-  }[height] || "h-[320px]";
+  }[currentHeight] || "h-[320px]";
+  
+  // Handle resize
+  const handleResize = (newWidth: string, newHeight: string) => {
+    setCurrentWidth(newWidth);
+    setCurrentHeight(newHeight);
+    
+    if (onResize) {
+      onResize(id, newWidth, newHeight);
+    }
+    
+    // Save in localStorage to persist across refreshes
+    window.localStorage.setItem(`widget-${id}-size`, JSON.stringify({ 
+      width: newWidth, 
+      height: newHeight 
+    }));
+  };
 
   return (
     <Card
