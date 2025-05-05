@@ -124,7 +124,12 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     width: window.innerWidth,
     height: window.innerHeight
   });
-
+  
+  // Tillstånd för drag-to-pan funktionalitet
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [scrollPosition, setScrollPosition] = useState({ x: 0, y: 0 });
+  
   // Hantera fönsterändring för att göra PDF-visaren responsiv
   useEffect(() => {
     function handleResize() {

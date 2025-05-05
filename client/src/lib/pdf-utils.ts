@@ -140,23 +140,32 @@ export function addPdfViewerAnimations() {
         height: 100%;
         overflow: auto;
         display: flex;
-        align-items: flex-start;
-        justify-content: flex-start;
+        align-items: center;
+        justify-content: center;
+        cursor: grab;
+      }
+      
+      .pdfViewerContainer:active {
+        cursor: grabbing;
       }
       
       .pdfPage {
-        margin: 200px !important;
+        margin: 40px !important;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         max-width: 100%;
         height: auto;
+        display: block;
+        margin-left: auto !important;
+        margin-right: auto !important;
       }
       
       .pdf-page-wrapper {
-        padding: 200px;
+        padding: 40px;
         background: transparent;
         position: relative;
         display: inline-block;
         min-width: fit-content;
+        margin: 0 auto;
       }
       
       /* Lägg till specifika styling för annotation marker */
