@@ -262,7 +262,7 @@ const ModernGanttChart: React.FC = () => {
   const [newTask, setNewTask] = useState<Partial<GanttTask>>({
     type: 'TASK',
     status: 'New',
-    project: '',
+    project: 'Byggprojekt A', // Sätt standardvärde till första projekt från demoprojekten
     name: '',
     startDate: '',
     endDate: '',
@@ -577,7 +577,7 @@ const ModernGanttChart: React.FC = () => {
     setNewTask({
       type: 'TASK',
       status: 'New',
-      project: '',
+      project: 'Byggprojekt A', // Använd ett giltigt projekt som standardvärde
       name: '',
       startDate: '',
       endDate: '',
@@ -971,9 +971,13 @@ const ModernGanttChart: React.FC = () => {
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent>
-                  {projects.map(project => (
-                    <SelectItem key={project} value={project}>{project}</SelectItem>
-                  ))}
+                  {projects.length > 0 ? (
+                    projects.map(project => (
+                      <SelectItem key={project} value={project}>{project}</SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="Byggprojekt A">Byggprojekt A</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
