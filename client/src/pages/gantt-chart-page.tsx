@@ -3,7 +3,7 @@ import { Header } from '@/components/Header';
 import { Sidebar } from '@/components/Sidebar';
 import ModernGanttChart from '@/components/ModernGanttChart';
 
-const GanttChartPage: React.FC = () => {
+function GanttChartPage() {
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   
   return (
@@ -31,6 +31,6 @@ const GanttChartPage: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default GanttChartPage;

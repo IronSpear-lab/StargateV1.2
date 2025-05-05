@@ -862,9 +862,9 @@ const ModernGanttChart: React.FC = () => {
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="TASK">Task</SelectItem>
-                  <SelectItem value="MILESTONE">Milestone</SelectItem>
-                  <SelectItem value="PHASE">Phase</SelectItem>
+                  <SelectItem value="TASK">TASK</SelectItem>
+                  <SelectItem value="MILESTONE">MILESTONE</SelectItem>
+                  <SelectItem value="PHASE">PHASE</SelectItem>
                 </SelectContent>
               </Select>
             </div>
