@@ -390,9 +390,9 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                   children: []
                 },
                 {
-                  href: "#",
+                  href: "/dwg-ifc-viewer",
                   label: "2. DWG & IFC",
-                  active: false,
+                  active: location === "/dwg-ifc-viewer",
                   indent: 3,
                   icon: <FolderClosed className="w-3 h-3" />,
                   type: "folder",

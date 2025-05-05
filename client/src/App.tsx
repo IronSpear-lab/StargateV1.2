@@ -23,6 +23,7 @@ import TeamPage from "@/pages/team-page";
 import HelpPage from "@/pages/help-page";
 import VaultPage from "@/pages/vault-page";
 import RitningarPage from "@/pages/ritningar-page";
+import DwgIfcViewerPage from "@/pages/dwg-ifc-viewer-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -51,6 +52,7 @@ function Router() {
       <ProtectedRoute path="/profile" component={SettingsPage} />
       <ProtectedRoute path="/ritningar" component={RitningarPage} />
       <ProtectedRoute path="/vault/files/ritningar" component={RitningarPage} />
+      <ProtectedRoute path="/dwg-ifc-viewer" component={DwgIfcViewerPage} />
       <ProtectedRoute path="/vault" component={VaultPage} />
       <ProtectedRoute path="/vault/:section" component={VaultPage} />
       <Route path="/auth" component={AuthPage} />
