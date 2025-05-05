@@ -76,7 +76,7 @@ export function BudgetCostWidget({ projectId }: BudgetCostWidgetProps) {
             </div>
             <div className="text-right">
               <h3 className="text-sm font-medium text-foreground/70 dark:text-foreground/70">This Week</h3>
-              <p className={`text-lg font-semibold ${budgetDifference > 0 ? 'text-red-500' : 'text-green-500'}`}>
+              <p className={`text-lg font-semibold ${budgetDifference > 0 ? 'text-primary dark:text-primary' : 'text-emerald-500 dark:text-emerald-400'}`}>
                 {budgetDifference > 0 ? '+' : ''}{budgetDifference.toFixed(1)}% over budget
               </p>
             </div>
@@ -95,8 +95,8 @@ export function BudgetCostWidget({ projectId }: BudgetCostWidgetProps) {
                 >
                   <defs>
                     <linearGradient id="colorBudget" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0.1}/>
+                      <stop offset="5%" stopColor="var(--emerald-500)" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="var(--emerald-500)" stopOpacity={0.1}/>
                     </linearGradient>
                     <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8}/>

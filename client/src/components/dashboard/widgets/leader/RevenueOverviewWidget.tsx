@@ -123,13 +123,13 @@ export function RevenueOverviewWidget() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                   <XAxis 
                     dataKey="day" 
-                    tick={{ fill: '#6B7280', fontSize: 12 }}
+                    tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
                     axisLine={{ stroke: 'var(--border)' }}
                     tickLine={false}
                   />
                   <YAxis 
                     tickFormatter={(value) => `${value/1000}k`}
-                    tick={{ fill: '#6B7280', fontSize: 12 }}
+                    tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
                     axisLine={false}
                     tickLine={false}
                     width={35}
@@ -138,7 +138,7 @@ export function RevenueOverviewWidget() {
                     formatter={(value) => [formatCurrency(value as number), '']}
                     labelFormatter={(label) => `${label}`}
                     contentStyle={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                      backgroundColor: 'var(--background)',
                       border: 'none',
                       borderRadius: '0.375rem',
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
@@ -157,10 +157,10 @@ export function RevenueOverviewWidget() {
                     type="monotone" 
                     dataKey="current" 
                     name="Current Week"
-                    stroke="#10B981" 
+                    stroke="var(--emerald-500)" 
                     strokeWidth={3}
                     dot={false}
-                    activeDot={{ r: 6 }}
+                    activeDot={{ r: 6, fill: "var(--emerald-500)" }}
                   />
                 </LineChart>
               </ResponsiveContainer>
