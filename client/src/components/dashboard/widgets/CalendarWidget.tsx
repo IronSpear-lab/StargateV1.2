@@ -63,32 +63,32 @@ interface CalendarWidgetProps {
 // #ffc35a (orange), #0acf97 (green), #727cf5 (blue) and #fa5c7c (pink)
 const eventColors: Record<string, { bg: string, text: string, bgHover: string, border?: string, accent: string }> = {
   meeting: { 
-    bg: "bg-[#727cf5]/10", 
-    text: "text-[#727cf5]", 
-    bgHover: "hover:bg-[#727cf5]/20", 
-    border: "border-[#727cf5]/30",
-    accent: "#727cf5"
+    bg: "bg-primary/10", 
+    text: "text-primary", 
+    bgHover: "hover:bg-primary/20", 
+    border: "border-primary/30",
+    accent: "hsl(var(--primary))"
   },
   task: { 
-    bg: "bg-[#0acf97]/10", 
-    text: "text-[#0acf97]", 
-    bgHover: "hover:bg-[#0acf97]/20", 
-    border: "border-[#0acf97]/30",
-    accent: "#0acf97"
+    bg: "bg-emerald-500/10", 
+    text: "text-emerald-500", 
+    bgHover: "hover:bg-emerald-500/20", 
+    border: "border-emerald-500/30",
+    accent: "hsl(152, 76%, 42%)"
   },
   reminder: { 
-    bg: "bg-[#ffc35a]/10", 
-    text: "text-[#ffc35a]", 
-    bgHover: "hover:bg-[#ffc35a]/20", 
-    border: "border-[#ffc35a]/30",
-    accent: "#ffc35a"
+    bg: "bg-amber-500/10", 
+    text: "text-amber-500", 
+    bgHover: "hover:bg-amber-500/20", 
+    border: "border-amber-500/30",
+    accent: "hsl(38, 100%, 50%)"
   },
   milestone: { 
-    bg: "bg-[#fa5c7c]/10", 
-    text: "text-[#fa5c7c]", 
-    bgHover: "hover:bg-[#fa5c7c]/20", 
-    border: "border-[#fa5c7c]/30", 
-    accent: "#fa5c7c"
+    bg: "bg-rose-500/10", 
+    text: "text-rose-500", 
+    bgHover: "hover:bg-rose-500/20", 
+    border: "border-rose-500/30", 
+    accent: "hsl(351, 94%, 71%)"
   },
 };
 
@@ -581,7 +581,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="mt-3"
+                    className="mt-3 text-primary hover:bg-primary/10 hover:text-primary"
                     onClick={() => setCreateDialogOpen(true)}
                   >
                     <Plus className="h-3.5 w-3.5 mr-1.5" />
@@ -848,75 +848,78 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
           onOpenChange={(open) => !open && setShowEventDetails(null)}
         >
           <DialogContent className="sm:max-w-[500px]">
-            {showEventDetails && events.find(e => e.id === showEventDetails) && (
-              <>
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-3">
-                    <div 
-                      className="w-3 h-3 rounded-full" 
-                      style={{ 
-                        backgroundColor: eventColors[
-                          events.find(e => e.id === showEventDetails)?.type || 'meeting'
-                        ].accent 
-                      }} 
-                    />
-                    {events.find(e => e.id === showEventDetails)?.title}
-                  </DialogTitle>
-                </DialogHeader>
-                
-                <div className="space-y-4 py-2">
-                  {events.find(e => e.id === showEventDetails)?.description && (
-                    <div className="text-sm">
-                      {events.find(e => e.id === showEventDetails)?.description}
-                    </div>
-                  )}
+            {showEventDetails && events && (() => {
+              const selectedEvent = events.find((e: CalendarEvent) => e.id === showEventDetails);
+              if (!selectedEvent) return null;
+              
+              return (
+                <>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-3">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ 
+                          backgroundColor: eventColors[selectedEvent.type].accent 
+                        }} 
+                      />
+                      {selectedEvent.title}
+                    </DialogTitle>
+                  </DialogHeader>
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-xs text-gray-500">Date & Time</Label>
-                      <div className="text-sm mt-1 flex items-center">
-                        <CalendarIcon className="h-4 w-4 mr-2 text-gray-400" />
-                        {format(parseISO(events.find(e => e.id === showEventDetails)?.start || ''), "MMM d, yyyy")}
+                  <div className="space-y-4 py-2">
+                    {selectedEvent.description && (
+                      <div className="text-sm">
+                        {selectedEvent.description}
                       </div>
-                      
-                      <div className="text-sm mt-1 flex items-center">
-                        <Clock className="h-4 w-4 mr-2 text-gray-400" />
-                        {format(parseISO(events.find(e => e.id === showEventDetails)?.start || ''), "HH:mm")} - 
-                        {format(parseISO(events.find(e => e.id === showEventDetails)?.end || ''), "HH:mm")}
-                      </div>
-                    </div>
+                    )}
                     
-                    <div>
-                      <Label className="text-xs text-gray-500">Details</Label>
-                      <div className="text-sm mt-1">
-                        <Badge 
-                          variant="outline" 
-                          className={cn(
-                            "px-2 py-0.5 font-normal",
-                            eventColors[events.find(e => e.id === showEventDetails)?.type || 'meeting'].bg,
-                            eventColors[events.find(e => e.id === showEventDetails)?.type || 'meeting'].text
-                          )}
-                        >
-                          {events.find(e => e.id === showEventDetails)?.type}
-                        </Badge>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs text-gray-500">Date & Time</Label>
+                        <div className="text-sm mt-1 flex items-center">
+                          <CalendarIcon className="h-4 w-4 mr-2 text-gray-400" />
+                          {format(parseISO(selectedEvent.start), "MMM d, yyyy")}
+                        </div>
+                        
+                        <div className="text-sm mt-1 flex items-center">
+                          <Clock className="h-4 w-4 mr-2 text-gray-400" />
+                          {format(parseISO(selectedEvent.start), "HH:mm")} - 
+                          {format(parseISO(selectedEvent.end), "HH:mm")}
+                        </div>
                       </div>
                       
-                      {events.find(e => e.id === showEventDetails)?.location && (
-                        <div className="text-sm mt-2">
-                          <span className="text-gray-500">Location:</span> {events.find(e => e.id === showEventDetails)?.location}
+                      <div>
+                        <Label className="text-xs text-gray-500">Details</Label>
+                        <div className="text-sm mt-1">
+                          <Badge 
+                            variant="outline" 
+                            className={cn(
+                              "px-2 py-0.5 font-normal",
+                              eventColors[selectedEvent.type].bg,
+                              eventColors[selectedEvent.type].text
+                            )}
+                          >
+                            {selectedEvent.type}
+                          </Badge>
                         </div>
-                      )}
+                        
+                        {selectedEvent.location && (
+                          <div className="text-sm mt-2">
+                            <span className="text-gray-500">Location:</span> {selectedEvent.location}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-                
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowEventDetails(null)}>
-                    Close
-                  </Button>
-                </DialogFooter>
-              </>
-            )}
+                  
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowEventDetails(null)}>
+                      Close
+                    </Button>
+                  </DialogFooter>
+                </>
+              );
+            })()}
           </DialogContent>
         </Dialog>
       )}
