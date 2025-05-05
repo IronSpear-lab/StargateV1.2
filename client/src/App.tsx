@@ -14,6 +14,7 @@ import SettingsPage from "@/pages/settings-page";
 import ProjectsPage from "@/pages/projects-page";
 import ProjectDetailPage from "@/pages/project-detail-page";
 import GanttPage from "@/pages/gantt-page";
+import GanttChartPage from "@/pages/gantt-chart-page";
 import AnalyticsPage from "@/pages/analytics-page";
 import TimeTrackingPage from "@/pages/time-tracking-page-fixed";
 import NotificationsPage from "@/pages/notifications-page";
@@ -38,6 +39,7 @@ function Router() {
       <ProtectedRoute path="/kanban" component={KanbanPage} />
       <ProtectedRoute path="/planning/kanban" component={KanbanPage} />
       <ProtectedRoute path="/planning/gantt-chart" component={GanttPage} />
+      <ProtectedRoute path="/modern-gantt" component={GanttChartPage} />
       <ProtectedRoute path="/wiki" component={WikiPage} />
       <ProtectedRoute path="/time-tracking" component={TimeTrackingPage} />
       <ProtectedRoute path="/notifications" component={NotificationsPage} />
