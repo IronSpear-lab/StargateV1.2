@@ -408,9 +408,32 @@ export function removeStoredFile(id: string): boolean {
 
 /**
  * Lagra alla filer i en array och returnera deras ID:n
+ * Uppdaterar även fileId-mappningar för konsekvent filåtkomst
  */
 export function storeFiles(files: File[]): string[] {
-  return files.map(file => storeFile(file));
+  // Hämta befintliga mappningar för att hantera fil-IDs konsekvent
+  const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+  
+  const fileIds = files.map(file => {
+    // Skapa ett unikt ID med timestamp och slumpmässig sträng
+    const id = `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    
+    // Uppdatera mappningen så andra delar av appen kan hitta filen
+    fileIdMappings[file.name] = id;
+    
+    // Spara filen för återanvändning
+    storeFileForReuse(file, { uniqueId: id }).catch(err => {
+      console.error("Failed to store file for reuse:", err);
+    });
+    
+    return id;
+  });
+  
+  // Spara uppdaterade mappningar till localStorage
+  localStorage.setItem('pdf_file_id_mappings', JSON.stringify(fileIdMappings));
+  console.log(`[${Date.now()}] Updated file ID mappings in localStorage with ${files.length} new files`);
+  
+  return fileIds;
 }
 
 /**
