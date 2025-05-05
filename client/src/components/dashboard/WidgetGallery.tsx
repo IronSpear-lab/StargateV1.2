@@ -29,6 +29,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { WidthType, HeightType } from "./Widget";
 
 export type WidgetType = {
   id: string;
@@ -36,10 +37,10 @@ export type WidgetType = {
   description: string;
   icon: React.ReactNode;
   category: string;
-  defaultWidth: string;
-  defaultHeight: string;
-  minWidth?: string;
-  minHeight?: string;
+  defaultWidth: WidthType;
+  defaultHeight: HeightType;
+  minWidth?: WidthType;
+  minHeight?: HeightType;
   requiresProjectId?: boolean;
   roles?: string[];
   available: boolean;

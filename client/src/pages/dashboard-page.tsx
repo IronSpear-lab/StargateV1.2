@@ -7,6 +7,7 @@ import {
   WidgetArea, 
   WidgetGallery
 } from "@/components";
+import { WidthType, HeightType } from "@/components/dashboard/Widget";
 import {
   CustomTextWidget,
   CalendarWidget,
@@ -30,8 +31,8 @@ type WidgetInstance = {
   type: string;
   title: string;
   projectId?: number;
-  width: string;
-  height: string;
+  width: WidthType;
+  height: HeightType;
 };
 
 // Define pre-configured dashboard widgets based on the screenshot
