@@ -67,13 +67,13 @@ export function RevenueOverviewWidget() {
   };
 
   return (
-    <Card className="w-full h-full flex flex-col bg-white dark:bg-gray-800 overflow-hidden">
+    <Card className="w-full h-full flex flex-col bg-white dark:bg-background overflow-hidden">
       <CardContent className="p-0 flex-1 flex flex-col">
         <div className="p-4">
           <div className="flex justify-between items-start mb-3">
             <div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Today's Earning: {formatCurrency(2562.30)}</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-[300px]">
+              <h3 className="text-xl font-semibold text-foreground dark:text-foreground">Today's Earning: {formatCurrency(2562.30)}</h3>
+              <p className="text-sm text-foreground/70 dark:text-foreground/70 mt-1 max-w-[300px]">
                 Etiam ultrices nisi vel augue. Curabitur ullamcorper ultricies nisi. Nam eget dui. Etiam rhoncus...
               </p>
             </div>
@@ -92,12 +92,12 @@ export function RevenueOverviewWidget() {
           <div className="flex items-center justify-between mt-4 mb-2">
             <div className="flex items-center">
               <div className="mr-4">
-                <div className="text-sm text-gray-500 dark:text-gray-400">Current Week</div>
-                <div className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(currentWeekTotal)}</div>
+                <div className="text-sm text-foreground/70 dark:text-foreground/70">Current Week</div>
+                <div className="text-lg font-bold text-foreground dark:text-foreground">{formatCurrency(currentWeekTotal)}</div>
               </div>
               <div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">Previous Week</div>
-                <div className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(previousWeekTotal)}</div>
+                <div className="text-sm text-foreground/70 dark:text-foreground/70">Previous Week</div>
+                <div className="text-lg font-bold text-foreground dark:text-foreground">{formatCurrency(previousWeekTotal)}</div>
               </div>
             </div>
             <div className={`flex items-center ${percentChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>

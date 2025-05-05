@@ -93,9 +93,9 @@ export function KpiMetricsWidget({ projectId }: KpiMetricsWidgetProps) {
   }, [projectId]);
 
   return (
-    <Card className="w-full h-full flex flex-col bg-white dark:bg-gray-800 overflow-hidden">
+    <Card className="w-full h-full flex flex-col bg-white dark:bg-background overflow-hidden">
       <CardContent className="p-4 flex-1 flex flex-col">
-        <h3 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-3">Key Performance Indicators</h3>
+        <h3 className="text-md font-semibold text-foreground dark:text-foreground mb-3">Key Performance Indicators</h3>
         
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center">
@@ -106,17 +106,17 @@ export function KpiMetricsWidget({ projectId }: KpiMetricsWidgetProps) {
             {metrics.map((metric, index) => (
               <div 
                 key={index}
-                className="bg-gray-50 dark:bg-gray-700/40 rounded-lg p-3 flex items-center justify-between"
+                className="bg-gray-50/50 dark:bg-white/5 rounded-lg p-3 flex items-center justify-between"
               >
                 <div className="flex items-center">
                   <div className="p-2 rounded-full bg-white dark:bg-gray-800 shadow-sm mr-3">
                     {metric.icon}
                   </div>
                   <div>
-                    <h4 className="text-sm text-gray-500 dark:text-gray-400">{metric.name}</h4>
-                    <div className="text-xl font-bold text-gray-900 dark:text-white">
+                    <h4 className="text-sm text-foreground/70 dark:text-foreground/70">{metric.name}</h4>
+                    <div className="text-xl font-bold text-foreground dark:text-foreground">
                       {typeof metric.value === 'number' ? metric.value.toLocaleString() : metric.value}
-                      <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-1">{metric.unit}</span>
+                      <span className="text-sm font-normal text-foreground/70 dark:text-foreground/70 ml-1">{metric.unit}</span>
                     </div>
                   </div>
                 </div>
