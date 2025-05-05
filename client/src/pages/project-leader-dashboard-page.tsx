@@ -123,6 +123,9 @@ export default function ProjectLeaderDashboardPage() {
   // Track user's projects
   const [userProjects, setUserProjects] = useState<{id: number; name: string}[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState<number | undefined>();
+  
+  // Mock project for when there are no projects (for demo purposes)
+  const defaultProject = { id: 1, name: "Demo Project" };
 
   const form = useForm<ProjectSettingsFormValues>({
     defaultValues: {
@@ -175,31 +178,29 @@ export default function ProjectLeaderDashboardPage() {
     }
   });
 
-  // Default project ID (first project in list)
-  const defaultProjectId = projects && projects.length > 0 ? projects[0].id : undefined;
-  
-  // Update current project when projects load initially
+  // Update projects when data is loaded
   useEffect(() => {
-    if (defaultProjectId && !currentProjectId) {
-      setCurrentProjectId(defaultProjectId);
-    }
-    
     // Update userProjects from fetched data
     if (projects && projects.length > 0) {
+      // Use data from server
       setUserProjects(projects);
+      
+      // Set current project if not already set
+      if (!currentProjectId) {
+        setCurrentProjectId(projects[0].id);
+      }
     } else if (userProjects.length === 0) {
       // Create a default project if no projects exist
-      const defaultProj = { id: 1, name: "My Project" };
-      setUserProjects([defaultProj]);
+      setUserProjects([defaultProject]);
       if (!currentProjectId) {
-        setCurrentProjectId(1);
+        setCurrentProjectId(defaultProject.id);
       }
     }
-  }, [projects, defaultProjectId, currentProjectId]);
+  }, [projects, currentProjectId]);
   
   // Get current project object
-  const currentProject = projects.find((p: { id: number; name: string }) => p.id === currentProjectId) || 
-    (projects.length > 0 ? projects[0] : { id: 0, name: "No Project" });
+  const currentProject = userProjects.find(p => p.id === currentProjectId) || 
+    (userProjects.length > 0 ? userProjects[0] : defaultProject);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -211,7 +212,7 @@ export default function ProjectLeaderDashboardPage() {
       id: uuidv4(),
       type: widgetType.id,
       title: widgetType.name,
-      projectId: currentProjectId || defaultProjectId,
+      projectId: currentProjectId || (userProjects.length > 0 ? userProjects[0].id : defaultProject.id),
       width: widgetType.defaultWidth,
       height: widgetType.defaultHeight
     };
@@ -243,46 +244,38 @@ export default function ProjectLeaderDashboardPage() {
   // Handle project settings form submission
   const onSubmitProjectSettings = (data: ProjectSettingsFormValues) => {
     // Update current project name in the list
-    if (currentProjectId && data.name.trim()) {
+    if (data.name.trim()) {
       // Create a new project object with the updated name
-      const updatedCurrentProject = { 
-        ...currentProject, 
-        name: data.name.trim() 
-      };
-      
-      // In a real app, this would also save to the backend via API call
-      
-      // Create a mock project if we don't have any (first project creation)
-      if (projects.length === 0) {
-        const newProject = {
-          id: 1,
-          name: data.name.trim()
-        };
-        
-        // Create a new projects array with the new project
-        const updatedProjects = [newProject];
-        // @ts-ignore - We know we're only adding to the projects array
-        setProjects(updatedProjects);
-        setCurrentProjectId(1);
-        
-        toast({
-          title: "Project created",
-          description: `Project "${data.name}" has been created`,
-        });
-      } else {
-        // Find the project that needs to be updated
-        const updatedProjects = projects.map((p: { id: number; name: string }) => 
+      if (currentProjectId) {
+        // Update existing project
+        const updatedProjects = userProjects.map(p => 
           p.id === currentProjectId ? { ...p, name: data.name.trim() } : p
         );
         
-        // @ts-ignore - We know we're only modifying the name
-        setProjects(updatedProjects);
+        setUserProjects(updatedProjects);
         
         toast({
           title: "Project settings updated",
           description: "The project settings have been saved successfully",
         });
+      } else {
+        // Create a new project
+        const newProject = {
+          id: userProjects.length > 0 ? Math.max(...userProjects.map(p => p.id)) + 1 : 1,
+          name: data.name.trim()
+        };
+        
+        const updatedProjects = [...userProjects, newProject];
+        setUserProjects(updatedProjects);
+        setCurrentProjectId(newProject.id);
+        
+        toast({
+          title: "Project created",
+          description: `Project "${data.name}" has been created`,
+        });
       }
+      
+      // In a real app, this would also save to the backend via API call
     }
     
     setIsProjectSettingsOpen(false);
@@ -317,7 +310,7 @@ export default function ProjectLeaderDashboardPage() {
   // Render the appropriate widget component based on type
   const renderWidget = (widget: WidgetInstance) => {
     // Always use the current selected project ID
-    const projectId = currentProjectId || (projects.length > 0 ? projects[0].id : undefined);
+    const projectId = currentProjectId || (userProjects.length > 0 ? userProjects[0].id : defaultProject.id);
     
     switch (widget.type) {
       case "budget-cost":
@@ -374,13 +367,13 @@ export default function ProjectLeaderDashboardPage() {
           title="Project Leader Dashboard" 
           onToggleSidebar={toggleSidebar}
           currentProject={currentProject}
-          availableProjects={projects}
+          availableProjects={userProjects}
           onProjectChange={(projectId) => {
             setCurrentProjectId(projectId);
             // Load project-specific data when changing projects
             toast({
               title: "Project changed",
-              description: `Switched to ${projects.find((p: { id: number; name: string }) => p.id === projectId)?.name || 'new project'}`,
+              description: `Switched to ${userProjects.find((p) => p.id === projectId)?.name || 'new project'}`,
             });
           }}
         />
