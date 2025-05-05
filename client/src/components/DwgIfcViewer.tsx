@@ -19,15 +19,15 @@ type FileEntry = {
   date: Date;
 };
 
-// Define a simple structure to hold our ThreeJS objects
-type ThreeViewer = {
+// Define a simple structure for the viewer reference
+interface SimpleCubeViewer {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
   cube: THREE.Mesh;
   animationId?: number;
   dispose: () => void;
-};
+}
 
 export function DwgIfcViewer() {
   const [files, setFiles] = useState<FileEntry[]>([]);
@@ -35,7 +35,7 @@ export function DwgIfcViewer() {
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileEntry | null>(null);
   const viewerContainerRef = useRef<HTMLDivElement>(null);
-  const viewerRef = useRef<ThreeViewer | null>(null);
+  const viewerRef = useRef<SimpleCubeViewer | null>(null);
   const { toast } = useToast();
 
   // Load stored files on mount
@@ -130,17 +130,18 @@ export function DwgIfcViewer() {
         scene.add(cube);
         
         // Animation function
-        let animationId: number;
+        let animationId = 0;
         
         const animate = () => {
-          animationId = requestAnimationFrame(animate);
-          
           // Rotate cube
           cube.rotation.x += 0.01;
           cube.rotation.y += 0.01;
           
           // Render scene
           renderer.render(scene, camera);
+          
+          // Request next frame
+          animationId = requestAnimationFrame(animate);
         };
         
         // Start animation
