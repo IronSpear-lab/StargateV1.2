@@ -8,6 +8,21 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
+// Import necessary components from xeokit-sdk
+// Note: These imports would typically work in a real environment
+// For our demo, we'll mock the necessary parts
+let xeokit: any;
+try {
+  // Try to dynamically import xeokit
+  // In a real implementation we would properly import from the xeokit-sdk package
+  // For now we just check if it's available on window (which it won't be)
+  if (typeof window !== 'undefined' && (window as any).XeoKit) {
+    xeokit = (window as any).XeoKit;
+  }
+} catch (e) {
+  console.warn("XeoKit not available, will use fallback viewer");
+}
+
 // Simple types for our file storage
 type FileEntry = {
   id: string;
@@ -70,7 +85,13 @@ export function DwgIfcViewer() {
   useEffect(() => {
     if (viewerContainerRef.current && !viewerRef.current) {
       try {
-        // Create a simple Three.js scene
+        // First check if we have XeoKit available
+        if (xeokit) {
+          // If XeoKit is available, we'd initialize with it
+          console.log("Would use XeoKit for viewing DWG/IFC files if it was fully integrated");
+        }
+        
+        // For now, we'll use Three.js as a fallback/placeholder
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf0f0f0);
         
@@ -87,18 +108,64 @@ export function DwgIfcViewer() {
         
         viewerContainerRef.current.appendChild(renderer.domElement);
         
-        // Add some simple geometry
-        const geometry = new THREE.BoxGeometry();
-        const material = new THREE.MeshBasicMaterial({ color: 0x727cf5, wireframe: true });
-        const cube = new THREE.Mesh(geometry, material);
-        scene.add(cube);
+        // Create a more complex "building-like" structure instead of just a cube
+        const buildingGroup = new THREE.Group();
+        
+        // Base/foundation
+        const baseGeometry = new THREE.BoxGeometry(4, 0.2, 4);
+        const baseMaterial = new THREE.MeshBasicMaterial({ color: 0xcccccc });
+        const base = new THREE.Mesh(baseGeometry, baseMaterial);
+        base.position.y = -0.8;
+        buildingGroup.add(base);
+        
+        // Main building
+        const buildingGeometry = new THREE.BoxGeometry(3, 1.5, 3);
+        const buildingMaterial = new THREE.MeshBasicMaterial({ 
+          color: 0x727cf5,
+          wireframe: true,
+          transparent: true,
+          opacity: 0.7
+        });
+        const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
+        building.position.y = 0;
+        buildingGroup.add(building);
+        
+        // Roof
+        const roofGeometry = new THREE.ConeGeometry(2.2, 1, 4);
+        const roofMaterial = new THREE.MeshBasicMaterial({ 
+          color: 0xfa5c7c,
+          wireframe: true
+        });
+        const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+        roof.position.y = 1.25;
+        roof.rotation.y = Math.PI / 4; // 45 degrees
+        buildingGroup.add(roof);
+        
+        // Interior walls
+        const wallGeometry = new THREE.BoxGeometry(1.4, 1.3, 0.05);
+        const wallMaterial = new THREE.MeshBasicMaterial({ 
+          color: 0x0acf97,
+          wireframe: true
+        });
+        
+        // Horizontal wall
+        const wallH = new THREE.Mesh(wallGeometry, wallMaterial);
+        wallH.position.set(0, -0.1, 0);
+        buildingGroup.add(wallH);
+        
+        // Vertical wall
+        const wallV = new THREE.Mesh(wallGeometry, wallMaterial);
+        wallV.position.set(0, -0.1, 0);
+        wallV.rotation.y = Math.PI / 2; // 90 degrees
+        buildingGroup.add(wallV);
+        
+        scene.add(buildingGroup);
         
         // Animation loop
         const animate = () => {
           requestAnimationFrame(animate);
           
-          cube.rotation.x += 0.01;
-          cube.rotation.y += 0.01;
+          buildingGroup.rotation.y += 0.005;
           
           renderer.render(scene, camera);
         };
@@ -121,7 +188,8 @@ export function DwgIfcViewer() {
           scene,
           camera,
           renderer,
-          cube,
+          buildingGroup,
+          isXeokit: false, // Flag indicating we're using the fallback
           dispose: () => {
             window.removeEventListener('resize', handleResize);
             renderer.dispose();
@@ -217,6 +285,59 @@ export function DwgIfcViewer() {
   // Handle file selection
   const selectFile = (file: FileEntry) => {
     setSelectedFile(file);
+    
+    // In a real implementation, we would:
+    // 1. Parse the file (using appropriate library for DWG or IFC)
+    // 2. Load it into the viewer (XeoKit or similar)
+    // 3. Setup the scene, camera, and controls
+    
+    // For now, we'll just show different colors and styles based on file type
+    if (viewerRef.current && viewerRef.current.buildingGroup) {
+      // Get file extension
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      
+      if (extension === 'dwg') {
+        // Update the building materials for DWG files (blue theme)
+        const buildingMaterial = viewerRef.current.buildingGroup.children[1].material;
+        if (buildingMaterial) {
+          buildingMaterial.color.set(0x3182ce); // Blue
+        }
+        
+        // Update wall colors
+        const walls = [viewerRef.current.buildingGroup.children[3], viewerRef.current.buildingGroup.children[4]];
+        walls.forEach(wall => {
+          if (wall && wall.material) {
+            wall.material.color.set(0x4299e1); // Lighter blue
+          }
+        });
+        
+        // Add informational message about DWG files
+        toast({
+          title: "DWG File Selected",
+          description: "In a fully implemented viewer, this would show an interactive CAD drawing.",
+        });
+      } else if (extension === 'ifc') {
+        // Update the building materials for IFC files (green theme)
+        const buildingMaterial = viewerRef.current.buildingGroup.children[1].material;
+        if (buildingMaterial) {
+          buildingMaterial.color.set(0x38a169); // Green
+        }
+        
+        // Update wall colors
+        const walls = [viewerRef.current.buildingGroup.children[3], viewerRef.current.buildingGroup.children[4]];
+        walls.forEach(wall => {
+          if (wall && wall.material) {
+            wall.material.color.set(0x48bb78); // Lighter green
+          }
+        });
+        
+        // Add informational message about IFC files
+        toast({
+          title: "IFC File Selected",
+          description: "In a fully implemented viewer, this would show an interactive BIM model.",
+        });
+      }
+    }
   };
 
   // Delete a file
@@ -259,6 +380,15 @@ export function DwgIfcViewer() {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+  
+  // Format file size to human readable format
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
   // Helper function to get file icon based on type
@@ -418,6 +548,14 @@ export function DwgIfcViewer() {
                 <canvas id="dwg-ifc-canvas" className="w-full h-full"></canvas>
                 <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur-sm p-2 rounded border">
                   <p className="text-sm font-medium">{selectedFile.name}</p>
+                  <div className="flex items-center mt-1">
+                    <p className="text-xs text-muted-foreground mr-2">
+                      {selectedFile.name.toLowerCase().endsWith('.dwg') ? 'CAD Drawing' : 'BIM Model'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      • {formatFileSize(new Blob([selectedFile.data]).size)}
+                    </p>
+                  </div>
                 </div>
               </div>
             </>
