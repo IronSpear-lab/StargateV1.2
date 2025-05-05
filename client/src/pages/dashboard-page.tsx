@@ -94,7 +94,15 @@ export default function DashboardPage() {
     const savedWidgets = localStorage.getItem('dashboard-widgets');
     if (savedWidgets) {
       try {
-        setWidgets(JSON.parse(savedWidgets));
+        // Parse and ensure types are correct
+        const parsedWidgets = JSON.parse(savedWidgets) as WidgetInstance[];
+        // Validate widget properties have correct types
+        const validatedWidgets = parsedWidgets.map(widget => ({
+          ...widget,
+          width: (widget.width as WidthType) || "half",
+          height: (widget.height as HeightType) || "medium"
+        }));
+        setWidgets(validatedWidgets);
       } catch (error) {
         console.error('Failed to parse saved widgets:', error);
         setWidgets(defaultWidgets);
@@ -279,6 +287,13 @@ export default function DashboardPage() {
                     width={widget.width}
                     height={widget.height}
                     onRemove={handleRemoveWidget}
+                    onResize={(id, newWidth, newHeight) => {
+                      // Update widget size when resized
+                      const updatedWidgets = widgets.map(w => 
+                        w.id === id ? { ...w, width: newWidth, height: newHeight } : w
+                      );
+                      setWidgets(updatedWidgets);
+                    }}
                   >
                     {renderWidget(widget)}
                   </Widget>
