@@ -218,10 +218,21 @@ export function centerElementInView(
     const elementRect = element.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
     
+    // Beräkna elementets position i dokumentet (ta hänsyn till scaling)
+    // Använd getBoundingClientRect för att få den faktiska positionen efter scaling
+    const elementLeft = elementRect.left - containerRect.left + container.scrollLeft;
+    const elementTop = elementRect.top - containerRect.top + container.scrollTop;
+    
     // Beräkna scroll-position för att centrera elementet
-    // Anpassad till att ta hänsyn till zoom-nivå
-    const scrollX = (element.offsetLeft * scale) - container.offsetLeft - (containerRect.width - (elementRect.width * scale)) / 2;
-    const scrollY = (element.offsetTop * scale) - container.offsetTop - (containerRect.height - (elementRect.height * scale)) / 2;
+    const scrollX = elementLeft - (containerRect.width - elementRect.width) / 2;
+    const scrollY = elementTop - (containerRect.height - elementRect.height) / 2;
+    
+    console.log("Direktcentrering utförd för annotation:", { 
+      elementId: element.id, 
+      scrollX, 
+      scrollY, 
+      scale 
+    });
     
     // Utför scrollningen
     container.scrollTo({
@@ -234,12 +245,24 @@ export function centerElementInView(
     if (addMarker) {
       const marker = document.createElement('div');
       marker.className = 'annotation-marker';
-      marker.style.left = `${element.offsetLeft * scale}px`;
-      marker.style.top = `${element.offsetTop * scale}px`;
-      marker.style.width = `${elementRect.width * scale}px`;
-      marker.style.height = `${elementRect.height * scale}px`;
       
-      element.parentElement?.appendChild(marker);
+      // Använd samma positioneringsmetod som för scrolling
+      marker.style.position = 'absolute';
+      marker.style.left = `${elementLeft}px`;
+      marker.style.top = `${elementTop}px`;
+      marker.style.width = `${elementRect.width}px`;
+      marker.style.height = `${elementRect.height}px`;
+      marker.style.zIndex = '1000';
+      marker.style.pointerEvents = 'none';
+      
+      // Lägg till markören i samma container som elementet
+      container.appendChild(marker);
+      
+      // Logga information för felsökning
+      console.log("Centered on annotation:", {
+        annotationId: element.id,
+        scale
+      });
       
       // Ta bort markören efter angiven tid
       setTimeout(() => {

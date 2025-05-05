@@ -1466,7 +1466,10 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       height: `${height * scale}px`, // Skalad höjd
       background: 'rgba(114, 124, 245, 0.3)',
       border: '2px dashed #727cf5',
-      pointerEvents: 'none' as const
+      pointerEvents: 'none' as const,
+      boxSizing: 'border-box' as const,
+      // Sätt z-index för att säkerställa att den alltid är synlig
+      zIndex: 1000
     };
   };
 
@@ -1862,17 +1865,19 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                             }`}
                             style={{
                               position: 'absolute',
-                              left: `${Number(annotation.rect.x)}px`,
-                              top: `${Number(annotation.rect.y)}px`,
-                              width: `${annotation.rect.width}px`,
-                              height: `${annotation.rect.height}px`,
+                              left: `${Number(annotation.rect.x) * scale}px`,
+                              top: `${Number(annotation.rect.y) * scale}px`,
+                              width: `${annotation.rect.width * scale}px`,
+                              height: `${annotation.rect.height * scale}px`,
                               backgroundColor: `${annotation.color}33`,
                               borderColor: annotation.color,
                               boxShadow: activeAnnotation?.id === annotation.id ? '0 0 15px rgba(59, 130, 246, 0.6)' : 'none',
                               transform: activeAnnotation?.id === annotation.id ? 'scale(1.05)' : 'scale(1)',
                               transformOrigin: 'center',
                               cursor: 'pointer',
-                              pointerEvents: 'auto'
+                              pointerEvents: 'auto',
+                              // Tillägg för att behålla proportioner när storlek ändras
+                              boxSizing: 'border-box'
                             }}
                             onClick={(e) => {
                               e.stopPropagation(); // Förhindra att klicket når underliggande element
