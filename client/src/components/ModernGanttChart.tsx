@@ -519,89 +519,98 @@ const ModernGanttChart: React.FC = () => {
         return null;
       }
       
-      const startTask = dependencyTask;
-      const endTask = task;
+      const sourceTask = dependencyTask; // Källuppgift (den tidigare uppgiften)
+      const targetTask = task;           // Måluppgift (den senare uppgiften)
       
       // Konvertera datestrings till Date-objekt
-      const startTaskStartDate = parseISO(startTask.startDate);
-      const startTaskEndDate = parseISO(startTask.endDate);
-      const endTaskStartDate = parseISO(endTask.startDate);
+      const sourceTaskStartDate = parseISO(sourceTask.startDate);
+      const sourceTaskEndDate = parseISO(sourceTask.endDate);
+      const targetTaskStartDate = parseISO(targetTask.startDate);
       
       // Hitta startindex och slutindex för båda uppgifterna
-      let startTaskStartIdx = -1;
-      let startTaskEndIdx = -1;
-      let endTaskStartIdx = -1;
+      let sourceTaskStartIdx = -1;
+      let sourceTaskEndIdx = -1;
+      let targetTaskStartIdx = -1;
       
-      // Hitta startindex för den första uppgiften
+      // Hitta startindex för källuppgiften
       for (let i = 0; i < days.length; i++) {
-        if (isSameDay(days[i], startTaskStartDate) || isAfter(days[i], startTaskStartDate)) {
-          startTaskStartIdx = i;
+        if (isSameDay(days[i], sourceTaskStartDate) || isAfter(days[i], sourceTaskStartDate)) {
+          sourceTaskStartIdx = i;
           break;
         }
       }
       
-      // Hitta slutindex för den första uppgiften
-      if (startTask.type === 'MILESTONE') {
-        startTaskEndIdx = startTaskStartIdx;
+      // Hitta slutindex för källuppgiften
+      if (sourceTask.type === 'MILESTONE') {
+        sourceTaskEndIdx = sourceTaskStartIdx;
       } else {
         for (let i = 0; i < days.length; i++) {
-          if (isSameDay(days[i], startTaskEndDate) || isAfter(days[i], startTaskEndDate)) {
-            startTaskEndIdx = i;
+          if (isSameDay(days[i], sourceTaskEndDate) || isAfter(days[i], sourceTaskEndDate)) {
+            sourceTaskEndIdx = i;
             break;
           }
         }
       }
       
-      // Hitta startindex för den andra uppgiften
+      // Hitta startindex för måluppgiften
       for (let i = 0; i < days.length; i++) {
-        if (isSameDay(days[i], endTaskStartDate) || isAfter(days[i], endTaskStartDate)) {
-          endTaskStartIdx = i;
+        if (isSameDay(days[i], targetTaskStartDate) || isAfter(days[i], targetTaskStartDate)) {
+          targetTaskStartIdx = i;
           break;
         }
       }
       
-      if (startTaskStartIdx === -1 || startTaskEndIdx === -1 || endTaskStartIdx === -1) {
+      if (sourceTaskStartIdx === -1 || sourceTaskEndIdx === -1 || targetTaskStartIdx === -1) {
         return null;
       }
       
       // Beräkna koordinater för pilen med hänsyn till zoomLevel
       // För en uppgift är slutpositionen startpositionen + bredden
-      const startDayCount = startTask.type === 'MILESTONE' ? 0 : differenceInDays(startTaskEndDate, startTaskStartDate);
-      const startTaskWidth = startTask.type === 'MILESTONE' ? 10 : Math.max((startDayCount + 1) * zoomLevel, zoomLevel);
+      const sourceDayCount = sourceTask.type === 'MILESTONE' ? 0 : differenceInDays(sourceTaskEndDate, sourceTaskStartDate);
+      const sourceTaskWidth = sourceTask.type === 'MILESTONE' ? 10 : Math.max((sourceDayCount + 1) * zoomLevel, zoomLevel);
       
-      const startX = (startTaskStartIdx * zoomLevel) + startTaskWidth; // Slut av den första uppgiften
-      const startY = 15; // Mitten av uppgiftsstapeln
-      const endX = endTaskStartIdx * zoomLevel; // Början av den andra uppgiften
-      const endY = 15; // Mitten av uppgiftsstapeln
+      // Hitta radnummer för att beräkna Y-positioner
+      const sourceTaskIndex = flattenedTasks.findIndex(t => t.id === sourceTask.id);
+      const targetTaskIndex = flattenedTasks.findIndex(t => t.id === targetTask.id);
       
-      // Hitta rätt radnummer för att beräkna Y-position
-      const startTaskIndex = flattenedTasks.findIndex(t => t.id === startTask.id);
-      const endTaskIndex = flattenedTasks.findIndex(t => t.id === endTask.id);
+      // Beräkna faktiska y-positioner baserat på raderna (höjden för varje rad är 40px)
+      const sourceRowY = sourceTaskIndex * 40 + 15; // 15 är mitten på uppgiftsstapeln
+      const targetRowY = targetTaskIndex * 40 + 15;
       
-      // Beräkna faktiska y-positioner baserat på raderna
-      const startRowY = startTaskIndex * 40 + 15; // Höjden på en rad är 40px, 15 är mitten på uppgiftsstapeln
-      const endRowY = endTaskIndex * 40 + 15;
+      // Beräkna x-positioner för pilens start- och slutpunkter
+      const sourceX = (sourceTaskStartIdx * zoomLevel) + sourceTaskWidth; // Slutet av källuppgiften
+      const targetX = targetTaskStartIdx * zoomLevel; // Början av måluppgiften
       
       // Anpassa pilstorleken baserat på zoomnivå
       const arrowThickness = Math.max(1, Math.min(2, zoomLevel / 20));
       
+      // Bestäm pilens form baserat på uppgifternas relativa positioner
       let points = "";
       
-      // Om uppgifterna är på samma rad, rita en enkel linje
-      if (startTaskIndex === endTaskIndex) {
-        points = `${startX},${startRowY} ${endX},${endRowY}`;
-      }
-      // Om uppgifterna är på olika rader, rita en vertikal+horisontell linje
+      // Om pilens riktning är mot vänster (måluppgiften börjar före källuppgiftens slut)
+      // då måste vi rita pilen runt uppgifterna, inte genom dem
+      if (targetX < sourceX) {
+        // Bestäm om vi ska rita pilen uppåt eller nedåt (eller både och)
+        const isUpward = targetTaskIndex < sourceTaskIndex;
+        const midX1 = sourceX + 20; // Temporär punkt till höger om källuppgiften
+        const midX2 = targetX - 20; // Temporär punkt till vänster om måluppgiften
+        const midY = isUpward 
+          ? Math.min(sourceRowY, targetRowY) - 20 // 20px ovanför den övre uppgiften
+          : Math.max(sourceRowY, targetRowY) + 20; // 20px nedanför den nedre uppgiften
+        
+        // Rita en bana som går runt uppgifterna
+        points = `${sourceX},${sourceRowY} ${midX1},${sourceRowY} ${midX1},${midY} ${midX2},${midY} ${midX2},${targetRowY} ${targetX},${targetRowY}`;
+      } 
+      // Normal bana när måluppgiften börjar efter eller samma punkt som källuppgiftens slut
       else {
-        // Bestäm om vi ska rita pilen uppåt eller nedåt
-        if (startTaskIndex < endTaskIndex) {
-          // Rita nedåt
-          const midX = startX + (endX - startX) / 2;
-          points = `${startX},${startRowY} ${midX},${startRowY} ${midX},${endRowY} ${endX},${endRowY}`;
-        } else {
-          // Rita uppåt
-          const midX = startX + (endX - startX) / 2;
-          points = `${startX},${startRowY} ${midX},${startRowY} ${midX},${endRowY} ${endX},${endRowY}`;
+        // Om uppgifterna är på samma rad, rita en enkel linje
+        if (sourceTaskIndex === targetTaskIndex) {
+          points = `${sourceX},${sourceRowY} ${targetX},${targetRowY}`;
+        }
+        // Om uppgifterna är på olika rader, rita en linje med hörnpunkt
+        else {
+          const midX = sourceX + (targetX - sourceX) / 2;
+          points = `${sourceX},${sourceRowY} ${midX},${sourceRowY} ${midX},${targetRowY} ${targetX},${targetRowY}`;
         }
       }
       
@@ -1218,47 +1227,27 @@ const ModernGanttChart: React.FC = () => {
             <Button variant="outline" onClick={cancelCreateTask}>Cancel</Button>
             {isEditMode ? (
               <>
-                <Button variant="destructive" onClick={(e) => {
-                  e.preventDefault();
-                  if (editingTaskId !== null) {
-                    const taskToDelete = tasks.find(t => t.id === editingTaskId);
-                    if (taskToDelete) {
-                      // Hitta och ta bort alla barn rekursivt
-                      const taskIds = new Set<number>();
-                      
-                      // Identifiera alla uppgifter som ska tas bort (uppgiften och alla barn)
-                      const findTasksToDelete = (taskId: number) => {
-                        taskIds.add(taskId);
+                <Button 
+                  variant="destructive" 
+                  onClick={() => {
+                    if (editingTaskId !== null) {
+                      // Hämta uppgiften som ska tas bort
+                      const taskToRemove = tasks.find(t => t.id === editingTaskId);
+                      if (taskToRemove) {
+                        // Ta bort uppgiften från listan
+                        setTasks(prevTasks => prevTasks.filter(t => t.id !== editingTaskId));
                         
-                        // Hitta alla direkta barn till denna uppgift
-                        const children = tasks.filter(t => t.parentId === taskId);
+                        toast({
+                          title: "Task Deleted",
+                          description: `${taskToRemove.name} has been removed from the Gantt chart`,
+                        });
                         
-                        // Lägg till alla barnens ID och fortsätt neråt i hierarkin
-                        children.forEach(child => findTasksToDelete(child.id));
-                      };
-                      
-                      // Starta med den valda uppgiften
-                      findTasksToDelete(taskToDelete.id);
-                      
-                      // Beräkna antalet uppgifter som tas bort
-                      const deletedCount = taskIds.size;
-                      
-                      // Ta bort uppgifterna från listan
-                      setTasks(prev => prev.filter(t => !taskIds.has(t.id)));
-                      
-                      // Visa bekräftelse med toast
-                      toast({
-                        title: "Uppgift borttagen",
-                        description: `${taskToDelete.name} ${deletedCount > 1 ? `och ${deletedCount - 1} relaterade uppgifter` : ''} har tagits bort från Gantt-diagrammet.`,
-                      });
-                      
-                      // Stäng dialogen
-                      setShowCreateDialog(false);
-                      setIsEditMode(false);
-                      setEditingTaskId(null);
+                        // Stäng dialogen och återställ redigeringsläge
+                        setShowCreateDialog(false);
+                      }
                     }
-                  }
-                }}>
+                  }}
+                >
                   Delete Task
                 </Button>
                 <Button onClick={saveNewTask}>
