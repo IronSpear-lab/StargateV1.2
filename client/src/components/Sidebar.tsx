@@ -54,7 +54,7 @@ type NavItemType = {
   active?: boolean;
   indent?: number;
   children?: NavItemType[];
-  type?: 'folder' | 'file' | 'link'; // För att kunna identifiera mappar och visa plustecken
+  type?: 'folder' | 'file' | 'link' | string; // För att kunna identifiera mappar och visa plustecken
   onAddClick?: () => void;
 };
 
@@ -258,6 +258,15 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       active: location === "/",
       type: "link"
     },
+    // Projektledardashboard - endast synlig för project_leader och admin
+    ...((user?.role === "project_leader" || user?.role === "admin") ? [{
+      href: "/project-leader-dashboard",
+      label: "Project Leader Dashboard",
+      icon: <BarChart2 className="w-5 h-5" />,
+      active: location === "/project-leader-dashboard",
+      type: "link",
+      badge: "New"
+    }] : []),
     {
       href: "#", // No direct planning page
       label: "Planning",

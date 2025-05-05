@@ -42,10 +42,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import type { WidgetType } from "@/components/dashboard/WidgetGallery";
-import { BudgetCostWidget } from "@/components/dashboard/widgets/leader/BudgetCostWidget";
-import { RevenueOverviewWidget } from "@/components/dashboard/widgets/leader/RevenueOverviewWidget";
-import { KpiMetricsWidget } from "@/components/dashboard/widgets/leader/KpiMetricsWidget";
-import { AiForecastWidget } from "@/components/dashboard/widgets/leader/AiForecastWidget";
+import {
+  BudgetCostWidget,
+  RevenueOverviewWidget,
+  KpiMetricsWidget,
+  AiForecastWidget
+} from "@/components/dashboard/widgets/leader";
 
 // Define a widget instance type for state management
 type WidgetInstance = {
