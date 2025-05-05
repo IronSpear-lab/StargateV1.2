@@ -100,7 +100,7 @@ export function RevenueOverviewWidget() {
                 <div className="text-lg font-bold text-foreground dark:text-foreground">{formatCurrency(previousWeekTotal)}</div>
               </div>
             </div>
-            <div className={`flex items-center ${percentChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            <div className={`flex items-center ${percentChange >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-primary dark:text-primary'}`}>
               {percentChange >= 0 ? 
                 <TrendingUp className="h-5 w-5 mr-1" /> : 
                 <TrendingDown className="h-5 w-5 mr-1" />
@@ -120,11 +120,11 @@ export function RevenueOverviewWidget() {
                   data={data}
                   margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                   <XAxis 
                     dataKey="day" 
                     tick={{ fill: '#6B7280', fontSize: 12 }}
-                    axisLine={{ stroke: '#e5e7eb' }}
+                    axisLine={{ stroke: 'var(--border)' }}
                     tickLine={false}
                   />
                   <YAxis 

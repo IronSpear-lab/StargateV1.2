@@ -70,7 +70,7 @@ export function KpiMetricsWidget({ projectId }: KpiMetricsWidgetProps) {
             value: 92,
             unit: "%",
             change: 3.2,
-            icon: <Percent className="h-5 w-5 text-green-500" />
+            icon: <Percent className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
           },
           {
             name: "Task Completion Rate",
@@ -106,10 +106,10 @@ export function KpiMetricsWidget({ projectId }: KpiMetricsWidgetProps) {
             {metrics.map((metric, index) => (
               <div 
                 key={index}
-                className="bg-gray-50/50 dark:bg-white/5 rounded-lg p-3 flex items-center justify-between"
+                className="bg-muted/50 dark:bg-white/5 rounded-lg p-3 flex items-center justify-between"
               >
                 <div className="flex items-center">
-                  <div className="p-2 rounded-full bg-white dark:bg-gray-800 shadow-sm mr-3">
+                  <div className="p-2 rounded-full bg-background dark:bg-muted shadow-sm mr-3">
                     {metric.icon}
                   </div>
                   <div>
@@ -124,10 +124,10 @@ export function KpiMetricsWidget({ projectId }: KpiMetricsWidgetProps) {
                 <div className="flex flex-col items-end">
                   <div className={`flex items-center text-sm font-medium ${
                     metric.change > 0 
-                      ? 'text-green-500' 
+                      ? 'text-emerald-500 dark:text-emerald-400' 
                       : metric.change < 0 
-                        ? 'text-red-500' 
-                        : 'text-gray-500'
+                        ? 'text-primary dark:text-primary' 
+                        : 'text-muted-foreground'
                   }`}>
                     {metric.change > 0 ? (
                       <TrendingUp className="h-4 w-4 mr-1" />
@@ -145,7 +145,7 @@ export function KpiMetricsWidget({ projectId }: KpiMetricsWidgetProps) {
                             <path
                               d={generateSparklinePoints(64, 40, metric.change > 0 ? 'up' : metric.change < 0 ? 'down' : 'neutral')}
                               fill="none"
-                              stroke={metric.change > 0 ? "#10B981" : metric.change < 0 ? "var(--primary)" : "#6B7280"}
+                              stroke={metric.change > 0 ? "var(--emerald-500)" : metric.change < 0 ? "var(--primary)" : "var(--muted-foreground)"}
                               strokeWidth="2"
                             />
                           </svg>
