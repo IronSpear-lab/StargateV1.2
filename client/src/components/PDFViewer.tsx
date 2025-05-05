@@ -827,9 +827,9 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       // Vänta tills allt är renderat innan scrollning
       setTimeout(() => {
         // Kontrollera att container och element fortfarande finns
-        if (pdfContainerRef.current && pdfContainerRef.current.id && annotationElement) {
+        if (pdfContainerRef.current && annotationElement) {
           try {
-            // Skapa en tillfällig mer synlig markör
+            // Skapa en tillfällig mer synlig markör med pulserande effekt
             const markerId = `marker-${annotation.id}`;
             const existingMarker = document.getElementById(markerId);
             if (existingMarker && existingMarker.parentNode) {
@@ -840,11 +840,28 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             marker.id = markerId;
             marker.className = "annotation-marker";
             marker.style.position = "absolute";
-            marker.style.left = `${Number(annotation.rect.x) + 190}px`; // 200 - 10 för att få positionen rätt
-            marker.style.top = `${Number(annotation.rect.y) + 190}px`; // 200 - 10 för att få positionen rätt
+            marker.style.left = `${Number(annotation.rect.x) + 190}px`; 
+            marker.style.top = `${Number(annotation.rect.y) + 190}px`;
             marker.style.width = `${annotation.rect.width + 20}px`;
             marker.style.height = `${annotation.rect.height + 20}px`;
             marker.style.zIndex = "1000";
+            marker.style.border = `3px solid ${annotation.color}`;
+            marker.style.borderRadius = "5px";
+            marker.style.boxShadow = `0 0 15px ${annotation.color}`;
+            marker.style.animation = "pulsate 1.5s infinite alternate";
+            
+            // Lägg till CSS för pulserande effekt om den inte redan finns
+            if (!document.getElementById('pulsate-animation')) {
+              const style = document.createElement('style');
+              style.id = 'pulsate-animation';
+              style.textContent = `
+                @keyframes pulsate {
+                  0% { opacity: 0.6; transform: scale(1); }
+                  100% { opacity: 1; transform: scale(1.1); }
+                }
+              `;
+              document.head.appendChild(style);
+            }
             
             // Lägg till markören nära annotationen
             if (pageRef.current) {
@@ -856,16 +873,14 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             const annotRect = annotationElement.getBoundingClientRect();
             
             // Beräkna scroll-position för att få elementet i mitten
-            // Viktigt: Justera beräkningen för att ta hänsyn till padding och skalning
-            const scrollLeft = annotationElement.offsetLeft - 
-              (containerRect.width / 2 - annotRect.width / 2);
-            const scrollTop = annotationElement.offsetTop - pdfContainerRef.current.offsetTop - 
-              (containerRect.height / 2 - annotRect.height / 2);
+            // Uppdaterad beräkning för att säkerställa korrekt centrering
+            const scrollLeft = annotationElement.offsetLeft - (containerRect.width / 2) + (annotRect.width / 2);
+            const scrollTop = annotationElement.offsetTop - (containerRect.height / 2) + (annotRect.height / 2);
             
-            // Gör scrollningen
+            // Gör scrollningen med negativa minvärden för att tillåta scrollning åt alla håll
             pdfContainerRef.current.scrollTo({
-              left: Math.max(0, scrollLeft),
-              top: Math.max(0, scrollTop),
+              left: scrollLeft,
+              top: scrollTop,
               behavior: 'smooth'
             });
             
@@ -1617,19 +1632,23 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
           
           <div 
             ref={pdfContainerRef}
-            className="flex-1 bg-gray-200 relative pdfViewerContainer" 
+            className="flex-1 bg-gray-200 pdfViewerContainer" 
             style={{ 
               cursor: isMarking ? 'crosshair' : 'default',
               overflow: 'auto', // Säkerställ att scrollning fungerar i alla riktningar
               width: '100%',
-              height: '100%'
+              height: '100%',
+              position: 'relative',
+              display: 'flex', 
+              alignItems: 'flex-start', 
+              justifyContent: 'flex-start'
             }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
           >
             {file ? (
-              <div className="flex items-center justify-center" ref={pageRef}>
+              <div className="inline-block" ref={pageRef}>
                 <Document
                   file={file}
                   onLoadSuccess={onDocumentLoadSuccess}
@@ -1650,7 +1669,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                   <div className="pdf-page-wrapper" style={{ 
                     padding: "200px", // Lägg till marginaler runt dokumentet
                     background: "transparent", // Genomskinlig bakgrund för att visa grid
-                    position: "relative" // Behåll markeringar inom detta element
+                    position: "relative", // Behåll markeringar inom detta element
+                    display: "inline-block" // Försäkra oss om att vi kan scrolla i alla riktningar
                   }}>
                     <Page
                       pageNumber={pageNumber}

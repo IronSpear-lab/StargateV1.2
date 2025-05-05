@@ -17,9 +17,31 @@
   }
 }
 
+@keyframes pulsate {
+  0% { opacity: 0.6; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1.1); }
+}
+
 .annotation-pulse {
   animation: pulse 1.5s ease-in-out 2;
   z-index: 100 !important;
+}
+
+.annotation-marker {
+  animation: pulsate 1.5s infinite alternate;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* PDF Viewer */
+.pdfViewerContainer {
+  background-color: #f5f5f5;
+  background-image: 
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+  min-width: 100%;
+  min-height: 100%;
 }
 
 @layer base {
