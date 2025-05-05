@@ -1027,17 +1027,31 @@ const ModernGanttChart: React.FC = () => {
               
               {/* Dagrubrik */}
               <div className="flex border-b border-gray-200 dark:border-slate-700 h-8">
-                {days.map((day, index) => (
-                  <div 
-                    key={index}
-                    className={`text-center text-xs py-1 border-r border-gray-200 dark:border-slate-700 ${
-                      isSameDay(day, new Date()) ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                    }`}
-                    style={{ width: `${zoomLevel}px` }}
-                  >
-                    {format(day, 'd')}
-                  </div>
-                ))}
+                {days.map((day, index) => {
+                  // Visa endast vissa dagar vid låg zoom för att undvika överlappning
+                  const showDay = 
+                    zoomLevel >= 30 || // Visa alla dagar vid hög zoom
+                    (zoomLevel >= 20 && day.getDate() % 2 === 1) || // Visa udda dagar vid mellan zoom
+                    (zoomLevel < 20 && day.getDate() % 3 === 1);    // Visa var tredje dag vid låg zoom
+                    
+                  // Markera första dagen i månaden med tjockare vänsterkant
+                  const isFirstOfMonth = day.getDate() === 1;
+                  
+                  return (
+                    <div 
+                      key={index}
+                      className={`
+                        text-center text-xs py-1 
+                        border-r border-gray-200 dark:border-slate-700 
+                        ${isSameDay(day, new Date()) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
+                        ${isFirstOfMonth ? 'border-l-2 border-l-gray-300 dark:border-l-gray-600' : ''}
+                      `}
+                      style={{ width: `${zoomLevel}px` }}
+                    >
+                      {showDay ? format(day, 'd') : ''}
+                    </div>
+                  );
+                })}
               </div>
             </div>
             
@@ -1231,20 +1245,27 @@ const ModernGanttChart: React.FC = () => {
                   variant="destructive" 
                   onClick={() => {
                     if (editingTaskId !== null) {
-                      // Hämta uppgiften som ska tas bort
-                      const taskToRemove = tasks.find(t => t.id === editingTaskId);
-                      if (taskToRemove) {
-                        // Ta bort uppgiften från listan
-                        setTasks(prevTasks => prevTasks.filter(t => t.id !== editingTaskId));
+                      // Stäng dialogen och återställ redigeringsläge
+                      setShowCreateDialog(false);
+                      
+                      // Pausa en kort stund för att låta dialogen stängas korrekt
+                      setTimeout(() => {
+                        // Hämta uppgiften som ska tas bort
+                        const taskToRemove = tasks.find(t => t.id === editingTaskId);
+                        if (taskToRemove) {
+                          // Ta bort uppgiften från listan
+                          setTasks(prevTasks => prevTasks.filter(t => t.id !== editingTaskId));
+                          
+                          toast({
+                            title: "Task Deleted",
+                            description: `${taskToRemove.name} has been removed from the Gantt chart`,
+                          });
+                        }
                         
-                        toast({
-                          title: "Task Deleted",
-                          description: `${taskToRemove.name} has been removed from the Gantt chart`,
-                        });
-                        
-                        // Stäng dialogen och återställ redigeringsläge
-                        setShowCreateDialog(false);
-                      }
+                        // Återställ redigeringsläge
+                        setIsEditMode(false);
+                        setEditingTaskId(null);
+                      }, 100);
                     }
                   }}
                 >
