@@ -64,18 +64,18 @@ export function BudgetCostWidget({ projectId }: BudgetCostWidgetProps) {
   };
 
   return (
-    <Card className="w-full h-full flex flex-col bg-white dark:bg-gray-800 overflow-hidden">
+    <Card className="w-full h-full flex flex-col bg-white dark:bg-background overflow-hidden">
       <CardContent className="p-0 flex-1 flex flex-col">
         <div className="p-4 flex flex-col">
           <div className="flex justify-between items-start mb-2">
             <div>
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Total Budget</h3>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h3 className="text-sm font-medium text-foreground/70 dark:text-foreground/70">Total Budget</h3>
+              <p className="text-2xl font-bold text-foreground dark:text-foreground">
                 {formatCurrency(data.length > 0 ? data[data.length - 1]?.plannedBudget : 0)}
               </p>
             </div>
             <div className="text-right">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">This Week</h3>
+              <h3 className="text-sm font-medium text-foreground/70 dark:text-foreground/70">This Week</h3>
               <p className={`text-lg font-semibold ${budgetDifference > 0 ? 'text-red-500' : 'text-green-500'}`}>
                 {budgetDifference > 0 ? '+' : ''}{budgetDifference.toFixed(1)}% over budget
               </p>

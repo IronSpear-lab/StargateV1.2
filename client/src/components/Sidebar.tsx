@@ -561,7 +561,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               )}
               
               {/* Tooltip som visas vid hover (endast för när sidebar är minimerad) */}
-              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 bg-background border border-border rounded-md shadow-md transition-opacity duration-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible">
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 bg-white dark:bg-white/5 border border-border rounded-md shadow-md transition-opacity duration-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible">
                 <div className="py-2 px-3 whitespace-nowrap flex items-center justify-between">
                   <span className="font-medium text-sm">{item.label}</span>
                   
@@ -833,7 +833,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               <Button variant="ghost" size="icon" className="h-9 w-9">
                 <Search className="h-4 w-4 text-muted-foreground" />
               </Button>
-              <div className="absolute left-full ml-2 px-3 py-2 rounded-md bg-background border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+              <div className="absolute left-full ml-2 px-3 py-2 rounded-md bg-white dark:bg-white/5 border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
                 Search
               </div>
             </div>
@@ -862,7 +862,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               {isOpen && <span className="ml-2 text-sm">Logga ut</span>}
               
               {!isOpen && (
-                <div className="absolute left-full ml-2 px-3 py-2 rounded-md bg-background border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+                <div className="absolute left-full ml-2 px-3 py-2 rounded-md bg-white dark:bg-white/5 border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
                   Logga ut
                 </div>
               )}
@@ -884,7 +884,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               </Avatar>
               
               {!isOpen && (
-                <div className="absolute left-full ml-2 px-3 py-2 rounded-md bg-background border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+                <div className="absolute left-full ml-2 px-3 py-2 rounded-md bg-white dark:bg-white/5 border border-border shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
                   {user ? user.username : "Ej inloggad"}
                 </div>
               )}
