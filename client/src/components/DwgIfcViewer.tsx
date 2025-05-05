@@ -383,7 +383,7 @@ export function DwgIfcViewer() {
   };
   
   // Format file size to human readable format
-  const formatFileSize = (bytes: number) => {
+  const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -553,7 +553,7 @@ export function DwgIfcViewer() {
                       {selectedFile.name.toLowerCase().endsWith('.dwg') ? 'CAD Drawing' : 'BIM Model'}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      • File uploaded successfully
+                      • Size: {formatBytes(selectedFile.data.size)}
                     </p>
                   </div>
                 </div>

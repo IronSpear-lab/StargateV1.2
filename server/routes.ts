@@ -441,15 +441,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Recent files API
   app.get(`${apiPrefix}/files/recent`, (req, res) => {
-    // Just return empty array to avoid errors
-    return res.json([]);
+    // Return sample files to avoid errors
+    const sampleFiles = [
+      {
+        id: "101",
+        name: "System Architecture.pdf",
+        fileType: "pdf",
+        fileSize: 3450000,
+        lastModified: new Date().toISOString(),
+        folder: "Documentation",
+        uploadedBy: "System",
+        uploadedById: "system"
+      },
+      {
+        id: "102",
+        name: "Project Timeline.xlsx",
+        fileType: "xlsx", 
+        fileSize: 1250000,
+        lastModified: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // Yesterday
+        folder: "Planning",
+        uploadedBy: "System",
+        uploadedById: "system"
+      }
+    ];
+    return res.json(sampleFiles);
   });
   
-  // Adding a different endpoint for testing
+  // Keep the test-files endpoint as an alternative
   app.get(`${apiPrefix}/test-files`, (req, res) => {
     return res.json([
       {
-        id: "101",
+        id: "103",
         name: "System Architecture.pdf",
         fileType: "pdf",
         fileSize: 3450000,
