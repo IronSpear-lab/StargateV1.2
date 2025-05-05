@@ -9,6 +9,7 @@ import {
   Calendar, 
   ChevronLeft, 
   ChevronRight,
+  Diamond,
   Link as LinkIcon,
   Link2Off,
   Pencil,
@@ -646,18 +647,51 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
     setIsTaskDialogOpen(true);
   };
 
-  // CSS styles for task bars
+  // Define custom styles based on task type
+  const getTaskStyles = (taskType: string) => {
+    const baseStyles: React.CSSProperties = {
+      height: '24px',
+      borderRadius: '4px',
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.08)',
+      cursor: 'pointer',
+      position: 'absolute' as 'absolute',
+      top: '50%',
+      transform: 'translateY(-50%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      fontWeight: 500,
+      fontSize: '0.85rem',
+      transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+    };
+
+    // Customize based on task type
+    switch(taskType.toUpperCase()) {
+      case 'MILESTONE':
+        return {
+          ...baseStyles,
+          height: '20px', // Smaller height for milestones
+          minWidth: '20px', // Square aspect for milestone
+          borderRadius: '50%', // Circle for milestone
+          justifyContent: 'center',
+          borderWidth: '0px',
+          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.12)'
+        };
+      case 'PHASE':
+        return {
+          ...baseStyles,
+          height: '28px', // Taller for phases
+          fontWeight: 600,
+          borderRadius: '6px',
+          boxShadow: '0 3px 6px rgba(0, 0, 0, 0.1)'
+        };
+      default: // TASK or any other
+        return baseStyles;
+    }
+  };
+  
+  // CSS styles for task bars (default)
   const taskStyles = {
-    height: '24px',
-    borderRadius: '4px',
-    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
-    cursor: 'pointer',
-    position: 'absolute' as 'absolute',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     padding: '0 4px',
     fontSize: '12px',
     fontWeight: 500,
@@ -868,10 +902,12 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
                                 className={cn(
                                   "task-bar", 
                                   task.color,
-                                  selectedTask?.id === task.id && "ring-2 ring-blue-500 ring-offset-1" // Highlight selected task
+                                  selectedTask?.id === task.id && "ring-2 ring-blue-500 ring-offset-1", // Highlight selected task
+                                  task.type?.toUpperCase() === 'MILESTONE' && "flex items-center justify-center"
                                 )}
                                 style={{
                                   ...taskStyles,
+                                  ...getTaskStyles(task.type || 'TASK'),
                                   ...getTaskPosition(task)
                                 }}
                                 onClick={(e) => handleTaskClick(e, task)}
@@ -883,7 +919,13 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
                                   onMouseDown={(e) => handleTaskMouseDown(e, task, 'resize-left')}
                                 />
                                 
-                                <span className="px-1 truncate">{task.title}</span>
+                                {task.type?.toUpperCase() === 'MILESTONE' ? (
+                                  <span>
+                                    <Diamond className="h-3 w-3 text-white" />
+                                  </span>
+                                ) : (
+                                  <span className="px-1 truncate">{task.title}</span>
+                                )}
                                 
                                 <div 
                                   className="absolute right-0 top-0 w-2 h-full cursor-ew-resize"
@@ -1042,18 +1084,14 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
                 
                 <div className="space-y-2">
                   <Label htmlFor="type">Type</Label>
-                  <Select name="type" defaultValue={editingTask?.type || "feature"}>
+                  <Select name="type" defaultValue={editingTask?.type || "TASK"}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="feature">Feature</SelectItem>
-                      <SelectItem value="bug">Bug</SelectItem>
-                      <SelectItem value="task">Task</SelectItem>
-                      <SelectItem value="research">Research</SelectItem>
-                      <SelectItem value="design">Design</SelectItem>
-                      <SelectItem value="documentation">Documentation</SelectItem>
-                      <SelectItem value="setup">Setup</SelectItem>
+                      <SelectItem value="TASK">Task</SelectItem>
+                      <SelectItem value="MILESTONE">Milestone</SelectItem>
+                      <SelectItem value="PHASE">Phase</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
