@@ -9,7 +9,6 @@ import {
   Calendar, 
   ChevronLeft, 
   ChevronRight,
-  Diamond,
   Link as LinkIcon,
   Link2Off,
   Pencil,
@@ -220,29 +219,21 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
   useEffect(() => {
     if (tasksData) {
       const processedTasks: GanttTask[] = tasksData.map((task: any) => {
-        // Determine color based on task type (Task, Milestone, Phase)
-        let color = 'bg-blue-500';
-        let taskType = task.type || 'TASK'; // Default to TASK if no type is specified
-        
-        switch (taskType.toUpperCase()) {
-          case 'TASK':
+        // Determine color based on status
+        let color = 'bg-primary-500';
+        switch (task.status) {
+          case 'todo':
+            color = 'bg-neutral-400';
+            break;
+          case 'in_progress':
+            color = 'bg-amber-500';
+            break;
+          case 'review':
             color = 'bg-blue-500';
             break;
-          case 'MILESTONE':
-            color = 'bg-orange-500';
+          case 'done':
+            color = 'bg-green-500';
             break;
-          case 'PHASE':
-            color = 'bg-purple-500';
-            break;
-          default:
-            color = 'bg-blue-500';
-        }
-        
-        // Apply status-based opacity to indicate progress
-        if (task.status === 'done') {
-          color += ' opacity-80';
-        } else if (task.status === 'in_progress') {
-          color += ' opacity-90';
         }
 
         return {
@@ -254,7 +245,7 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
           dueDate: task.dueDate ? parseISO(task.dueDate) : null,
           status: task.status,
           assigneeId: task.assigneeId,
-          type: taskType,
+          type: task.type,
           priority: task.priority,
           dependencies: task.dependencies || [],
           dependents: task.dependents || [],
@@ -647,52 +638,18 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
     setIsTaskDialogOpen(true);
   };
 
-  // Define custom styles based on task type
-  const getTaskStyles = (taskType: string) => {
-    const baseStyles: React.CSSProperties = {
-      height: '24px',
-      borderRadius: '4px',
-      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.08)',
-      cursor: 'pointer',
-      position: 'absolute' as 'absolute',
-      top: '50%',
-      transform: 'translateY(-50%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      fontWeight: 500,
-      fontSize: '0.85rem',
-      transition: 'all 0.2s ease',
-      backdropFilter: 'blur(8px)'
-    };
-
-    // Customize based on task type
-    switch(taskType.toUpperCase()) {
-      case 'MILESTONE':
-        return {
-          ...baseStyles,
-          height: '20px', // Smaller height for milestones
-          minWidth: '20px', // Square aspect for milestone
-          borderRadius: '50%', // Circle for milestone
-          justifyContent: 'center',
-          borderWidth: '0px',
-          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.12)'
-        };
-      case 'PHASE':
-        return {
-          ...baseStyles,
-          height: '28px', // Taller for phases
-          fontWeight: 600,
-          borderRadius: '6px',
-          boxShadow: '0 3px 6px rgba(0, 0, 0, 0.1)'
-        };
-      default: // TASK or any other
-        return baseStyles;
-    }
-  };
-  
-  // CSS styles for task bars (default)
+  // CSS styles for task bars
   const taskStyles = {
+    height: '24px',
+    borderRadius: '4px',
+    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+    cursor: 'pointer',
+    position: 'absolute' as 'absolute',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     padding: '0 4px',
     fontSize: '12px',
     fontWeight: 500,
@@ -903,12 +860,10 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
                                 className={cn(
                                   "task-bar", 
                                   task.color,
-                                  selectedTask?.id === task.id && "ring-2 ring-blue-500 ring-offset-1", // Highlight selected task
-                                  task.type?.toUpperCase() === 'MILESTONE' && "flex items-center justify-center"
+                                  selectedTask?.id === task.id && "ring-2 ring-blue-500 ring-offset-1" // Highlight selected task
                                 )}
                                 style={{
                                   ...taskStyles,
-                                  ...getTaskStyles(task.type || 'TASK'),
                                   ...getTaskPosition(task)
                                 }}
                                 onClick={(e) => handleTaskClick(e, task)}
@@ -920,13 +875,7 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
                                   onMouseDown={(e) => handleTaskMouseDown(e, task, 'resize-left')}
                                 />
                                 
-                                {task.type?.toUpperCase() === 'MILESTONE' ? (
-                                  <span>
-                                    <div className="w-3 h-3 bg-white transform rotate-45" />
-                                  </span>
-                                ) : (
-                                  <span className="px-1 truncate">{task.title}</span>
-                                )}
+                                <span className="px-1 truncate">{task.title}</span>
                                 
                                 <div 
                                   className="absolute right-0 top-0 w-2 h-full cursor-ew-resize"
@@ -935,48 +884,17 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <div className="space-y-2 max-w-sm">
-                                <div className="flex items-center gap-2">
-                                  <div className={cn(
-                                    "h-3 w-3",
-                                    task.type?.toUpperCase() === 'MILESTONE' ? "transform rotate-45 bg-orange-500" :
-                                    task.type?.toUpperCase() === 'PHASE' ? "rounded-sm bg-purple-500" : 
-                                    "rounded-sm bg-blue-500"
-                                  )}></div>
-                                  <p className="font-semibold">{task.title}</p>
-                                </div>
-                                
-                                <div className="bg-neutral-50 p-2 rounded-md border">
-                                  {task.startDate && task.endDate && (
-                                    <div className="flex gap-2 items-center mb-1">
-                                      <Calendar className="h-3 w-3 text-neutral-500" />
-                                      <p className="text-xs text-neutral-700">
-                                        {format(typeof task.startDate === 'string' ? parseISO(task.startDate) : task.startDate, 'MMM d')} - 
-                                        {format(typeof task.endDate === 'string' ? parseISO(task.endDate) : task.endDate, 'MMM d, yyyy')}
-                                      </p>
-                                    </div>
-                                  )}
-                                  
-                                  <div className="flex justify-between items-center mb-1">
-                                    <span className="text-xs bg-neutral-200 text-neutral-700 px-1.5 py-0.5 rounded-full capitalize">
-                                      {task.status}
-                                    </span>
-                                    <span className="text-xs text-neutral-600 capitalize">Type: {task.type || 'Task'}</span>
-                                  </div>
-                                  
-                                  {task.assigneeName && 
-                                    <p className="text-xs text-neutral-600 mt-1">
-                                      Assigned to: <span className="font-medium">{task.assigneeName}</span>
-                                    </p>
-                                  }
-                                </div>
-                                
-                                {task.description && 
-                                  <div>
-                                    <p className="text-xs text-neutral-500 font-medium">Description:</p>
-                                    <p className="text-xs max-w-xs mt-1 text-neutral-700">{task.description}</p>
-                                  </div>
-                                }
+                              <div className="space-y-1">
+                                <p className="font-semibold">{task.title}</p>
+                                {task.startDate && task.endDate && (
+                                  <p className="text-xs">
+                                    {format(typeof task.startDate === 'string' ? parseISO(task.startDate) : task.startDate, 'MMM d')} - 
+                                    {format(typeof task.endDate === 'string' ? parseISO(task.endDate) : task.endDate, 'MMM d, yyyy')}
+                                  </p>
+                                )}
+                                {task.description && <p className="text-xs max-w-xs">{task.description}</p>}
+                                <p className="text-xs">Status: {task.status}</p>
+                                {task.assigneeName && <p className="text-xs">Assigned to: {task.assigneeName}</p>}
                               </div>
                             </TooltipContent>
                           </Tooltip>
@@ -1116,26 +1034,18 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
                 
                 <div className="space-y-2">
                   <Label htmlFor="type">Type</Label>
-                  <Select name="type" defaultValue={editingTask?.type || "TASK"}>
+                  <Select name="type" defaultValue={editingTask?.type || "feature"}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="TASK" className="flex items-center gap-2">
-                        <div className="h-3 w-3 rounded-sm bg-blue-500"></div>
-                        <span>Task</span>
-                        <span className="text-xs text-neutral-500 ml-1">- Standard work item</span>
-                      </SelectItem>
-                      <SelectItem value="MILESTONE" className="flex items-center gap-2">
-                        <div className="h-3 w-3 transform rotate-45 bg-orange-500"></div>
-                        <span>Milestone</span>
-                        <span className="text-xs text-neutral-500 ml-1">- Key project event</span>
-                      </SelectItem>
-                      <SelectItem value="PHASE" className="flex items-center gap-2">
-                        <div className="h-3 w-3 rounded-sm bg-purple-500"></div>
-                        <span>Phase</span>
-                        <span className="text-xs text-neutral-500 ml-1">- Project period</span>
-                      </SelectItem>
+                      <SelectItem value="feature">Feature</SelectItem>
+                      <SelectItem value="bug">Bug</SelectItem>
+                      <SelectItem value="task">Task</SelectItem>
+                      <SelectItem value="research">Research</SelectItem>
+                      <SelectItem value="design">Design</SelectItem>
+                      <SelectItem value="documentation">Documentation</SelectItem>
+                      <SelectItem value="setup">Setup</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -1,10 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
-
-// Initialize pdfjs worker with local file
-if (typeof window !== 'undefined' && !pdfjs.GlobalWorkerOptions.workerSrc) {
-  pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.js`;
-}
+import { Document, Page } from 'react-pdf';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -44,7 +39,7 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
 // Vi lägger till typer för annotations
-interface PDFAnnotation {
+export interface PDFAnnotation {
   id: string;
   rect: {
     x: number;
@@ -530,7 +525,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     console.log("saveNewVersion called with:", { 
       selectedVersionFile, 
       fileData, 
-      newVersionDescription
+      newVersionDescription, 
+      user 
     });
     
     // Kontrollera alla villkor som måste vara uppfyllda och ge en tydlig felmeddelande
@@ -547,8 +543,10 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     // ÄNDRING: Vi genererar ett fileId om det saknas
     const fileId = fileData.fileId || `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     
-    // Använd en default användare istället för att kräva inloggning
-    const currentUser = { username: 'TestUser', name: 'Test User' };
+    if (!user) {
+      console.error("No user logged in");
+      return;
+    }
     
     if (!newVersionDescription || newVersionDescription.trim() === '') {
       console.error("Version description is empty");
@@ -623,7 +621,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         fileUrl: pdfUrl,
         description: newVersionDescription,
         uploaded: new Date().toISOString(),
-        uploadedBy: currentUser.username || currentUser.name || 'Anonymous',
+        uploadedBy: user.username || user.name || 'Anonymous',
         commentCount: 0
       };
       
@@ -657,16 +655,11 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   const onPDFLoadError = (error: Error) => {
     console.error("Error loading PDF:", error);
     setIsLoading(false);
-    
-    // Visa ett felmeddelande men inte toast eftersom vi har en fallback
-    console.log("Fallback till enkel PDF-visare kommer att användas");
-    
-    // Vi visar inte toast-meddelandet eftersom vi har en fallback
-    // toast({
-    //   title: "Fel vid laddning av PDF",
-    //   description: "Filen kunde inte laddas. Kontrollera att det är en giltig PDF.",
-    //   variant: "destructive",
-    // });
+    toast({
+      title: "Fel vid laddning av PDF",
+      description: "Filen kunde inte laddas. Kontrollera att det är en giltig PDF.",
+      variant: "destructive",
+    });
   };
   
   // När PDF-dokumentet har laddats
@@ -1095,38 +1088,22 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                 )}
                 
                 <div ref={pageRef} className="relative">
-                  {/* Fallback: visa inbäddad PDF om fil finns och react-pdf misslyckas */}
-                  {file && (
-                    <iframe 
-                      src={URL.createObjectURL(file)}
-                      className="w-[700px] h-[700px] border shadow-md"
-                      title={file.name || "PDF Viewer"}
+                  {/* Visa PDF genom react-pdf */}
+                  <Document
+                    file={pdfUrl || file}
+                    onLoadSuccess={onPDFLoadSuccess}
+                    onLoadError={onPDFLoadError}
+                    loading={<div className="flex justify-center my-4">Laddar...</div>}
+                    error={<div className="text-red-500 my-4">Fel vid laddning av dokument</div>}
+                  >
+                    <Page 
+                      pageNumber={pageNumber} 
+                      scale={scale}
+                      rotate={rotation}
+                      width={700}
+                      renderTextLayer={true}
+                      renderAnnotationLayer={true}
                     />
-                  )}
-                  
-                  {/* Försök även att visa med react-pdf */}
-                  {true && (
-                    <Document
-                      file={pdfUrl || file}
-                      onLoadSuccess={onPDFLoadSuccess}
-                      onLoadError={onPDFLoadError}
-                      loading={<div className="flex justify-center my-4">Laddar...</div>}
-                      error={<div className="flex justify-center my-4">
-                        <div className="text-amber-500">PDF-visare kunde inte ladda dokumentet i annotationsläge. 
-                        Använder enkel visare istället.</div>
-                      </div>}
-                      className="hidden"
-                    >
-                      <Page 
-                        pageNumber={pageNumber} 
-                        scale={scale}
-                        rotate={rotation}
-                        width={700}
-                        renderTextLayer={true}
-                        renderAnnotationLayer={true}
-                      />
-                    </Document>
-                  )}
                     
                     {/* Visa alla annotations på aktuell sida */}
                     {filteredAnnotations
@@ -1190,6 +1167,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                         }}
                       />
                     )}
+                  </Document>
                 </div>
               </div>
               
