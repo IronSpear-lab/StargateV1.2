@@ -1,9 +1,24 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Bell, HelpCircle, Menu, Search } from "lucide-react";
-import { useMobile } from "@/hooks/use-mobile";
-import { cn } from "@/lib/utils";
+import React, { useState } from 'react';
+import { useAuth } from '@/hooks/use-auth';
+import { cn } from '@/lib/utils';
+import { useMediaQuery } from '@/hooks/use-media-query';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { 
+  Search, 
+  Bell, 
+  Menu, 
+  User, 
+  LogOut
+} from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface HeaderProps {
   title: string;
@@ -11,8 +26,15 @@ interface HeaderProps {
 }
 
 export function Header({ title, onToggleSidebar }: HeaderProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const isMobile = useMobile();
+  const { user, logoutMutation } = useAuth();
+  const [searchQuery, setSearchQuery] = useState('');
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
+  const handleLogout = () => {
+    if (logoutMutation) {
+      logoutMutation.mutate();
+    }
+  };
 
   return (
     <header className="bg-white shadow-sm p-4 flex items-center">
@@ -51,9 +73,25 @@ export function Header({ title, onToggleSidebar }: HeaderProps) {
           <span className="absolute top-0 right-0 h-2 w-2 bg-destructive rounded-full"></span>
         </Button>
         
-        <Button variant="ghost" size="icon" className="p-2 rounded-full hover:bg-neutral-100">
-          <HelpCircle className="h-5 w-5 text-neutral-600" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="p-2 rounded-full hover:bg-neutral-100">
+              <User className="h-5 w-5 text-neutral-600" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>
+              <User className="mr-2 h-4 w-4" />
+              <span>Profile</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Logout</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
