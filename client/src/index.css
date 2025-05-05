@@ -109,11 +109,11 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222.2 47.4% 9.2%;
     --foreground: 210 40% 98%;
-    --card: 222.2 47.4% 11.2%;
+    --card: 222.2 47.4% 8.2%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 47.4% 11.2%;
+    --popover: 222.2 47.4% 8.2%;
     --popover-foreground: 210 40% 98%;
     
     /* projektlila färg: #727cf5 (235, 83%, 70%) - lite ljusare i darkmode */
@@ -148,7 +148,7 @@
     --chart-4: 351 92% 72%;
     --chart-5: 210 100% 60%;
 
-    --sidebar-background: 222.2 47.4% 11.2%;
+    --sidebar-background: 222.2 47.4% 7.2%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 235 83% 75%;
     --sidebar-primary-foreground: 222.2 47.4% 11.2%;

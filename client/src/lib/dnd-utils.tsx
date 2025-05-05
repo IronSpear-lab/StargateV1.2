@@ -1,11 +1,38 @@
 import React from 'react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
-// Definition av Draggable-komponenten som används i KanbanBoard
-// Detta är en temporär lösning för att få appen att fungera
+// Proper implementation of Draggable component using dnd-kit
 export const Draggable: React.FC<{
   children: React.ReactNode;
-  id?: string;
+  id: string;
   [key: string]: any;
-}> = ({ children, ...props }) => {
-  return <>{children}</>;
+}> = ({ children, id, ...props }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 999 : 1,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      {...attributes} 
+      {...listeners}
+      className="mb-3"
+    >
+      {children}
+    </div>
+  );
 };

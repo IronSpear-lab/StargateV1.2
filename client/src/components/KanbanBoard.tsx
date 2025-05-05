@@ -645,8 +645,11 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                     {column.tasks.map(task => (
                       <Draggable key={task.id} id={task.id.toString()}>
                         <Card 
-                          className={`kanban-card shadow-sm border-l-4 ${task.borderColor} cursor-grab hover:shadow-md transition-shadow bg-card dark:bg-card/95`}
-                          onClick={() => handleTaskClick(task)}
+                          className={`kanban-card shadow-sm border-l-4 ${task.borderColor} hover:shadow-md transition-shadow bg-card dark:bg-card/95`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTaskClick(task);
+                          }}
                         >
                           <CardContent className="p-3">
                             <div className="flex justify-between items-start">
