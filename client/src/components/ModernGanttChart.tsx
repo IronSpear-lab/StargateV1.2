@@ -1003,7 +1003,7 @@ const ModernGanttChart: React.FC = () => {
         {/* Left side - Tasks table */}
         <div className="w-[40%] overflow-y-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
           <Table>
-            <TableHeader className="sticky top-0 bg-white dark:bg-slate-900 z-10">
+            <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
                 <TableHead className="w-10 py-2">Type</TableHead>
                 <TableHead className="py-2">Task Name</TableHead>
@@ -1018,7 +1018,7 @@ const ModernGanttChart: React.FC = () => {
               {flattenedTasks.map((task, index) => (
                 <TableRow 
                   key={task.id}
-                  className="cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800/50"
+                  className="cursor-pointer hover:bg-muted"
                   onClick={() => handleTaskClick(task)}
                 >
                   <TableCell className="py-2">
@@ -1093,13 +1093,13 @@ const ModernGanttChart: React.FC = () => {
         <div className="w-[60%] overflow-y-auto overflow-x-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
           <div className="relative" style={{ minWidth: days.length * zoomLevel }}>
             {/* Tidsrubrik */}
-            <div className="sticky top-0 bg-white dark:bg-slate-900 z-10">
+            <div className="sticky top-0 bg-background z-10">
               {/* Månadsrubriker */}
-              <div className="flex border-b border-gray-200 dark:border-slate-700 h-10">
+              <div className="flex border-b border-border h-10">
                 {monthHeaders.map((month, index) => (
                   <div 
                     key={index} 
-                    className="text-center font-medium text-sm py-2 border-r border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50"
+                    className="text-center font-medium text-sm py-2 border-r border-border bg-muted"
                     style={{ width: `${month.days * zoomLevel}px` }}
                   >
                     {month.month}
@@ -1108,7 +1108,7 @@ const ModernGanttChart: React.FC = () => {
               </div>
               
               {/* Dagrubrik */}
-              <div className="flex border-b border-gray-200 dark:border-slate-700 h-8">
+              <div className="flex border-b border-border h-8">
                 {days.map((day, index) => {
                   // Visa endast vissa dagar vid låg zoom för att undvika överlappning
                   const showDay = 
@@ -1129,9 +1129,9 @@ const ModernGanttChart: React.FC = () => {
                       key={index}
                       className={`
                         text-center text-xs py-1 
-                        border-r border-gray-200 dark:border-slate-700 
-                        ${isToday ? 'bg-blue-100 dark:bg-blue-900/30 font-bold' : 
-                           isWeekend ? 'bg-gray-50 dark:bg-slate-800/40 text-gray-500 dark:text-gray-400' : 
+                        border-r border-border 
+                        ${isToday ? 'bg-primary/10 font-bold' : 
+                           isWeekend ? 'bg-muted/50 text-muted-foreground' : 
                            isImportantDate && showDay ? 'font-medium' : ''}
                         ${isFirstOfMonth ? 'border-l-2 border-l-gray-400 dark:border-l-gray-500' : ''}
                       `}
@@ -1158,7 +1158,7 @@ const ModernGanttChart: React.FC = () => {
               {flattenedTasks.map((task, index) => (
                 <div 
                   key={task.id} 
-                  className="relative h-10 border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50"
+                  className="relative h-10 border-b border-border hover:bg-muted"
                 >
                   {/* Vertikal linje för dagens datum */}
                   {days.map((day, dayIndex) => (
@@ -1168,7 +1168,7 @@ const ModernGanttChart: React.FC = () => {
                         isSameDay(day, new Date()) 
                           ? 'bg-red-500' 
                           : dayIndex % 7 === 0 || dayIndex % 7 === 6 
-                            ? 'bg-gray-200 dark:bg-slate-700' 
+                            ? 'bg-border' 
                             : ''
                       }`}
                       style={{ left: `${dayIndex * zoomLevel}px` }}
@@ -1389,17 +1389,17 @@ const ModernGanttChart: React.FC = () => {
           </DialogHeader>
           
           <div className="py-4">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-muted-foreground">
               Are you sure you want to delete this task? 
               {taskToDelete?.type === 'PHASE' && (
-                <span className="text-red-500 font-semibold block mt-2">
+                <span className="text-destructive font-semibold block mt-2">
                   Warning: This will also delete all child tasks under this phase!
                 </span>
               )}
             </p>
             
             {taskToDelete && (
-              <div className="mt-4 p-3 border rounded-md bg-gray-50 dark:bg-slate-800">
+              <div className="mt-4 p-3 border rounded-md bg-muted">
                 <p><span className="font-medium">Name:</span> {taskToDelete.name}</p>
                 <p><span className="font-medium">Type:</span> {taskToDelete.type}</p>
                 <p><span className="font-medium">Status:</span> {taskToDelete.status}</p>
