@@ -779,200 +779,266 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   const doZoomAndScroll = (annotation: PDFAnnotation) => {
     console.log("Zooming to annotation:", annotation);
     
-    // Smidig zoomeffekt, lite högre zoom för bättre visning - men inte för hög
-    setScale(1.5);
+    // Visa en laddningsindikator medan vi hanterar centreringen
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.id = 'annotation-centering-indicator';
+    loadingIndicator.style.position = 'fixed';
+    loadingIndicator.style.top = '50%';
+    loadingIndicator.style.left = '50%';
+    loadingIndicator.style.transform = 'translate(-50%, -50%)';
+    loadingIndicator.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    loadingIndicator.style.color = 'white';
+    loadingIndicator.style.padding = '12px 20px';
+    loadingIndicator.style.borderRadius = '8px';
+    loadingIndicator.style.zIndex = '9999';
+    loadingIndicator.style.fontWeight = 'bold';
+    loadingIndicator.style.fontSize = '16px';
+    loadingIndicator.textContent = 'Centrerar kommentar...';
+    document.body.appendChild(loadingIndicator);
     
-    // Scrolla till annotationen med fördröjning så PDF hinner renderas och zoomen har tagit effekt
+    // Lägg till CSS för bounce-animation om det behövs
+    try {
+      // Lägg till CSS för bounce-animation (inline funktion för att undvika import-beroenden)
+      if (!document.getElementById('pdf-viewer-animations')) {
+        const style = document.createElement('style');
+        style.id = 'pdf-viewer-animations';
+        style.textContent = `
+          @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+              transform: translateY(0);
+            }
+            40% {
+              transform: translateY(-20px);
+            }
+            60% {
+              transform: translateY(-10px);
+            }
+          }
+          
+          @keyframes pulse {
+            0% {
+              transform: scale(1);
+              opacity: 0.8;
+            }
+            50% {
+              transform: scale(1.05);
+              opacity: 1;
+            }
+            100% {
+              transform: scale(1);
+              opacity: 0.8;
+            }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    } catch (e) {
+      console.error("Failed to add animations:", e);
+    }
+    
+    // VIKTIGT: Gör en ny approach där vi:
+    // 1. Först centrerar på det ursprungliga (ännu ej zoomade) elementet
+    // 2. Sedan zoomar in
+    // 3. Efter inzoomningen återcentrerar vi en gång till
+    
+    // Steg 1: Hitta och centrera på annotations-koordinater med nuvarande zoomnivå
     setTimeout(() => {
       try {
         if (!pdfContainerRef.current || !pageRef.current) {
-          console.error("Missing refs for scrolling", { pdfContainerRef: !!pdfContainerRef.current, pageRef: !!pageRef.current });
+          console.error("Missing refs for scrolling", { 
+            pdfContainerRef: !!pdfContainerRef.current, 
+            pageRef: !!pageRef.current 
+          });
+          if (document.body.contains(loadingIndicator)) {
+            document.body.removeChild(loadingIndicator);
+          }
           return;
         }
         
-        // Sök efter annotationselementet igen för att få korrekt position efter zoom
         const annotationId = annotation.id;
-        const annotationElement = document.getElementById(`annotation-${annotationId}`);
+        const pdfContainer = pdfContainerRef.current;
+        const pageContainer = pageRef.current;
         
-        if (annotationElement) {
-          console.log("Found annotation element, positioning...");
+        // Skapa en provisorisk marker på annotations-platsen
+        // Vi använder STORA MARGINALER runt markeringen för att se till att den syns
+        const preZoomMarker = document.createElement('div');
+        preZoomMarker.id = `pre-zoom-marker-${annotation.id}`;
+        preZoomMarker.style.position = 'absolute';
+        preZoomMarker.style.left = `${annotation.rect.x - 50}px`;
+        preZoomMarker.style.top = `${annotation.rect.y - 50}px`;
+        preZoomMarker.style.width = `${Math.max(annotation.rect.width + 100, 200)}px`;
+        preZoomMarker.style.height = `${Math.max(annotation.rect.height + 100, 200)}px`;
+        preZoomMarker.style.backgroundColor = 'rgba(255, 195, 90, 0.4)'; // Använd en annan färg än de normala markörerna
+        preZoomMarker.style.border = '5px dashed #ffc35a';
+        preZoomMarker.style.borderRadius = '8px';
+        preZoomMarker.style.zIndex = '1500'; 
+        preZoomMarker.style.pointerEvents = 'none';
+        preZoomMarker.style.boxShadow = '0 0 30px rgba(255, 195, 90, 0.7)';
+        pageContainer.appendChild(preZoomMarker);
+        
+        // Centrera på denna markör INNAN vi zoomar
+        preZoomMarker.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'center'
+        });
+        
+        // Steg 2: Efter kort fördröjning, zooma in men håll centering på samma position
+        setTimeout(() => {
+          console.log("Pre-zoom centering complete, zooming in...");
           
-          // Gör annotationen framträdande
-          annotationElement.classList.add('annotation-pulse');
+          // Zooma in till 1.5x för bättre detaljvisning
+          setScale(1.5);
           
-          try {
-            // Använd den enklaste och mest pålitliga metoden: scrollIntoView
-            // Detta är den mest direkta metoden för att få DOM-elementet i mitten av skärmen
-            annotationElement.scrollIntoView({
-              behavior: 'smooth',
-              block: 'center',
-              inline: 'center'
-            });
+          // Nu när vi zoomar, ta bort den provisoriska markören
+          if (pageContainer.contains(preZoomMarker)) {
+            pageContainer.removeChild(preZoomMarker);
+          }
+          
+          // Steg 3: Efter zoom, återcentrera och visa markeringar i den zoomade vyn
+          setTimeout(() => {
+            console.log("Zoom complete, centering on annotation in zoomed view...");
             
-            // Lägg till en justering för att hantera att annotationen ibland är utanför synfältet
-            // eftersom scrollIntoView kan påverkas av andra element på sidan
-            setTimeout(() => {
-              // Kontrollera att elementet fortfarande existerar
-              if (annotationElement && document.body.contains(annotationElement)) {
-                
-                // Få uppdaterad position för element och container
-                const pdfContainer = pdfContainerRef.current;
-                if (!pdfContainer) return;
-                
-                const containerRect = pdfContainer.getBoundingClientRect();
-                const elementRect = annotationElement.getBoundingClientRect();
-                
-                // Beräkna om elementet är i mitten av containern
-                const containerCenterX = containerRect.left + containerRect.width / 2;
-                const containerCenterY = containerRect.top + containerRect.height / 2;
-                const elementCenterX = elementRect.left + elementRect.width / 2;
-                const elementCenterY = elementRect.top + elementRect.height / 2;
-                
-                // Beräkna offset om elementet inte är centrerat
-                const offsetX = elementCenterX - containerCenterX;
-                const offsetY = elementCenterY - containerCenterY;
-                
-                // Applicera fin-justering om elementet är för långt från centrum
-                if (Math.abs(offsetX) > 50 || Math.abs(offsetY) > 50) {
-                  pdfContainer.scrollBy({
-                    left: offsetX,
-                    top: offsetY,
-                    behavior: 'smooth'
-                  });
-                  
-                  console.log("Applied fine-tuning scroll adjustment", {
-                    offsetX, offsetY,
-                    containerCenter: { x: containerCenterX, y: containerCenterY },
-                    elementCenter: { x: elementCenterX, y: elementCenterY }
-                  });
-                }
-              }
-            }, 300); // Kör efter scrollIntoView har slutfört
+            // Försök hitta faktiska annotations-elementet i DOM
+            const annotationElement = document.getElementById(`annotation-${annotationId}`);
             
-            console.log("Used scrollIntoView for annotation:", annotation.id);
-            
-          } catch (scrollError) {
-            console.error("Error during scrollIntoView, trying fallback method", scrollError);
-            
-            // Om scrollIntoView misslyckas, försök med en alternativ metod
-            try {
-              // Skapa ett temporärt element som visar var annotationen ska vara
-              const overlay = document.createElement('div');
-              overlay.id = `temp-overlay-${annotation.id}`;
-              overlay.className = 'absolute border-4 border-blue-500 bg-blue-200/30 z-50 annotation-pulse';
-              overlay.style.position = 'absolute';
-              overlay.style.left = `${annotation.rect.x}px`;
-              overlay.style.top = `${annotation.rect.y}px`;
-              overlay.style.width = `${annotation.rect.width}px`;
-              overlay.style.height = `${annotation.rect.height}px`;
+            if (annotationElement) {
+              console.log("Found annotation element, positioning...");
               
-              if (pageRef.current) {
-                pageRef.current.appendChild(overlay);
-                overlay.scrollIntoView({
+              // Markera det faktiska elementet
+              annotationElement.classList.add('annotation-pulse');
+              
+              // Skapa en tydligare highlight runt kommentaren
+              const zoomedHighlight = document.createElement('div');
+              zoomedHighlight.id = `zoomed-highlight-${annotation.id}`;
+              zoomedHighlight.style.position = 'absolute';
+              zoomedHighlight.style.left = `${annotation.rect.x - 15}px`;
+              zoomedHighlight.style.top = `${annotation.rect.y - 15}px`;
+              zoomedHighlight.style.width = `${Math.max(annotation.rect.width + 30, 60)}px`;
+              zoomedHighlight.style.height = `${Math.max(annotation.rect.height + 30, 60)}px`;
+              zoomedHighlight.style.border = '4px solid #fa5c7c';
+              zoomedHighlight.style.backgroundColor = 'rgba(250, 92, 124, 0.3)';
+              zoomedHighlight.style.borderRadius = '6px';
+              zoomedHighlight.style.zIndex = '1000';
+              zoomedHighlight.style.pointerEvents = 'none';
+              zoomedHighlight.style.boxShadow = '0 0 20px rgba(250, 92, 124, 0.5)';
+              pageContainer.appendChild(zoomedHighlight);
+              
+              // Centrera på vår highlight för bästa visibilitet
+              setTimeout(() => {
+                // Vi måste återigen centrera eftersom zoomen har ändrat positionerna
+                zoomedHighlight.scrollIntoView({
                   behavior: 'smooth',
                   block: 'center',
                   inline: 'center'
                 });
                 
+                // Ta bort laddningsindikatorn
                 setTimeout(() => {
-                  if (pageRef.current && pageRef.current.contains(overlay)) {
-                    pageRef.current.removeChild(overlay);
+                  if (document.body.contains(loadingIndicator)) {
+                    document.body.removeChild(loadingIndicator);
+                  }
+                }, 500);
+                
+                // Ta bort markeringar efter en stund
+                setTimeout(() => {
+                  if (annotationElement) {
+                    annotationElement.classList.remove('annotation-pulse');
+                  }
+                  if (pageContainer.contains(zoomedHighlight)) {
+                    pageContainer.removeChild(zoomedHighlight);
                   }
                 }, 3000);
-              }
-            } catch (e) {
-              console.error("All scrolling methods failed", e);
-            }
-          }
-          
-          // Ta bort pulsklassen efter animationen
-          setTimeout(() => {
-            if (annotationElement) {
-              annotationElement.classList.remove('annotation-pulse');
-            }
-          }, 2000);
-        } else {
-          console.warn(`Could not find annotation element with id: annotation-${annotationId}, creating and positioning a temporary marker`);
-          
-          try {
-            // 1. Först behöver vi säkerställa att vi är på rätt sida i PDF:en
-            if (annotation.rect.pageNumber) {
-              // Gå till den sida där annotationen finns
-              setPageNumber(annotation.rect.pageNumber);
+              }, 100);
+            } else {
+              // Fallback för när annotations-elementet inte hittas efter zoom
+              console.warn(`Could not find annotation element after zoom, creating visual indicators`);
               
-              // Vänta en kort stund så att sidan har hunnit renderas
+              // Skapa större och tydligare markeringar
+              const bigMarker = document.createElement('div');
+              bigMarker.id = `post-zoom-marker-${annotation.id}`;
+              bigMarker.style.position = 'absolute';
+              bigMarker.style.left = `${annotation.rect.x - 25}px`;
+              bigMarker.style.top = `${annotation.rect.y - 25}px`;
+              bigMarker.style.width = `${Math.max(annotation.rect.width + 50, 100)}px`;
+              bigMarker.style.height = `${Math.max(annotation.rect.height + 50, 100)}px`;
+              bigMarker.style.border = '6px solid #fa5c7c';
+              bigMarker.style.backgroundColor = 'rgba(250, 92, 124, 0.3)';
+              bigMarker.style.borderRadius = '8px';
+              bigMarker.style.zIndex = '1001';
+              bigMarker.style.boxShadow = '0 0 30px rgba(250, 92, 124, 0.6)';
+              bigMarker.style.pointerEvents = 'none';
+              pageContainer.appendChild(bigMarker);
+              
+              // Lägg till en text-bubble med kommentarstext
+              const textBubble = document.createElement('div');
+              textBubble.style.position = 'absolute';
+              textBubble.style.left = `${annotation.rect.x}px`;
+              textBubble.style.top = `${annotation.rect.y - 60}px`;
+              textBubble.style.padding = '8px 12px';
+              textBubble.style.backgroundColor = '#fa5c7c';
+              textBubble.style.color = 'white';
+              textBubble.style.borderRadius = '6px';
+              textBubble.style.fontWeight = 'bold';
+              textBubble.style.zIndex = '1002';
+              textBubble.style.maxWidth = '250px';
+              textBubble.style.boxShadow = '0 4px 10px rgba(0,0,0,0.3)';
+              textBubble.textContent = annotation.comment.length > 25 
+                ? `"${annotation.comment.substring(0, 25)}..."` 
+                : `"${annotation.comment}"`;
+              
+              // Lägg till en liten pil nedåt på text-bubblan
+              textBubble.style.position = 'relative';
+              const arrow = document.createElement('div');
+              arrow.style.position = 'absolute';
+              arrow.style.bottom = '-8px';
+              arrow.style.left = '20px';
+              arrow.style.width = '0';
+              arrow.style.height = '0';
+              arrow.style.borderLeft = '8px solid transparent';
+              arrow.style.borderRight = '8px solid transparent';
+              arrow.style.borderTop = '8px solid #fa5c7c';
+              textBubble.appendChild(arrow);
+              
+              pageContainer.appendChild(textBubble);
+              
+              // Centrera på markören i zoomad vy
               setTimeout(() => {
-                try {
-                  // 2. Skapa ett tillfälligt överläggselement för att visa var annotationen är
-                  const pdfContainer = pdfContainerRef.current;
-                  const pageContainer = pageRef.current;
-                  
-                  if (!pageContainer || !pdfContainer) {
-                    console.error("Missing reference to PDF page or container");
-                    return;
+                bigMarker.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'center',
+                  inline: 'center'
+                });
+                
+                // Ta bort laddningsindikatorn
+                setTimeout(() => {
+                  if (document.body.contains(loadingIndicator)) {
+                    document.body.removeChild(loadingIndicator);
                   }
-                  
-                  // 3. Skapa ett större och mer synligt markeringselement
-                  const marker = document.createElement('div');
-                  marker.id = `temp-marker-${annotation.id}`;
-                  marker.className = 'fixed z-50 annotation-pulse';
-                  marker.style.position = 'absolute';
-                  marker.style.left = `${annotation.rect.x}px`;
-                  marker.style.top = `${annotation.rect.y}px`;
-                  marker.style.width = `${annotation.rect.width}px`;
-                  marker.style.height = `${annotation.rect.height}px`;
-                  marker.style.border = '4px solid #ff3333';
-                  marker.style.backgroundColor = 'rgba(255, 51, 51, 0.2)';
-                  marker.style.borderRadius = '4px';
-                  marker.style.pointerEvents = 'none'; // Så att man kan klicka genom den
-                  
-                  // 4. Lägg till markören i PDF-sidan
-                  pageContainer.appendChild(marker);
-                  
-                  // 5. Centrera markeringen i vyn med scrollIntoView
-                  marker.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center',
-                    inline: 'center'
-                  });
-                  
-                  // 6. Lägg till en animerande pil som pekar på annotationen för extra tydlighet
-                  const arrow = document.createElement('div');
-                  arrow.className = 'fixed z-50';
-                  arrow.style.position = 'absolute';
-                  arrow.style.left = `${annotation.rect.x + annotation.rect.width / 2 - 15}px`;
-                  arrow.style.top = `${annotation.rect.y - 40}px`;
-                  arrow.innerHTML = `
-                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 4L12 20M12 20L18 14M12 20L6 14" stroke="#ff3333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                  `;
-                  arrow.style.animation = 'bounce 1s infinite';
-                  pageContainer.appendChild(arrow);
-                  
-                  // 7. Ta bort markeringselementen efter en stund
-                  setTimeout(() => {
-                    if (pageContainer && pageContainer.contains(marker)) {
-                      pageContainer.removeChild(marker);
-                    }
-                    if (pageContainer && pageContainer.contains(arrow)) {
-                      pageContainer.removeChild(arrow);
-                    }
-                  }, 4000);
-                  
-                } catch (e) {
-                  console.error("Error creating temporary annotation marker:", e);
-                }
-              }, 300);
+                }, 500);
+                
+                // Ta bort markörerna efter en stund
+                setTimeout(() => {
+                  if (pageContainer.contains(bigMarker)) {
+                    pageContainer.removeChild(bigMarker);
+                  }
+                  if (pageContainer.contains(textBubble)) {
+                    pageContainer.removeChild(textBubble);
+                  }
+                }, 4000);
+              }, 100);
             }
-          } catch (e) {
-            console.error("Failed to create and position temporary annotation marker:", e);
-          }
-        }
+          }, 500); // Vänta på att zoomen ska ta effekt
+        }, 300); // Vänta tills den första centreringen är klar
       } catch (error) {
-        console.error("Error during scroll to annotation:", error);
+        console.error("Error during annotation centering process:", error);
+        
+        // Ta bort laddningsindikatorn vid fel
+        if (document.body.contains(loadingIndicator)) {
+          document.body.removeChild(loadingIndicator);
+        }
       }
-    }, 200); // Längre fördröjning för att säkerställa att zoomen har applicerats
+    }, 100);
   };
   
   // Uppdatera status för en kommentar
