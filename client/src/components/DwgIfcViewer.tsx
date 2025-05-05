@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Upload, FileText, Loader2, XCircle, ZoomIn, ZoomOut, RotateCw, RefreshCw, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,20 +10,8 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 
-// Import necessary components from xeokit-sdk
-// Note: These imports would typically work in a real environment
-// For our demo, we'll mock the necessary parts
-let xeokit: any;
-try {
-  // Try to dynamically import xeokit
-  // In a real implementation we would properly import from the xeokit-sdk package
-  // For now we just check if it's available on window (which it won't be)
-  if (typeof window !== 'undefined' && (window as any).XeoKit) {
-    xeokit = (window as any).XeoKit;
-  }
-} catch (e) {
-  console.warn("XeoKit not available, will use fallback viewer");
-}
+// We'll use a placeholder for IFC parsing
+// In a real implementation, we would import IfcAPI from web-ifc/web-ifc-api
 
 // Simple types for our file storage
 type FileEntry = {
@@ -86,11 +75,7 @@ export function DwgIfcViewer() {
   useEffect(() => {
     if (viewerContainerRef.current && !viewerRef.current) {
       try {
-        // First check if we have XeoKit available
-        if (xeokit) {
-          // If XeoKit is available, we'd initialize with it
-          console.log("Would use XeoKit for viewing DWG/IFC files if it was fully integrated");
-        }
+        // Initialize our Three.js viewer
         
         // For now, we'll use Three.js as a fallback/placeholder
         const scene = new THREE.Scene();
