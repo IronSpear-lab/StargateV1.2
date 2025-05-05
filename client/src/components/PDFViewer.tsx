@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { storeFileForReuse, getStoredFileById } from "@/lib/file-utils";
+import { getConsistentFileId, getLatestPdfVersion } from "@/lib/pdf-utils";
 
 // Konfigurera worker för react-pdf - använder CDN för att undvika byggproblem
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -156,8 +157,19 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       // Detta kan leda till minnesläckage, men är OK för demosyften
     } else if (fileUrl) {
       setPdfUrl(fileUrl);
+    } else if (fileData) {
+      // Om vi varken har en fil eller URL, men har fildata, försök hitta senaste versionen
+      console.log(`[${Date.now()}] No file or URL provided, checking for latest version of: ${fileData.filename}`);
+      const latestVersionUrl = getLatestPdfVersion(fileData.filename);
+      
+      if (latestVersionUrl) {
+        console.log(`[${Date.now()}] Found latest version URL: ${latestVersionUrl}`);
+        setPdfUrl(latestVersionUrl);
+      } else {
+        console.log(`[${Date.now()}] No latest version found for: ${fileData.filename}`);
+      }
     }
-  }, [file, fileUrl]);
+  }, [file, fileUrl, fileData]);
   
   // Hämta sparade annotationer från localStorage när en ny fil öppnas
   useEffect(() => {
@@ -167,18 +179,14 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     // Försök hämta annotationer från localStorage för denna fil - KRITISKT: Körs när dialogen öppnas
     if (isOpen && fileData) {
       try {
-        // VIKTIG ÄNDRING: Använd alltid filnamnet som primär nyckel oavsett fileId
-        // Detta säkerställer att samma fil alltid använder samma annotationer och versioner
+        // Använd vår nya hjälpfunktion från pdf-utils för att få ett konsekvent ID
         const canonicalFileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
         
         // Hämta eller generera konsekvent fileId baserat på filnamn
         let fileId = fileData.fileId;
-        let consistentFileId = ''; // Vi skapar en konsekvent ID som alltid bygger på filnamnet
+        const consistentFileId = getConsistentFileId(fileData.filename);
         
         try {
-          // Etablerad namnkonvention för att säkerställa att samma fil alltid har samma ID
-          consistentFileId = `file_${canonicalFileName}_${Buffer.from(canonicalFileName).toString('hex').substring(0, 8)}`;
-          
           // Lagra denna koppling för framtida referens
           const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
           
@@ -194,8 +202,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
           console.log(`[${Date.now()}] Using consistent fileId for ${fileData.filename}: ${consistentFileId}`);
         } catch (error) {
           console.error("Error with fileId mappings:", error);
-          // Fallback om något går fel
-          consistentFileId = `file_${canonicalFileName}_fallback`;
+          // Om något går fel, använd ändå det konsekventa ID:t
           fileId = fileId || consistentFileId;
         }
         
@@ -323,37 +330,22 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   useEffect(() => {
     if (!isOpen || !fileData) return;
     
-    // VIKTIG ÄNDRING: Använd samma konstanta filId som vi använder för annotationer
-    // Detta säkerställer att samma fil alltid använder samma annotationer och versioner
+    // VIKTIG ÄNDRING: Använd den nya funktionen från pdf-utils för att få ett konsekvent ID
     const canonicalFileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
     
-    // Etablera konsekvent fileId på exakt samma sätt som i annotationshanteringen
-    let consistentFileId = '';
-    let fileId = fileData.fileId;
+    // Använd vår nya hjälpfunktion från pdf-utils för att få ett konsekvent ID
+    const consistentFileId = getConsistentFileId(fileData.filename);
+    let fileId = fileData.fileId || consistentFileId;
     
     try {
-      // Identisk kod för att generera samma ID som i annotationshanteringen
-      consistentFileId = `file_${canonicalFileName}_${Buffer.from(canonicalFileName).toString('hex').substring(0, 8)}`;
-      
-      // Hämta eventuellt tidigare sparat ID
+      // Uppdatera mappning med det konsekventa ID:t för framtida referens
       const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
-      
-      // Om vi inte har ett explicit fileId, försök använda ett tidigare sparat
-      if (!fileId) {
-        // Använd tidigare ID om det finns, annars det konsekventa ID:t
-        fileId = fileIdMappings[fileData.filename] || consistentFileId;
-      }
-      
-      // Uppdatera mappningen med det konsekventa ID:t
       fileIdMappings[fileData.filename] = consistentFileId;
       localStorage.setItem('pdf_file_id_mappings', JSON.stringify(fileIdMappings));
       
       console.log(`[${Date.now()}] Using consistent fileId for versions: ${consistentFileId}`);
     } catch (error) {
       console.error("Error with fileId mappings for versions:", error);
-      // Fallback om något går fel
-      consistentFileId = `file_${canonicalFileName}_fallback`;
-      fileId = fileId || consistentFileId;
     }
     
     // Använd det konsekventa ID:t för versionsnyckeln
