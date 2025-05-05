@@ -801,64 +801,87 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
           annotationElement.classList.add('annotation-pulse');
           
           try {
-            // Använd en helt annan metod för centrering - hämta rektangeln från PDF:en direkt
-            // och använd scroll-koordinatsystemet istället för viewport
-            const pdfContainer = pdfContainerRef.current;
-            
-            // 1. Hitta annotationens position på sidan
-            const annotRect = annotationElement.getBoundingClientRect();
-            
-            // 2. Hitta annotationens position relativt till sidan
-            const pageRect = pageRef.current.getBoundingClientRect();
-            
-            // 3. Beräkna centrum för PDF-behållaren
-            const containerCenterX = pdfContainer.offsetWidth / 2;
-            const containerCenterY = pdfContainer.offsetHeight / 2;
-            
-            // Enklare och stabilare metod - beräkna allt relativt till PDF-sidan
-
-            // 1. Få nuvarande position på PDF-sidan i dokumentet
-            const pageLeft = pageRect.left;
-            const pageTop = pageRect.top;
-            
-            // 2. Beräkna PDF-sidans position i scroll-koordinatsystemet
-            const pageScrollLeft = pageLeft - pdfContainer.getBoundingClientRect().left + pdfContainer.scrollLeft;
-            const pageScrollTop = pageTop - pdfContainer.getBoundingClientRect().top + pdfContainer.scrollTop;
-            
-            // 3. Beräkna centrum för annotationen på själva PDF-sidan 
-            const annotRelativeX = annotation.rect.x + (annotation.rect.width / 2);
-            const annotRelativeY = annotation.rect.y + (annotation.rect.height / 2);
-            
-            // 4. Beräkna exakt scrollposition som centrerar annotationen i behållaren
-            const scrollX = pageScrollLeft + annotRelativeX - containerCenterX;
-            const scrollY = pageScrollTop + annotRelativeY - containerCenterY;
-            
-            // 6. Använd en säker scrollningsmetod med centrerad annotation
-            pdfContainer.scrollTo({
-              left: Math.max(0, scrollX),
-              top: Math.max(0, scrollY),
-              behavior: 'smooth'
+            // Använd den enklaste och mest pålitliga metoden: scrollIntoView
+            // Detta är den mest direkta metoden för att få DOM-elementet i mitten av skärmen
+            annotationElement.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center',
+              inline: 'center'
             });
             
-            console.log("Applied safe scrolling to", { 
-              scrollX, scrollY, 
-              annotRelativeX, annotRelativeY,
-              pageScrollLeft, pageScrollTop,
-              containerCenterX, containerCenterY
-            });
+            // Lägg till en justering för att hantera att annotationen ibland är utanför synfältet
+            // eftersom scrollIntoView kan påverkas av andra element på sidan
+            setTimeout(() => {
+              // Kontrollera att elementet fortfarande existerar
+              if (annotationElement && document.body.contains(annotationElement)) {
+                
+                // Få uppdaterad position för element och container
+                const pdfContainer = pdfContainerRef.current;
+                if (!pdfContainer) return;
+                
+                const containerRect = pdfContainer.getBoundingClientRect();
+                const elementRect = annotationElement.getBoundingClientRect();
+                
+                // Beräkna om elementet är i mitten av containern
+                const containerCenterX = containerRect.left + containerRect.width / 2;
+                const containerCenterY = containerRect.top + containerRect.height / 2;
+                const elementCenterX = elementRect.left + elementRect.width / 2;
+                const elementCenterY = elementRect.top + elementRect.height / 2;
+                
+                // Beräkna offset om elementet inte är centrerat
+                const offsetX = elementCenterX - containerCenterX;
+                const offsetY = elementCenterY - containerCenterY;
+                
+                // Applicera fin-justering om elementet är för långt från centrum
+                if (Math.abs(offsetX) > 50 || Math.abs(offsetY) > 50) {
+                  pdfContainer.scrollBy({
+                    left: offsetX,
+                    top: offsetY,
+                    behavior: 'smooth'
+                  });
+                  
+                  console.log("Applied fine-tuning scroll adjustment", {
+                    offsetX, offsetY,
+                    containerCenter: { x: containerCenterX, y: containerCenterY },
+                    elementCenter: { x: elementCenterX, y: elementCenterY }
+                  });
+                }
+              }
+            }, 300); // Kör efter scrollIntoView har slutfört
+            
+            console.log("Used scrollIntoView for annotation:", annotation.id);
+            
           } catch (scrollError) {
-            console.error("Error in scroll calculation, trying simpler method", scrollError);
+            console.error("Error during scrollIntoView, trying fallback method", scrollError);
             
-            // Fallback-metod - enklare centrering
+            // Om scrollIntoView misslyckas, försök med en alternativ metod
             try {
-              // Centrera direkt på elementet utan komplicerade beräkningar
-              annotationElement.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-                inline: 'center'
-              });
+              // Skapa ett temporärt element som visar var annotationen ska vara
+              const overlay = document.createElement('div');
+              overlay.id = `temp-overlay-${annotation.id}`;
+              overlay.className = 'absolute border-4 border-blue-500 bg-blue-200/30 z-50 annotation-pulse';
+              overlay.style.position = 'absolute';
+              overlay.style.left = `${annotation.rect.x}px`;
+              overlay.style.top = `${annotation.rect.y}px`;
+              overlay.style.width = `${annotation.rect.width}px`;
+              overlay.style.height = `${annotation.rect.height}px`;
+              
+              if (pageRef.current) {
+                pageRef.current.appendChild(overlay);
+                overlay.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'center',
+                  inline: 'center'
+                });
+                
+                setTimeout(() => {
+                  if (pageRef.current && pageRef.current.contains(overlay)) {
+                    pageRef.current.removeChild(overlay);
+                  }
+                }, 3000);
+              }
             } catch (e) {
-              console.error("Even simple scrolling failed", e);
+              console.error("All scrolling methods failed", e);
             }
           }
           
@@ -869,39 +892,81 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             }
           }, 2000);
         } else {
-          console.warn(`Could not find annotation element with id: annotation-${annotationId}, creating fallback element`);
+          console.warn(`Could not find annotation element with id: annotation-${annotationId}, creating and positioning a temporary marker`);
           
-          // Fallback - skapa ett temporärt element som visar var annotationen ska vara
-          const annotation_overlay = document.createElement('div');
-          annotation_overlay.id = `temp-highlight-${annotation.id}`;
-          annotation_overlay.className = 'absolute border-4 border-blue-500 bg-blue-200/30 z-50 annotation-pulse';
-          annotation_overlay.style.position = 'absolute';
-          annotation_overlay.style.left = `${annotation.rect.x}px`;
-          annotation_overlay.style.top = `${annotation.rect.y}px`;
-          annotation_overlay.style.width = `${annotation.rect.width}px`;
-          annotation_overlay.style.height = `${annotation.rect.height}px`;
-          
-          // Lägg till i PDF-containern
-          if (pageRef.current) {
-            pageRef.current.appendChild(annotation_overlay);
-            
-            // Använd den enklare scrollIntoView-metoden
-            try {
-              annotation_overlay.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-                inline: 'center'
-              });
-            } catch (e) {
-              console.error("Fallback scrolling failed", e);
+          try {
+            // 1. Först behöver vi säkerställa att vi är på rätt sida i PDF:en
+            if (annotation.rect.pageNumber) {
+              // Gå till den sida där annotationen finns
+              setPageNumber(annotation.rect.pageNumber);
+              
+              // Vänta en kort stund så att sidan har hunnit renderas
+              setTimeout(() => {
+                try {
+                  // 2. Skapa ett tillfälligt överläggselement för att visa var annotationen är
+                  const pdfContainer = pdfContainerRef.current;
+                  const pageContainer = pageRef.current;
+                  
+                  if (!pageContainer || !pdfContainer) {
+                    console.error("Missing reference to PDF page or container");
+                    return;
+                  }
+                  
+                  // 3. Skapa ett större och mer synligt markeringselement
+                  const marker = document.createElement('div');
+                  marker.id = `temp-marker-${annotation.id}`;
+                  marker.className = 'fixed z-50 annotation-pulse';
+                  marker.style.position = 'absolute';
+                  marker.style.left = `${annotation.rect.x}px`;
+                  marker.style.top = `${annotation.rect.y}px`;
+                  marker.style.width = `${annotation.rect.width}px`;
+                  marker.style.height = `${annotation.rect.height}px`;
+                  marker.style.border = '4px solid #ff3333';
+                  marker.style.backgroundColor = 'rgba(255, 51, 51, 0.2)';
+                  marker.style.borderRadius = '4px';
+                  marker.style.pointerEvents = 'none'; // Så att man kan klicka genom den
+                  
+                  // 4. Lägg till markören i PDF-sidan
+                  pageContainer.appendChild(marker);
+                  
+                  // 5. Centrera markeringen i vyn med scrollIntoView
+                  marker.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                    inline: 'center'
+                  });
+                  
+                  // 6. Lägg till en animerande pil som pekar på annotationen för extra tydlighet
+                  const arrow = document.createElement('div');
+                  arrow.className = 'fixed z-50';
+                  arrow.style.position = 'absolute';
+                  arrow.style.left = `${annotation.rect.x + annotation.rect.width / 2 - 15}px`;
+                  arrow.style.top = `${annotation.rect.y - 40}px`;
+                  arrow.innerHTML = `
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 4L12 20M12 20L18 14M12 20L6 14" stroke="#ff3333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  `;
+                  arrow.style.animation = 'bounce 1s infinite';
+                  pageContainer.appendChild(arrow);
+                  
+                  // 7. Ta bort markeringselementen efter en stund
+                  setTimeout(() => {
+                    if (pageContainer && pageContainer.contains(marker)) {
+                      pageContainer.removeChild(marker);
+                    }
+                    if (pageContainer && pageContainer.contains(arrow)) {
+                      pageContainer.removeChild(arrow);
+                    }
+                  }, 4000);
+                  
+                } catch (e) {
+                  console.error("Error creating temporary annotation marker:", e);
+                }
+              }, 300);
             }
-            
-            // Ta bort det temporära elementet efter en stund
-            setTimeout(() => {
-              if (pageRef.current && pageRef.current.contains(annotation_overlay)) {
-                pageRef.current.removeChild(annotation_overlay);
-              }
-            }, 3000);
+          } catch (e) {
+            console.error("Failed to create and position temporary annotation marker:", e);
           }
         }
       } catch (error) {

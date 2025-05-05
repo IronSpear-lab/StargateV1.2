@@ -97,3 +97,28 @@ export function getFileIcon(filename: string): string {
       return 'file';
   }
 }
+
+/**
+ * Lägg till CSS för animationer i PDF-visaren
+ */
+export function addPdfViewerAnimations() {
+  // Skapa en stil för bounce-animation om den inte redan finns
+  if (!document.getElementById('pdf-viewer-animations')) {
+    const style = document.createElement('style');
+    style.id = 'pdf-viewer-animations';
+    style.textContent = `
+      @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% {
+          transform: translateY(0);
+        }
+        40% {
+          transform: translateY(-20px);
+        }
+        60% {
+          transform: translateY(-10px);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
