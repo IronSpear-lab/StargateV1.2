@@ -53,31 +53,28 @@ export function Header({
         
         {currentProject && onProjectChange && (
           <div className="absolute left-1/2 transform -translate-x-1/2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  className="flex items-center gap-1 px-3 py-2 text-base font-medium"
-                >
-                  {currentProject.name}
-                  <ChevronDown className="h-4 w-4 ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="w-[200px]">
+            <div className="relative">
+              <div 
+                className="flex items-center gap-1 px-3 py-2 text-base font-medium bg-transparent hover:bg-muted/50 rounded cursor-pointer"
+                onClick={() => document.getElementById('project-selector')?.click()}
+              >
+                {currentProject.name}
+                <ChevronDown className="h-4 w-4 ml-1" />
+              </div>
+              
+              <select 
+                id="project-selector"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                value={currentProject.id}
+                onChange={(e) => onProjectChange(Number(e.target.value))}
+              >
                 {availableProjects.map(project => (
-                  <DropdownMenuItem 
-                    key={project.id}
-                    className={cn(
-                      "cursor-pointer", 
-                      currentProject.id === project.id ? "bg-muted" : ""
-                    )}
-                    onClick={() => onProjectChange(project.id)}
-                  >
+                  <option key={project.id} value={project.id}>
                     {project.name}
-                  </DropdownMenuItem>
+                  </option>
                 ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </select>
+            </div>
           </div>
         )}
       </div>
