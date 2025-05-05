@@ -450,10 +450,6 @@ export default function RitningarPage() {
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-semibold">Ritningar</h1>
             <div className="flex space-x-2">
-              <Button variant="outline" className="border-blue-500 dark:border-blue-400 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Folder
-              </Button>
               <Button 
                 className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white"
                 onClick={() => setShowUploadDialog(true)}
