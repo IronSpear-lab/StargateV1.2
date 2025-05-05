@@ -908,22 +908,49 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             const containerRect = pdfContainerRef.current.getBoundingClientRect();
             const annotRect = annotationElement.getBoundingClientRect();
             
-            // Använd vår förbättrade centerElementInView-funktion som tar hänsyn till zoom-nivå
-            // Uppdaterad beräkning för att säkerställa korrekt centrering med zoom-skala
-            const elementId = annotationElementId;
-            const containerId = pdfContainerRef.current.id || "pdf-viewer-container";
-            
-            // Kontrollera att ID är satt på container
-            if (!pdfContainerRef.current.id) {
-              pdfContainerRef.current.id = containerId;
+            // Implementera direkt centrering som ersätter centerElementInView-funktionaliteten
+            // Detta gör samma sak som centerElementInView-funktionen men direkt i komponenten
+            try {
+              const element = document.getElementById(annotationElementId);
+              
+              if (element && pdfContainerRef.current) {
+                // Säkerställ att container-ID är satt
+                if (!pdfContainerRef.current.id) {
+                  pdfContainerRef.current.id = "pdf-viewer-container";
+                }
+                
+                // Beräkna elementets position relativt till containern
+                const elementRect = element.getBoundingClientRect();
+                const containerRect = pdfContainerRef.current.getBoundingClientRect();
+                
+                // Beräkna scroll-position för att centrera elementet med hänsyn till zoom-nivå
+                const scrollX = (element.offsetLeft * zoomScale) - 
+                                pdfContainerRef.current.offsetLeft - 
+                                (containerRect.width - (elementRect.width * zoomScale)) / 2;
+                
+                const scrollY = (element.offsetTop * zoomScale) - 
+                                pdfContainerRef.current.offsetTop - 
+                                (containerRect.height - (elementRect.height * zoomScale)) / 2;
+                
+                // Utför scrollningen
+                pdfContainerRef.current.scrollTo({
+                  left: Math.max(0, scrollX),
+                  top: Math.max(0, scrollY),
+                  behavior: 'smooth'
+                });
+                
+                console.log("Direktcentrering utförd för annotation:", {
+                  elementId: annotationElementId,
+                  scrollX, 
+                  scrollY,
+                  scale: zoomScale
+                });
+              } else {
+                console.error("Element eller container saknas för centrering");
+              }
+            } catch (error) {
+              console.error("Fel vid centrering:", error);
             }
-            
-            // Anropa den förbättrade centreringsfunktionen som tar hänsyn till zoom-nivå
-            centerElementInView(elementId, containerId, {
-              scale: zoomScale,
-              smooth: true,
-              addMarker: false // Vi skapar redan en egen marker
-            });
             
             // Ta bort markören efter några sekunder
             setTimeout(() => {
@@ -932,11 +959,9 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
               }
             }, 3000);
             
-            console.log("Centered on annotation using centerElementInView:", {
-              annotation: annotation,
-              scale: zoomScale,
-              elementId: elementId,
-              containerId: containerId
+            console.log("Centered on annotation:", {
+              annotationId: annotationElementId,
+              scale: zoomScale
             });
           } catch (error) {
             console.error("Error during annotation centering:", error);
