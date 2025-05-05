@@ -245,14 +245,14 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
                   className="flex py-2.5 px-3 rounded-md hover:bg-gray-50 transition-colors cursor-pointer group"
                   onClick={() => {
                     // Hantera klick på olika typer av filer
-                    if (file.folder === "Ritningar" && file.fileType.toLowerCase() === "pdf") {
-                      // Navigera till ritningar-sidan
+                    if (file.fileType.toLowerCase() === "pdf" && file.fileId) {
+                      // Om PDF har filID redan, så skicka med det till ritningar-sidan
+                      window.location.href = `/ritningar?viewFile=${encodeURIComponent(file.fileId)}`;
+                    } else if (file.folder === "Ritningar" && file.fileType.toLowerCase() === "pdf") {
+                      // Utan filID, navigera bara till ritningar-sidan
                       window.location.href = "/ritningar";
-                    } else if (file.fileType.toLowerCase() === "pdf") {
-                      // Andra PDF-filer
-                      window.location.href = "/vault";
                     } else {
-                      // Alla andra filer
+                      // Alla andra filer går till vault
                       window.location.href = "/vault";
                     }
                   }}

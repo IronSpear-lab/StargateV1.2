@@ -290,7 +290,7 @@ export function storeFile(file: File): string {
 }
 
 /**
- * Hämta en fil från lagringutrymmet
+ * Hämta en fil från lagringutrymmet (synkron version)
  */
 export function getStoredFile(id: string): StoredFile | undefined {
   // Kolla först i den tillfälliga lagringen
@@ -299,24 +299,38 @@ export function getStoredFile(id: string): StoredFile | undefined {
     return file;
   }
   
+  // I denna synkrona version kan vi bara returnera från minnet
+  // För att hämta från persistent lagring, använd getStoredFileAsync istället
+  return undefined;
+}
+
+/**
+ * Asynkront hämta en fil från lagringutrymmet
+ */
+export async function getStoredFileAsync(id: string): Promise<StoredFile | undefined> {
+  // Kolla först i den tillfälliga lagringen
+  const file = fileStorage.get(id);
+  if (file) {
+    return file;
+  }
+  
   // Om inte hittad, försök hämta från persistent lagring
-  console.log(`[${Date.now()}] Attempting to get file from persistent storage: ${id}`);
-  getStoredFileById(id).then(storedFile => {
+  try {
+    console.log(`[${Date.now()}] Attempting to get file from persistent storage: ${id}`);
+    const storedFile = await getStoredFileById(id);
     if (storedFile) {
       console.log(`[${Date.now()}] Successfully loaded file from persistent storage: ${id}`);
       return storedFile;
     }
-    return undefined;
-  }).catch(err => {
+  } catch (err) {
     console.error(`Failed to get stored file with ID ${id}:`, err);
-    return undefined;
-  });
+  }
   
   return undefined;
 }
 
 /**
- * Hämta url för en lagrad fil
+ * Hämta url för en lagrad fil (synkron version)
  */
 export function getStoredFileUrl(id: string): string | undefined {
   const storedFile = fileStorage.get(id);
@@ -324,18 +338,31 @@ export function getStoredFileUrl(id: string): string | undefined {
     return storedFile.url;
   }
   
+  // I denna synkrona version kan vi bara returnera URL från minnet
+  // För att hämta från persistent lagring, använd getStoredFileUrlAsync istället
+  return undefined;
+}
+
+/**
+ * Asynkront hämta url för en lagrad fil
+ */
+export async function getStoredFileUrlAsync(id: string): Promise<string | undefined> {
+  const storedFile = fileStorage.get(id);
+  if (storedFile?.url) {
+    return storedFile.url;
+  }
+  
   // Försök hämta från persistent lagring om inte hittad i minnet
-  console.log(`[${Date.now()}] Attempting to get file URL from persistent storage: ${id}`);
-  getStoredFileById(id).then(storedFile => {
-    if (storedFile?.url) {
+  try {
+    console.log(`[${Date.now()}] Attempting to get file URL from persistent storage: ${id}`);
+    const loadedFile = await getStoredFileById(id);
+    if (loadedFile?.url) {
       console.log(`[${Date.now()}] Successfully loaded file URL from persistent storage: ${id}`);
-      return storedFile.url;
+      return loadedFile.url;
     }
-    return undefined;
-  }).catch(err => {
+  } catch (err) {
     console.error(`Failed to get stored file URL with ID ${id}:`, err);
-    return undefined;
-  });
+  }
   
   return undefined;
 }
@@ -407,12 +434,25 @@ export function getDummyFileUrl(): string {
 }
 
 /**
- * Hämta in-memory URL för uppladdad fil
+ * Hämta in-memory URL för uppladdad fil (synkron version)
  */
 export function getUploadedFileUrl(fileId: string | number): string | undefined {
   // Om det är en strängbaserad ID, anta att det är en av våra temporärt skapade ID:n
   if (typeof fileId === 'string' && fileId.startsWith('file_')) {
     return getStoredFileUrl(fileId);
+  }
+  
+  // Annars är det förmodligen ett mock-id eller ett id från databasen
+  return getDummyFileUrl();
+}
+
+/**
+ * Asynkront hämta URL för uppladdad fil
+ */
+export async function getUploadedFileUrlAsync(fileId: string | number): Promise<string | undefined> {
+  // Om det är en strängbaserad ID, anta att det är en av våra temporärt skapade ID:n
+  if (typeof fileId === 'string' && fileId.startsWith('file_')) {
+    return await getStoredFileUrlAsync(fileId);
   }
   
   // Annars är det förmodligen ett mock-id eller ett id från databasen

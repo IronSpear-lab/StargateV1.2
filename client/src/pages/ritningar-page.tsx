@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { FileText, Search, Plus, Upload, ChevronRight, Home } from "lucide-react";
@@ -20,7 +20,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PDFViewer } from "@/components/PDFViewer";
-import { storeFiles, getUploadedFileUrl, getStoredFile } from "@/lib/file-utils";
+import { 
+  storeFiles, 
+  getUploadedFileUrl, 
+  getStoredFile, 
+  getStoredFileAsync, 
+  getStoredFileUrlAsync 
+} from "@/lib/file-utils";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { UploadDialog } from "@/components/UploadDialog";
