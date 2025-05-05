@@ -471,26 +471,79 @@ const ModernGanttChart: React.FC = () => {
         barColor = '#6b7280'; // gray-500
     }
     
+    // Skapa olika stilar beroende på uppgiftstyp
     const style: React.CSSProperties = {
       position: 'absolute',
       left: `${startIdx * zoomLevel}px`,
-      top: '5px',
-      width: task.type === 'MILESTONE' ? '10px' : `${width}px`,
-      height: '20px',
-      backgroundColor: task.type === 'MILESTONE' ? '#000' : 'transparent',
-      borderRadius: task.type === 'MILESTONE' ? '50%' : '3px',
-      zIndex: 1,
+      cursor: 'pointer',
+      zIndex: 2,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'flex-start',
       overflow: 'hidden',
       whiteSpace: 'nowrap',
-      border: task.type === 'PHASE' ? '2px solid #333' : 'none',
-      cursor: 'pointer',
     };
     
-    if (task.type !== 'MILESTONE') {
-      style.background = `linear-gradient(90deg, ${task.type === 'PHASE' ? 'rgba(0,0,0,0.1)' : barColor} 0%, ${task.type === 'PHASE' ? 'rgba(0,0,0,0.1)' : barColor} 100%)`;
+    // Olika stilar beroende på uppgiftstyp
+    if (task.type === 'MILESTONE') {
+      // För milstolpar, skapa en diamantformad markör med glans
+      Object.assign(style, {
+        top: '10px',
+        width: '14px',
+        height: '14px',
+        backgroundColor: barColor,
+        transform: 'rotate(45deg)',
+        borderRadius: '2px',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+        border: '1px solid rgba(255,255,255,0.4)',
+        zIndex: 3,
+        display: 'block'
+      });
+    }
+    else if (task.type === 'PHASE') {
+      // För faser, skapa en större stapel med gradient och subtil skugga
+      Object.assign(style, {
+        top: '2px',
+        width: `${width}px`,
+        height: '26px',
+        background: `linear-gradient(to right, ${barColor}, ${barColor}dd)`,
+        border: '1px solid rgba(0,0,0,0.05)',
+        borderLeft: '4px solid rgba(0,0,0,0.2)',
+        borderRadius: '4px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)',
+        zIndex: 1
+      });
+    }
+    else {
+      // För vanliga uppgifter, skapa en modern stapel med gradient och statusindikator
+      let statusIndicator = {};
+      
+      if (task.status === 'Completed') {
+        statusIndicator = {
+          borderBottom: '2px solid rgba(255,255,255,0.5)',
+          background: `linear-gradient(to bottom, ${barColor}ee, ${barColor})`
+        };
+      } else if (task.status === 'Delayed') {
+        statusIndicator = {
+          borderLeft: '3px solid #ef4444',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)'
+        };
+      } else {
+        statusIndicator = {
+          background: `linear-gradient(to bottom, ${barColor}dd, ${barColor})`,
+          borderTop: '1px solid rgba(255,255,255,0.3)'
+        };
+      }
+      
+      Object.assign(style, {
+        top: '5px',
+        width: `${width}px`,
+        height: '20px',
+        backgroundColor: barColor,
+        borderRadius: '3px',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+        ...statusIndicator
+      });
     }
     
     return style;
@@ -1017,7 +1070,7 @@ const ModernGanttChart: React.FC = () => {
                 {monthHeaders.map((month, index) => (
                   <div 
                     key={index} 
-                    className="text-center font-medium text-sm py-2 border-r border-gray-200 dark:border-slate-700"
+                    className="text-center font-medium text-sm py-2 border-r border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50"
                     style={{ width: `${month.days * zoomLevel}px` }}
                   >
                     {month.month}
@@ -1032,10 +1085,15 @@ const ModernGanttChart: React.FC = () => {
                   const showDay = 
                     zoomLevel >= 30 || // Visa alla dagar vid hög zoom
                     (zoomLevel >= 20 && day.getDate() % 2 === 1) || // Visa udda dagar vid mellan zoom
-                    (zoomLevel < 20 && day.getDate() % 3 === 1);    // Visa var tredje dag vid låg zoom
+                    (zoomLevel < 20 && day.getDate() % 5 === 1);    // Visa var femte dag vid låg zoom
                     
                   // Markera första dagen i månaden med tjockare vänsterkant
                   const isFirstOfMonth = day.getDate() === 1;
+                  const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                  const isToday = isSameDay(day, new Date());
+                  
+                  // Markera viktiga datum (multiplar av 5 eller veckostart)
+                  const isImportantDate = day.getDate() % 5 === 0 || day.getDay() === 1;
                   
                   return (
                     <div 
@@ -1043,12 +1101,22 @@ const ModernGanttChart: React.FC = () => {
                       className={`
                         text-center text-xs py-1 
                         border-r border-gray-200 dark:border-slate-700 
-                        ${isSameDay(day, new Date()) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
-                        ${isFirstOfMonth ? 'border-l-2 border-l-gray-300 dark:border-l-gray-600' : ''}
+                        ${isToday ? 'bg-blue-100 dark:bg-blue-900/30 font-bold' : 
+                           isWeekend ? 'bg-gray-50 dark:bg-slate-800/40 text-gray-500 dark:text-gray-400' : 
+                           isImportantDate && showDay ? 'font-medium' : ''}
+                        ${isFirstOfMonth ? 'border-l-2 border-l-gray-400 dark:border-l-gray-500' : ''}
                       `}
-                      style={{ width: `${zoomLevel}px` }}
+                      style={{ 
+                        width: `${zoomLevel}px`,
+                        // Ändra bakgrund för att skapa ett subtilt rutnät
+                        backgroundImage: isWeekend ? 'none' : 'linear-gradient(to right, rgba(0,0,0,0.025), rgba(0,0,0,0))',
+                      }}
                     >
-                      {showDay ? format(day, 'd') : ''}
+                      {showDay ? (
+                        <div className={`${isImportantDate ? 'font-semibold' : ''}`}>
+                          {format(day, 'd')}
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}
