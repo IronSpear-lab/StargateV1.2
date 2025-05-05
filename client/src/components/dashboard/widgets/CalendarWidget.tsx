@@ -377,8 +377,8 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
             <div 
               key={day.toString()} 
               className={cn(
-                "min-h-[80px] p-1 border border-gray-100 rounded-sm",
-                !isSameMonth(day, currentDate) && "opacity-40 bg-gray-50",
+                "min-h-[80px] p-1 border border-border rounded-sm",
+                !isSameMonth(day, currentDate) && "opacity-40 bg-muted/50",
                 isSameDay(day, today) && "bg-primary/10"
               )}
               onClick={() => {
@@ -430,16 +430,16 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
               <div 
                 className={cn(
                   "text-center mb-1 cursor-pointer",
-                  isSameDay(day, selectedDay) && "bg-gray-50 rounded-md"
+                  isSameDay(day, selectedDay) && "bg-muted rounded-md"
                 )}
                 onClick={() => setSelectedDay(day)}
               >
-                <div className="font-medium text-xs text-gray-500 mb-0.5">{format(day, "EEE")}</div>
+                <div className="font-medium text-xs text-foreground/70 dark:text-foreground/70 mb-0.5">{format(day, "EEE")}</div>
                 <div 
                   className={cn(
                     "mx-auto flex h-6 w-6 items-center justify-center rounded-full text-xs",
                     isToday(day) && "bg-primary text-white",
-                    !isToday(day) && "text-gray-700"
+                    !isToday(day) && "text-foreground"
                   )}
                 >
                   {format(day, "d")}
@@ -510,7 +510,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
               className={cn(
                 "mx-auto flex h-8 w-8 items-center justify-center rounded-full text-sm",
                 isToday(selectedDay) && "bg-primary text-white",
-                !isToday(selectedDay) && "bg-gray-100 text-gray-900"
+                !isToday(selectedDay) && "bg-muted text-foreground"
               )}
             >
               {format(selectedDay, "d")}
@@ -573,9 +573,9 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
                 ))
               ) : (
                 <div className="flex flex-col items-center justify-center h-full py-12">
-                  <AlertCircle className="h-8 w-8 text-gray-300 mb-2" />
-                  <h3 className="text-sm font-medium text-gray-600">No events scheduled</h3>
-                  <p className="text-xs text-gray-500 mt-1 text-center">
+                  <AlertCircle className="h-8 w-8 text-foreground/30 dark:text-foreground/30 mb-2" />
+                  <h3 className="text-sm font-medium text-foreground/80 dark:text-foreground/80">No events scheduled</h3>
+                  <p className="text-xs text-foreground/60 dark:text-foreground/60 mt-1 text-center">
                     There are no events scheduled for this day.
                   </p>
                   <Button 
@@ -647,7 +647,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
               size="sm"
               className={cn(
                 "h-7 px-2 text-xs rounded-none",
-                viewMode === "day" ? "bg-primary hover:bg-primary/90" : "hover:bg-gray-50"
+                viewMode === "day" ? "bg-primary hover:bg-primary/90" : "hover:bg-muted"
               )}
               onClick={() => setViewMode("day")}
             >
