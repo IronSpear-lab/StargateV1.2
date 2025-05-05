@@ -523,18 +523,32 @@ const ModernGanttChart: React.FC = () => {
       const endTask = task;
       
       // Konvertera datestrings till Date-objekt
+      const startTaskStartDate = parseISO(startTask.startDate);
       const startTaskEndDate = parseISO(startTask.endDate);
       const endTaskStartDate = parseISO(endTask.startDate);
       
-      // Hitta position för start- och slutpunkt i Gantt-diagrammet med samma metod som i getTaskBarStyle
+      // Hitta startindex och slutindex för båda uppgifterna
+      let startTaskStartIdx = -1;
       let startTaskEndIdx = -1;
       let endTaskStartIdx = -1;
       
-      // Hitta slutindex för den första uppgiften
+      // Hitta startindex för den första uppgiften
       for (let i = 0; i < days.length; i++) {
-        if (isSameDay(days[i], startTaskEndDate) || isAfter(days[i], startTaskEndDate)) {
-          startTaskEndIdx = i;
+        if (isSameDay(days[i], startTaskStartDate) || isAfter(days[i], startTaskStartDate)) {
+          startTaskStartIdx = i;
           break;
+        }
+      }
+      
+      // Hitta slutindex för den första uppgiften
+      if (startTask.type === 'MILESTONE') {
+        startTaskEndIdx = startTaskStartIdx;
+      } else {
+        for (let i = 0; i < days.length; i++) {
+          if (isSameDay(days[i], startTaskEndDate) || isAfter(days[i], startTaskEndDate)) {
+            startTaskEndIdx = i;
+            break;
+          }
         }
       }
       
@@ -546,24 +560,56 @@ const ModernGanttChart: React.FC = () => {
         }
       }
       
-      if (startTaskEndIdx === -1 || endTaskStartIdx === -1) {
+      if (startTaskStartIdx === -1 || startTaskEndIdx === -1 || endTaskStartIdx === -1) {
         return null;
       }
       
       // Beräkna koordinater för pilen med hänsyn till zoomLevel
-      const startX = startTaskEndIdx * zoomLevel + (startTask.type === 'MILESTONE' ? 5 : 0);
-      const startY = 15;
-      const endX = endTaskStartIdx * zoomLevel;
-      const endY = 15;
+      // För en uppgift är slutpositionen startpositionen + bredden
+      const startDayCount = startTask.type === 'MILESTONE' ? 0 : differenceInDays(startTaskEndDate, startTaskStartDate);
+      const startTaskWidth = startTask.type === 'MILESTONE' ? 10 : Math.max((startDayCount + 1) * zoomLevel, zoomLevel);
       
-      // Skapa en böjd linje
-      const midX = (startX + endX) / 2;
+      const startX = (startTaskStartIdx * zoomLevel) + startTaskWidth; // Slut av den första uppgiften
+      const startY = 15; // Mitten av uppgiftsstapeln
+      const endX = endTaskStartIdx * zoomLevel; // Början av den andra uppgiften
+      const endY = 15; // Mitten av uppgiftsstapeln
+      
+      // Hitta rätt radnummer för att beräkna Y-position
+      const startTaskIndex = flattenedTasks.findIndex(t => t.id === startTask.id);
+      const endTaskIndex = flattenedTasks.findIndex(t => t.id === endTask.id);
+      
+      // Beräkna faktiska y-positioner baserat på raderna
+      const startRowY = startTaskIndex * 40 + 15; // Höjden på en rad är 40px, 15 är mitten på uppgiftsstapeln
+      const endRowY = endTaskIndex * 40 + 15;
+      
+      // Anpassa pilstorleken baserat på zoomnivå
+      const arrowThickness = Math.max(1, Math.min(2, zoomLevel / 20));
+      
+      let points = "";
+      
+      // Om uppgifterna är på samma rad, rita en enkel linje
+      if (startTaskIndex === endTaskIndex) {
+        points = `${startX},${startRowY} ${endX},${endRowY}`;
+      }
+      // Om uppgifterna är på olika rader, rita en vertikal+horisontell linje
+      else {
+        // Bestäm om vi ska rita pilen uppåt eller nedåt
+        if (startTaskIndex < endTaskIndex) {
+          // Rita nedåt
+          const midX = startX + (endX - startX) / 2;
+          points = `${startX},${startRowY} ${midX},${startRowY} ${midX},${endRowY} ${endX},${endRowY}`;
+        } else {
+          // Rita uppåt
+          const midX = startX + (endX - startX) / 2;
+          points = `${startX},${startRowY} ${midX},${startRowY} ${midX},${endRowY} ${endX},${endRowY}`;
+        }
+      }
       
       return {
-        points: `${startX},${startY} ${midX},${startY} ${midX},${endY} ${endX},${endY}`,
+        points,
         fill: "none",
         stroke: "#64748b",
-        strokeWidth: 1,
+        strokeWidth: arrowThickness,
         strokeDasharray: "4 2",
         markerEnd: "url(#arrowhead)"
       };
@@ -1023,41 +1069,48 @@ const ModernGanttChart: React.FC = () => {
                       </div>
                     )}
                   </div>
-                  
-                  {/* SVG för pilar */}
-                  <svg className="absolute top-0 left-0 w-full h-full pointer-events-none">
-                    <defs>
-                      <marker
-                        id="arrowhead"
-                        markerWidth="10"
-                        markerHeight="7"
-                        refX="10"
-                        refY="3.5"
-                        orient="auto"
-                      >
-                        <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
-                      </marker>
-                    </defs>
-                    {task.dependencies?.map((depId, i) => {
-                      const arrowStyles = getDependencyArrowStyle(task);
-                      if (arrowStyles && arrowStyles[i]) {
-                        return (
-                          <polyline 
-                            key={`${task.id}-${depId}-${i}`}
-                            points={arrowStyles[i].points}
-                            fill={arrowStyles[i].fill}
-                            stroke={arrowStyles[i].stroke}
-                            strokeWidth={arrowStyles[i].strokeWidth}
-                            strokeDasharray={arrowStyles[i].strokeDasharray}
-                            markerEnd={arrowStyles[i].markerEnd}
-                          />
-                        );
-                      }
-                      return null;
-                    })}
-                  </svg>
                 </div>
               ))}
+              
+              {/* Gemensam SVG för alla beroendepilar */}
+              <svg className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ zIndex: 5 }}>
+                <defs>
+                  <marker
+                    id="arrowhead"
+                    markerWidth="10"
+                    markerHeight="7"
+                    refX="10"
+                    refY="3.5"
+                    orient="auto"
+                  >
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+                  </marker>
+                </defs>
+                
+                {/* Rita alla beroendepilar på en gång */}
+                {flattenedTasks.map(task => {
+                  if (!task.dependencies || task.dependencies.length === 0) {
+                    return null;
+                  }
+                  
+                  const arrowStyles = getDependencyArrowStyle(task);
+                  if (!arrowStyles) {
+                    return null;
+                  }
+                  
+                  return arrowStyles.map((style, i) => (
+                    <polyline 
+                      key={`${task.id}-dep-${i}`}
+                      points={style.points}
+                      fill={style.fill}
+                      stroke={style.stroke}
+                      strokeWidth={style.strokeWidth}
+                      strokeDasharray={style.strokeDasharray}
+                      markerEnd={style.markerEnd}
+                    />
+                  ));
+                })}
+              </svg>
             </div>
           </div>
         </div>
@@ -1165,15 +1218,41 @@ const ModernGanttChart: React.FC = () => {
             <Button variant="outline" onClick={cancelCreateTask}>Cancel</Button>
             {isEditMode ? (
               <>
-                <Button variant="destructive" onClick={() => {
+                <Button variant="destructive" onClick={(e) => {
+                  e.preventDefault();
                   if (editingTaskId !== null) {
                     const taskToDelete = tasks.find(t => t.id === editingTaskId);
                     if (taskToDelete) {
-                      setTasks(prev => prev.filter(t => t.id !== editingTaskId));
+                      // Hitta och ta bort alla barn rekursivt
+                      const taskIds = new Set<number>();
+                      
+                      // Identifiera alla uppgifter som ska tas bort (uppgiften och alla barn)
+                      const findTasksToDelete = (taskId: number) => {
+                        taskIds.add(taskId);
+                        
+                        // Hitta alla direkta barn till denna uppgift
+                        const children = tasks.filter(t => t.parentId === taskId);
+                        
+                        // Lägg till alla barnens ID och fortsätt neråt i hierarkin
+                        children.forEach(child => findTasksToDelete(child.id));
+                      };
+                      
+                      // Starta med den valda uppgiften
+                      findTasksToDelete(taskToDelete.id);
+                      
+                      // Beräkna antalet uppgifter som tas bort
+                      const deletedCount = taskIds.size;
+                      
+                      // Ta bort uppgifterna från listan
+                      setTasks(prev => prev.filter(t => !taskIds.has(t.id)));
+                      
+                      // Visa bekräftelse med toast
                       toast({
-                        title: "Task Deleted",
-                        description: `${taskToDelete.name} has been removed from the Gantt chart`,
+                        title: "Uppgift borttagen",
+                        description: `${taskToDelete.name} ${deletedCount > 1 ? `och ${deletedCount - 1} relaterade uppgifter` : ''} har tagits bort från Gantt-diagrammet.`,
                       });
+                      
+                      // Stäng dialogen
                       setShowCreateDialog(false);
                       setIsEditMode(false);
                       setEditingTaskId(null);
