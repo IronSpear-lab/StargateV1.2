@@ -84,33 +84,43 @@ export function DwgIfcViewer() {
         const camera = new THREE.PerspectiveCamera(75, 2, 0.1, 1000);
         camera.position.z = 5;
         
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(viewerContainerRef.current.clientWidth, viewerContainerRef.current.clientHeight);
+        renderer.setClearColor(0xf0f0f0, 1);
         
         // Clear any existing canvas
-        if (viewerContainerRef.current.firstChild) {
+        while (viewerContainerRef.current.firstChild) {
           viewerContainerRef.current.removeChild(viewerContainerRef.current.firstChild);
         }
         
         viewerContainerRef.current.appendChild(renderer.domElement);
+        
+        // Add some light to the scene
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(0, 10, 10);
+        scene.add(directionalLight);
         
         // Create a more complex "building-like" structure instead of just a cube
         const buildingGroup = new THREE.Group();
         
         // Base/foundation
         const baseGeometry = new THREE.BoxGeometry(4, 0.2, 4);
-        const baseMaterial = new THREE.MeshBasicMaterial({ color: 0xcccccc });
+        const baseMaterial = new THREE.MeshPhongMaterial({ color: 0xcccccc });
         const base = new THREE.Mesh(baseGeometry, baseMaterial);
         base.position.y = -0.8;
         buildingGroup.add(base);
         
         // Main building
         const buildingGeometry = new THREE.BoxGeometry(3, 1.5, 3);
-        const buildingMaterial = new THREE.MeshBasicMaterial({ 
+        const buildingMaterial = new THREE.MeshPhongMaterial({ 
           color: 0x727cf5,
           wireframe: true,
           transparent: true,
-          opacity: 0.7
+          opacity: 0.7,
+          shininess: 30
         });
         const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
         building.position.y = 0;
@@ -118,9 +128,10 @@ export function DwgIfcViewer() {
         
         // Roof
         const roofGeometry = new THREE.ConeGeometry(2.2, 1, 4);
-        const roofMaterial = new THREE.MeshBasicMaterial({ 
+        const roofMaterial = new THREE.MeshPhongMaterial({ 
           color: 0xfa5c7c,
-          wireframe: true
+          wireframe: true,
+          shininess: 50
         });
         const roof = new THREE.Mesh(roofGeometry, roofMaterial);
         roof.position.y = 1.25;
@@ -129,9 +140,10 @@ export function DwgIfcViewer() {
         
         // Interior walls
         const wallGeometry = new THREE.BoxGeometry(1.4, 1.3, 0.05);
-        const wallMaterial = new THREE.MeshBasicMaterial({ 
+        const wallMaterial = new THREE.MeshPhongMaterial({ 
           color: 0x0acf97,
-          wireframe: true
+          wireframe: true,
+          shininess: 20
         });
         
         // Horizontal wall
