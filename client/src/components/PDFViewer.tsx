@@ -644,6 +644,46 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   const toggleFullscreen = () => {
     setIsFullscreen(prev => !prev);
   };
+  
+  // Effekt som uppdaterar annotationselement när zoomnivån ändras
+  useEffect(() => {
+    // Uppdatera positionering för alla annotationselement när zoomnivån ändras
+    if (!pageRef.current || !annotations?.length) return;
+    
+    // Skapa en kort fördröjning så att PDF hinner rendera vid zoomning
+    const updateTimer = setTimeout(() => {
+      const pdfPage = pageRef.current?.querySelector('.react-pdf__Page') as HTMLElement;
+      if (!pdfPage) return;
+      
+      // Ta bort alla befintliga annotations-element först
+      annotations.forEach(annotation => {
+        const annotationElementId = `annotation-${annotation.id}`;
+        const existingElement = document.getElementById(annotationElementId);
+        if (existingElement && existingElement.parentNode) {
+          existingElement.parentNode.removeChild(existingElement);
+        }
+        
+        // Skapa ett nytt element med korrekt skalning
+        const element = document.createElement('div');
+        element.id = annotationElementId;
+        element.className = "annotation-element";
+        element.style.position = "absolute";
+        element.style.left = `${Number(annotation.rect.x) * scale}px`;
+        element.style.top = `${Number(annotation.rect.y) * scale}px`;
+        element.style.width = `${annotation.rect.width * scale}px`;
+        element.style.height = `${annotation.rect.height * scale}px`;
+        element.style.border = `2px solid ${annotation.color}`;
+        element.style.backgroundColor = `${annotation.color}33`;
+        element.style.zIndex = "100";
+        element.style.pointerEvents = "none";
+        
+        // Lägg till det nya elementet
+        pdfPage.appendChild(element);
+      });
+    }, 100);
+    
+    return () => clearTimeout(updateTimer);
+  }, [scale, annotations]);
 
   // Hanterar start av markering
   const handleMouseDown = (e: React.MouseEvent) => {
