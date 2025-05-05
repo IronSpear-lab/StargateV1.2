@@ -7,10 +7,6 @@ import {
   FileText, 
   Folder, 
   FolderPlus,
-  PlusCircle,
-  Trash,
-  Pencil,
-  MoreHorizontal
 } from "lucide-react";
 import { format } from "date-fns";
 import { 
@@ -26,21 +22,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 // Sample data for inbox comments
 const inboxComments = [
@@ -84,21 +65,18 @@ const recentFiles = [
   { id: 17, name: "Underlag Temp.pdf", date: new Date(2023, 1, 3), type: "pdf" }
 ];
 
-// Sample data for projects and folders
+// Lista av projekt för att skapa mappar
 const projects = [
   { id: 1, name: "Project Alpha" },
   { id: 2, name: "Project Beta" },
   { id: 3, name: "Project Gamma" }
 ];
 
-// Sample data for folders
-const folderData = [
-  { id: 1, name: "Documents", projectId: 1, parentId: null },
-  { id: 2, name: "Images", projectId: 1, parentId: null },
-  { id: 3, name: "Contracts", projectId: 2, parentId: null },
-  { id: 4, name: "Invoices", projectId: 1, parentId: 1 },
-  { id: 5, name: "Reports", projectId: 1, parentId: 1 },
-  { id: 6, name: "Project Screenshots", projectId: 1, parentId: 2 }
+// Lista av tillgängliga föräldramappar för undermappar
+const parentFolders = [
+  { id: 1, name: "Documents" },
+  { id: 2, name: "Images" },
+  { id: 3, name: "Contracts" }
 ];
 
 interface FolderLocation {
@@ -106,26 +84,14 @@ interface FolderLocation {
   parentId: number | null;
 }
 
-// Folder interface
-interface Folder {
-  id: number;
-  name: string;
-  projectId: number;
-  parentId: number | null;
-}
-
 export default function VaultPage() {
   const [activeTab, setActiveTab] = useState("home");
   const [isAddFolderOpen, setIsAddFolderOpen] = useState(false);
-  const [isDeleteFolderOpen, setIsDeleteFolderOpen] = useState(false);
-  const [folders, setFolders] = useState<Folder[]>(folderData);
   const [newFolderName, setNewFolderName] = useState("");
   const [selectedLocation, setSelectedLocation] = useState<FolderLocation>({
     projectId: 1,
     parentId: null
   });
-  const [selectedFolderForDeletion, setSelectedFolderForDeletion] = useState<number | null>(null);
-  const [selectedProjectId, setSelectedProjectId] = useState<number>(1);
   const { toast } = useToast();
 
   const getFileIcon = (type: string) => {
@@ -169,23 +135,6 @@ export default function VaultPage() {
     }
   };
   
-  // Filtrera mappar efter projekt
-  const projectFolders = folders.filter(
-    folder => folder.projectId === selectedProjectId
-  );
-  
-  // Hitta rotmappar (mappar utan förälder)
-  const rootFolders = projectFolders.filter(
-    folder => folder.parentId === null
-  );
-  
-  // Hitta undermappar för en viss föräldermapp
-  const getSubfolders = (parentId: number) => {
-    return projectFolders.filter(
-      folder => folder.parentId === parentId
-    );
-  };
-  
   // Funktion för att hantera skapande av ny mapp
   const handleCreateFolder = () => {
     if (!newFolderName.trim()) {
@@ -197,18 +146,8 @@ export default function VaultPage() {
       return;
     }
     
-    // Skapa ett nytt mapp-objekt
-    const newFolder: Folder = {
-      id: folders.length + 1, // I en riktig app skulle detta hanteras av servern
-      name: newFolderName,
-      projectId: selectedLocation.projectId,
-      parentId: selectedLocation.parentId
-    };
-    
-    // Lägg till mappen i listan
-    setFolders([...folders, newFolder]);
-    
-    // Visa bekräftelse
+    // Här skulle vi skicka en API-förfrågan för att skapa mappen som sedan skulle 
+    // visas i sidofältet under Files-sektionen
     toast({
       title: "Success",
       description: `Folder "${newFolderName}" created in ${
@@ -219,35 +158,6 @@ export default function VaultPage() {
     // Återställ form och stäng dialog
     setNewFolderName("");
     setIsAddFolderOpen(false);
-  };
-  
-  // Funktion för att hantera borttagning av mappar
-  const handleDeleteFolder = () => {
-    if (selectedFolderForDeletion === null) return;
-    
-    // Ta bort mapp och alla dess undermappar
-    const deleteFolder = (folderId: number) => {
-      // Hitta alla undermappar
-      const subfolders = folders.filter(folder => folder.parentId === folderId);
-      
-      // Ta bort undermappar rekursivt
-      subfolders.forEach(subfolder => deleteFolder(subfolder.id));
-      
-      // Ta bort mappen själv
-      setFolders(folders.filter(folder => folder.id !== folderId));
-    };
-    
-    deleteFolder(selectedFolderForDeletion);
-    
-    // Visa bekräftelse
-    toast({
-      title: "Success",
-      description: "Folder and its subfolders deleted successfully",
-    });
-    
-    // Stäng dialog och återställ state
-    setIsDeleteFolderOpen(false);
-    setSelectedFolderForDeletion(null);
   };
 
   return (
@@ -288,7 +198,7 @@ export default function VaultPage() {
                   <span>Add Folder</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>Create New Folder</DialogTitle>
                   <DialogDescription>
@@ -298,17 +208,18 @@ export default function VaultPage() {
                 
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="folderName">Folder Name</Label>
+                    <Label htmlFor="folderName" className="font-medium">Folder Name</Label>
                     <Input 
                       id="folderName" 
                       value={newFolderName}
                       onChange={(e) => setNewFolderName(e.target.value)}
                       placeholder="Enter folder name" 
+                      className="h-10"
                     />
                   </div>
                   
                   <div className="grid gap-2">
-                    <Label htmlFor="project">Project</Label>
+                    <Label htmlFor="project" className="font-medium">Project</Label>
                     <Select 
                       value={selectedLocation.projectId.toString()} 
                       onValueChange={(value) => 
@@ -329,7 +240,7 @@ export default function VaultPage() {
                   </div>
                   
                   <div className="grid gap-2">
-                    <Label htmlFor="parentFolder">Parent Folder (Optional)</Label>
+                    <Label htmlFor="parentFolder" className="font-medium">Parent Folder (Optional)</Label>
                     <Select 
                       value={selectedLocation.parentId?.toString() || "root"} 
                       onValueChange={(value) => 
@@ -344,19 +255,21 @@ export default function VaultPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="root">Root Folder</SelectItem>
-                        <SelectItem value="1">Documents</SelectItem>
-                        <SelectItem value="2">Images</SelectItem>
-                        <SelectItem value="3">Contracts</SelectItem>
+                        {parentFolders.map((folder) => (
+                          <SelectItem key={folder.id} value={folder.id.toString()}>
+                            {folder.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddFolderOpen(false)}>
+                <DialogFooter className="sm:justify-end">
+                  <Button type="button" variant="secondary" onClick={() => setIsAddFolderOpen(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={handleCreateFolder}>
+                  <Button type="submit" onClick={handleCreateFolder}>
                     Create Folder
                   </Button>
                 </DialogFooter>
@@ -364,120 +277,7 @@ export default function VaultPage() {
             </Dialog>
           </div>
           
-          {/* Project selection */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <Label htmlFor="projectSelect">Project</Label>
-            </div>
-            <div className="w-full md:w-1/3">
-              <Select 
-                value={selectedProjectId.toString()} 
-                onValueChange={(value) => setSelectedProjectId(parseInt(value))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select Project" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id.toString()}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          {/* Folders management section */}
-          <Card className="mb-6">
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-lg font-medium">Folders</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {projectFolders.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-center text-muted-foreground">
-                        No folders found. Create a new folder to get started.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    projectFolders.map((folder) => (
-                      <TableRow key={folder.id}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center">
-                            <Folder className="h-4 w-4 mr-2 text-primary" />
-                            {folder.name}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {folder.parentId 
-                            ? `Subfolder of ${folders.find(f => f.id === folder.parentId)?.name || "Unknown"}` 
-                            : "Root folder"}
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                <span>Edit</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => {
-                                  setSelectedFolderForDeletion(folder.id);
-                                  setIsDeleteFolderOpen(true);
-                                }}
-                              >
-                                <Trash className="mr-2 h-4 w-4" />
-                                <span>Delete</span>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
 
-          {/* Delete folder dialog */}
-          <Dialog open={isDeleteFolderOpen} onOpenChange={setIsDeleteFolderOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Confirm Deletion</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to delete this folder and all its subfolders? This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDeleteFolderOpen(false)}>
-                  Cancel
-                </Button>
-                <Button variant="destructive" onClick={handleDeleteFolder}>
-                  Delete
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Inbox Comments Section */}
