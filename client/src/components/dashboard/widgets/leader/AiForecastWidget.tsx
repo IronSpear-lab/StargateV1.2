@@ -74,11 +74,11 @@ export function AiForecastWidget({ projectId }: AiForecastWidgetProps) {
     switch (type) {
       case 'critical':
         return {
-          bgColor: 'bg-red-50 dark:bg-red-900/20',
-          borderColor: 'border-red-200 dark:border-red-800/30',
-          iconBg: 'bg-red-100 dark:bg-red-800/30',
-          iconColor: 'text-red-600 dark:text-red-400',
-          textColor: 'text-red-800 dark:text-red-300'
+          bgColor: 'bg-primary/5 dark:bg-primary/20',
+          borderColor: 'border-primary/20 dark:border-primary/30',
+          iconBg: 'bg-primary/10 dark:bg-primary/30',
+          iconColor: 'text-primary dark:text-primary/90',
+          textColor: 'text-primary-foreground dark:text-primary/90'
         };
       case 'warning':
         return {
@@ -90,11 +90,11 @@ export function AiForecastWidget({ projectId }: AiForecastWidgetProps) {
         };
       case 'info':
         return {
-          bgColor: 'bg-blue-50 dark:bg-blue-900/20',
-          borderColor: 'border-blue-200 dark:border-blue-800/30',
-          iconBg: 'bg-blue-100 dark:bg-blue-800/30',
-          iconColor: 'text-blue-600 dark:text-blue-400',
-          textColor: 'text-blue-800 dark:text-blue-300'
+          bgColor: 'bg-primary/5 dark:bg-primary/20',
+          borderColor: 'border-primary/20 dark:border-primary/30',
+          iconBg: 'bg-primary/10 dark:bg-primary/30',
+          iconColor: 'text-primary dark:text-primary/90',
+          textColor: 'text-primary-foreground dark:text-primary/90'
         };
     }
   };

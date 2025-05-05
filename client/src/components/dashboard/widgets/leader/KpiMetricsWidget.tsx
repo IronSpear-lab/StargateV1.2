@@ -63,7 +63,7 @@ export function KpiMetricsWidget({ projectId }: KpiMetricsWidgetProps) {
             value: 4.2,
             unit: "days",
             change: -12.5,
-            icon: <Clock className="h-5 w-5 text-blue-500" />
+            icon: <Clock className="h-5 w-5 text-primary" />
           },
           {
             name: "Budget Accuracy",
@@ -77,7 +77,7 @@ export function KpiMetricsWidget({ projectId }: KpiMetricsWidgetProps) {
             value: 86,
             unit: "%",
             change: 5.7,
-            icon: <CheckCircle className="h-5 w-5 text-indigo-500" />
+            icon: <CheckCircle className="h-5 w-5 text-primary" />
           }
         ];
 
@@ -145,7 +145,7 @@ export function KpiMetricsWidget({ projectId }: KpiMetricsWidgetProps) {
                             <path
                               d={generateSparklinePoints(64, 40, metric.change > 0 ? 'up' : metric.change < 0 ? 'down' : 'neutral')}
                               fill="none"
-                              stroke={metric.change > 0 ? "#10B981" : metric.change < 0 ? "#EF4444" : "#6B7280"}
+                              stroke={metric.change > 0 ? "#10B981" : metric.change < 0 ? "var(--primary)" : "#6B7280"}
                               strokeWidth="2"
                             />
                           </svg>
