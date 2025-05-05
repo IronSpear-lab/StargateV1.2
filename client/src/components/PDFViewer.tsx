@@ -598,9 +598,20 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     setNumPages(numPages);
     setPageNumber(1);
     
-    // Centrera PDFen i viewern efter laddning
+    // Centrera PDFen i viewern efter laddning och säkerställ att den är fullt scrollbar
     setTimeout(() => {
-      if (pdfContainerRef.current) {
+      if (pdfContainerRef.current && pageRef.current) {
+        // Säkerställ att PDF-visaren har tillräckligt med marginaler för att vara scrollbar
+        // även när inzoomad, speciellt till vänster och uppåt
+        const pdfPage = pageRef.current.querySelector('.react-pdf__Page') as HTMLElement;
+        if (pdfPage) {
+          // Justera marginaler på vårt PDF-wrapper element
+          const pageWrapper = pdfPage.parentElement;
+          if (pageWrapper) {
+            pageWrapper.style.margin = '300px'; // Extra stora marginaler för att tillåta scrollning i alla riktningar
+          }
+        }
+        
         // Centrera horisontellt
         pdfContainerRef.current.scrollTo({
           left: (pdfContainerRef.current.scrollWidth - pdfContainerRef.current.clientWidth) / 2,
@@ -641,13 +652,25 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     // Hämta position relativt till PDF-sidan
     if (pageRef.current) {
       const rect = pageRef.current.getBoundingClientRect();
+      const pdfPage = pageRef.current.querySelector('.react-pdf__Page') as HTMLElement;
       
-      // Beräkna position med hänsyn till padding (200px)
-      const x = e.clientX - rect.left - 200;
-      const y = e.clientY - rect.top - 200;
-      
-      setMarkingStart({ x, y });
-      setMarkingEnd({ x, y }); // Initialisera slutposition också
+      if (pdfPage) {
+        const pageRect = pdfPage.getBoundingClientRect();
+        
+        // Beräkna position med exakt offset från PDF-innehållet, inte från wrapper
+        const x = e.clientX - pageRect.left;
+        const y = e.clientY - pageRect.top;
+        
+        console.log("Starting marking at exact position:", { x, y, 
+          clientX: e.clientX, 
+          clientY: e.clientY, 
+          pageLeft: pageRect.left, 
+          pageTop: pageRect.top 
+        });
+        
+        setMarkingStart({ x, y });
+        setMarkingEnd({ x, y }); // Initialisera slutposition också
+      }
     }
   };
   
@@ -656,13 +679,17 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     if (!isMarking || !markingStart) return;
     
     if (pageRef.current) {
-      const rect = pageRef.current.getBoundingClientRect();
+      const pdfPage = pageRef.current.querySelector('.react-pdf__Page') as HTMLElement;
       
-      // Beräkna position med hänsyn till padding (200px)
-      const x = e.clientX - rect.left - 200;
-      const y = e.clientY - rect.top - 200;
-      
-      setMarkingEnd({ x, y });
+      if (pdfPage) {
+        const pageRect = pdfPage.getBoundingClientRect();
+        
+        // Beräkna position med exakt offset från PDF-innehållet
+        const x = e.clientX - pageRect.left;
+        const y = e.clientY - pageRect.top;
+        
+        setMarkingEnd({ x, y });
+      }
     }
   };
   
@@ -1833,8 +1860,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                         }`}
                         style={{
                           position: 'absolute',
-                          left: `${(Number(annotation.rect.x) + 200) * scale}px`, // Justera med zoom-faktorn
-                          top: `${(Number(annotation.rect.y) + 200) * scale}px`, // Justera med zoom-faktorn
+                          left: `${Number(annotation.rect.x) * scale}px`, // Nu utan +200 offset
+                          top: `${Number(annotation.rect.y) * scale}px`, // Nu utan +200 offset
                           width: `${annotation.rect.width * scale}px`,
                           height: `${annotation.rect.height * scale}px`,
                           backgroundColor: `${annotation.color}33`,
