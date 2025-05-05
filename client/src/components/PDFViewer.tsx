@@ -902,8 +902,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         annotationElement.className = "annotation-element";
         annotationElement.style.position = "absolute";
         // Lägg till padding-offset för att matcha vår wrapper
-        annotationElement.style.left = `${(Number(annotation.rect.x) + 200) * zoomScale}px`;
-        annotationElement.style.top = `${(Number(annotation.rect.y) + 200) * zoomScale}px`;
+        annotationElement.style.left = `${Number(annotation.rect.x) * zoomScale}px`;
+        annotationElement.style.top = `${Number(annotation.rect.y) * zoomScale}px`;
         annotationElement.style.width = `${annotation.rect.width * zoomScale}px`;
         annotationElement.style.height = `${annotation.rect.height * zoomScale}px`;
         annotationElement.style.border = `2px solid ${annotation.color}`;
@@ -929,8 +929,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             marker.id = markerId;
             marker.className = "annotation-marker";
             marker.style.position = "absolute";
-            marker.style.left = `${(Number(annotation.rect.x) + 190) * zoomScale}px`; 
-            marker.style.top = `${(Number(annotation.rect.y) + 190) * zoomScale}px`;
+            marker.style.left = `${Number(annotation.rect.x) * zoomScale - 10}px`; 
+            marker.style.top = `${Number(annotation.rect.y) * zoomScale - 10}px`;
             marker.style.width = `${(annotation.rect.width + 20) * zoomScale}px`;
             marker.style.height = `${(annotation.rect.height + 20) * zoomScale}px`;
             marker.style.zIndex = "1000";
@@ -1458,8 +1458,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     
     return {
       position: 'absolute' as const,
-      left: `${left + 200}px`, // Lägg till padding för att matcha pdf-page-wrapper
-      top: `${top + 200}px`, // Lägg till padding för att matcha pdf-page-wrapper
+      left: `${left}px`, // Nu utan offset
+      top: `${top}px`, // Nu utan offset
       width: `${width}px`,
       height: `${height}px`,
       background: 'rgba(114, 124, 245, 0.3)',
@@ -1817,7 +1817,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                   className="pdfDocument"
                 >
                   <div className="pdf-page-wrapper" style={{ 
-                    padding: "200px", // Lägg till marginaler runt dokumentet
+                    padding: "300px", // Utökade marginaler runt dokumentet för bättre scrollbarhet
                     background: "transparent", // Genomskinlig bakgrund för att visa grid
                     position: "relative", // Behåll markeringar inom detta element
                     display: "inline-block" // Försäkra oss om att vi kan scrolla i alla riktningar
