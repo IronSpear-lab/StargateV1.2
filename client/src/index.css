@@ -159,6 +159,9 @@
     --sidebar-accent-foreground: 235 83% 90%;
     --sidebar-border: 217.2 32.6% 17.5%;
     --sidebar-ring: 235 83% 75%;
+    
+    /* Dashboard variables */
+    --dashboard-bg-gradient: linear-gradient(to bottom, rgba(20, 20, 30, 0.9), rgba(30, 30, 40, 0.95)), url('/hero-pattern.svg');
   }
 }
 

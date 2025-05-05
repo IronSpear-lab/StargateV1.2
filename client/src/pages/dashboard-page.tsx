@@ -213,19 +213,19 @@ export default function DashboardPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header title="Dashboard" onToggleSidebar={toggleSidebar} />
         
-        <main className="flex-1 overflow-y-auto bg-slate-50">
+        <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-background">
           <div className="max-w-7xl mx-auto py-5 px-4 sm:px-6">
             {/* Breadcrumb */}
             <div className="flex items-center space-x-2 text-sm mb-5">
-              <Link href="/" className="text-blue-600 hover:text-blue-700">
+              <Link href="/" className="text-primary hover:text-primary/80">
                 <Home className="h-4 w-4" />
               </Link>
-              <span className="text-gray-400">/</span>
-              <span className="text-gray-500">Dashboard</span>
+              <span className="text-muted-foreground">/</span>
+              <span className="text-muted-foreground">Dashboard</span>
             </div>
             
             <div className="flex justify-between items-center mb-6">
-              <h1 className="text-xl font-bold text-gray-800">Dashboard</h1>
+              <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
               
               <div className="flex gap-2">
                 <Button 
@@ -238,13 +238,13 @@ export default function DashboardPage() {
                     });
                   }}
                   variant="outline"
-                  className="gap-1 text-sm border-red-200 text-red-600 hover:bg-red-50"
+                  className="gap-1 text-sm"
                 >
                   Reset dashboard
                 </Button>
                 <Button 
                   onClick={handleAddWidgetClick} 
-                  className="gap-1 bg-blue-600 hover:bg-blue-700"
+                  className="gap-1 bg-primary hover:bg-primary/90"
                 >
                   <PlusCircle className="h-4 w-4" />
                   Add widget
@@ -253,15 +253,15 @@ export default function DashboardPage() {
             </div>
             
             {widgets.length === 0 ? (
-              <div className="bg-white border border-dashed border-gray-200 rounded-lg p-8 text-center shadow-sm">
-                <h3 className="font-medium text-lg mb-2 text-gray-700">Your dashboard is empty</h3>
-                <p className="text-gray-500 mb-4">
+              <div className="bg-card border border-dashed border-border rounded-lg p-8 text-center shadow-sm">
+                <h3 className="font-medium text-lg mb-2 text-foreground">Your dashboard is empty</h3>
+                <p className="text-muted-foreground mb-4">
                   Add widgets to customize your dashboard experience
                 </p>
                 <Button 
                   variant="outline" 
                   onClick={handleAddWidgetClick}
-                  className="gap-1 border-blue-200 text-blue-600 hover:bg-blue-50"
+                  className="gap-1 border-primary/20 text-primary hover:bg-primary/10"
                 >
                   <PlusCircle className="h-4 w-4" />
                   Add Your First Widget
