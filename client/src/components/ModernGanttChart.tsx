@@ -408,24 +408,49 @@ const ModernGanttChart: React.FC = () => {
   
   // Beräkna position och stil för uppgiftsstaplar
   const getTaskBarStyle = (task: GanttTask): React.CSSProperties => {
-    const startIdx = days.findIndex(day => 
-      isSameDay(parseISO(task.startDate), day) || 
-      isAfter(day, parseISO(task.startDate))
-    );
+    // Konvertera datestrings till Date-objekt
+    const taskStartDate = parseISO(task.startDate);
+    const taskEndDate = parseISO(task.endDate);
     
-    const endIdx = days.findIndex(day => 
-      isSameDay(parseISO(task.endDate), day) || 
-      isBefore(day, parseISO(task.endDate))
-    );
+    // Hitta indexen där uppgiften börjar och slutar
+    let startIdx = -1;
+    let endIdx = -1;
+    
+    // Hitta startindex
+    for (let i = 0; i < days.length; i++) {
+      if (isSameDay(days[i], taskStartDate) || isAfter(days[i], taskStartDate)) {
+        startIdx = i;
+        break;
+      }
+    }
+    
+    // Hitta slutindex - börja från slutet för milstolpar (samma dag)
+    if (task.type === 'MILESTONE') {
+      endIdx = startIdx;
+    } else {
+      // För vanliga uppgifter, hitta sista dagen som är mindre än eller lika med slutdatumet
+      for (let i = 0; i < days.length; i++) {
+        if (isSameDay(days[i], taskEndDate) || isAfter(days[i], taskEndDate)) {
+          endIdx = i;
+          break;
+        }
+      }
+    }
     
     // Om datumen inte är inom intervallet, visa inte stapeln
     if (startIdx === -1 || endIdx === -1) {
       return { display: 'none' };
     }
     
-    const width = task.type === 'MILESTONE' 
-      ? 10 
-      : Math.max((endIdx - startIdx) * zoomLevel, zoomLevel);
+    // För vanliga uppgifter, beräkna bredden baserat på antalet dagar mellan start- och slutdatum
+    let width;
+    if (task.type === 'MILESTONE') {
+      width = 10; // Milstolpar är bara punkter
+    } else {
+      // Beräkna bredden baserat på faktiska datum
+      const dayDiff = differenceInDays(taskEndDate, taskStartDate);
+      width = Math.max((dayDiff + 1) * zoomLevel, zoomLevel);
+    }
     
     let barColor = '';
     
@@ -497,22 +522,35 @@ const ModernGanttChart: React.FC = () => {
       const startTask = dependencyTask;
       const endTask = task;
       
-      // Hitta position för start- och slutpunkt i Gantt-diagrammet
-      const startTaskEndIdx = days.findIndex(day => 
-        isSameDay(parseISO(startTask.endDate), day) || 
-        isBefore(day, parseISO(startTask.endDate))
-      );
+      // Konvertera datestrings till Date-objekt
+      const startTaskEndDate = parseISO(startTask.endDate);
+      const endTaskStartDate = parseISO(endTask.startDate);
       
-      const endTaskStartIdx = days.findIndex(day => 
-        isSameDay(parseISO(endTask.startDate), day) || 
-        isAfter(day, parseISO(endTask.startDate))
-      );
+      // Hitta position för start- och slutpunkt i Gantt-diagrammet med samma metod som i getTaskBarStyle
+      let startTaskEndIdx = -1;
+      let endTaskStartIdx = -1;
+      
+      // Hitta slutindex för den första uppgiften
+      for (let i = 0; i < days.length; i++) {
+        if (isSameDay(days[i], startTaskEndDate) || isAfter(days[i], startTaskEndDate)) {
+          startTaskEndIdx = i;
+          break;
+        }
+      }
+      
+      // Hitta startindex för den andra uppgiften
+      for (let i = 0; i < days.length; i++) {
+        if (isSameDay(days[i], endTaskStartDate) || isAfter(days[i], endTaskStartDate)) {
+          endTaskStartIdx = i;
+          break;
+        }
+      }
       
       if (startTaskEndIdx === -1 || endTaskStartIdx === -1) {
         return null;
       }
       
-      // Beräkna koordinater för pilen
+      // Beräkna koordinater för pilen med hänsyn till zoomLevel
       const startX = startTaskEndIdx * zoomLevel + (startTask.type === 'MILESTONE' ? 5 : 0);
       const startY = 15;
       const endX = endTaskStartIdx * zoomLevel;
@@ -734,31 +772,6 @@ const ModernGanttChart: React.FC = () => {
             <Button variant="outline" size="sm" onClick={() => setShowCreateDialog(true)}>
               <Plus className="w-4 h-4 mr-1" />
               <span>Add Task</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => {
-                if (tasks.length === 0) {
-                  toast({
-                    title: "No Tasks",
-                    description: "There are no tasks to delete",
-                    variant: "destructive",
-                  });
-                  return;
-                }
-                
-                if (confirm("Are you sure you want to delete all tasks?")) {
-                  setTasks([]);
-                  toast({
-                    title: "All Tasks Deleted",
-                    description: "All tasks have been removed from the Gantt chart",
-                  });
-                }
-              }}
-            >
-              <Trash2 className="w-4 h-4 mr-1" />
-              <span>Delete All</span>
             </Button>
             <Button variant="outline" size="sm">
               <FileDown className="w-4 h-4 mr-1" />
@@ -1150,9 +1163,34 @@ const ModernGanttChart: React.FC = () => {
           
           <DialogFooter>
             <Button variant="outline" onClick={cancelCreateTask}>Cancel</Button>
-            <Button onClick={saveNewTask}>
-              {isEditMode ? 'Update' : 'Create'}
-            </Button>
+            {isEditMode ? (
+              <>
+                <Button variant="destructive" onClick={() => {
+                  if (editingTaskId !== null) {
+                    const taskToDelete = tasks.find(t => t.id === editingTaskId);
+                    if (taskToDelete) {
+                      setTasks(prev => prev.filter(t => t.id !== editingTaskId));
+                      toast({
+                        title: "Task Deleted",
+                        description: `${taskToDelete.name} has been removed from the Gantt chart`,
+                      });
+                      setShowCreateDialog(false);
+                      setIsEditMode(false);
+                      setEditingTaskId(null);
+                    }
+                  }
+                }}>
+                  Delete Task
+                </Button>
+                <Button onClick={saveNewTask}>
+                  Update
+                </Button>
+              </>
+            ) : (
+              <Button onClick={saveNewTask}>
+                Create
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
