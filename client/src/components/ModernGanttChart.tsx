@@ -700,11 +700,31 @@ const ModernGanttChart: React.FC = () => {
       <div className="border-b border-gray-200 dark:border-slate-700 p-4">
         <div className="flex flex-wrap gap-4 items-center">
           <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                setZoomLevel(prev => Math.max(10, prev - 10));
+                toast({
+                  title: "Zoomed Out",
+                  description: "Reduced the zoom level of the Gantt chart",
+                });
+              }}
+            >
               <ZoomOut className="w-4 h-4 mr-1" />
               <span>Zoom Out</span>
             </Button>
-            <Button variant="outline" size="sm">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                setZoomLevel(prev => Math.min(100, prev + 10));
+                toast({
+                  title: "Zoomed In",
+                  description: "Increased the zoom level of the Gantt chart",
+                });
+              }}
+            >
               <ZoomIn className="w-4 h-4 mr-1" />
               <span>Zoom In</span>
             </Button>
@@ -714,6 +734,31 @@ const ModernGanttChart: React.FC = () => {
             <Button variant="outline" size="sm" onClick={() => setShowCreateDialog(true)}>
               <Plus className="w-4 h-4 mr-1" />
               <span>Add Task</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                if (tasks.length === 0) {
+                  toast({
+                    title: "No Tasks",
+                    description: "There are no tasks to delete",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                
+                if (confirm("Are you sure you want to delete all tasks?")) {
+                  setTasks([]);
+                  toast({
+                    title: "All Tasks Deleted",
+                    description: "All tasks have been removed from the Gantt chart",
+                  });
+                }
+              }}
+            >
+              <Trash2 className="w-4 h-4 mr-1" />
+              <span>Delete All</span>
             </Button>
             <Button variant="outline" size="sm">
               <FileDown className="w-4 h-4 mr-1" />
@@ -824,6 +869,7 @@ const ModernGanttChart: React.FC = () => {
                 <TableRow 
                   key={task.id}
                   className="cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800/50"
+                  onClick={() => handleTaskClick(task)}
                 >
                   <TableCell className="py-2">
                     <TooltipProvider>
@@ -895,7 +941,7 @@ const ModernGanttChart: React.FC = () => {
         
         {/* Höger sida - Gantt-diagram */}
         <div className="w-[60%] overflow-y-auto overflow-x-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
-          <div className="relative" style={{ minWidth: days.length * 30 }}>
+          <div className="relative" style={{ minWidth: days.length * zoomLevel }}>
             {/* Tidsrubrik */}
             <div className="sticky top-0 bg-white dark:bg-slate-900 z-10">
               {/* Månadsrubriker */}
@@ -904,7 +950,7 @@ const ModernGanttChart: React.FC = () => {
                   <div 
                     key={index} 
                     className="text-center font-medium text-sm py-2 border-r border-gray-200 dark:border-slate-700"
-                    style={{ width: `${month.days * 30}px` }}
+                    style={{ width: `${month.days * zoomLevel}px` }}
                   >
                     {month.month}
                   </div>
@@ -919,7 +965,7 @@ const ModernGanttChart: React.FC = () => {
                     className={`text-center text-xs py-1 border-r border-gray-200 dark:border-slate-700 ${
                       isSameDay(day, new Date()) ? 'bg-blue-50 dark:bg-blue-900/20' : ''
                     }`}
-                    style={{ width: '30px' }}
+                    style={{ width: `${zoomLevel}px` }}
                   >
                     {format(day, 'd')}
                   </div>
@@ -946,12 +992,18 @@ const ModernGanttChart: React.FC = () => {
                             ? 'bg-gray-200 dark:bg-slate-700' 
                             : ''
                       }`}
-                      style={{ left: `${dayIndex * 30}px` }}
+                      style={{ left: `${dayIndex * zoomLevel}px` }}
                     />
                   ))}
                   
                   {/* Uppgiftsstapel */}
-                  <div style={getTaskBarStyle(task)}>
+                  <div 
+                    style={getTaskBarStyle(task)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleTaskClick(task);
+                    }}
+                  >
                     {task.type !== 'MILESTONE' && (
                       <div className="px-2 overflow-hidden whitespace-nowrap text-xs text-white truncate h-full flex items-center">
                         {task.name}
@@ -998,11 +1050,11 @@ const ModernGanttChart: React.FC = () => {
         </div>
       </div>
       
-      {/* Dialog för att skapa ny uppgift */}
+      {/* Dialog för att skapa eller redigera uppgift */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Create New Task</DialogTitle>
+            <DialogTitle>{isEditMode ? 'Edit Task' : 'Create New Task'}</DialogTitle>
           </DialogHeader>
           
           <div className="grid gap-4 py-4">
@@ -1098,7 +1150,9 @@ const ModernGanttChart: React.FC = () => {
           
           <DialogFooter>
             <Button variant="outline" onClick={cancelCreateTask}>Cancel</Button>
-            <Button onClick={saveNewTask}>Create</Button>
+            <Button onClick={saveNewTask}>
+              {isEditMode ? 'Update' : 'Create'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
