@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { v4 as uuidv4 } from 'uuid';
 
 // Import necessary components from xeokit-sdk
 // Note: These imports would typically work in a real environment
@@ -230,8 +231,8 @@ export function DwgIfcViewer() {
         return;
       }
       
-      // Create a unique ID for the file
-      const fileId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Create a unique ID for the file using uuid
+      const fileId = uuidv4();
       
       // Create a file entry
       const fileEntry: FileEntry = {
