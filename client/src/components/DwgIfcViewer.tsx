@@ -10,6 +10,9 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 
+// Add MeshStandardMaterial and MeshBasicMaterial for type safety
+import { MeshStandardMaterial, MeshBasicMaterial, MeshPhongMaterial } from 'three';
+
 // Simple type for our file storage
 type FileEntry = {
   id: string;
