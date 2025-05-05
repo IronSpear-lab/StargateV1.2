@@ -132,8 +132,8 @@ async function getBinaryFromIndexedDB(key: string): Promise<ArrayBuffer | null> 
  */
 export async function storeFileForReuse(file: File, metadata?: { [key: string]: any }): Promise<string> {
   try {
-    // Generera ett unikt ID för filen
-    const id = `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    // Använd ett unikt ID från metadata om det finns, annars generera ett nytt
+    const id = metadata?.uniqueId || `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     
     // Spara file-objektet i det temporära minnet
     const storedFile: StoredFile = {

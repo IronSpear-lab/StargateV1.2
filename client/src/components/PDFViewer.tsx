@@ -116,28 +116,34 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   const pdfContainerRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
 
-  // Om en File-objekt skickas in, spara den i vår persistenta lagring och skapa en URL
+  // När en ny PDF-fil öppnas, rensa annotations och versioner och lagra filen
   useEffect(() => {
     if (file) {
-      console.log("File provided to PDF Viewer:", file.name, file.size, "bytes");
+      console.log("New PDF file provided to viewer:", file.name, file.size, "bytes");
+      
+      // Rensa befintliga annotationer och versioner när en ny fil öppnas
+      setAnnotations([]);
+      setFileVersions([]);
+      setActiveVersionId(undefined);
       
       // Persistent lagring av filen för att kunna återanvända den mellan sessioner
       const saveFileForLaterUse = async () => {
         try {
-          // Lagra i IndexedDB för att kunna använda den i senare sessioner
+          // Skapa ett unikt fileId för denna specifika uppladdning
+          const timestamp = Date.now();
+          const randomId = Math.random().toString(36).substring(2, 9);
+          const uniqueFileId = `file_${timestamp}_${randomId}`;
+          
+          // Lagra i IndexedDB med detta unika ID
           const fileId = await storeFileForReuse(file, {
             fromPdfViewer: true,
-            uploadDate: new Date().toISOString()
+            uploadDate: new Date().toISOString(),
+            uniqueId: uniqueFileId // Använd ett unikt ID för varje uppladdning
           });
           
-          console.log(`[${Date.now()}] File ${file.name} stored for reuse with ID: ${fileId}`);
+          console.log(`[${timestamp}] New file ${file.name} stored with unique ID: ${fileId}`);
           
-          // Spara även en referens till fileId med filnamnet
-          const pdfIdMapping = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
-          pdfIdMapping[file.name] = fileId;
-          localStorage.setItem('pdf_file_id_mappings', JSON.stringify(pdfIdMapping));
-          
-          // Spara även globalt för användning i denna session
+          // Spara globalt för användning i denna session
           (window as any).currentPdfFile = file;
           (window as any).currentPdfFileId = fileId;
         } catch (error) {
@@ -1626,10 +1632,10 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             onMouseUp={handleMouseUp}
             style={{ cursor: isMarking ? 'crosshair' : 'default' }}
           >
-            {pdfUrl ? (
+            {file ? (
               <div className="relative" ref={pageRef}>
                 <Document
-                  file={pdfUrl}
+                  file={file}
                   onLoadSuccess={onDocumentLoadSuccess}
                   loading={
                     <div className="flex flex-col items-center justify-center">
