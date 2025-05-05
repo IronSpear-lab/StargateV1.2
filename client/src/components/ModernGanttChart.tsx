@@ -401,7 +401,7 @@ const ModernGanttChart: React.FC = () => {
   };
   
   // Beräkna position och stil för uppgiftsstaplar
-  const getTaskBarStyle = (task: GanttTask) => {
+  const getTaskBarStyle = (task: GanttTask): React.CSSProperties => {
     const startIdx = days.findIndex(day => 
       isSameDay(parseISO(task.startDate), day) || 
       isAfter(day, parseISO(task.startDate))
@@ -421,26 +421,26 @@ const ModernGanttChart: React.FC = () => {
       ? 10 
       : Math.max((endIdx - startIdx) * 30, 30);
     
-    let backgroundColor;
+    let barColor = '';
     
     switch (task.status) {
       case 'New':
-        backgroundColor = 'bg-blue-500';
+        barColor = '#3b82f6'; // blue-500
         break;
       case 'Ongoing':
-        backgroundColor = 'bg-amber-500';
+        barColor = '#f59e0b'; // amber-500
         break;
       case 'Completed':
-        backgroundColor = 'bg-green-500';
+        barColor = '#10b981'; // green-500
         break;
       case 'Delayed':
-        backgroundColor = 'bg-red-500';
+        barColor = '#ef4444'; // red-500
         break;
       default:
-        backgroundColor = 'bg-gray-500';
+        barColor = '#6b7280'; // gray-500
     }
     
-    return {
+    const style: React.CSSProperties = {
       position: 'absolute',
       left: `${startIdx * 30}px`,
       top: '5px',
@@ -455,14 +455,27 @@ const ModernGanttChart: React.FC = () => {
       overflow: 'hidden',
       whiteSpace: 'nowrap',
       border: task.type === 'PHASE' ? '2px solid #333' : 'none',
-      ...(task.type !== 'MILESTONE' && {
-        background: `linear-gradient(90deg, ${task.type === 'PHASE' ? 'rgba(0,0,0,0.1)' : backgroundColor} 0%, ${task.type === 'PHASE' ? 'rgba(0,0,0,0.1)' : backgroundColor} 100%)`
-      })
     };
+    
+    if (task.type !== 'MILESTONE') {
+      style.background = `linear-gradient(90deg, ${task.type === 'PHASE' ? 'rgba(0,0,0,0.1)' : barColor} 0%, ${task.type === 'PHASE' ? 'rgba(0,0,0,0.1)' : barColor} 100%)`;
+    }
+    
+    return style;
   };
   
+  // Interface för SVG arrow style
+  interface ArrowStyle {
+    points: string;
+    fill: string;
+    stroke: string;
+    strokeWidth: number;
+    strokeDasharray: string;
+    markerEnd: string;
+  }
+  
   // Beräkna utseende för beroendepilar
-  const getDependencyArrowStyle = (task: GanttTask) => {
+  const getDependencyArrowStyle = (task: GanttTask): ArrowStyle[] | null => {
     if (!task.dependencies || task.dependencies.length === 0) {
       return null;
     }
@@ -511,7 +524,7 @@ const ModernGanttChart: React.FC = () => {
       };
     });
     
-    return dependencyLines.filter(Boolean);
+    return dependencyLines.filter(Boolean) as ArrowStyle[];
   };
   
   // Hantera skapande av ny uppgift
@@ -720,6 +733,7 @@ const ModernGanttChart: React.FC = () => {
                 <TableHead className="py-2 w-24">Start Date</TableHead>
                 <TableHead className="py-2 w-24">End Date</TableHead>
                 <TableHead className="py-2 w-20">Duration</TableHead>
+                <TableHead className="py-2 w-10">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -776,6 +790,19 @@ const ModernGanttChart: React.FC = () => {
                   <TableCell className="py-2">{format(parseISO(task.endDate), 'yyyy-MM-dd')}</TableCell>
                   <TableCell className="py-2">
                     {task.type === 'MILESTONE' ? '-' : `${task.duration} dagar`}
+                  </TableCell>
+                  <TableCell className="py-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteClick(task);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -863,12 +890,23 @@ const ModernGanttChart: React.FC = () => {
                         <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
                       </marker>
                     </defs>
-                    {task.dependencies?.map((depId, i) => (
-                      <polyline 
-                        key={`${task.id}-${depId}-${i}`}
-                        {...getDependencyArrowStyle(task)?.[i]}
-                      />
-                    ))}
+                    {task.dependencies?.map((depId, i) => {
+                      const arrowStyles = getDependencyArrowStyle(task);
+                      if (arrowStyles && arrowStyles[i]) {
+                        return (
+                          <polyline 
+                            key={`${task.id}-${depId}-${i}`}
+                            points={arrowStyles[i].points}
+                            fill={arrowStyles[i].fill}
+                            stroke={arrowStyles[i].stroke}
+                            strokeWidth={arrowStyles[i].strokeWidth}
+                            strokeDasharray={arrowStyles[i].strokeDasharray}
+                            markerEnd={arrowStyles[i].markerEnd}
+                          />
+                        );
+                      }
+                      return null;
+                    })}
                   </svg>
                 </div>
               ))}
@@ -974,6 +1012,42 @@ const ModernGanttChart: React.FC = () => {
           <DialogFooter>
             <Button variant="outline" onClick={cancelCreateTask}>Cancel</Button>
             <Button onClick={saveNewTask}>Create</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete Task Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Delete Task</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Are you sure you want to delete this task? 
+              {taskToDelete?.type === 'PHASE' && (
+                <span className="text-red-500 font-semibold block mt-2">
+                  Warning: This will also delete all child tasks under this phase!
+                </span>
+              )}
+            </p>
+            
+            {taskToDelete && (
+              <div className="mt-4 p-3 border rounded-md bg-gray-50 dark:bg-slate-800">
+                <p><span className="font-medium">Name:</span> {taskToDelete.name}</p>
+                <p><span className="font-medium">Type:</span> {taskToDelete.type}</p>
+                <p><span className="font-medium">Status:</span> {taskToDelete.status}</p>
+                <p><span className="font-medium">Project:</span> {taskToDelete.project}</p>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDeleteTask}>
+              Delete
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
