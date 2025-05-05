@@ -307,11 +307,80 @@ export function Sidebar({ className }: SidebarProps) {
       
       // Calculate indentation based on level
       let indentClass = '';
-      if (item.indent === 1) indentClass = 'pl-4';
-      else if (item.indent === 2) indentClass = 'pl-8';
-      else if (item.indent === 3) indentClass = 'pl-12';
-      else if (item.indent === 4) indentClass = 'pl-16';
+      if (item.indent === 1) indentClass = isOpen ? 'pl-4' : 'pl-0';
+      else if (item.indent === 2) indentClass = isOpen ? 'pl-8' : 'pl-0';
+      else if (item.indent === 3) indentClass = isOpen ? 'pl-12' : 'pl-0';
+      else if (item.indent === 4) indentClass = isOpen ? 'pl-16' : 'pl-0';
       
+      // Om sidofältet är minimerat och inte är mobilvy
+      if (!isOpen && !isMobile) {
+        return (
+          <div key={itemKey} className="relative group">
+            {hasChildren ? (
+              <div>
+                <button 
+                  className={cn(
+                    "flex items-center justify-center w-full py-2 rounded-md transition-colors duration-150",
+                    item.active
+                      ? "bg-primary/10 text-primary font-medium" 
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    "px-0 mx-auto"
+                  )}
+                  onClick={() => toggleItem(itemKey)}
+                >
+                  <span className={cn(
+                    "flex items-center justify-center",
+                    item.active ? "text-primary" : "text-muted-foreground"
+                  )}>
+                    {item.icon}
+                  </span>
+                </button>
+                <div className="absolute left-full top-0 ml-2 px-2 py-1 rounded-md bg-popover shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+                  {item.label}
+                </div>
+                {isItemOpen && (
+                  <div className="pl-0">
+                    {renderNavItems(item.children!, itemKey)}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link 
+                href={item.href}
+                className={cn(
+                  "flex items-center justify-center py-2 rounded-md transition-colors duration-150",
+                  item.active
+                    ? "bg-primary/10 text-primary font-medium" 
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  "px-0 mx-auto"
+                )}
+              >
+                <span className={cn(
+                  "flex items-center justify-center",
+                  item.active ? "text-primary" : "text-muted-foreground"
+                )}>
+                  {item.icon}
+                </span>
+                <div className="absolute left-full top-0 ml-2 px-2 py-1 rounded-md bg-popover shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+                  {item.label}
+                  {item.badge && (
+                    <Badge variant="outline" className={cn(
+                      "text-xs py-0.5 px-2 rounded-full ml-2",
+                      item.active 
+                        ? "bg-primary/10 text-primary border-primary/20" 
+                        : "bg-muted text-muted-foreground border-border"
+                    )}>
+                      {item.badge}
+                    </Badge>
+                  )}
+                </div>
+              </Link>
+            )}
+          </div>
+        );
+      }
+
+      // Original rendering for expanded sidebar
       return (
         <div key={itemKey}>
           {hasChildren ? (
@@ -456,15 +525,28 @@ export function Sidebar({ className }: SidebarProps) {
           </div>
         </div>
         
-        <div className="p-3 border-b border-border">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search" 
-              className="pl-8 h-9 text-sm"
-            />
+        {isOpen ? (
+          <div className="p-3 border-b border-border">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Search" 
+                className="pl-8 h-9 text-sm"
+              />
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="py-2 border-b border-border flex justify-center">
+            <div className="relative group">
+              <Button variant="ghost" size="icon" className="h-9 w-9">
+                <Search className="h-4 w-4 text-muted-foreground" />
+              </Button>
+              <div className="absolute left-full ml-2 px-2 py-1 rounded-md bg-popover shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+                Search
+              </div>
+            </div>
+          </div>
+        )}
         
         <div className="flex-1 py-2 overflow-y-auto">
           <div className="space-y-1">
@@ -472,43 +554,79 @@ export function Sidebar({ className }: SidebarProps) {
           </div>
         </div>
         
-        <div className="px-3 py-1 mt-auto">
+        <div className={cn("py-1 mt-auto", isOpen ? "px-3" : "px-0")}>
           <div className="space-y-1 mt-1">
             <Link 
               href="/support"
-              className="flex items-center px-3 py-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              className={cn(
+                isOpen 
+                  ? "flex items-center px-3 py-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" 
+                  : "flex items-center justify-center py-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground relative group"
+              )}
             >
-              <HelpCircle className="w-5 h-5 mr-3 text-muted-foreground" />
-              <span className="text-sm">Support</span>
+              <HelpCircle className={cn("w-5 h-5", isOpen ? "mr-3" : "")} />
+              {isOpen ? (
+                <span className="text-sm">Support</span>
+              ) : (
+                <div className="absolute left-full top-0 ml-2 px-2 py-1 rounded-md bg-popover shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+                  Support
+                </div>
+              )}
             </Link>
             <Link 
               href="/settings"
-              className="flex items-center px-3 py-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              className={cn(
+                isOpen 
+                  ? "flex items-center px-3 py-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" 
+                  : "flex items-center justify-center py-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground relative group"
+              )}
             >
-              <Settings className="w-5 h-5 mr-3 text-muted-foreground" />
-              <span className="text-sm">Settings</span>
+              <Settings className={cn("w-5 h-5", isOpen ? "mr-3" : "")} />
+              {isOpen ? (
+                <span className="text-sm">Settings</span>
+              ) : (
+                <div className="absolute left-full top-0 ml-2 px-2 py-1 rounded-md bg-popover shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+                  Settings
+                </div>
+              )}
             </Link>
           </div>
         </div>
         
-        <div className="p-3 border-t border-border">
-          <div className="flex items-center">
-            <Avatar className="h-8 w-8 border border-border">
-              <AvatarFallback className="bg-muted text-foreground text-xs">
-                FH
-              </AvatarFallback>
-            </Avatar>
-            <div className="ml-2 overflow-hidden">
-              <p className="text-sm font-medium text-foreground truncate">Fredrik H.</p>
-              <p className="text-xs text-muted-foreground truncate">fredrik@valvx.com</p>
+        <div className="border-t border-border p-3">
+          {isOpen ? (
+            <div className="flex items-center">
+              <Avatar className="h-8 w-8 border border-border">
+                <AvatarFallback className="bg-muted text-foreground text-xs">
+                  FH
+                </AvatarFallback>
+              </Avatar>
+              <div className="ml-2 overflow-hidden">
+                <p className="text-sm font-medium text-foreground truncate">Fredrik H.</p>
+                <p className="text-xs text-muted-foreground truncate">fredrik@valvx.com</p>
+              </div>
+              <button 
+                className="ml-auto text-muted-foreground hover:text-foreground p-1 transition-colors"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
             </div>
-            <button 
-              className="ml-auto text-muted-foreground hover:text-foreground p-1 transition-colors"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
-          </div>
+          ) : (
+            <div className="flex justify-center">
+              <div className="relative group">
+                <Avatar className="h-8 w-8 border border-border">
+                  <AvatarFallback className="bg-muted text-foreground text-xs">
+                    FH
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute left-full bottom-0 ml-2 px-2 py-1 rounded-md bg-popover shadow-md whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50">
+                  <p className="text-sm font-medium">Fredrik H.</p>
+                  <p className="text-xs text-muted-foreground">fredrik@valvx.com</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </aside>
     </>
