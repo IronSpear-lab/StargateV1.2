@@ -160,7 +160,7 @@ export default function ProjectLeaderDashboardPage() {
   }, [widgets]);
 
   // Fetch user's projects
-  const { data: projects } = useQuery({
+  const { data: projects = [] } = useQuery({
     queryKey: ['/api/user-projects'],
     queryFn: async () => {
       const response = await fetch('/api/user-projects');
@@ -173,6 +173,20 @@ export default function ProjectLeaderDashboardPage() {
 
   // Default project ID (first project in list)
   const defaultProjectId = projects && projects.length > 0 ? projects[0].id : undefined;
+  
+  // Current project state for dropdown
+  const [currentProjectId, setCurrentProjectId] = useState<number | undefined>(defaultProjectId);
+  
+  // Update current project when projects load initially
+  useEffect(() => {
+    if (defaultProjectId && !currentProjectId) {
+      setCurrentProjectId(defaultProjectId);
+    }
+  }, [defaultProjectId, currentProjectId]);
+  
+  // Get current project object
+  const currentProject = projects.find((p: { id: number; name: string }) => p.id === currentProjectId) || 
+    (projects.length > 0 ? projects[0] : { id: 0, name: "No Project" });
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -184,7 +198,7 @@ export default function ProjectLeaderDashboardPage() {
       id: uuidv4(),
       type: widgetType.id,
       title: widgetType.name,
-      projectId: defaultProjectId,
+      projectId: currentProjectId || defaultProjectId,
       width: widgetType.defaultWidth,
       height: widgetType.defaultHeight
     };
@@ -246,29 +260,32 @@ export default function ProjectLeaderDashboardPage() {
 
   // Render the appropriate widget component based on type
   const renderWidget = (widget: WidgetInstance) => {
+    // Always use the current selected project ID
+    const projectId = currentProjectId || (projects.length > 0 ? projects[0].id : undefined);
+    
     switch (widget.type) {
       case "budget-cost":
-        return <BudgetCostWidget projectId={widget.projectId} />;
+        return <BudgetCostWidget projectId={projectId} />;
       case "revenue-overview":
         return <RevenueOverviewWidget />;
       case "kpi-metrics":
-        return <KpiMetricsWidget projectId={widget.projectId} />;
+        return <KpiMetricsWidget projectId={projectId} />;
       case "ai-forecast":
-        return <AiForecastWidget projectId={widget.projectId} />;
+        return <AiForecastWidget projectId={projectId} />;
       case "custom-text":
         return <CustomTextWidget id={widget.id} />;
       case "calendar":
-        return <CalendarWidget projectId={widget.projectId} />;
+        return <CalendarWidget projectId={projectId} />;
       case "messages":
         return <MessagesWidget limit={5} />;
       case "deadlines":
-        return <DeadlinesWidget projectId={widget.projectId} />;
+        return <DeadlinesWidget projectId={projectId} />;
       case "field-tasks":
         return <FieldTasksWidget limit={5} />;
       case "recent-files":
-        return <RecentFilesWidget projectId={widget.projectId} />;
+        return <RecentFilesWidget projectId={projectId} />;
       case "tasks-overview":
-        return <TasksOverviewWidget projectId={widget.projectId} />;
+        return <TasksOverviewWidget projectId={projectId} />;
       default:
         return (
           <div className="flex items-center justify-center h-full">
@@ -297,7 +314,20 @@ export default function ProjectLeaderDashboardPage() {
       <Sidebar className={isSidebarOpen ? "" : "hidden"} />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header title="Project Leader Dashboard" onToggleSidebar={toggleSidebar} />
+        <Header 
+          title="Project Leader Dashboard" 
+          onToggleSidebar={toggleSidebar}
+          currentProject={currentProject}
+          availableProjects={projects}
+          onProjectChange={(projectId) => {
+            setCurrentProjectId(projectId);
+            // Load project-specific data when changing projects
+            toast({
+              title: "Project changed",
+              description: `Switched to ${projects.find((p: { id: number; name: string }) => p.id === projectId)?.name || 'new project'}`,
+            });
+          }}
+        />
         
         <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-background">
           <div className="max-w-7xl mx-auto py-5 px-4 sm:px-6">

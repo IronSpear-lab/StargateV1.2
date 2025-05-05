@@ -1,17 +1,37 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bell, HelpCircle, Menu, Search } from "lucide-react";
+import { Bell, HelpCircle, Menu, Search, ChevronDown } from "lucide-react";
 import { useMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { ModeToggle } from "@/components/mode-toggle";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+export interface Project {
+  id: number;
+  name: string;
+}
 
 interface HeaderProps {
   title: string;
   onToggleSidebar: () => void;
+  currentProject?: Project;
+  availableProjects?: Project[];
+  onProjectChange?: (projectId: number) => void;
 }
 
-export function Header({ title, onToggleSidebar }: HeaderProps) {
+export function Header({ 
+  title, 
+  onToggleSidebar, 
+  currentProject, 
+  availableProjects = [],
+  onProjectChange 
+}: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const isMobile = useMobile();
 
@@ -28,8 +48,38 @@ export function Header({ title, onToggleSidebar }: HeaderProps) {
         </Button>
       )}
       
-      <div className="flex-1">
+      <div className="flex-1 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-foreground">{title}</h1>
+        
+        {currentProject && onProjectChange && (
+          <div className="absolute left-1/2 transform -translate-x-1/2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  className="flex items-center gap-1 px-3 py-2 text-base font-medium"
+                >
+                  {currentProject.name}
+                  <ChevronDown className="h-4 w-4 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-[200px]">
+                {availableProjects.map(project => (
+                  <DropdownMenuItem 
+                    key={project.id}
+                    className={cn(
+                      "cursor-pointer", 
+                      currentProject.id === project.id ? "bg-muted" : ""
+                    )}
+                    onClick={() => onProjectChange(project.id)}
+                  >
+                    {project.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </div>
       
       <div className={cn("flex items-center gap-4", isMobile ? "gap-2" : "gap-4")}>
