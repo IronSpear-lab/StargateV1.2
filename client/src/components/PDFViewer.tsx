@@ -1,44 +1,39 @@
-import { useRef, useState, useEffect } from 'react';
-import { Document, Page } from 'react-pdf';
+import { useState, useEffect, useRef } from "react";
+import { Document, Page, pdfjs } from "react-pdf";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useToast } from "@/hooks/use-toast";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area"; 
-import {
-  FileUp,
-  XCircle,
-  XSquare,
-  Search,
-  ZoomIn,
-  ZoomOut,
-  Download,
-  RotateCcw,
-  RotateCw,
-  Clock,
-  ThumbsUp,
+import { 
+  X, 
+  ChevronLeft, 
+  ChevronRight, 
+  Download, 
+  Maximize, 
+  Minimize, 
+  ZoomIn, 
+  ZoomOut, 
+  Rotate3D, 
+  MessageSquare, 
+  Check, 
   AlertCircle,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  ListFilter,
-  ChevronsUpDown,
-  List,
-  Grid2X2
+  Upload,
+  FileText,
+  Loader2
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAuth } from "@/hooks/use-auth";
+import { storeFileForReuse, getStoredFileById } from "@/lib/file-utils";
 
-import 'react-pdf/dist/Page/AnnotationLayer.css';
-import 'react-pdf/dist/Page/TextLayer.css';
+// Konfigurera worker för react-pdf - använder CDN för att undvika byggproblem
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
-// Vi lägger till typer för annotations
+// Typer för markeringar och kommentarer
 export interface PDFAnnotation {
   id: string;
   rect: {
@@ -67,7 +62,14 @@ export interface FileVersion {
   commentCount?: number;
 }
 
-// Props för komponenten
+// Färgkodning baserat på status
+const statusColors = {
+  open: '#727cf5',        // Blå
+  resolved: '#0acf97',    // Grön
+  action_required: '#fa5c7c',  // Röd
+  reviewing: '#ffbc00'    // Gul
+};
+
 interface PDFViewerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -83,171 +85,678 @@ interface PDFViewerProps {
   };
 }
 
-// Statusfärger för annotations
-const statusColors = {
-  open: '#3b82f6', // blue-500
-  resolved: '#10b981', // green-500
-  action_required: '#ef4444', // red-500
-  reviewing: '#f59e0b', // amber-500
-};
-
-// PDF Viewer-komponenten
 export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewerProps) {
-  const { toast } = useToast();
-  
-  // State för PDF-hantering
+  const { user } = useAuth();
   const [numPages, setNumPages] = useState<number | null>(null);
-  const [pageNumber, setPageNumber] = useState<number>(1);
-  const [scale, setScale] = useState<number>(1.0);
-  const [rotation, setRotation] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [pageNumber, setPageNumber] = useState(1);
   const [pdfUrl, setPdfUrl] = useState<string | undefined>(fileUrl);
+  const [scale, setScale] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   
-  // State för annotations
+  // Markerings- och kommentarsfunktionalitet
+  const [isMarking, setIsMarking] = useState(false);
+  const [markingStart, setMarkingStart] = useState<{ x: number; y: number } | null>(null);
+  const [markingEnd, setMarkingEnd] = useState<{ x: number; y: number } | null>(null);
   const [annotations, setAnnotations] = useState<PDFAnnotation[]>([]);
-  const [isMarking, setIsMarking] = useState<boolean>(false);
-  const [markingStart, setMarkingStart] = useState<{ x: number, y: number } | null>(null);
-  const [markingEnd, setMarkingEnd] = useState<{ x: number, y: number } | null>(null);
-  const [newComment, setNewComment] = useState<string>('');
-  const [showAnnotationForm, setShowAnnotationForm] = useState<boolean>(false);
   const [activeAnnotation, setActiveAnnotation] = useState<PDFAnnotation | null>(null);
-  const [annotationPosition, setAnnotationPosition] = useState<{ x: number, y: number } | null>(null);
+  const [newComment, setNewComment] = useState('');
+  const [isAddingComment, setIsAddingComment] = useState(false);
+  const [tempAnnotation, setTempAnnotation] = useState<Partial<PDFAnnotation> | null>(null);
   
-  // State för filversioner
+  // Versionshantering
   const [fileVersions, setFileVersions] = useState<FileVersion[]>([]);
-  const [activeVersionId, setActiveVersionId] = useState<string>('');
-  const [showVersionsPanel, setShowVersionsPanel] = useState<boolean>(false);
-  const [showUploadVersionDialog, setShowUploadVersionDialog] = useState<boolean>(false);
+  const [activeVersionId, setActiveVersionId] = useState<string | undefined>(undefined);
+  const [showVersionsPanel, setShowVersionsPanel] = useState(false);
+  const [showUploadVersionDialog, setShowUploadVersionDialog] = useState(false);
+  const [newVersionDescription, setNewVersionDescription] = useState('');
   const [selectedVersionFile, setSelectedVersionFile] = useState<File | null>(null);
-  const [newVersionDescription, setNewVersionDescription] = useState<string>('');
-  const [isComparing, setIsComparing] = useState<boolean>(false);
-  const [compareSecondPageNumber, setCompareSecondPageNumber] = useState<number>(1);
   
-  // State för filterfunktionalitet
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [filterPanelOpen, setFilterPanelOpen] = useState<boolean>(false);
-  
-  // State för layout och visning 
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  
-  // Refs
   const pdfContainerRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
-  const formRef = useRef<HTMLDivElement>(null);
-  
-  // Ladda filversioner och kommentarer vid komponentmontering 
+
+  // Om en File-objekt skickas in, spara den i vår persistenta lagring och skapa en URL
   useEffect(() => {
-    if (isOpen) {
-      // Simulera laddning av versioner
-      const demoVersions: FileVersion[] = [];
+    if (file) {
+      console.log("File provided to PDF Viewer:", file.name, file.size, "bytes");
       
-      // Om vi har fildata, skapa en första version
-      if (fileData) {
-        const initialVersion: FileVersion = {
-          id: 'v1',
-          versionNumber: 1,
-          filename: fileData.filename,
-          fileUrl: fileUrl || '',
-          description: fileData.description || 'Första versionen',
-          uploaded: fileData.uploaded || new Date().toISOString(),
-          uploadedBy: fileData.uploadedBy || 'John Doe',
-          commentCount: 0
-        };
-        demoVersions.push(initialVersion);
-        setActiveVersionId('v1');
-        
-        // Ladda annotationer från localStorage om de finns
-        loadAnnotationsFromStorage();
-      }
+      // Persistent lagring av filen för att kunna återanvända den mellan sessioner
+      const saveFileForLaterUse = async () => {
+        try {
+          // Lagra i IndexedDB för att kunna använda den i senare sessioner
+          const fileId = await storeFileForReuse(file, {
+            fromPdfViewer: true,
+            uploadDate: new Date().toISOString()
+          });
+          
+          console.log(`[${Date.now()}] File ${file.name} stored for reuse with ID: ${fileId}`);
+          
+          // Spara även en referens till fileId med filnamnet
+          const pdfIdMapping = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+          pdfIdMapping[file.name] = fileId;
+          localStorage.setItem('pdf_file_id_mappings', JSON.stringify(pdfIdMapping));
+          
+          // Spara även globalt för användning i denna session
+          (window as any).currentPdfFile = file;
+          (window as any).currentPdfFileId = fileId;
+        } catch (error) {
+          console.error("Failed to store file for reuse:", error);
+        }
+      };
       
-      setFileVersions(demoVersions);
+      saveFileForLaterUse();
+      
+      // Skapa en URL för omedelbar användning
+      const url = URL.createObjectURL(file);
+      console.log(`[${Date.now()}] Created URL for file ${file.name}:`, url);
+      setPdfUrl(url);
+      
+      // Vi revokar inte URL:en när komponenten unmountas, för att PDFen ska kunna
+      // fortsätta visas om komponenten renderas om
+      // Detta kan leda till minnesläckage, men är OK för demosyften
+    } else if (fileUrl) {
+      setPdfUrl(fileUrl);
     }
-  }, [isOpen, fileData, fileUrl]);
+  }, [file, fileUrl]);
   
-  // Ladda annotationer från localStorage
-  const loadAnnotationsFromStorage = () => {
-    if (!fileData) return;
+  // Hämta sparade annotationer från localStorage när en ny fil öppnas
+  useEffect(() => {
+    // Rensa eventuella tidigare aktiva annotationer
+    setActiveAnnotation(null);
+    
+    // Försök hämta annotationer från localStorage för denna fil - KRITISKT: Körs när dialogen öppnas
+    if (isOpen && fileData) {
+      try {
+        // VIKTIG ÄNDRING: Använd alltid filnamnet som primär nyckel oavsett fileId
+        // Detta säkerställer att samma fil alltid använder samma annotationer och versioner
+        const canonicalFileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+        
+        // Hämta eller generera konsekvent fileId baserat på filnamn
+        let fileId = fileData.fileId;
+        let consistentFileId = ''; // Vi skapar en konsekvent ID som alltid bygger på filnamnet
+        
+        try {
+          // Etablerad namnkonvention för att säkerställa att samma fil alltid har samma ID
+          consistentFileId = `file_${canonicalFileName}_${Buffer.from(canonicalFileName).toString('hex').substring(0, 8)}`;
+          
+          // Lagra denna koppling för framtida referens
+          const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+          
+          // Om vi har ett tidigare ID för filen, använd det också för bakåtkompatibilitet
+          if (!fileId) {
+            fileId = fileIdMappings[fileData.filename] || consistentFileId;
+          }
+          
+          // Uppdatera mappning med den konsekventa ID:n
+          fileIdMappings[fileData.filename] = consistentFileId;
+          localStorage.setItem('pdf_file_id_mappings', JSON.stringify(fileIdMappings));
+          
+          console.log(`[${Date.now()}] Using consistent fileId for ${fileData.filename}: ${consistentFileId}`);
+        } catch (error) {
+          console.error("Error with fileId mappings:", error);
+          // Fallback om något går fel
+          consistentFileId = `file_${canonicalFileName}_fallback`;
+          fileId = fileId || consistentFileId;
+        }
+        
+        // Använd consistentFileId för alla nycklar
+        const annotationsKey = `pdf_annotations_${canonicalFileName}_${consistentFileId}`;
+        
+        console.log(`[${Date.now()}] Attempting to load annotations using key: ${annotationsKey}`);
+        const savedAnnotations = localStorage.getItem(annotationsKey);
+        
+        if (savedAnnotations) {
+          try {
+            const parsedAnnotations = JSON.parse(savedAnnotations);
+            if (Array.isArray(parsedAnnotations)) {
+              console.log(`[${Date.now()}] Successfully loaded ${parsedAnnotations.length} annotations from localStorage for file: ${fileData.filename}`);
+              
+              // För att tvinga React att uppdatera vyn, skapa en ny array
+              const annotationsCopy = [...parsedAnnotations];
+              setAnnotations(annotationsCopy);
+            } else {
+              console.error("Saved annotations are not an array:", typeof parsedAnnotations);
+              setAnnotations([]);
+            }
+          } catch (parseError) {
+            console.error("Failed to parse annotations JSON:", parseError);
+            setAnnotations([]);
+          }
+        } else {
+          // Kolla efter alternativa nycklar som fallback (generösare sökning)
+          let foundAnnotations = false;
+          
+          try {
+            // Hämta alla annotationnycklar vi känner till
+            const keyList = JSON.parse(localStorage.getItem('pdf_annotation_keys') || '[]');
+            
+            // Sök efter eventuella tidigare nycklar som kan innehålla denna fil
+            for (const key of keyList) {
+              if (key.includes(canonicalFileName)) {
+                console.log(`[${Date.now()}] Found potential legacy annotation key: ${key}`);
+                const legacyAnnotations = localStorage.getItem(key);
+                
+                if (legacyAnnotations) {
+                  try {
+                    const parsedLegacyAnnotations = JSON.parse(legacyAnnotations);
+                    if (Array.isArray(parsedLegacyAnnotations) && parsedLegacyAnnotations.length > 0) {
+                      console.log(`[${Date.now()}] Successfully loaded ${parsedLegacyAnnotations.length} annotations from legacy key`);
+                      
+                      // Kopiera annotationerna till vår konsekventa nyckel
+                      localStorage.setItem(annotationsKey, legacyAnnotations);
+                      
+                      // För att tvinga React att uppdatera vyn, skapa en ny array
+                      const annotationsCopy = [...parsedLegacyAnnotations];
+                      setAnnotations(annotationsCopy);
+                      foundAnnotations = true;
+                      break;
+                    }
+                  } catch (e) {
+                    console.error("Error parsing legacy annotations:", e);
+                  }
+                }
+              }
+            }
+            
+            if (!foundAnnotations) {
+              // Kolla med det alternativa fileId vi kan ha från tidigare
+              if (fileId && fileId !== consistentFileId) {
+                const altKey = `pdf_annotations_${canonicalFileName}_${fileId}`;
+                const altAnnotations = localStorage.getItem(altKey);
+                
+                if (altAnnotations) {
+                  try {
+                    const parsedAltAnnotations = JSON.parse(altAnnotations);
+                    if (Array.isArray(parsedAltAnnotations) && parsedAltAnnotations.length > 0) {
+                      console.log(`[${Date.now()}] Found annotations with alternative fileId: ${fileId}`);
+                      
+                      // Kopiera till vår konsekventa nyckel
+                      localStorage.setItem(annotationsKey, altAnnotations);
+                      
+                      // Uppdatera vyn
+                      setAnnotations(parsedAltAnnotations);
+                      foundAnnotations = true;
+                    }
+                  } catch (e) {
+                    console.error("Error parsing alternative annotations:", e);
+                  }
+                }
+              }
+            }
+            
+            if (!foundAnnotations) {
+              console.log(`[${Date.now()}] No annotations found for file: ${fileData.filename}, starting with empty list`);
+              setAnnotations([]);
+            }
+          } catch (fallbackError) {
+            console.error("Error in annotation fallback logic:", fallbackError);
+            setAnnotations([]);
+          }
+        }
+        
+        // Spara den konsekventa nyckeln för felsökning och framtida användning
+        try {
+          let keyList = JSON.parse(localStorage.getItem('pdf_annotation_keys') || '[]');
+          if (!keyList.includes(annotationsKey)) {
+            keyList.push(annotationsKey);
+            localStorage.setItem('pdf_annotation_keys', JSON.stringify(keyList));
+          }
+        } catch (e) {
+          console.error("Error updating annotation key list:", e);
+        }
+      } catch (error) {
+        console.error("Failed to load annotations from localStorage", error);
+        setAnnotations([]);
+      }
+    } else {
+      // Om dialogrutan inte är öppen eller ingen fildata, gör ingenting
+      if (!isOpen) {
+        console.log("PDF Viewer is closed, skipping annotation loading");
+      } else {
+        console.log("Missing file data, cannot load annotations", { filename: fileData?.filename });
+        setAnnotations([]);
+      }
+    }
+  }, [isOpen, fileData]);
+  
+  // Hämta tillgängliga versioner när en fil öppnas
+  useEffect(() => {
+    if (!isOpen || !fileData) return;
+    
+    // VIKTIG ÄNDRING: Använd samma konstanta filId som vi använder för annotationer
+    // Detta säkerställer att samma fil alltid använder samma annotationer och versioner
+    const canonicalFileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+    
+    // Etablera konsekvent fileId på exakt samma sätt som i annotationshanteringen
+    let consistentFileId = '';
+    let fileId = fileData.fileId;
     
     try {
-      // Använd ett konsekvent ID baserat på filens namn för att spara/ladda annotationer
-      const canonicalFileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+      // Identisk kod för att generera samma ID som i annotationshanteringen
+      consistentFileId = `file_${canonicalFileName}_${Buffer.from(canonicalFileName).toString('hex').substring(0, 8)}`;
       
-      // Generera ett konsekvent ID baserat på filnamnet
-      let consistentFileId = '';
+      // Hämta eventuellt tidigare sparat ID
+      const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+      
+      // Om vi inte har ett explicit fileId, försök använda ett tidigare sparat
+      if (!fileId) {
+        // Använd tidigare ID om det finns, annars det konsekventa ID:t
+        fileId = fileIdMappings[fileData.filename] || consistentFileId;
+      }
+      
+      // Uppdatera mappningen med det konsekventa ID:t
+      fileIdMappings[fileData.filename] = consistentFileId;
+      localStorage.setItem('pdf_file_id_mappings', JSON.stringify(fileIdMappings));
+      
+      console.log(`[${Date.now()}] Using consistent fileId for versions: ${consistentFileId}`);
+    } catch (error) {
+      console.error("Error with fileId mappings for versions:", error);
+      // Fallback om något går fel
+      consistentFileId = `file_${canonicalFileName}_fallback`;
+      fileId = fileId || consistentFileId;
+    }
+    
+    // Använd det konsekventa ID:t för versionsnyckeln
+    const versionsKey = `pdf_versions_${canonicalFileName}_${consistentFileId}`;
+    
+    console.log(`[${Date.now()}] Attempting to load versions with consistent key:`, versionsKey);
+    
+    // En funktion för att extrahera filen från IndexedDB vid behov
+    const updateFileBinaryIfNeeded = async (versions: FileVersion[]) => {
+      // Kolla om vi har originalfilen lagrad i IndexedDB
       try {
-        // Använd filnamnet för att skapa ett konsekvent ID
-        consistentFileId = `file_${canonicalFileName}_${Buffer.from(canonicalFileName).toString('hex').substring(0, 8)}`;
+        if (!(window as any).currentPdfFile) {
+          // Försök hitta den ursprungliga filen i IndexedDB baserat på filnamnet
+          const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+          const storedFileId = fileIdMappings[fileData.filename];
+          
+          if (storedFileId) {
+            console.log(`[${Date.now()}] Attempting to retrieve original file from IndexedDB with id: ${storedFileId}`);
+            const storedFile = await getStoredFileById(storedFileId);
+            
+            if (storedFile) {
+              console.log(`[${Date.now()}] Successfully retrieved original file from IndexedDB: ${storedFile.name}`);
+              (window as any).currentPdfFile = storedFile.file;
+              (window as any).currentPdfFileId = storedFileId;
+            }
+          }
+        }
       } catch (error) {
-        // Fallback om hashing misslyckas
-        consistentFileId = `file_${canonicalFileName}_fallback`;
+        console.error("Error retrieving file from IndexedDB for versions:", error);
       }
-      
-      // Använd det konsekventa ID:t för att ladda annotationer
-      const consistentAnnotationsKey = `pdf_annotations_${canonicalFileName}_${consistentFileId}`;
-      
-      console.log(`[${Date.now()}] Looking for annotations with consistent key: ${consistentAnnotationsKey}`);
-      
-      const savedAnnotations = localStorage.getItem(consistentAnnotationsKey);
-      if (savedAnnotations) {
-        const parsedAnnotations = JSON.parse(savedAnnotations) as PDFAnnotation[];
-        setAnnotations(parsedAnnotations);
-        console.log(`[${Date.now()}] Loaded ${parsedAnnotations.length} annotations from localStorage with consistent key`);
-        
-        // Uppdatera versionsinformation med antalet kommentarer
-        setFileVersions(prev => 
-          prev.map(v => 
-            v.id === activeVersionId 
-              ? { ...v, commentCount: parsedAnnotations.length } 
-              : v
-          )
-        );
-        
-        return; // Om vi hittar med det konsekventa ID:t, använd det
-      }
-      
-      // Bakåtkompatibilitet: kolla även det gamla sättet att lagra
-      if (fileData.fileId) {
-        const legacyAnnotationsKey = `pdf_annotations_${canonicalFileName}_${fileData.fileId}`;
-        const legacySavedAnnotations = localStorage.getItem(legacyAnnotationsKey);
-        
-        if (legacySavedAnnotations) {
-          const parsedAnnotations = JSON.parse(legacySavedAnnotations) as PDFAnnotation[];
-          setAnnotations(parsedAnnotations);
-          console.log(`[${Date.now()}] Loaded ${parsedAnnotations.length} annotations from localStorage with legacy key`);
+    };
+    
+    // Först, försök hämta versioner från localStorage med den konsekventa nyckeln
+    const savedVersionsStr = localStorage.getItem(versionsKey);
+    if (savedVersionsStr) {
+      try {
+        const savedVersions = JSON.parse(savedVersionsStr);
+        if (Array.isArray(savedVersions) && savedVersions.length > 0) {
+          console.log(`[${Date.now()}] Successfully loaded ${savedVersions.length} versions with consistent key`);
+          setFileVersions(savedVersions);
           
-          // Även spara med den nya konsekventa nyckeln för framtiden
-          localStorage.setItem(consistentAnnotationsKey, legacySavedAnnotations);
+          // VIKTIGT: Alltid säkerställ att vi har en version vald
+          // Se först om den nuvarande versionen fortfarande finns
+          const versionExists = savedVersions.some(v => v.id === activeVersionId);
           
-          // Uppdatera versionsinformation med antalet kommentarer
-          setFileVersions(prev => 
-            prev.map(v => 
-              v.id === activeVersionId 
-                ? { ...v, commentCount: parsedAnnotations.length } 
-                : v
-            )
-          );
+          if (!versionExists || !activeVersionId) {
+            // Om ingen version är vald eller om den valda versionen inte finns, välj den senaste
+            const latestVersion = savedVersions[savedVersions.length - 1];
+            console.log(`[${Date.now()}] Auto-selecting latest version: ${latestVersion.id}`);
+            setActiveVersionId(latestVersion.id);
+            
+            // Säkerställ att PDF URL är uppdaterad om det behövs
+            if (latestVersion.fileUrl && (!pdfUrl || !versionExists)) {
+              console.log(`[${Date.now()}] Updating PDF URL to match selected version`);
+              setPdfUrl(latestVersion.fileUrl);
+            }
+          }
           
+          // Hämta faktiska filen från IndexedDB om möjligt
+          updateFileBinaryIfNeeded(savedVersions);
           return;
+        }
+      } catch (error) {
+        console.error("Error parsing saved versions with consistent key:", error);
+      }
+    }
+    
+    // Om vi inte hittade versioner med den konsekventa nyckeln, titta på alla kända versionsnycklar
+    // detta säkerställer att vi hittar versioner oavsett hur de tidigare har sparats
+    try {
+      let foundVersions = false;
+      const versionKeyList = JSON.parse(localStorage.getItem('pdf_version_keys') || '[]');
+      
+      // Sök igenom alla kända versionsnycklar efter denna fil
+      for (const key of versionKeyList) {
+        if (key.includes(canonicalFileName)) {
+          console.log(`[${Date.now()}] Found potential legacy version key: ${key}`);
+          
+          try {
+            const legacyVersionsStr = localStorage.getItem(key);
+            if (legacyVersionsStr) {
+              const legacyVersions = JSON.parse(legacyVersionsStr);
+              if (Array.isArray(legacyVersions) && legacyVersions.length > 0) {
+                console.log(`[${Date.now()}] Successfully loaded ${legacyVersions.length} versions from legacy key`);
+                
+                // Migrera data till vår konsekventa nyckel
+                localStorage.setItem(versionsKey, legacyVersionsStr);
+                
+                // Se till att versionsnyckellistan innehåller vår konsekventa nyckel
+                if (!versionKeyList.includes(versionsKey)) {
+                  versionKeyList.push(versionsKey);
+                  localStorage.setItem('pdf_version_keys', JSON.stringify(versionKeyList));
+                }
+                
+                setFileVersions(legacyVersions);
+                
+                // Välj senaste versionen
+                const latestVersion = legacyVersions[legacyVersions.length - 1];
+                setActiveVersionId(latestVersion.id);
+                
+                // Hämta faktiska filen från IndexedDB om möjligt
+                updateFileBinaryIfNeeded(legacyVersions);
+                
+                foundVersions = true;
+                return;
+              }
+            }
+          } catch (error) {
+            console.error("Error with legacy version:", error);
+          }
         }
       }
       
-      console.log(`[${Date.now()}] No annotations found for this file`);
+      // Om vi fortfarande inte har hittat några versioner, kolla alternativ fileId
+      if (!foundVersions && fileId !== consistentFileId) {
+        const altKey = `pdf_versions_${canonicalFileName}_${fileId}`;
+        const altVersionsStr = localStorage.getItem(altKey);
+        
+        if (altVersionsStr) {
+          try {
+            const altVersions = JSON.parse(altVersionsStr);
+            if (Array.isArray(altVersions) && altVersions.length > 0) {
+              console.log(`[${Date.now()}] Found versions with alternative fileId: ${fileId}`);
+              
+              // Kopiera till vår konsekventa nyckel
+              localStorage.setItem(versionsKey, altVersionsStr);
+              
+              // Uppdatera versionsnyckellistan
+              if (!versionKeyList.includes(versionsKey)) {
+                versionKeyList.push(versionsKey);
+                localStorage.setItem('pdf_version_keys', JSON.stringify(versionKeyList));
+              }
+              
+              setFileVersions(altVersions);
+              
+              // Välj senaste versionen
+              const latestVersion = altVersions[altVersions.length - 1];
+              setActiveVersionId(latestVersion.id);
+              
+              // Hämta faktiska filen från IndexedDB om möjligt
+              updateFileBinaryIfNeeded(altVersions);
+              
+              return;
+            }
+          } catch (error) {
+            console.error("Error with alternative versions:", error);
+          }
+        }
+      }
     } catch (error) {
-      console.error("Failed to load annotations from localStorage", error);
+      console.error("Error checking all version sources:", error);
+    }
+    
+    // Om vi inte hittade några sparade versioner, skapa en initial version
+    console.log(`[${Date.now()}] No saved versions found, creating initial version`);
+    
+    const initialVersion: FileVersion = {
+      id: `version1_${Date.now()}`,
+      versionNumber: 1,
+      filename: fileData.filename,
+      fileUrl: fileUrl || '',
+      description: fileData.description || 'Ursprunglig fil',
+      uploaded: fileData.uploaded || new Date().toISOString(),
+      uploadedBy: fileData.uploadedBy || user?.username || 'Användare',
+      commentCount: 0
+    };
+    
+    const initialVersions = [initialVersion];
+    setFileVersions(initialVersions);
+    setActiveVersionId(initialVersion.id);
+    
+    // Spara denna första version till localStorage
+    try {
+      localStorage.setItem(versionsKey, JSON.stringify(initialVersions));
+      console.log(`[${Date.now()}] Saved initial version to localStorage:`, initialVersion);
+      
+      // Uppdatera nyckellistan 
+      try {
+        let versionKeyList = JSON.parse(localStorage.getItem('pdf_version_keys') || '[]');
+        if (!versionKeyList.includes(versionsKey)) {
+          versionKeyList.push(versionsKey);
+          localStorage.setItem('pdf_version_keys', JSON.stringify(versionKeyList));
+        }
+      } catch (e) {
+        console.error("Error updating version keys list:", e);
+      }
+    } catch (error) {
+      console.error("Error saving initial version to localStorage:", error);
+    }
+  }, [isOpen, fileData, fileUrl, user]);
+
+  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    setNumPages(numPages);
+    setPageNumber(1);
+  };
+
+  const changePage = (offset: number) => {
+    setPageNumber(prevPageNumber => {
+      const newPageNumber = prevPageNumber + offset;
+      if (newPageNumber >= 1 && numPages && newPageNumber <= numPages) {
+        return newPageNumber;
+      }
+      return prevPageNumber;
+    });
+  };
+
+  const previousPage = () => changePage(-1);
+  const nextPage = () => changePage(1);
+
+  const zoomIn = () => setScale(prev => Math.min(prev + 0.2, 3));
+  const zoomOut = () => setScale(prev => Math.max(prev - 0.2, 0.5));
+  
+  const rotate = () => setRotation(prev => (prev + 90) % 360);
+
+  const toggleFullscreen = () => {
+    setIsFullscreen(prev => !prev);
+  };
+
+  // Hanterar start av markering
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!isMarking) return;
+    
+    // Hämta position relativt till PDF-sidan
+    if (pageRef.current) {
+      const rect = pageRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      setMarkingStart({ x, y });
+      setMarkingEnd({ x, y }); // Initialisera slutposition också
     }
   };
   
-  // Hantera klick på en annotation
-  const handleAnnotationClick = (annotation: PDFAnnotation) => {
+  // Uppdaterar markeringens storlek när musen flyttas
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isMarking || !markingStart) return;
+    
+    if (pageRef.current) {
+      const rect = pageRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      setMarkingEnd({ x, y });
+    }
+  };
+  
+  // Avslutar markeringen och visar dialogrutan för att lägga till kommentar
+  const handleMouseUp = () => {
+    if (!isMarking || !markingStart || !markingEnd) return;
+    
+    // Om markeringen är för liten, ignorera den
+    const width = Math.abs(markingEnd.x - markingStart.x);
+    const height = Math.abs(markingEnd.y - markingStart.y);
+    
+    if (width < 10 || height < 10) {
+      setMarkingStart(null);
+      setMarkingEnd(null);
+      return;
+    }
+    
+    // Beräkna rektangeln för markering
+    const rect = {
+      x: Math.min(markingStart.x, markingEnd.x),
+      y: Math.min(markingStart.y, markingEnd.y),
+      width: width,
+      height: height,
+      pageNumber: pageNumber
+    };
+    
+    // Skapa en temporär annotation som vi sedan kan spara
+    setTempAnnotation({
+      rect,
+      color: statusColors.open,
+      status: 'open'
+    });
+    
+    setIsAddingComment(true);
+    setIsMarking(false);
+    setMarkingStart(null);
+    setMarkingEnd(null);
+  };
+  
+  // Spara en ny kommentar/markering
+  const saveComment = () => {
+    if (!tempAnnotation || !user) {
+      console.error("Cannot save comment: Missing tempAnnotation or user", { tempAnnotation, user });
+      return;
+    }
+    
+    try {
+      // Skapa den nya annotationen med unikt ID
+      const newAnnotation: PDFAnnotation = {
+        id: `annotation_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`,
+        rect: tempAnnotation.rect as PDFAnnotation['rect'],
+        color: tempAnnotation.color || statusColors.open,
+        comment: newComment,
+        status: tempAnnotation.status as PDFAnnotation['status'],
+        createdBy: user.username || 'Anonymous',
+        createdAt: new Date().toISOString()
+      };
+      
+      // Skapa ny array för att forcera state update
+      const updatedAnnotations = [...annotations, newAnnotation];
+      setAnnotations(updatedAnnotations);
+      
+      // Spara omedelbart till localStorage
+      if (fileData) {
+        try {
+          // Bestäm fileId att använda, skapa ett om det saknas
+          let fileId = fileData.fileId;
+          
+          // Om vi inte har något fileId, kolla om vi har ett mappat ID
+          if (!fileId) {
+            try {
+              const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+              fileId = fileIdMappings[fileData.filename];
+              
+              if (!fileId) {
+                // Skapa ett nytt ID om det saknas
+                fileId = `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+                console.log(`[${Date.now()}] Created new fileId for annotations: ${fileId}`);
+                
+                // Spara mapping för framtida användning
+                fileIdMappings[fileData.filename] = fileId;
+                localStorage.setItem('pdf_file_id_mappings', JSON.stringify(fileIdMappings));
+              }
+            } catch (error) {
+              console.error("Error handling fileId mappings:", error);
+              fileId = `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+            }
+          }
+          
+          // Använd det säkra fileId vi nu har
+          const fileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+          const annotationsKey = `pdf_annotations_${fileName}_${fileId}`;
+          
+          localStorage.setItem(annotationsKey, JSON.stringify(updatedAnnotations));
+          console.log(`[${Date.now()}] Successfully saved ${updatedAnnotations.length} annotations to localStorage with key: ${annotationsKey}`);
+          
+          // Uppdatera även nyckellistan för enklare felsökning
+          try {
+            let keyList = JSON.parse(localStorage.getItem('pdf_annotation_keys') || '[]');
+            if (!keyList.includes(annotationsKey)) {
+              keyList.push(annotationsKey);
+              localStorage.setItem('pdf_annotation_keys', JSON.stringify(keyList));
+            }
+          } catch (e) {
+            console.error("Error updating annotation key list", e);
+          }
+        } catch (error) {
+          console.error("Error saving annotations:", error);
+        }
+      }
+      
+      // Återställ kommentarsläget
+      setIsAddingComment(false);
+      setTempAnnotation(null);
+      setNewComment('');
+      
+      // Visa feedback
+      console.log("Annotation saved successfully:", newAnnotation);
+    } catch (error) {
+      console.error("Failed to save annotation:", error);
+    }
+  };
+  
+  // Avbryt markering eller kommentarsskapande
+  const cancelMarkingOrComment = () => {
+    setIsMarking(false);
+    setIsAddingComment(false);
+    setMarkingStart(null);
+    setMarkingEnd(null);
+    setTempAnnotation(null);
+    setNewComment('');
+  };
+  
+  // Zooma in till en specifik annotation med smidig övergång
+  const zoomToAnnotation = (annotation: PDFAnnotation) => {
+    // Sätt annotation som aktiv omedelbart så färgkodning visas
     setActiveAnnotation(annotation);
     
-    // Om annotatinoen är på en annan sida, byt sida
+    // Om på annan sida, byt sida först
     if (annotation.rect.pageNumber !== pageNumber) {
+      // Återställ scale först så vi kan zooma in med animation
+      setScale(1);
+      
+      // Byt sida
       setPageNumber(annotation.rect.pageNumber);
       
-      // Skrolla till annotationen med en liten fördröjning för att låta sidan ladda
+      // När sidbytet är klart, zooma in och scrolla
       setTimeout(() => {
-        if (annotation) {
+        // Försäkra oss om att elementet fortfarande finns synligt i DOm efter sidbyte
+        const annotationElement = document.getElementById(`annotation-${annotation.id}`);
+        
+        if (!annotationElement) {
+          console.warn("Could not find annotation element after page change");
+          // Force re-render to ensure element exists
+          setAnnotations(prev => [...prev]);
+          
+          // Try again after a short delay
+          setTimeout(() => doZoomAndScroll(annotation), 200);
+        } else {
+          // Element exists, proceed with zoom
           doZoomAndScroll(annotation);
         }
       }, 300);
@@ -283,14 +792,40 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
           annotationElement.classList.add('annotation-pulse');
           
           try {
-            // Använd en direkt metod att scrolla till elementet - enklare men mer pålitligt
-            annotationElement.scrollIntoView({ 
-              behavior: 'smooth',
-              block: 'center',
-              inline: 'center'
+            // Använd en helt annan metod för centrering - hämta rektangeln från PDF:en direkt
+            // och använd scroll-koordinatsystemet istället för viewport
+            const pdfContainer = pdfContainerRef.current;
+            
+            // 1. Hitta annotationens position på sidan
+            const annotRect = annotationElement.getBoundingClientRect();
+            
+            // 2. Hitta annotationens position relativt till sidan
+            const pageRect = pageRef.current.getBoundingClientRect();
+            
+            // 3. Beräkna centrum för PDF-behållaren
+            const containerCenterX = pdfContainer.offsetWidth / 2;
+            const containerCenterY = pdfContainer.offsetHeight / 2;
+            
+            // 4. Beräkna centrum för annotationen
+            const annotCenterX = (annotRect.left - pageRect.left) + (annotRect.width / 2);
+            const annotCenterY = (annotRect.top - pageRect.top) + (annotRect.height / 2);
+            
+            // 5. Beräkna hur mycket vi behöver skrolla för att centrera annotationen
+            const scrollX = pdfContainer.scrollLeft + (annotCenterX - containerCenterX);
+            const scrollY = pdfContainer.scrollTop + (annotCenterY - containerCenterY);
+            
+            // 6. Använd en säker scrollningsmetod
+            pdfContainer.scrollTo({
+              left: Math.max(0, scrollX),
+              top: Math.max(0, scrollY),
+              behavior: 'smooth'
             });
             
-            console.log("Applied direct scrollIntoView to center the annotation");
+            console.log("Applied safe scrolling to", { 
+              scrollX, scrollY, 
+              annotCenterX, annotCenterY,
+              containerCenterX, containerCenterY
+            });
           } catch (scrollError) {
             console.error("Error in scroll calculation, trying simpler method", scrollError);
             
@@ -577,929 +1112,1089 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             console.log(`[${Date.now()}] Found persistent fileId for ${fileData.filename}: ${persistentFileId}`);
             
             // Hämta filen från IndexedDB
-            try {
-              originalFile = await new Promise((resolve) => {
-                setTimeout(() => {
-                  resolve(selectedVersionFile);
-                }, 100);
-              });
-            } catch (dbError) {
-              console.error("Error retrieving file from IndexedDB:", dbError);
+            const storedFile = await getStoredFileById(persistentFileId);
+            if (storedFile) {
+              console.log(`[${Date.now()}] Successfully retrieved original file from IndexedDB: ${storedFile.name}`);
+              originalFile = storedFile.file;
+              
+              // Uppdatera också referensen i window-objektet
+              (window as any).currentPdfFile = originalFile;
+              (window as any).currentPdfFileId = persistentFileId;
             }
           }
-        } catch (e) {
-          console.error("Error checking file mappings:", e);
+        } catch (error) {
+          console.error(`[${Date.now()}] Error retrieving file from IndexedDB:`, error);
         }
       }
       
-      // Om vi fortfarande inte har en originalfil, använd den uppladdade filen
+      // Om vi fortfarande inte har en originalfil, använd den valda versionen
       if (!originalFile) {
+        console.log(`[${Date.now()}] No original file available, using selected version file`);
         originalFile = selectedVersionFile;
-      }
-      
-      // Skapa en blob URL för visning av den nya versionen
-      const pdfUrl = URL.createObjectURL(selectedVersionFile);
-      console.log(`[${Date.now()}] Created blob URL for new version: ${pdfUrl}`);
-      
-      // Rensa eventuell tidigare version-URL för att undvika minneslächor
-      if (pdfUrl && pdfUrl !== fileUrl) {
-        console.log(`[${Date.now()}] Revoking old blob URL if exists`);
+        
+        // Spara filen för persistent lagring
         try {
-          URL.revokeObjectURL(pdfUrl);
-        } catch (e) {
-          console.error("Error revoking old URL:", e);
+          persistentFileId = await storeFileForReuse(selectedVersionFile, {
+            fromPdfViewer: true,
+            uploadDate: new Date().toISOString(),
+            filename: fileData.filename
+          });
+          
+          console.log(`[${Date.now()}] Stored new file for reuse with ID: ${persistentFileId}`);
+          
+          // Spara mappad ID för filen
+          const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+          fileIdMappings[fileData.filename] = persistentFileId;
+          localStorage.setItem('pdf_file_id_mappings', JSON.stringify(fileIdMappings));
+          
+          // Uppdatera referenserna i window-objektet
+          (window as any).currentPdfFile = originalFile;
+          (window as any).currentPdfFileId = persistentFileId;
+        } catch (error) {
+          console.error(`[${Date.now()}] Error storing file for reuse:`, error);
         }
       }
       
-      // Kopiera befintlig versionsinformation och lägg till den nya versionen
-      const nextVersionNumber = fileVersions.length + 1;
+      console.log(`[${Date.now()}] Using file for new version: ${originalFile.name}`);
       
+      // Skapa URL till den uppladdade filen
+      console.log("Creating object URL for file...");
+      
+      // Revoke eventuell tidigare URL för att undvika minnesläckage
+      if (pdfUrl && pdfUrl.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(pdfUrl.split('#')[0]);
+        } catch (e) {
+          console.error("Error revoking URL:", e);
+        }
+      }
+      
+      // Skapa en ny URL för filen
+      const newFileUrl = URL.createObjectURL(originalFile);
+      console.log(`[${Date.now()}] Created new URL for version: ${newFileUrl}`);
+      
+      // Generera ny version med unik ID och ökat versionsnummer
+      const newVersionNumber = fileVersions.length + 1;
+      const newVersionId = `version${newVersionNumber}_${Date.now()}`;
+      const now = new Date().toISOString();
+      
+      console.log("Creating new version object...");
       const newVersion: FileVersion = {
-        id: `v${nextVersionNumber}`,
-        versionNumber: nextVersionNumber,
-        filename: fileData.filename,
-        fileUrl: pdfUrl,
+        id: newVersionId,
+        versionNumber: newVersionNumber,
+        filename: originalFile.name, // Använd originalfilens namn
+        fileUrl: newFileUrl,
         description: newVersionDescription,
-        uploaded: new Date().toISOString(),
-        uploadedBy: user.username || user.name || 'Anonymous',
-        commentCount: 0
+        uploaded: now,
+        uploadedBy: user.username,
+        commentCount: existingAnnotations.length
       };
       
-      // Uppdatera versioner
+      console.log("New version created:", newVersion);
+      
+      // Uppdatera listan med versioner
       const updatedVersions = [...fileVersions, newVersion];
       setFileVersions(updatedVersions);
       
-      // Sätt den nya versionen som aktiv
-      setActiveVersionId(`v${nextVersionNumber}`);
-      setPdfUrl(pdfUrl);
+      // Byt till den nya versionen
+      setActiveVersionId(newVersionId);
+      setPdfUrl(newFileUrl);
       
-      toast({
-        title: "Ny version uppladdad",
-        description: `Version ${nextVersionNumber} av ${fileData.filename} har skapats framgångsrikt.`,
-      });
+      // Här är förändringen: Kopiera de befintliga annotationerna med konsekvent nyckel
+      // Detta säkerställer att kommentarerna finns även efter att vi byter version
+      if (existingAnnotations.length > 0) {
+        console.log(`[${Date.now()}] Copying ${existingAnnotations.length} annotations to new version`);
+        const canonicalFileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+        
+        // Skapa ett konsekvent ID precis som för versioner
+        let consistentAnnotationFileId = '';
+        try {
+          consistentAnnotationFileId = `file_${canonicalFileName}_${Buffer.from(canonicalFileName).toString('hex').substring(0, 8)}`;
+        } catch (error) {
+          // Fallback om hashing misslyckas
+          consistentAnnotationFileId = `file_${canonicalFileName}_fallback`;
+        }
+        
+        // Använd samma nyckelformat som i auto-save useEffect
+        const consistentAnnotationsKey = `pdf_annotations_${canonicalFileName}_${consistentAnnotationFileId}`;
+        try {
+          localStorage.setItem(consistentAnnotationsKey, JSON.stringify(existingAnnotations));
+          console.log(`[${Date.now()}] Successfully copied annotations to new version with consistent key: ${consistentAnnotationsKey}`);
+          
+          // Uppdatera nyckelregistret
+          try {
+            let keyList = JSON.parse(localStorage.getItem('pdf_annotation_keys') || '[]');
+            if (!keyList.includes(consistentAnnotationsKey)) {
+              keyList.push(consistentAnnotationsKey);
+              localStorage.setItem('pdf_annotation_keys', JSON.stringify(keyList));
+            }
+          } catch (e) {
+            console.error("Error updating annotation key list:", e);
+          }
+        } catch (err) {
+          console.error("Failed to copy annotations to new version:", err);
+        }
+      }
       
-      // Stäng uppladdningsdialogrutan
+      // VIKTIG ÄNDRING: Spara versioner till localStorage med konsekvent ID
+      try {
+        if (!fileData) {
+          console.error("Missing fileData when trying to save versions");
+          return;
+        }
+        
+        // Använd samma konsistenta nyckelgenereringslogik som i laddningskoden
+        const canonicalFileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+        
+        // Generera ett konsekvent ID baserat på filnamnet
+        let currentVersionId = '';
+        try {
+          // Samma metod som i laddningskoden
+          currentVersionId = `file_${canonicalFileName}_${Buffer.from(canonicalFileName).toString('hex').substring(0, 8)}`;
+        } catch (error) {
+          // Fallback om hashing misslyckas
+          currentVersionId = `file_${canonicalFileName}_fallback`;
+        }
+        
+        // Använd det konsekventa ID:t för att skapa en pålitlig nyckel
+        const consistentVersionsKey = `pdf_versions_${canonicalFileName}_${currentVersionId}`;
+        
+        // Spara med den konsekventa nyckeln
+        localStorage.setItem(consistentVersionsKey, JSON.stringify(updatedVersions));
+        console.log(`[${Date.now()}] Saved ${updatedVersions.length} versions to localStorage with consistent key: ${consistentVersionsKey}`);
+        
+        // Uppdatera även nyckellistan för versioner
+        let versionKeyList = JSON.parse(localStorage.getItem('pdf_version_keys') || '[]');
+        if (!versionKeyList.includes(consistentVersionsKey)) {
+          versionKeyList.push(consistentVersionsKey);
+          localStorage.setItem('pdf_version_keys', JSON.stringify(versionKeyList));
+        }
+        
+        // För bakåtkompatibilitet, spara även med det eventuellt tidigare ID:t
+        if (fileId && fileId !== currentVersionId) {
+          const legacyVersionsKey = `pdf_versions_${canonicalFileName}_${fileId}`;
+          localStorage.setItem(legacyVersionsKey, JSON.stringify(updatedVersions));
+          
+          // Se till att även den gamla nyckeln finns i listan
+          if (!versionKeyList.includes(legacyVersionsKey)) {
+            versionKeyList.push(legacyVersionsKey);
+            localStorage.setItem('pdf_version_keys', JSON.stringify(versionKeyList));
+          }
+        }
+      } catch (error) {
+        console.error("Failed to save versions to localStorage:", error);
+      }
+      
+      // Uppdatera filnamnsmappning för att använda samma konsekventa ID-system
+      // (Vi har redan gjort en null-check på fileData tidigare)
+      try {
+        // Oavsett om fileData har ett fileId, uppdatera alltid mappningen med det konsekventa ID:t
+        // för att säkerställa att alla filer använder samma ID-system framöver
+        const canonicalFileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+        let currentConsistentId = '';
+        
+        try {
+          // Generera samma konsekventa ID som tidigare
+          currentConsistentId = `file_${canonicalFileName}_${Buffer.from(canonicalFileName).toString('hex').substring(0, 8)}`;
+        } catch (error) {
+          // Fallback om hashing misslyckas
+          currentConsistentId = `file_${canonicalFileName}_fallback`;
+        }
+        
+        const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+        // Uppdatera mappningen med det konsekventa ID:t
+        fileIdMappings[fileData.filename] = currentConsistentId;
+        localStorage.setItem('pdf_file_id_mappings', JSON.stringify(fileIdMappings));
+        console.log(`[${Date.now()}] Updated file ID mapping for ${fileData.filename} with consistent ID: ${currentConsistentId}`);
+      } catch (error) {
+        console.error("Failed to update file ID mapping:", error);
+      }
+      
+      console.log(`[${Date.now()}] Version saved and activated successfully`);
+      
+      // Stäng dialogrutan
       closeUploadVersionDialog();
       
+      // Visa en användarfeedback (detta är en placeholder - i ett riktigt system skulle vi använda en toast)
+      alert("Ny version uppladdad! Du ser nu den nya versionen.");
     } catch (error) {
-      console.error("Error uploading new version:", error);
-      toast({
-        title: "Fel vid uppladdning",
-        description: "Ett oväntat fel inträffade vid uppladdning av den nya versionen. Försök igen.",
-        variant: "destructive",
-      });
+      console.error("Error saving new version:", error);
     }
   };
-  
-  // Hantera PDF-laddningsfel
-  const onPDFLoadError = (error: Error) => {
-    console.error("Error loading PDF:", error);
-    setIsLoading(false);
-    toast({
-      title: "Fel vid laddning av PDF",
-      description: "Filen kunde inte laddas. Kontrollera att det är en giltig PDF.",
-      variant: "destructive",
-    });
-  };
-  
-  // När PDF-dokumentet har laddats
-  const onPDFLoadSuccess = ({ numPages }: { numPages: number }) => {
-    setNumPages(numPages);
-    setIsLoading(false);
-    
-    // Om det inte finns några versioner, skapa en första version
-    if (fileData && fileVersions.length === 0) {
-      const initialVersion: FileVersion = {
-        id: 'v1',
-        versionNumber: 1,
-        filename: fileData.filename,
-        fileUrl: fileUrl || '',
-        description: fileData.description || 'Första versionen',
-        uploaded: fileData.uploaded || new Date().toISOString(),
-        uploadedBy: fileData.uploadedBy || 'John Doe',
-        commentCount: annotations.length
-      };
-      setFileVersions([initialVersion]);
-      setActiveVersionId('v1');
-    }
-    
-    // Spara referens till filen och fileId för återanvändning i demoversioner
-    if (file) {
-      (window as any).currentPdfFile = file;
-      
-      if (fileData && fileData.fileId) {
-        (window as any).currentPdfFileId = fileData.fileId;
-      }
-    }
-    
-    // Extra: Ladda annotations igen efter att PDF:en är laddad för att säkerställa korrekt rendering
-    if (fileData) {
-      loadAnnotationsFromStorage();
-    }
-  };
-  
-  // Funktioner för att navigera mellan sidor
-  const goToPrevPage = () => setPageNumber(prev => Math.max(1, prev - 1));
-  const goToNextPage = () => setPageNumber(prev => Math.min(numPages || 1, prev + 1));
-  
-  // Funktioner för att zooma in/ut
-  const zoomIn = () => setScale(prev => Math.min(3, prev + 0.1));
-  const zoomOut = () => setScale(prev => Math.max(0.5, prev - 0.1));
-  
-  // Funktioner för att rotera sidan
-  const rotateClockwise = () => setRotation(prev => (prev + 90) % 360);
-  const rotateCounterClockwise = () => setRotation(prev => (prev - 90 + 360) % 360);
-  
-  // Funktion för att ladda ner PDF:en
-  const downloadPDF = () => {
+
+  const handleDownload = () => {
     if (pdfUrl) {
       const link = document.createElement('a');
       link.href = pdfUrl;
-      link.download = fileData?.filename || 'document.pdf';
-      link.target = '_blank';
+      link.download = fileData?.filename || "document.pdf";
+      document.body.appendChild(link);
       link.click();
-    } else if (file) {
-      const url = URL.createObjectURL(file);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileData?.filename || file.name || 'document.pdf';
-      link.target = '_blank';
-      link.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(link);
     }
   };
-  
-  // Hantera klick på PDF-sidan för att markera kommentarer
-  const handlePageClick = (e: React.MouseEvent) => {
-    // Ignorera klick om användaren håller på att markera text
-    if (window.getSelection()?.toString()) return;
+
+  const handleToggleMarkingMode = () => {
+    setIsMarking(prev => !prev);
+    if (activeAnnotation) setActiveAnnotation(null);
+  };
+
+  if (!isOpen) return null;
+
+  // Beräkna rektangel för temporär markering (under pågående markering)
+  const getMarkingRectStyles = () => {
+    if (!markingStart || !markingEnd) return {};
     
-    if (isMarking) {
-      // Hitta positionen relativt till PDF-sidan
-      if (!pageRef.current) return;
+    const left = Math.min(markingStart.x, markingEnd.x);
+    const top = Math.min(markingStart.y, markingEnd.y);
+    const width = Math.abs(markingEnd.x - markingStart.x);
+    const height = Math.abs(markingEnd.y - markingStart.y);
+    
+    return {
+      position: 'absolute' as const,
+      left: `${left}px`,
+      top: `${top}px`,
+      width: `${width}px`,
+      height: `${height}px`,
+      background: 'rgba(114, 124, 245, 0.3)',
+      border: '2px dashed #727cf5',
+      pointerEvents: 'none' as const
+    };
+  };
+
+  // Hantera byte av version
+  const handleChangeVersion = async (versionId: string) => {
+    const selectedVersion = fileVersions.find(v => v.id === versionId);
+    if (!selectedVersion) {
+      console.error("Could not find version with id:", versionId);
+      return;
+    }
+    
+    // VIKTIGT: Vi måste använda den ursprungliga filen för alla versioner
+    // Eftersom blob-URLer inte är beständiga mellan sessioner
+    try {
+      // Försök först att använda filen från det globala window-objektet (om den finns)
+      let originalFile = (window as any).currentPdfFile;
       
-      const pageRect = pageRef.current.getBoundingClientRect();
-      const canvasRect = document.querySelector('.react-pdf__Page__canvas')?.getBoundingClientRect();
-      
-      if (!canvasRect) return;
-      
-      // Använd canvas-positionen för att få korrekt position
-      const x = e.clientX - canvasRect.left;
-      const y = e.clientY - canvasRect.top;
-      
-      // Om detta är det första klicket, spara startposition
-      if (!markingStart) {
-        setMarkingStart({ x, y });
-      } else {
-        // Annars har vi markerat hela rektangeln, så visa kommentarsformuläret
-        setMarkingEnd({ x, y });
-        setIsMarking(false);
+      // Om ingen fil finns i minnet, försök hämta från persistent lagring i IndexedDB
+      if (!originalFile && fileData) {
+        console.log(`[${Date.now()}] No file in memory, attempting to retrieve from IndexedDB`);
         
-        // Skapa rektangel med rätt ordning på koordinater
-        const rect = {
-          x: Math.min(markingStart.x, x),
-          y: Math.min(markingStart.y, y),
-          width: Math.abs(markingStart.x - x),
-          height: Math.abs(markingStart.y - y),
-          pageNumber: pageNumber,
-        };
-        
-        // Visa formuläret om markeringen är stor nog
-        if (rect.width > 10 && rect.height > 10) {
-          const formPosition = {
-            x: rect.x + rect.width / 2,
-            y: rect.y + rect.height / 2
-          };
-          setAnnotationPosition(formPosition);
-          setShowAnnotationForm(true);
+        // Försök hämta filId från mappning
+        try {
+          // Kolla om vi har ett fileId i vår metadata-mappning
+          const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
+          const persistentFileId = fileIdMappings[fileData.filename];
           
-          // Spara temporärt den aktiva kommentaren med en tom text
-          setActiveAnnotation({
-            id: `temp-${Date.now()}`,
-            rect,
-            color: statusColors.open,
-            comment: '',
-            status: 'open',
-            createdBy: 'Me',
-            createdAt: new Date().toISOString()
-          });
-        } else {
-          setMarkingStart(null);
-          setMarkingEnd(null);
+          if (persistentFileId) {
+            console.log(`[${Date.now()}] Found persistent fileId for ${fileData.filename}: ${persistentFileId}`);
+            
+            // Hämta filen från IndexedDB
+            try {
+              const storedFile = await getStoredFileById(persistentFileId);
+              if (storedFile) {
+                console.log(`[${Date.now()}] Successfully retrieved file from IndexedDB: ${storedFile.name}`);
+                originalFile = storedFile.file;
+                
+                // Uppdatera även global referens för framtida användning
+                (window as any).currentPdfFile = originalFile;
+                (window as any).currentPdfFileId = persistentFileId;
+              } else {
+                console.error(`[${Date.now()}] Failed to retrieve file from IndexedDB`);
+              }
+            } catch (error) {
+              console.error(`[${Date.now()}] Error retrieving file from IndexedDB:`, error);
+            }
+          } else {
+            console.log(`[${Date.now()}] No fileId mapping found for ${fileData.filename}`);
+          }
+        } catch (error) {
+          console.error(`[${Date.now()}] Error checking file mappings:`, error);
         }
       }
+      
+      if (originalFile) {
+        console.log(`[${Date.now()}] Using file for version ${selectedVersion.versionNumber}: ${originalFile.name}`);
+        
+        // Skapa en ny URL för filen med en timestamp så att React renderar om
+        try {
+          // Revoke tidigare URL först för att undvika minnesläckage
+          if (pdfUrl && pdfUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(pdfUrl.split('#')[0]);
+          }
+          
+          // Skapa en ny URL för samma fil
+          const newUrl = URL.createObjectURL(originalFile) + '#' + Date.now();
+          console.log(`[${Date.now()}] Created new URL for file: ${newUrl}`);
+          setPdfUrl(newUrl);
+        } catch (urlError) {
+          console.error("Error creating/revoking object URL:", urlError);
+        }
+      } else if (pdfUrl) {
+        // Fallback om vi inte har en originalfil - använd nuvarande URL
+        console.log(`[${Date.now()}] No original file available, using current URL with timestamp`);
+        const currentFileUrl = pdfUrl.split('#')[0]; // Ta bort eventuella tidigare timestamps
+        setPdfUrl(currentFileUrl + '#' + Date.now());
+      } else {
+        console.error(`[${Date.now()}] No file or URL available for version change`);
+        
+        // Försök visa ett meddelande till användaren
+        alert("Det går inte att visa denna version. Vänligen ladda upp filen igen.");
+        return;
+      }
+    } catch (error) {
+      console.error(`[${Date.now()}] Error during version change:`, error);
     }
-  };
-  
-  // Avbryt markeringen om användaren trycker Escape
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsMarking(false);
-        setMarkingStart(null);
-        setMarkingEnd(null);
-        setShowAnnotationForm(false);
-        setActiveAnnotation(null);
-      }
-    };
     
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-  
-  // Avbryt markeringen om användaren klickar utanför PDF:en
-  useEffect(() => {
-    if (!isOpen) return;
+    // Uppdatera aktiv version ID
+    setActiveVersionId(versionId);
     
-    // När användaren klickar utanför PDF-vyn, avbryt markeringen
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (
-        isMarking && 
-        pdfContainerRef.current && 
-        !pdfContainerRef.current.contains(e.target as Node) && 
-        formRef.current && 
-        !formRef.current.contains(e.target as Node)
-      ) {
-        setIsMarking(false);
-        setMarkingStart(null);
-        setMarkingEnd(null);
-      }
-    };
-    
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, [isMarking, isOpen]);
-  
-  // Stäng kommentarsformuläret
-  const closeAnnotationForm = () => {
-    setShowAnnotationForm(false);
-    setNewComment('');
-    setMarkingStart(null);
-    setMarkingEnd(null);
+    // Återställ eventuell zoomning/aktiv markering
     setActiveAnnotation(null);
-  };
-  
-  // Spara en ny kommentar
-  const saveAnnotation = () => {
-    if (!activeAnnotation || !newComment || !fileData) return;
+    setScale(1);
     
-    // Skapa en helt ny annotation med unik ID
-    const newAnnotation: PDFAnnotation = {
-      ...activeAnnotation,
-      id: `annotation-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      comment: newComment,
-      createdBy: 'Me', // Ersätt med användarnamn från autentiseringssystemet
-      createdAt: new Date().toISOString()
-    };
-    
-    // Lägg till i listan
-    const updatedAnnotations = [...annotations, newAnnotation];
-    setAnnotations(updatedAnnotations);
-    
-    // Stäng formuläret
-    closeAnnotationForm();
-    
-    // Visa bekräftelse
-    toast({
-      title: "Kommentar sparad",
-      description: "Din kommentar har sparats och är nu synlig i dokumentet.",
-    });
-    
-    // Uppdatera räknaren i versionslistan
-    setFileVersions(prev => 
-      prev.map(v => 
-        v.id === activeVersionId 
-          ? { ...v, commentCount: (v.commentCount || 0) + 1 } 
-          : v
-      )
-    );
-  };
-  
-  // Filtrera annotations baserat på status
-  const filteredAnnotations = statusFilter === 'all' 
-    ? annotations
-    : annotations.filter(a => a.status === statusFilter);
-  
-  // Växla visning av filter-panelen
-  const toggleFilterPanel = () => setFilterPanelOpen(prev => !prev);
-  
-  // Ändra visningsläge (lista eller rutnät)
-  const toggleViewMode = () => setViewMode(prev => prev === 'list' ? 'grid' : 'list');
-  
-  // Hantera stängning av komponenten
-  const handleClose = () => {
-    // Rensa markeringar och formulär
-    setIsMarking(false);
-    setShowAnnotationForm(false);
-    setActiveAnnotation(null);
-    setScale(1.0);
-    setRotation(0);
-    setPageNumber(1);
-    
-    // Återställ versionsvisning
+    // Stäng versionspanelen
     setShowVersionsPanel(false);
     
-    // Anropa den ursprungliga onClose-funktionen
-    onClose();
+    // Visa meddelande till användaren
+    console.log(`[${Date.now()}] Switched to version ${selectedVersion.versionNumber}: ${selectedVersion.description}`);
   };
   
-  // Rendera PDF-vyn
+  // Växla versionssidan när användaren trycker på knapparna i överkanten
+  const toggleVersionPanel = () => {
+    setShowVersionsPanel(prev => !prev);
+  };
+  
+  // Hitta aktiv version baserat på id
+  const activeVersion = fileVersions.find(v => v.id === activeVersionId);
+
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose} modal={true}>
-      <DialogContent className="max-w-5xl h-[90vh] p-0 gap-0">
-        <div className="flex flex-col h-full">
-          {/* Header med filnamn och kontroller */}
-          <DialogHeader className="px-6 py-3 flex justify-between items-center flex-row border-b">
-            <div className="flex items-center gap-2">
-              <DialogTitle className="text-xl font-medium truncate max-w-md">
-                {fileData?.filename || file?.name || 'PDF Viewer'}
-              </DialogTitle>
-              
-              {activeVersionId && (
-                <Badge variant="outline" className="text-xs">
-                  v{fileVersions.find(v => v.id === activeVersionId)?.versionNumber || 1}
-                </Badge>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" onClick={handleUploadNewVersion} 
-                title="Ladda upp ny version">
-                <FileUp className="h-4 w-4" />
-              </Button>
-              
-              <Button variant="ghost" size="icon" onClick={() => setShowVersionsPanel(prev => !prev)}
-                title="Versionshistorik">
-                <Clock className="h-4 w-4" />
-              </Button>
-              
-              <Button variant="ghost" size="icon" onClick={toggleFilterPanel}
-                title="Filtrera kommentarer">
-                <ListFilter className="h-4 w-4" />
-              </Button>
-              
-              <Button variant="ghost" size="icon" onClick={toggleViewMode}
-                title={viewMode === 'list' ? 'Visa rutnätsvy' : 'Visa listvy'}>
-                {viewMode === 'list' ? <Grid2X2 className="h-4 w-4" /> : <List className="h-4 w-4" />}
-              </Button>
-              
-              <Button variant="ghost" size="icon" onClick={handleClose} 
-                className="ml-2" title="Stäng">
-                <XSquare className="h-4 w-4" />
-              </Button>
-            </div>
-          </DialogHeader>
-          
-          {/* Huvudinnehåll */}
-          <div className="flex flex-1 overflow-hidden">
-            {/* PDF Viewer */}
-            <div className="flex-1 border-r relative">
-              {/* PDF-kontroller */}
-              <div className="absolute top-2 left-1/2 transform -translate-x-1/2 flex items-center gap-1 z-10 bg-background/90 rounded-md p-1 shadow-md border">
-                <Button variant="ghost" size="icon" onClick={goToPrevPage} disabled={pageNumber <= 1}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                
-                <div className="px-2 text-sm">
-                  {pageNumber} / {numPages || '?'}
-                </div>
-                
-                <Button variant="ghost" size="icon" onClick={goToNextPage} disabled={!numPages || pageNumber >= numPages}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                
-                <div className="h-4 w-px bg-border mx-1" />
-                
-                <Button variant="ghost" size="icon" onClick={zoomOut}>
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                
-                <div className="px-2 text-sm">
-                  {Math.round(scale * 100)}%
-                </div>
-                
-                <Button variant="ghost" size="icon" onClick={zoomIn}>
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-                
-                <div className="h-4 w-px bg-border mx-1" />
-                
-                <Button variant="ghost" size="icon" onClick={rotateCounterClockwise}>
-                  <RotateCcw className="h-4 w-4" />
-                </Button>
-                
-                <Button variant="ghost" size="icon" onClick={rotateClockwise}>
-                  <RotateCw className="h-4 w-4" />
-                </Button>
-                
-                <div className="h-4 w-px bg-border mx-1" />
-                
-                <Button variant="ghost" size="icon" onClick={downloadPDF}>
-                  <Download className="h-4 w-4" />
-                </Button>
-                
-                <div className="h-4 w-px bg-border mx-1" />
-                
-                <Button 
-                  variant={isMarking ? "default" : "ghost"} 
-                  size="sm"
-                  className={`text-xs ${isMarking ? 'bg-blue-500 text-white hover:bg-blue-600' : ''}`}
-                  onClick={() => {
-                    setIsMarking(prev => !prev);
-                    if (activeAnnotation) {
-                      setActiveAnnotation(null);
-                    }
-                  }}
-                >
-                  <Search className="h-3 w-3 mr-1" />
-                  {isMarking ? 'Avbryt markering' : 'Markera för kommentar'}
-                </Button>
-              </div>
-              
-              {/* Filter-panel */}
-              {filterPanelOpen && (
-                <div className="absolute top-12 right-4 z-10 bg-background rounded-md p-3 shadow-md border">
-                  <div className="flex flex-col gap-2">
-                    <h4 className="text-sm font-medium">Filtrera efter status</h4>
-                    <div className="flex gap-1">
-                      <Button 
-                        variant={statusFilter === 'all' ? "default" : "outline"} 
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => setStatusFilter('all')}
-                      >
-                        Alla
-                      </Button>
-                      <Button 
-                        variant={statusFilter === 'open' ? "default" : "outline"} 
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => setStatusFilter('open')}
-                      >
-                        <div className="w-2 h-2 rounded-full bg-blue-500 mr-1" />
-                        Öppna
-                      </Button>
-                      <Button 
-                        variant={statusFilter === 'action_required' ? "default" : "outline"} 
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => setStatusFilter('action_required')}
-                      >
-                        <div className="w-2 h-2 rounded-full bg-red-500 mr-1" />
-                        Åtgärd krävs
-                      </Button>
-                      <Button 
-                        variant={statusFilter === 'reviewing' ? "default" : "outline"} 
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => setStatusFilter('reviewing')}
-                      >
-                        <div className="w-2 h-2 rounded-full bg-amber-500 mr-1" />
-                        Granskning
-                      </Button>
-                      <Button 
-                        variant={statusFilter === 'resolved' ? "default" : "outline"} 
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => setStatusFilter('resolved')}
-                      >
-                        <div className="w-2 h-2 rounded-full bg-green-500 mr-1" />
-                        Löst
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {/* PDF-innehåll med annotations */}
-              <div 
-                className="overflow-auto h-full flex flex-col items-center px-6 py-12 bg-slate-100 relative"
-                ref={pdfContainerRef}
-                style={{ cursor: isMarking ? 'crosshair' : 'default' }}
-                onClick={handlePageClick}
-              >
-                {isLoading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/50">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                      <div className="text-sm text-muted-foreground">Laddar dokument...</div>
-                    </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div 
+        className="absolute inset-0 bg-black bg-opacity-75 backdrop-blur-sm" 
+        onClick={isMarking || isAddingComment || showVersionsPanel ? cancelMarkingOrComment : onClose}
+      />
+      
+      <div 
+        className={`relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden flex border border-gray-200 dark:border-slate-700 transition-all duration-300 ${
+          isFullscreen 
+            ? 'w-full h-full rounded-none' 
+            : 'w-[92%] max-w-6xl h-[92%] animate-in fade-in-50 zoom-in-95 duration-200'
+        }`}
+        style={{
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+        }}
+      >
+        {/* Vänster sida - PDF-visare */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex flex-col border-b bg-gradient-to-r from-gray-50 to-white dark:from-slate-900 dark:to-slate-800 shadow-sm">
+            {/* Övre delen med filinfo och knappar */}
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center">
+                <h2 className="text-xl font-semibold mr-4 text-gray-800 dark:text-white">
+                  {fileData?.filename || "PDF Document"}
+                </h2>
+                {activeVersion && (
+                  <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-slate-800 px-3 py-1 rounded-full">
+                    v{activeVersion.versionNumber} | {activeVersion.uploadedBy} | {new Date(activeVersion.uploaded).toLocaleDateString()}
                   </div>
                 )}
-                
-                <div ref={pageRef} className="relative">
-                  {/* Visa PDF genom react-pdf */}
-                  <Document
-                    file={pdfUrl || file}
-                    onLoadSuccess={onPDFLoadSuccess}
-                    onLoadError={onPDFLoadError}
-                    loading={<div className="flex justify-center my-4">Laddar...</div>}
-                    error={<div className="text-red-500 my-4">Fel vid laddning av dokument</div>}
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center bg-gray-100 dark:bg-slate-800 rounded-full p-1 mr-1">
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={zoomOut}
+                    className="h-7 w-7 rounded-full hover:bg-white dark:hover:bg-slate-700"
                   >
-                    <Page 
-                      pageNumber={pageNumber} 
-                      scale={scale}
-                      rotate={rotation}
-                      width={700}
-                      renderTextLayer={true}
-                      renderAnnotationLayer={true}
-                    />
-                    
-                    {/* Visa alla annotations på aktuell sida */}
-                    {filteredAnnotations
-                      .filter(annotation => annotation.rect.pageNumber === pageNumber)
-                      .map(annotation => (
-                        <div 
-                          key={annotation.id}
-                          id={`annotation-${annotation.id}`}
-                          className="absolute border-2 cursor-pointer hover:opacity-80 transition-opacity duration-100 annotation-box"
-                          style={{
-                            left: `${annotation.rect.x}px`,
-                            top: `${annotation.rect.y}px`,
-                            width: `${annotation.rect.width}px`,
-                            height: `${annotation.rect.height}px`,
-                            borderColor: annotation.color,
-                            backgroundColor: `${annotation.color}20`
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAnnotationClick(annotation);
-                          }}
-                        >
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div className="w-full h-full">
-                                  {/* Liten indikator för att visa kommentarikonen */}
-                                  <div 
-                                    className="absolute -top-2 -right-2 w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px]"
-                                    style={{ backgroundColor: annotation.color }}
-                                  >
-                                    {annotation.status === 'open' && <Search className="w-2 h-2" />}
-                                    {annotation.status === 'resolved' && <CheckCircle2 className="w-2 h-2" />}
-                                    {annotation.status === 'action_required' && <AlertCircle className="w-2 h-2" />}
-                                    {annotation.status === 'reviewing' && <ThumbsUp className="w-2 h-2" />}
-                                  </div>
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent side="right" align="start" className="max-w-xs">
-                                <div className="text-xs font-medium">{annotation.createdBy}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {new Date(annotation.createdAt).toLocaleDateString()}
-                                </div>
-                                <div className="mt-1">{annotation.comment}</div>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      ))}
-                    
-                    {/* Visa aktiv markering under markering */}
-                    {isMarking && markingStart && !markingEnd && (
-                      <div 
-                        className="absolute border-2 border-dashed border-blue-500 bg-blue-100/30"
-                        style={{
-                          left: `${markingStart.x}px`,
-                          top: `${markingStart.y}px`,
-                          width: '1px',
-                          height: '1px',
-                          pointerEvents: 'none'
+                    <ZoomOut size={15} />
+                  </Button>
+                  <div className="w-12 text-center text-sm font-medium">
+                    {Math.round(scale * 100)}%
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={zoomIn}
+                    className="h-7 w-7 rounded-full hover:bg-white dark:hover:bg-slate-700"
+                  >
+                    <ZoomIn size={15} />
+                  </Button>
+                </div>
+                
+                <Button 
+                  variant={isMarking ? "default" : "outline"}
+                  size="icon"
+                  onClick={handleToggleMarkingMode}
+                  className={`h-8 w-8 rounded-full ${isMarking ? "bg-primary-500 text-white" : ""}`}
+                  title={isMarking ? "Avsluta markering" : "Skapa markering"}
+                >
+                  <MessageSquare size={16} />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={rotate}
+                  className="h-8 w-8 rounded-full"
+                >
+                  <Rotate3D size={16} />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={handleDownload}
+                  className="h-8 w-8 rounded-full"
+                >
+                  <Download size={16} />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={toggleFullscreen}
+                  className="h-8 w-8 rounded-full"
+                >
+                  {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={onClose}
+                  className="h-8 w-8 rounded-full hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors"
+                >
+                  <X size={16} />
+                </Button>
+              </div>
+            </div>
+            
+            {/* Versionsknappar */}
+            <div className="flex items-center justify-between px-4 pb-3 pt-1">
+              <div className="flex space-x-2">
+                {fileVersions.length > 0 ? (
+                  <>
+                    {/* En säkerhetskontroll för att garantera att senaste versionen alltid finns */}
+                    {fileVersions.length > 0 && (
+                      <Button
+                        variant={activeVersionId === fileVersions[fileVersions.length - 1]?.id ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          const latestVersionId = fileVersions[fileVersions.length - 1]?.id;
+                          if (latestVersionId) {
+                            handleChangeVersion(latestVersionId);
+                          } else {
+                            console.error("Latest version ID is missing");
+                          }
                         }}
-                      />
+                        className="rounded-full py-1 h-7 px-3"
+                      >
+                        <span className="flex items-center">
+                          Nuvarande version
+                          {activeVersionId === fileVersions[fileVersions.length - 1]?.id && (
+                            <Check size={14} className="ml-1" />
+                          )}
+                        </span>
+                      </Button>
                     )}
-                  </Document>
+                    
+                    {/* Bara visa originalversionsknappen om det finns mer än en version */}
+                    {fileVersions.length > 1 && (
+                      <Button
+                        variant={activeVersionId === fileVersions[0]?.id ? "destructive" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          const originalVersionId = fileVersions[0]?.id;
+                          if (originalVersionId) {
+                            handleChangeVersion(originalVersionId);
+                          } else {
+                            console.error("Original version ID is missing");
+                          }
+                        }}
+                        className="rounded-full py-1 h-7 px-3"
+                      >
+                        <span className="flex items-center">
+                          Ursprunglig version
+                          {activeVersionId === fileVersions[0]?.id && (
+                            <Check size={14} className="ml-1" />
+                          )}
+                        </span>
+                      </Button>
+                    )}
+                  </>
+                ) : null /* Inga versionsval om det inte finns några versioner */}
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleUploadNewVersion}
+                  className="rounded-full py-1 h-7 px-3 bg-blue-500 hover:bg-blue-600 text-white"
+                >
+                  <Upload size={14} className="mr-1" />
+                  Ladda upp ny version
+                </Button>
+              </div>
+              
+              {fileVersions.length > 0 && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={toggleVersionPanel}
+                  className="rounded-full py-1 h-7 px-3"
+                >
+                  Visa versionshistorik
+                </Button>
+              )}
+            </div>
+          </div>
+          
+          <div 
+            ref={pdfContainerRef}
+            className="flex-1 overflow-auto bg-gray-200 flex items-center justify-center relative"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            style={{ cursor: isMarking ? 'crosshair' : 'default' }}
+          >
+            {pdfUrl ? (
+              <div className="relative" ref={pageRef}>
+                <Document
+                  file={pdfUrl}
+                  onLoadSuccess={onDocumentLoadSuccess}
+                  loading={
+                    <div className="flex flex-col items-center justify-center">
+                      <Loader2 className="h-10 w-10 animate-spin text-primary-600 mb-4" />
+                      <p className="text-gray-600">Laddar dokument...</p>
+                    </div>
+                  }
+                  error={
+                    <div className="flex flex-col items-center justify-center">
+                      <p className="text-red-500 mb-2">Kunde inte ladda dokumentet</p>
+                      <p className="text-gray-600 text-sm">Kontrollera att det är en giltig PDF-fil</p>
+                    </div>
+                  }
+                  className="pdfDocument"
+                >
+                  <Page
+                    pageNumber={pageNumber}
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
+                    scale={scale}
+                    rotate={rotation}
+                    loading={
+                      <div className="h-[500px] w-[400px] bg-gray-100 flex items-center justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+                      </div>
+                    }
+                    className="pdfPage shadow-lg relative"
+                  />
+                  
+                  {/* Visa befintliga markeringar */}
+                  {annotations
+                    .filter(ann => ann.rect.pageNumber === pageNumber)
+                    .map(annotation => (
+                      <div
+                        key={annotation.id}
+                        id={`annotation-${annotation.id}`}
+                        className={`absolute border-2 transition-all duration-300 ${
+                          activeAnnotation?.id === annotation.id 
+                            ? 'z-20 ring-4 ring-blue-400 scale-105 shadow-lg' 
+                            : 'z-10 hover:scale-102 hover:shadow-md'
+                        }`}
+                        style={{
+                          position: 'absolute',
+                          left: `${annotation.rect.x}px`,
+                          top: `${annotation.rect.y}px`,
+                          width: `${annotation.rect.width}px`,
+                          height: `${annotation.rect.height}px`,
+                          backgroundColor: `${annotation.color}33`,
+                          borderColor: annotation.color,
+                          boxShadow: activeAnnotation?.id === annotation.id ? '0 0 15px rgba(59, 130, 246, 0.6)' : 'none',
+                          transform: activeAnnotation?.id === annotation.id ? 'scale(1.05)' : 'scale(1)',
+                          transformOrigin: 'center',
+                          cursor: 'pointer',
+                          pointerEvents: 'auto' 
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Förhindra att klicket når underliggande element
+                          zoomToAnnotation(annotation);
+                        }}
+                      >
+                        {/* Lägg till en liten indikator i hörnet som alltid syns tydligt */}
+                        <div 
+                          className="absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800"
+                          style={{ backgroundColor: annotation.color }}
+                        />
+                      </div>
+                    ))}
+                  
+                  {/* Visa temporär markering under pågående markering */}
+                  {markingStart && markingEnd && (
+                    <div style={getMarkingRectStyles()} />
+                  )}
+                </Document>
+              </div>
+            ) : (
+              <div className="text-gray-500">Ingen PDF vald</div>
+            )}
+          </div>
+          
+          {numPages && numPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50">
+              <Button
+                variant="outline"
+                onClick={previousPage}
+                disabled={pageNumber <= 1}
+                className="h-8"
+              >
+                <ChevronLeft size={16} className="mr-1" />
+                Föregående
+              </Button>
+              
+              <div className="text-sm text-gray-600">
+                Sida {pageNumber} av {numPages}
+              </div>
+              
+              <Button
+                variant="outline"
+                onClick={nextPage}
+                disabled={Boolean(numPages && pageNumber >= numPages)}
+                className="h-8"
+              >
+                Nästa
+                <ChevronRight size={16} className="ml-1" />
+              </Button>
+            </div>
+          )}
+        </div>
+        
+        {/* Höger sida - innehåller antingen kommentarpanelen eller versionspanelen */}
+        <div className="w-80 border-l border-gray-200 dark:border-slate-700 overflow-hidden flex flex-col h-full bg-gray-50 dark:bg-slate-900">
+          {showVersionsPanel ? (
+            <>
+              {/* Versionspanel */}
+              <div className="p-4 border-b border-gray-200 dark:border-slate-700 bg-gradient-to-r from-gray-50 to-white dark:from-slate-900 dark:to-slate-800 flex justify-between items-center">
+                <h3 className="font-medium text-lg text-gray-800 dark:text-white flex items-center">
+                  <FileText size={18} className="mr-2 text-blue-500" />
+                  Versionshistorik
+                </h3>
+                <Button 
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleVersionPanel}
+                  className="text-gray-500 h-7 px-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full"
+                >
+                  <X size={16} className="mr-1" />
+                  Stäng
+                </Button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white dark:from-slate-900 dark:to-slate-800">
+                <div className="space-y-4">
+                  {fileVersions.map((version, index) => {
+                    const isLatest = index === fileVersions.length - 1;
+                    const isFirst = index === 0;
+                    
+                    return (
+                      <div 
+                        key={version.id}
+                        className={`border rounded-xl p-4 transition-all transform ${
+                          version.id === activeVersionId 
+                            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-800 shadow-md scale-[1.02]' 
+                            : 'bg-white dark:bg-slate-800 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-700 hover:shadow-sm'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex flex-col">
+                            <h4 className="font-medium flex items-center text-gray-800 dark:text-white">
+                              Version {version.versionNumber}
+                              {isLatest && <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded-full">Senaste</span>}
+                              {isFirst && <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-0.5 rounded-full">Första</span>}
+                            </h4>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center">
+                              <span className="font-medium text-gray-700 dark:text-gray-300 mr-1">{version.uploadedBy}</span> • {new Date(version.uploaded).toLocaleDateString()}
+                            </span>
+                          </div>
+                          
+                          <div>
+                            {version.id !== activeVersionId ? (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleChangeVersion(version.id)}
+                                className="text-xs h-7 px-2 rounded-full"
+                              >
+                                Visa
+                              </Button>
+                            ) : (
+                              <span className="text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-2 py-1 rounded-full flex items-center">
+                                <Check size={12} className="mr-1" /> Aktiv
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 bg-gray-50 dark:bg-slate-900/50 p-2 rounded-md">
+                          {version.description}
+                        </p>
+                        
+                        <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                          <span className="flex items-center bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded-full">
+                            <MessageSquare size={12} className="mr-1" />
+                            {version.commentCount || 0} kommentarer
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Kommentarspanel */}
+              <div className="p-4 border-b border-gray-200 dark:border-slate-700 bg-gradient-to-r from-gray-50 to-white dark:from-slate-900 dark:to-slate-800 flex justify-between items-center">
+                <h3 className="font-medium text-lg text-gray-800 dark:text-white flex items-center">
+                  <MessageSquare size={18} className="mr-2 text-primary-500" />
+                  Kommentarer
+                </h3>
+                <Button 
+                  variant={isMarking ? "default" : "ghost"}
+                  size="sm"
+                  onClick={handleToggleMarkingMode}
+                  className={`rounded-full h-7 px-2 ${isMarking ? "bg-primary-500 text-white" : "hover:bg-gray-100 dark:hover:bg-slate-800"}`}
+                >
+                  <MessageSquare size={16} className="mr-1" />
+                  {!isMarking ? "Ny kommentar" : "Avbryt"}
+                </Button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto bg-gradient-to-b from-gray-50 to-white dark:from-slate-900 dark:to-slate-800">
+                {annotations.length === 0 ? (
+                  <div className="p-8 text-gray-500 dark:text-gray-400 text-center flex flex-col items-center justify-center h-full">
+                    <div className="bg-gray-100 dark:bg-slate-800 p-5 rounded-full mb-4">
+                      <MessageSquare size={32} className="text-gray-400 dark:text-gray-500" />
+                    </div>
+                    <p className="font-medium text-gray-700 dark:text-gray-300">Inga kommentarer ännu</p>
+                    <p className="text-sm mt-2 max-w-[220px] text-gray-500 dark:text-gray-400">
+                      Lägg till kommentarer direkt på ritningen genom att klicka på 
+                      <span className="font-medium"> Ny kommentar</span> ovan
+                    </p>
+                    <Button 
+                      variant="default"
+                      size="sm"
+                      onClick={handleToggleMarkingMode}
+                      className="mt-4 bg-primary-500 hover:bg-primary-600 rounded-full px-3"
+                    >
+                      <MessageSquare size={14} className="mr-1" />
+                      Lägg till första kommentaren
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4 p-4">
+                    <div className="flex justify-between items-center mb-2 px-1">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded-full">
+                        {annotations.length} {annotations.length === 1 ? 'kommentar' : 'kommentarer'}
+                      </p>
+                    </div>
+                    
+                    {annotations.map(annotation => (
+                      <div 
+                        key={annotation.id} 
+                        className={`bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-3 shadow-sm hover:shadow-md transition-all duration-300 transform ${
+                          activeAnnotation?.id === annotation.id 
+                            ? 'ring-2 ring-blue-400 dark:ring-blue-600 scale-[1.02]' 
+                            : 'hover:border-blue-200 dark:hover:border-blue-800 hover:-translate-y-1'
+                        }`}
+                        onClick={() => zoomToAnnotation(annotation)}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center">
+                            <div 
+                              className="w-3 h-3 rounded-full mr-2 ring-2 ring-white dark:ring-slate-700" 
+                              style={{ backgroundColor: annotation.color }} 
+                            />
+                            <span className="text-sm font-medium text-gray-800 dark:text-white">
+                              {annotation.rect.pageNumber !== pageNumber && `Sida ${annotation.rect.pageNumber}: `}
+                              {annotation.status === 'open' && 'Öppen'}
+                              {annotation.status === 'resolved' && 'Löst'}
+                              {annotation.status === 'action_required' && 'Kräver åtgärd'}
+                              {annotation.status === 'reviewing' && 'Under granskning'}
+                            </span>
+                          </div>
+                          <div className="flex space-x-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 rounded-full hover:bg-green-50 dark:hover:bg-green-900/20" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateAnnotationStatus(annotation.id, 'resolved');
+                              }}
+                              title="Markera som löst"
+                            >
+                              <Check size={14} className="text-green-600 dark:text-green-400" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateAnnotationStatus(annotation.id, 'action_required');
+                              }}
+                              title="Markera som kräver åtgärd"
+                            >
+                              <AlertCircle size={14} className="text-red-600 dark:text-red-400" />
+                            </Button>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 bg-gray-50 dark:bg-slate-900/50 p-2 rounded-md">
+                          {annotation.comment}
+                        </p>
+                        <div className="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-slate-700 pt-2">
+                          <span className="font-medium">{annotation.createdBy}</span>
+                          <span>{new Date(annotation.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+      
+      {/* Dialog för att lägga till ny kommentar */}
+      {isAddingComment && tempAnnotation && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center animate-in fade-in-50 duration-200" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute inset-0 bg-black bg-opacity-60 backdrop-blur-sm" onClick={cancelMarkingOrComment} />
+          <div 
+            className="relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md p-6 border border-gray-200 dark:border-slate-700 animate-in zoom-in-95 duration-200" 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+            }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-medium text-gray-800 dark:text-white flex items-center">
+                <MessageSquare size={18} className="mr-2 text-primary-500" />
+                Lägg till kommentar
+              </h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={cancelMarkingOrComment}
+                className="h-7 w-7 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500"
+              >
+                <X size={16} />
+              </Button>
+            </div>
+            
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-800 dark:text-blue-200 mb-4 flex items-start">
+              <AlertCircle size={16} className="mr-2 mt-0.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+              <span>
+                Du markerar ett område på sida <span className="font-bold">{tempAnnotation.rect?.pageNumber}</span>. 
+                Välj status och lägg till din kommentar nedan.
+              </span>
+            </div>
+            
+            <div className="space-y-5 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Status</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {Object.entries(statusColors).map(([status, color]) => (
+                    <div 
+                      key={status}
+                      className={`flex flex-col items-center border rounded-lg p-2 cursor-pointer transition-all ${
+                        tempAnnotation.status === status 
+                          ? 'ring-2 ring-primary-500 border-primary-400 dark:border-primary-600 bg-primary-50 dark:bg-primary-900/20 transform scale-105' 
+                          : 'hover:border-blue-300 dark:hover:border-blue-700 dark:border-slate-700'
+                      }`}
+                      onClick={() => {
+                        setTempAnnotation({
+                          ...tempAnnotation,
+                          status: status as PDFAnnotation['status'],
+                          color
+                        });
+                      }}
+                    >
+                      <div 
+                        className="w-6 h-6 rounded-full mb-2 ring-2 ring-white dark:ring-slate-800"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className={`text-xs text-center font-medium ${
+                        tempAnnotation.status === status ? 'text-primary-700 dark:text-primary-400' : 'text-gray-700 dark:text-gray-300'
+                      }`}>
+                        {status === 'open' && 'Öppen'}
+                        {status === 'resolved' && 'Löst'}
+                        {status === 'action_required' && 'Åtgärd'}
+                        {status === 'reviewing' && 'Granskas'}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
               
-              {/* Kommentarsformulär */}
-              {showAnnotationForm && activeAnnotation && annotationPosition && (
-                <div 
-                  ref={formRef}
-                  className="absolute z-20 bg-white shadow-lg border rounded-md p-4 w-[350px]"
-                  style={{
-                    left: `${annotationPosition.x + 20}px`,
-                    top: `${annotationPosition.y}px`,
-                  }}
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-sm font-medium">Ny kommentar</h3>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={closeAnnotationForm}>
-                      <XCircle className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <Textarea 
-                    placeholder="Skriv din kommentar här..."
-                    className="min-h-[100px] mb-4"
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                  />
-                  
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={closeAnnotationForm}>
-                      Avbryt
-                    </Button>
-                    <Button 
-                      variant="default" 
-                      size="sm"
-                      disabled={!newComment.trim()}
-                      onClick={saveAnnotation}
-                    >
-                      Spara kommentar
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Kommentar</label>
+                <Textarea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Beskriv problemet eller lämna en kommentar..."
+                  rows={4}
+                  className="resize-none focus:ring-primary-500 dark:bg-slate-800 dark:border-slate-700"
+                  autoFocus
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex items-center">
+                  <AlertCircle size={12} className="mr-1" />
+                  Kommentaren kommer att vara synlig för alla som har tillgång till denna fil
+                </p>
+              </div>
             </div>
             
-            {/* Sidopanel med kommentarer och versioner */}
-            <div className={`${showVersionsPanel ? 'w-72' : 'w-80'} flex flex-col h-full min-w-0 transition-all`}>
-              <Tabs defaultValue="comments" className="h-full">
-                <TabsList className="flex w-full justify-start px-4 pt-2">
-                  <TabsTrigger value="comments" className="flex-1">
-                    Kommentarer
-                  </TabsTrigger>
-                  <TabsTrigger value="info" className="flex-1">
-                    Filinfo
-                  </TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="comments" className="pt-2 h-full flex flex-col overflow-hidden">
-                  {/* Kommentarsdelen */}
-                  {filteredAnnotations.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full px-6 text-center">
-                      <Search className="h-8 w-8 text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground">
-                        Inga kommentarer hittades. Använd markeringsverktyget för att lägga till kommentarer i dokumentet.
-                      </p>
-                    </div>
-                  ) : (
-                    <ScrollArea className="flex-1 px-4 py-2 overflow-auto">
-                      {filteredAnnotations.length > 0 && (
-                        <div className="text-sm text-muted-foreground mb-2">
-                          Visar {filteredAnnotations.length} av {annotations.length} kommentarer
-                        </div>
-                      )}
-                      
-                      {viewMode === 'list' ? (
-                        <div className="space-y-3">
-                          {filteredAnnotations.map(annotation => (
-                            <Card key={annotation.id} className="overflow-hidden">
-                              <CardHeader className="p-3 pb-2">
-                                <div className="flex justify-between items-start">
-                                  <div className="flex items-center gap-2">
-                                    <Avatar className="h-6 w-6">
-                                      <AvatarFallback className="text-xs">{annotation.createdBy.substring(0, 2)}</AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                      <CardTitle className="text-sm">{annotation.createdBy}</CardTitle>
-                                      <div className="text-xs text-muted-foreground">
-                                        {new Date(annotation.createdAt).toLocaleDateString()}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  
-                                  <Badge 
-                                    className="ml-auto"
-                                    style={{ backgroundColor: annotation.color, color: 'white' }}
-                                  >
-                                    {annotation.status === 'open' && 'Öppen'}
-                                    {annotation.status === 'resolved' && 'Löst'}
-                                    {annotation.status === 'action_required' && 'Kräver åtgärd'}
-                                    {annotation.status === 'reviewing' && 'Under granskning'}
-                                  </Badge>
-                                </div>
-                              </CardHeader>
-                              
-                              <CardContent className="p-3 pt-0">
-                                <p className="text-sm whitespace-pre-wrap">{annotation.comment}</p>
-                                <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-6 px-2 text-xs"
-                                    onClick={() => handleAnnotationClick(annotation)}
-                                  >
-                                    <Search className="h-3 w-3 mr-1" />
-                                    Hitta i dokumentet
-                                  </Button>
-                                  <div className="ml-auto">
-                                    Sida {annotation.rect.pageNumber}
-                                  </div>
-                                </div>
-                              </CardContent>
-                              
-                              <CardFooter className="p-2 pt-0 flex gap-1 border-t bg-muted/30">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="h-6 px-2 text-xs flex-1"
-                                  onClick={() => updateAnnotationStatus(annotation.id, 'resolved')}
-                                  disabled={annotation.status === 'resolved'}
-                                >
-                                  <CheckCircle2 className="h-3 w-3 mr-1" />
-                                  Lös
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="h-6 px-2 text-xs flex-1"
-                                  onClick={() => updateAnnotationStatus(annotation.id, 'action_required')}
-                                  disabled={annotation.status === 'action_required'}
-                                >
-                                  <AlertCircle className="h-3 w-3 mr-1" />
-                                  Kräv åtgärd
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="h-6 px-2 text-xs flex-1"
-                                  onClick={() => updateAnnotationStatus(annotation.id, 'reviewing')}
-                                  disabled={annotation.status === 'reviewing'}
-                                >
-                                  <ThumbsUp className="h-3 w-3 mr-1" />
-                                  Granska
-                                </Button>
-                              </CardFooter>
-                            </Card>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-2">
-                          {filteredAnnotations.map(annotation => (
-                            <Card key={annotation.id} className="overflow-hidden">
-                              <div 
-                                className="h-2 w-full"
-                                style={{ backgroundColor: annotation.color }}
-                              />
-                              <CardHeader className="p-2 pb-1">
-                                <div className="flex items-center gap-1">
-                                  <Avatar className="h-5 w-5">
-                                    <AvatarFallback className="text-[10px]">{annotation.createdBy.substring(0, 2)}</AvatarFallback>
-                                  </Avatar>
-                                  <div>
-                                    <CardTitle className="text-xs">{annotation.createdBy}</CardTitle>
-                                  </div>
-                                </div>
-                              </CardHeader>
-                              
-                              <CardContent className="p-2 pt-0">
-                                <p className="text-xs line-clamp-2">{annotation.comment}</p>
-                              </CardContent>
-                              
-                              <CardFooter className="p-1 flex justify-between items-center border-t bg-muted/30">
-                                <div className="text-[10px] text-muted-foreground">
-                                  Sida {annotation.rect.pageNumber}
-                                </div>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="h-5 w-5 p-0"
-                                  onClick={() => handleAnnotationClick(annotation)}
-                                >
-                                  <Search className="h-3 w-3" />
-                                </Button>
-                              </CardFooter>
-                            </Card>
-                          ))}
-                        </div>
-                      )}
-                    </ScrollArea>
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="info" className="h-full flex flex-col overflow-hidden">
-                  {/* Filinformationsdel */}
-                  <ScrollArea className="flex-1 overflow-auto px-4 py-2">
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="text-sm font-medium mb-1">Filnamn</h3>
-                        <p className="text-sm text-muted-foreground">{fileData?.filename || file?.name}</p>
-                      </div>
-                      
-                      <div>
-                        <h3 className="text-sm font-medium mb-1">Beskrivning</h3>
-                        <p className="text-sm text-muted-foreground">{fileData?.description || 'Ingen beskrivning'}</p>
-                      </div>
-                      
-                      <div>
-                        <h3 className="text-sm font-medium mb-1">Uppladdad</h3>
-                        <p className="text-sm text-muted-foreground">{fileData?.uploaded ? new Date(fileData.uploaded).toLocaleString() : 'Okänt datum'}</p>
-                        <p className="text-sm text-muted-foreground">av {fileData?.uploadedBy || 'Okänd användare'}</p>
-                      </div>
-                      
-                      <div>
-                        <h3 className="text-sm font-medium mb-1">Fil metadata</h3>
-                        <div className="space-y-1">
-                          <div className="flex justify-between">
-                            <span className="text-sm text-muted-foreground">Sidor:</span>
-                            <span className="text-sm">{numPages || '?'}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-sm text-muted-foreground">Kommentarer:</span>
-                            <span className="text-sm">{annotations.length}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-sm text-muted-foreground">Versioner:</span>
-                            <span className="text-sm">{fileVersions.length}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="border-t pt-4">
-                        <h3 className="text-sm font-medium mb-2">Versionshistorik</h3>
-                        {fileVersions.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">Ingen versionshistorik</p>
-                        ) : (
-                          <div className="space-y-3">
-                            {fileVersions.map((version) => (
-                              <Card key={version.id} className={`overflow-hidden border ${activeVersionId === version.id ? 'border-primary' : ''}`}>
-                                <CardHeader className="p-3 pb-2">
-                                  <div className="flex justify-between items-center">
-                                    <CardTitle className="text-sm">Version {version.versionNumber}</CardTitle>
-                                    <Badge variant="outline">
-                                      {version.commentCount} komm.
-                                    </Badge>
-                                  </div>
-                                </CardHeader>
-                                
-                                <CardContent className="p-3 pt-0 pb-2">
-                                  <p className="text-xs text-muted-foreground mb-1">
-                                    {new Date(version.uploaded).toLocaleString()}
-                                  </p>
-                                  <p className="text-xs mb-2">av {version.uploadedBy}</p>
-                                  <p className="text-sm">{version.description}</p>
-                                </CardContent>
-                                
-                                <CardFooter className="p-2 flex justify-end border-t">
-                                  {activeVersionId !== version.id && (
-                                    <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      className="h-6 text-xs"
-                                      onClick={() => {
-                                        setActiveVersionId(version.id);
-                                        setPdfUrl(version.fileUrl);
-                                      }}
-                                    >
-                                      Visa denna version
-                                    </Button>
-                                  )}
-                                </CardFooter>
-                              </Card>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </ScrollArea>
-                </TabsContent>
-              </Tabs>
+            <div className="flex justify-end space-x-3 pt-3 mt-2 border-t border-gray-200 dark:border-slate-700">
+              <Button
+                variant="outline"
+                onClick={cancelMarkingOrComment}
+                className="rounded-full px-4 py-2 h-auto"
+              >
+                Avbryt
+              </Button>
+              <Button
+                onClick={saveComment}
+                disabled={!newComment.trim()}
+                className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 h-auto shadow-sm hover:shadow"
+              >
+                <MessageSquare size={16} className="mr-2" />
+                Publicera kommentar
+              </Button>
             </div>
           </div>
         </div>
-      </DialogContent>
+      )}
       
-      {/* Dialogruta för uppladdning av ny version */}
-      <Dialog open={showUploadVersionDialog} onOpenChange={closeUploadVersionDialog}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Ladda upp ny version</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="grid w-full items-center gap-1.5">
-              <Label htmlFor="version-file-upload">Fil</Label>
-              <Input
-                id="version-file-upload"
-                type="file"
-                accept=".pdf"
-                onChange={handleVersionFileChange}
-              />
+      {/* Dialog för att ladda upp ny version */}
+      {showUploadVersionDialog && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center animate-in fade-in-50 duration-200" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute inset-0 bg-black bg-opacity-60 backdrop-blur-sm" onClick={closeUploadVersionDialog} />
+          <div 
+            className="relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md p-6 border border-gray-200 dark:border-slate-700 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+            }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-medium text-gray-800 dark:text-white flex items-center">
+                <Upload size={18} className="mr-2 text-blue-500" />
+                Ladda upp ny version
+              </h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={closeUploadVersionDialog}
+                className="h-7 w-7 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500"
+              >
+                <X size={16} />
+              </Button>
             </div>
             
-            <div className="grid w-full items-center gap-1.5">
-              <Label htmlFor="version-description">Versionsbeskrivning</Label>
-              <Textarea
-                id="version-description"
-                placeholder="Beskriv vad som är nytt i denna version..."
-                value={newVersionDescription}
-                onChange={(e) => setNewVersionDescription(e.target.value)}
-              />
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-800 dark:text-blue-200 mb-4 flex items-start">
+              <AlertCircle size={16} className="mr-2 mt-0.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+              <span>
+                Ladda upp en ny version av filen <span className="font-bold">{fileData?.filename}</span>. 
+                Den nya versionen kommer att läggas till i historiken.
+              </span>
+            </div>
+            
+            <div className="space-y-5 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Välj fil</label>
+                <div 
+                  className="border-2 border-dashed rounded-xl p-5 text-center cursor-pointer hover:border-primary-400 dark:hover:border-primary-600 transition-colors bg-gray-50 dark:bg-slate-800/50 dark:border-slate-700"
+                  onClick={() => document.getElementById('version-file-upload')?.click()}
+                >
+                  {selectedVersionFile ? (
+                    <div className="flex items-center justify-center flex-col">
+                      <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full mb-3">
+                        <FileText size={36} className="text-blue-500 dark:text-blue-400" />
+                      </div>
+                      <p className="text-sm font-medium text-gray-800 dark:text-white">{selectedVersionFile.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {(selectedVersionFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 rounded-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedVersionFile(null);
+                        }}
+                      >
+                        <X size={14} className="mr-1" />
+                        Ta bort
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center flex-col">
+                      <div className="bg-gray-100 dark:bg-slate-800 p-3 rounded-full mb-3">
+                        <Upload size={36} className="text-gray-400 dark:text-gray-500" />
+                      </div>
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Klicka för att välja fil eller dra och släpp</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">PDF (max 20MB)</p>
+                      <p className="mt-3 text-xs text-blue-500 dark:text-blue-400">Klicka eller dra filen hit</p>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    id="version-file-upload"
+                    className="hidden"
+                    accept=".pdf"
+                    onChange={handleVersionFileChange}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Beskrivning av ändringar</label>
+                <Textarea
+                  value={newVersionDescription}
+                  onChange={(e) => setNewVersionDescription(e.target.value)}
+                  placeholder="Beskriv vad som har ändrats i denna version..."
+                  rows={3}
+                  className="resize-none focus:ring-primary-500 dark:bg-slate-800 dark:border-slate-700"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex items-center">
+                  <AlertCircle size={12} className="mr-1" />
+                  En kort beskrivning som visas i versionshistoriken
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3 pt-3 mt-2 border-t border-gray-200 dark:border-slate-700">
+              <Button
+                variant="outline"
+                onClick={closeUploadVersionDialog}
+                className="rounded-full px-4 py-2 h-auto"
+              >
+                Avbryt
+              </Button>
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log("Upload button clicked");
+                  saveNewVersion();
+                }}
+                disabled={!selectedVersionFile || !newVersionDescription.trim()}
+                className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 h-auto shadow-sm hover:shadow"
+              >
+                <Upload size={16} className="mr-2" />
+                Ladda upp ny version
+              </Button>
             </div>
           </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={closeUploadVersionDialog}>Avbryt</Button>
-            <Button 
-              onClick={saveNewVersion}
-              disabled={!selectedVersionFile || !newVersionDescription.trim()}
-            >
-              Ladda upp
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Dialog>
+        </div>
+      )}
+    </div>
   );
 }
