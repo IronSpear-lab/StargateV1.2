@@ -27,7 +27,7 @@ export interface GanttTask {
   level?: number;
 }
 
-// Demo-data för Gantt-diagrammet
+// Demo-data för Gantt-diagrammet - helt separerad från tasks API
 const initialTasks: GanttTask[] = [
   {
     id: 1,
@@ -54,23 +54,24 @@ const initialTasks: GanttTask[] = [
       {
         id: 3,
         project: "Byggprojekt A",
-        type: "MILESTONE",
-        name: "Designgodkännande",
+        type: "TASK",
+        name: "Kostnadsberäkning",
         status: "Completed",
-        startDate: "2025-04-15",
-        endDate: "2025-04-15",
-        duration: 0,
+        startDate: "2025-04-11",
+        endDate: "2025-04-20",
+        duration: 10,
+        dependencies: [2],
         parentId: 1,
       },
       {
         id: 4,
         project: "Byggprojekt A",
-        type: "TASK",
-        name: "Detaljritningar",
+        type: "MILESTONE",
+        name: "Designbeslut",
         status: "Completed",
-        startDate: "2025-04-16",
-        endDate: "2025-05-15",
-        duration: 30,
+        startDate: "2025-04-21",
+        endDate: "2025-04-21",
+        duration: 0,
         dependencies: [3],
         parentId: 1,
       }
@@ -80,23 +81,23 @@ const initialTasks: GanttTask[] = [
     id: 5,
     project: "Byggprojekt A",
     type: "PHASE",
-    name: "Projektfas 2: Konstruktion",
+    name: "Projektfas 2: Byggnation",
     status: "Ongoing",
-    startDate: "2025-05-01",
+    startDate: "2025-05-16",
     endDate: "2025-07-30",
-    duration: 60,
-    expanded: true,
+    duration: 76,
     dependencies: [1],
+    expanded: true,
     children: [
       {
         id: 6,
         project: "Byggprojekt A",
         type: "TASK",
-        name: "Grundläggning",
+        name: "Grundarbete",
         status: "Ongoing",
-        startDate: "2025-05-01",
+        startDate: "2025-05-16",
         endDate: "2025-05-30",
-        duration: 30,
+        duration: 15,
         dependencies: [4],
         parentId: 5,
       },
@@ -153,7 +154,7 @@ const initialTasks: GanttTask[] = [
         id: 11,
         project: "Byggprojekt B",
         type: "TASK",
-        name: "Rivning av befintligt badrum",
+        name: "Rivning",
         status: "Completed",
         startDate: "2025-04-10",
         endDate: "2025-04-20",
@@ -164,7 +165,7 @@ const initialTasks: GanttTask[] = [
         id: 12,
         project: "Byggprojekt B",
         type: "TASK",
-        name: "Installation av nya rör",
+        name: "VVS-installation",
         status: "Delayed",
         startDate: "2025-04-21",
         endDate: "2025-05-10",
@@ -175,24 +176,24 @@ const initialTasks: GanttTask[] = [
       {
         id: 13,
         project: "Byggprojekt B",
-        type: "MILESTONE",
-        name: "Inspektion av rördragning",
-        status: "Delayed",
-        startDate: "2025-05-12",
-        endDate: "2025-05-12",
-        duration: 0,
+        type: "TASK",
+        name: "Kakelsättning",
+        status: "New",
+        startDate: "2025-05-11",
+        endDate: "2025-06-01",
+        duration: 22,
         dependencies: [12],
         parentId: 10,
       },
       {
         id: 14,
-        project: "Byggprojekt B",
+        project: "Byggprojekt B", 
         type: "TASK",
-        name: "Tätskikt och plattsättning",
+        name: "Montering av inredning",
         status: "New",
-        startDate: "2025-05-15",
+        startDate: "2025-06-02",
         endDate: "2025-06-15",
-        duration: 31,
+        duration: 14,
         dependencies: [13],
         parentId: 10,
       }
@@ -200,21 +201,45 @@ const initialTasks: GanttTask[] = [
   }
 ];
 
-// Funktion för att platta ut hierarkiska uppgifter
-const flattenTasks = (tasks: GanttTask[], level = 0): GanttTask[] => {
-  return tasks.reduce<GanttTask[]>((acc, task) => {
-    const newTask = { ...task, level, children: task.children || [] };
-    acc.push(newTask);
-    
-    if (task.expanded && task.children && task.children.length > 0) {
-      acc.push(...flattenTasks(task.children, level + 1));
+// Flatten task hierarchy for display
+const flattenTasks = (tasks: GanttTask[]): GanttTask[] => {
+  const result: GanttTask[] = [];
+  
+  const traverse = (task: GanttTask, level = 0) => {
+    const taskCopy = { ...task, level };
+    if (taskCopy.children) {
+      const children = [...taskCopy.children];
+      delete taskCopy.children;
+      result.push(taskCopy);
+      
+      if (taskCopy.expanded) {
+        children.forEach(child => traverse(child, level + 1));
+      }
+    } else {
+      result.push({ ...taskCopy, level });
     }
-    
-    return acc;
-  }, []);
+  };
+  
+  tasks.forEach(task => traverse(task));
+  return result;
 };
 
-// Huvudkomponent för Gantt-diagram
+// Status icon component
+const StatusIcon = ({ status }: { status: string }) => {
+  switch (status) {
+    case 'New':
+      return <CircleDashed className="w-5 h-5 text-blue-500" />;
+    case 'Ongoing':
+      return <Clock className="w-5 h-5 text-amber-500" />;
+    case 'Completed':
+      return <CheckCircle2 className="w-5 h-5 text-green-500" />;
+    case 'Delayed':
+      return <AlertTriangle className="w-5 h-5 text-red-500" />;
+    default:
+      return <CircleDashed className="w-5 h-5" />;
+  }
+};
+
 const ModernGanttChart: React.FC = () => {
   const [tasks, setTasks] = useState<GanttTask[]>(initialTasks);
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
@@ -267,62 +292,254 @@ const ModernGanttChart: React.FC = () => {
         task.children.forEach(addProject);
       }
     };
-    
     tasks.forEach(addProject);
     return Array.from(projectSet);
   }, [tasks]);
   
   // Hämta alla unika statusar för filtrering
-  const statuses = ["New", "Ongoing", "Completed", "Delayed"];
-  const types = ["TASK", "MILESTONE", "PHASE"];
+  const statuses = useMemo(() => {
+    const statusSet = new Set<string>();
+    const addStatus = (task: GanttTask) => {
+      statusSet.add(task.status);
+      if (task.children) {
+        task.children.forEach(addStatus);
+      }
+    };
+    tasks.forEach(addStatus);
+    return Array.from(statusSet);
+  }, [tasks]);
+  
+  // Hämta alla unika typer för filtrering
+  const types = useMemo(() => {
+    const typeSet = new Set<string>();
+    const addType = (task: GanttTask) => {
+      typeSet.add(task.type);
+      if (task.children) {
+        task.children.forEach(addType);
+      }
+    };
+    tasks.forEach(addType);
+    return Array.from(typeSet);
+  }, [tasks]);
   
   // Filtrera uppgifter baserat på valda filter
   const filteredTasks = useMemo(() => {
-    let filtered = [...tasks];
-    
-    // Filtrera på projekt
-    if (selectedProjects.length > 0) {
-      filtered = filtered.filter(task => selectedProjects.includes(task.project));
-    }
-    
-    // Filtrera på status
-    if (statusFilter.length > 0) {
-      filtered = filtered.filter(task => statusFilter.includes(task.status));
-    }
-    
-    // Filtrera på typ
-    if (typeFilter.length > 0) {
-      filtered = filtered.filter(task => typeFilter.includes(task.type));
-    }
-    
-    return filtered;
+    return tasks.filter(task => {
+      const projectMatch = selectedProjects.length === 0 || selectedProjects.includes(task.project);
+      const statusMatch = statusFilter.length === 0 || statusFilter.includes(task.status);
+      const typeMatch = typeFilter.length === 0 || typeFilter.includes(task.type);
+      return projectMatch && statusMatch && typeMatch;
+    });
   }, [tasks, selectedProjects, statusFilter, typeFilter]);
   
-  // Platta ut och strukturera uppgifterna för visning
+  // Förbereda uppgifter för visning i platt struktur (för tabellen)
   const flattenedTasks = useMemo(() => {
     return flattenTasks(filteredTasks);
   }, [filteredTasks]);
   
-  // Zooma in tidsskalan
-  const zoomIn = () => {
-    if (viewMode === 'month') setViewMode('week');
-    else if (viewMode === 'week') setViewMode('day');
+  // Generera månadsrubriker för tidslinjen
+  const monthHeaders = useMemo(() => {
+    const headers: { month: string, days: number }[] = [];
+    let currentMonth = '';
+    let dayCount = 0;
+    
+    days.forEach(day => {
+      const monthName = format(day, 'MMM yyyy');
+      if (currentMonth === monthName) {
+        dayCount++;
+      } else {
+        if (currentMonth !== '') {
+          headers.push({ month: currentMonth, days: dayCount });
+        }
+        currentMonth = monthName;
+        dayCount = 1;
+      }
+    });
+    
+    if (dayCount > 0) {
+      headers.push({ month: currentMonth, days: dayCount });
+    }
+    
+    return headers;
+  }, [days]);
+  
+  // Hantera val av filter för projekt
+  const toggleProjectFilter = (project: string) => {
+    setSelectedProjects(prev => {
+      if (prev.includes(project)) {
+        return prev.filter(p => p !== project);
+      } else {
+        return [...prev, project];
+      }
+    });
   };
   
-  // Zooma ut tidsskalan
-  const zoomOut = () => {
-    if (viewMode === 'day') setViewMode('week');
-    else if (viewMode === 'week') setViewMode('month');
+  // Hantera val av filter för status
+  const toggleStatusFilter = (status: string) => {
+    setStatusFilter(prev => {
+      if (prev.includes(status)) {
+        return prev.filter(s => s !== status);
+      } else {
+        return [...prev, status];
+      }
+    });
   };
   
-  // Exportera Gantt-diagrammet som PDF eller Excel
-  const exportData = () => {
-    alert('Export-funktionen implementeras senare.');
+  // Hantera val av filter för typ
+  const toggleTypeFilter = (type: string) => {
+    setTypeFilter(prev => {
+      if (prev.includes(type)) {
+        return prev.filter(t => t !== type);
+      } else {
+        return [...prev, type];
+      }
+    });
   };
   
-  // Skapa ny uppgift
-  const createTask = () => {
-    setShowCreateDialog(true);
+  // Beräkna position och stil för uppgiftsstaplar
+  const getTaskBarStyle = (task: GanttTask) => {
+    const startIdx = days.findIndex(day => 
+      isSameDay(parseISO(task.startDate), day) || 
+      isAfter(day, parseISO(task.startDate))
+    );
+    
+    const endIdx = days.findIndex(day => 
+      isSameDay(parseISO(task.endDate), day) || 
+      isBefore(day, parseISO(task.endDate))
+    );
+    
+    // Om datumen inte är inom intervallet, visa inte stapeln
+    if (startIdx === -1 || endIdx === -1) {
+      return { display: 'none' };
+    }
+    
+    const width = task.type === 'MILESTONE' 
+      ? 10 
+      : Math.max((endIdx - startIdx) * 30, 30);
+    
+    let backgroundColor;
+    
+    switch (task.status) {
+      case 'New':
+        backgroundColor = 'bg-blue-500';
+        break;
+      case 'Ongoing':
+        backgroundColor = 'bg-amber-500';
+        break;
+      case 'Completed':
+        backgroundColor = 'bg-green-500';
+        break;
+      case 'Delayed':
+        backgroundColor = 'bg-red-500';
+        break;
+      default:
+        backgroundColor = 'bg-gray-500';
+    }
+    
+    return {
+      position: 'absolute',
+      left: `${startIdx * 30}px`,
+      top: '5px',
+      width: task.type === 'MILESTONE' ? '10px' : `${width}px`,
+      height: '20px',
+      backgroundColor: task.type === 'MILESTONE' ? '#000' : 'transparent',
+      borderRadius: task.type === 'MILESTONE' ? '50%' : '3px',
+      zIndex: 1,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      overflow: 'hidden',
+      whiteSpace: 'nowrap',
+      border: task.type === 'PHASE' ? '2px solid #333' : 'none',
+      ...(task.type !== 'MILESTONE' && {
+        background: `linear-gradient(90deg, ${task.type === 'PHASE' ? 'rgba(0,0,0,0.1)' : backgroundColor} 0%, ${task.type === 'PHASE' ? 'rgba(0,0,0,0.1)' : backgroundColor} 100%)`
+      })
+    };
+  };
+  
+  // Beräkna utseende för beroendepilar
+  const getDependencyArrowStyle = (task: GanttTask) => {
+    if (!task.dependencies || task.dependencies.length === 0) {
+      return null;
+    }
+    
+    const dependencyLines = task.dependencies.map(depId => {
+      const dependencyTask = flattenedTasks.find(t => t.id === depId);
+      
+      if (!dependencyTask) {
+        return null;
+      }
+      
+      const startTask = dependencyTask;
+      const endTask = task;
+      
+      // Hitta position för start- och slutpunkt i Gantt-diagrammet
+      const startTaskEndIdx = days.findIndex(day => 
+        isSameDay(parseISO(startTask.endDate), day) || 
+        isBefore(day, parseISO(startTask.endDate))
+      );
+      
+      const endTaskStartIdx = days.findIndex(day => 
+        isSameDay(parseISO(endTask.startDate), day) || 
+        isAfter(day, parseISO(endTask.startDate))
+      );
+      
+      if (startTaskEndIdx === -1 || endTaskStartIdx === -1) {
+        return null;
+      }
+      
+      // Beräkna koordinater för pilen
+      const startX = startTaskEndIdx * 30 + (startTask.type === 'MILESTONE' ? 5 : 0);
+      const startY = 15;
+      const endX = endTaskStartIdx * 30;
+      const endY = 15;
+      
+      // Skapa en böjd linje
+      const midX = (startX + endX) / 2;
+      
+      return {
+        points: `${startX},${startY} ${midX},${startY} ${midX},${endY} ${endX},${endY}`,
+        fill: "none",
+        stroke: "#64748b",
+        strokeWidth: 1,
+        strokeDasharray: "4 2",
+        markerEnd: "url(#arrowhead)"
+      };
+    });
+    
+    return dependencyLines.filter(Boolean);
+  };
+  
+  // Hantera skapande av ny uppgift
+  const saveNewTask = () => {
+    if (!newTask.name || !newTask.startDate || (!newTask.endDate && newTask.type !== 'MILESTONE')) {
+      alert('Vänligen fyll i alla obligatoriska fält');
+      return;
+    }
+    
+    // Om det är en milstolpe, sätt sluttid till samma som starttid
+    const endDate = newTask.type === 'MILESTONE' ? newTask.startDate : newTask.endDate;
+    
+    // Beräkna varaktighet
+    const duration = newTask.type === 'MILESTONE' 
+      ? 0 
+      : differenceInDays(parseISO(endDate!), parseISO(newTask.startDate!)) + 1;
+    
+    const taskId = Math.max(...flattenedTasks.map(t => t.id)) + 1;
+    
+    const newTaskItem: GanttTask = {
+      id: taskId,
+      project: newTask.project!,
+      type: newTask.type as "TASK" | "MILESTONE" | "PHASE",
+      name: newTask.name!,
+      status: newTask.status as "New" | "Ongoing" | "Completed" | "Delayed",
+      startDate: newTask.startDate!,
+      endDate: endDate!,
+      duration
+    };
+    
+    setTasks(prev => [...prev, newTaskItem]);
+    cancelCreateTask();
   };
   
   // Avbryt skapande av ny uppgift
@@ -339,362 +556,136 @@ const ModernGanttChart: React.FC = () => {
     });
   };
   
-  // Spara ny uppgift
-  const saveNewTask = () => {
-    // Validera indata
-    if (!newTask.name || !newTask.project || !newTask.startDate || !newTask.endDate) {
-      alert('Vänligen fyll i alla obligatoriska fält.');
-      return;
-    }
-    
-    // Beräkna varaktighet
-    const startDate = new Date(newTask.startDate);
-    const endDate = new Date(newTask.endDate);
-    const duration = differenceInDays(endDate, startDate) + 1;
-    
-    // Skapa ny uppgift med unikt ID
-    const maxId = Math.max(...tasks.flat().map(task => task.id), 0);
-    const newTaskItem: GanttTask = {
-      id: maxId + 1,
-      project: newTask.project,
-      type: newTask.type as "TASK" | "MILESTONE" | "PHASE",
-      name: newTask.name,
-      status: newTask.status as "New" | "Ongoing" | "Completed" | "Delayed",
-      startDate: newTask.startDate,
-      endDate: newTask.endDate,
-      duration,
-      children: newTask.type === 'PHASE' ? [] : undefined,
-      expanded: newTask.type === 'PHASE' ? true : undefined
-    };
-    
-    // Lägg till den nya uppgiften
-    setTasks(prev => [...prev, newTaskItem]);
-    
-    // Stäng dialogrutan och återställ formuläret
-    setShowCreateDialog(false);
-    setNewTask({
-      type: 'TASK',
-      status: 'New',
-      project: '',
-      name: '',
-      startDate: '',
-      endDate: '',
-      duration: 0
-    });
-  };
-  
-  // Beräkna position och bredd för staplar i Gantt-diagrammet
-  const getTaskBarStyle = (task: GanttTask) => {
-    const startDate = parseISO(task.startDate);
-    const endDate = parseISO(task.endDate);
-    const totalDays = days.length;
-    
-    // Om uppgiften ligger utanför tidsintervallet, visa den inte
-    if (isAfter(startDate, days[days.length - 1]) || isBefore(endDate, days[0])) {
-      return { display: 'none' };
-    }
-    
-    // Beräkna start- och slutposition för stapeln
-    const startIndex = Math.max(
-      days.findIndex(day => isSameDay(day, startDate) || isAfter(day, startDate)),
-      0
-    );
-    
-    const endIndex = Math.min(
-      days.findIndex(day => isAfter(day, endDate)),
-      totalDays - 1
-    );
-    
-    const dayWidth = 30; // bredd per dag i pixlar
-    const left = startIndex * dayWidth;
-    const width = (endIndex - startIndex) * dayWidth || dayWidth; // Minsta bredd för milestones
-    
-    // Välj färg baserat på status
-    let backgroundColor;
-    switch (task.status) {
-      case 'Completed':
-        backgroundColor = '#0acf97'; // Grön
-        break;
-      case 'Ongoing':
-        backgroundColor = '#727cf5'; // Blå
-        break;
-      case 'Delayed':
-        backgroundColor = '#fa5c7c'; // Röd
-        break;
-      default:
-        backgroundColor = '#8a909d'; // Grå för nya/framtida uppgifter
-    }
-    
-    // Särskild stil för milestones
-    if (task.type === 'MILESTONE') {
-      return {
-        position: 'absolute' as const,
-        left: `${left}px`,
-        top: '8px',
-        width: '0',
-        height: '0',
-        borderLeft: '10px solid transparent',
-        borderRight: '10px solid transparent',
-        borderBottom: `20px solid #ffc35a`, // Orange för milestones
-        transform: 'rotate(45deg)',
-        zIndex: 2
-      };
-    }
-    
-    // Faser har gradient för att skilja dem från vanliga uppgifter
-    if (task.type === 'PHASE') {
-      return {
-        position: 'absolute' as const,
-        left: `${left}px`,
-        top: '5px',
-        width: `${width}px`,
-        height: '25px',
-        background: `linear-gradient(to right, ${backgroundColor}, ${backgroundColor}dd)`,
-        borderRadius: '4px',
-        zIndex: 1
-      };
-    }
-    
-    // Normal uppgiftsstapel
-    return {
-      position: 'absolute' as const,
-      left: `${left}px`,
-      top: '8px',
-      width: `${width}px`,
-      height: '20px',
-      backgroundColor,
-      borderRadius: '4px',
-      zIndex: 1
-    };
-  };
-  
-  // Beräkna position för beroendepil
-  const getDependencyArrowStyle = (task: GanttTask) => {
-    if (!task.dependencies || task.dependencies.length === 0) return null;
-    
-    const arrows = task.dependencies.map(depId => {
-      const dependencyTask = flattenedTasks.find(t => t.id === depId);
-      if (!dependencyTask) return null;
-      
-      const depEndDate = parseISO(dependencyTask.endDate);
-      const taskStartDate = parseISO(task.startDate);
-      
-      const startIndex = days.findIndex(day => isSameDay(day, depEndDate) || isAfter(day, depEndDate));
-      const endIndex = days.findIndex(day => isSameDay(day, taskStartDate) || isAfter(day, taskStartDate));
-      
-      if (startIndex < 0 || endIndex < 0) return null;
-      
-      const dayWidth = 30;
-      const dependencyEndLeft = startIndex * dayWidth + dayWidth / 2;
-      const taskStartLeft = endIndex * dayWidth;
-      
-      // Hitta positioner i den flattade listan för att beräkna höjdskillnad
-      const depIndex = flattenedTasks.findIndex(t => t.id === dependencyTask.id);
-      const taskIndex = flattenedTasks.findIndex(t => t.id === task.id);
-      const verticalGap = (taskIndex - depIndex) * 40; // 40px per rad
-      
-      // Beräkna mellanliggande punkter för pilen
-      const midX = Math.max(dependencyEndLeft + 10, (dependencyEndLeft + taskStartLeft) / 2);
-      
-      return {
-        points: `${dependencyEndLeft},20 ${midX},20 ${midX},${verticalGap} ${taskStartLeft},${verticalGap}`,
-        stroke: '#64748b',
-        strokeWidth: 1,
-        fill: 'none',
-        strokeDasharray: task.status === 'Delayed' ? '5,5' : 'none',
-        markerEnd: 'url(#arrowhead)'
-      };
-    });
-    
-    return arrows;
-  };
-  
-  // Generera månadsrubriker för tidslinjen
-  const monthHeaders = useMemo(() => {
-    const months: { month: string; days: number }[] = [];
-    let currentMonth = '';
-    let dayCount = 0;
-    
-    days.forEach(day => {
-      const monthString = format(day, 'MMM yyyy');
-      if (monthString !== currentMonth) {
-        if (currentMonth) {
-          months.push({ month: currentMonth, days: dayCount });
-        }
-        currentMonth = monthString;
-        dayCount = 1;
-      } else {
-        dayCount++;
-      }
-    });
-    
-    if (currentMonth) {
-      months.push({ month: currentMonth, days: dayCount });
-    }
-    
-    return months;
-  }, [days]);
-  
-  // Visa status ikon
-  const StatusIcon = ({ status }: { status: string }) => {
-    switch (status) {
-      case 'Completed':
-        return <CheckCircle2 size={16} className="text-green-500" />;
-      case 'Ongoing':
-        return <Clock size={16} className="text-blue-500" />;
-      case 'Delayed':
-        return <AlertTriangle size={16} className="text-red-500" />;
-      default:
-        return <CircleDashed size={16} className="text-gray-500" />;
-    }
-  };
-  
   return (
-    <div className="gantt-chart-container p-4 bg-white dark:bg-slate-900 rounded-lg shadow">
-      {/* Verktygsrad */}
-      <div className="flex flex-wrap items-center justify-between mb-4 gap-2">
-        <div className="flex items-center space-x-2">
-          <Button onClick={createTask} variant="default" size="sm" className="bg-primary-500 hover:bg-primary-600">
-            <Plus size={16} className="mr-1" /> Create
-          </Button>
-          
-          <div className="relative">
-            <Button variant="outline" size="sm" className="flex items-center">
-              Include Projects <ChevronDown size={16} className="ml-1" />
+    <div className="w-full h-full bg-white dark:bg-slate-900 rounded-lg shadow overflow-hidden flex flex-col">
+      {/* Toolbar */}
+      <div className="border-b border-gray-200 dark:border-slate-700 p-4">
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm">
+              <ZoomOut className="w-4 h-4 mr-1" />
+              <span>Zoom Out</span>
             </Button>
-            <div className="hidden absolute left-0 mt-1 w-48 p-2 bg-white dark:bg-slate-800 shadow-lg rounded-md z-10 border border-gray-200 dark:border-slate-700">
-              {projects.map(project => (
-                <div key={project} className="flex items-center p-1">
-                  <Checkbox
-                    id={`project-${project}`}
-                    checked={selectedProjects.includes(project)}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        setSelectedProjects(prev => [...prev, project]);
-                      } else {
-                        setSelectedProjects(prev => prev.filter(p => p !== project));
-                      }
-                    }}
-                  />
-                  <label htmlFor={`project-${project}`} className="ml-2 text-sm">{project}</label>
-                </div>
-              ))}
+            <Button variant="outline" size="sm">
+              <ZoomIn className="w-4 h-4 mr-1" />
+              <span>Zoom In</span>
+            </Button>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm" onClick={() => setShowCreateDialog(true)}>
+              <Plus className="w-4 h-4 mr-1" />
+              <span>Add Task</span>
+            </Button>
+            <Button variant="outline" size="sm">
+              <FileDown className="w-4 h-4 mr-1" />
+              <span>Export</span>
+            </Button>
+          </div>
+          
+          <div className="ml-auto flex items-center space-x-2">
+            <Select 
+              value={viewMode} 
+              onValueChange={(val) => setViewMode(val as any)}
+            >
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="View" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="day">Day</SelectItem>
+                <SelectItem value="week">Week</SelectItem>
+                <SelectItem value="month">Month</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <div className="relative">
+              <Dialog>
+                <Button variant="outline" size="sm">
+                  <Filter className="w-4 h-4 mr-1" />
+                  <span>Filter</span>
+                </Button>
+                <DialogContent className="sm:max-w-[550px]">
+                  <DialogHeader>
+                    <DialogTitle>Filter Tasks</DialogTitle>
+                  </DialogHeader>
+                  
+                  <div className="grid gap-6 py-4">
+                    <div>
+                      <h3 className="text-sm font-medium mb-2">Projects</h3>
+                      <div className="grid grid-cols-2 gap-2">
+                        {projects.map(project => (
+                          <div key={project} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`project-${project}`}
+                              checked={selectedProjects.includes(project)}
+                              onCheckedChange={() => toggleProjectFilter(project)}
+                            />
+                            <label htmlFor={`project-${project}`} className="text-sm cursor-pointer">{project}</label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-sm font-medium mb-2">Status</h3>
+                      <div className="grid grid-cols-2 gap-2">
+                        {statuses.map(status => (
+                          <div key={status} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`status-${status}`}
+                              checked={statusFilter.includes(status)}
+                              onCheckedChange={() => toggleStatusFilter(status)}
+                            />
+                            <label htmlFor={`status-${status}`} className="text-sm cursor-pointer">{status}</label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-sm font-medium mb-2">Type</h3>
+                      <div className="grid grid-cols-2 gap-2">
+                        {types.map(type => (
+                          <div key={type} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`type-${type}`}
+                              checked={typeFilter.includes(type)}
+                              onCheckedChange={() => toggleTypeFilter(type)}
+                            />
+                            <label htmlFor={`type-${type}`} className="text-sm cursor-pointer">{type}</label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
-          
-          <Button variant="outline" size="sm">
-            Baseline
-          </Button>
-          
-          <div className="relative">
-            <Button variant="outline" size="sm" className="flex items-center">
-              <Filter size={16} className="mr-1" /> Filter <ChevronDown size={16} className="ml-1" />
-            </Button>
-            <div className="hidden absolute left-0 mt-1 w-48 p-2 bg-white dark:bg-slate-800 shadow-lg rounded-md z-10 border border-gray-200 dark:border-slate-700">
-              <div className="mb-2">
-                <p className="font-medium text-xs mb-1">Status</p>
-                {statuses.map(status => (
-                  <div key={status} className="flex items-center p-1">
-                    <Checkbox
-                      id={`status-${status}`}
-                      checked={statusFilter.includes(status)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setStatusFilter(prev => [...prev, status]);
-                        } else {
-                          setStatusFilter(prev => prev.filter(s => s !== status));
-                        }
-                      }}
-                    />
-                    <label htmlFor={`status-${status}`} className="ml-2 text-sm">{status}</label>
-                  </div>
-                ))}
-              </div>
-              <div>
-                <p className="font-medium text-xs mb-1">Type</p>
-                {types.map(type => (
-                  <div key={type} className="flex items-center p-1">
-                    <Checkbox
-                      id={`type-${type}`}
-                      checked={typeFilter.includes(type)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setTypeFilter(prev => [...prev, type]);
-                        } else {
-                          setTypeFilter(prev => prev.filter(t => t !== type));
-                        }
-                      }}
-                    />
-                    <label htmlFor={`type-${type}`} className="ml-2 text-sm">{type}</label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center bg-gray-100 dark:bg-slate-800 rounded-md p-0.5">
-            <Button variant="ghost" size="icon" onClick={zoomOut} className="h-8 w-8" disabled={viewMode === 'month'}>
-              <ZoomOut size={16} />
-            </Button>
-            <span className="px-2 text-sm">
-              {viewMode === 'day' ? 'Day' : viewMode === 'week' ? 'Week' : 'Month'}
-            </span>
-            <Button variant="ghost" size="icon" onClick={zoomIn} className="h-8 w-8" disabled={viewMode === 'day'}>
-              <ZoomIn size={16} />
-            </Button>
-          </div>
-          
-          <Button variant="outline" size="sm" onClick={exportData}>
-            <FileDown size={16} className="mr-1" /> Export
-          </Button>
         </div>
       </div>
       
-      <div className="flex border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
-        {/* Vänster sida - Uppgiftstabell */}
+      {/* Main Content - Gantt chart */}
+      <div className="flex-1 overflow-hidden flex">
+        {/* Left side - Tasks table */}
         <div className="w-[40%] overflow-y-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
           <Table>
             <TableHeader className="sticky top-0 bg-white dark:bg-slate-900 z-10">
               <TableRow>
-                <TableHead className="w-10"></TableHead>
-                <TableHead className="w-10">ID</TableHead>
-                <TableHead>Project</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead className="w-24 text-center">Status</TableHead>
-                <TableHead className="w-24">Start</TableHead>
-                <TableHead className="w-24">End</TableHead>
-                <TableHead className="w-20">Duration</TableHead>
+                <TableHead className="w-10 py-2">Type</TableHead>
+                <TableHead className="py-2">Task Name</TableHead>
+                <TableHead className="py-2 text-center w-20">Status</TableHead>
+                <TableHead className="py-2 w-24">Start Date</TableHead>
+                <TableHead className="py-2 w-24">End Date</TableHead>
+                <TableHead className="py-2 w-20">Duration</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {flattenedTasks.map((task) => (
-                <TableRow key={task.id} className={task.level && task.level > 0 ? 'pl-6' : ''}>
-                  <TableCell className="p-0 w-10">
-                    {task.type === 'PHASE' && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8" 
-                        onClick={() => toggleExpand(task.id)}
-                      >
-                        {task.expanded ? (
-                          <ChevronDown size={16} />
-                        ) : (
-                          <ChevronRight size={16} />
-                        )}
-                      </Button>
-                    )}
-                  </TableCell>
-                  <TableCell className="py-2">{task.id}</TableCell>
-                  <TableCell 
-                    className="py-2"
-                    style={{ paddingLeft: task.level ? `${task.level * 16}px` : '0' }}
-                  >
-                    {task.project}
-                  </TableCell>
+              {flattenedTasks.map((task, index) => (
+                <TableRow 
+                  key={task.id}
+                  className="cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800/50"
+                >
                   <TableCell className="py-2">
                     <TooltipProvider>
                       <Tooltip>
