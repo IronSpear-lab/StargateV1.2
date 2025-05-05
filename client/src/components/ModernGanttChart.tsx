@@ -242,6 +242,7 @@ const StatusIcon = ({ status }: { status: string }) => {
 };
 
 const ModernGanttChart: React.FC = () => {
+  const { toast } = useToast();
   const [tasks, setTasks] = useState<GanttTask[]>(initialTasks);
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
@@ -531,7 +532,11 @@ const ModernGanttChart: React.FC = () => {
   // Hantera skapande av ny uppgift
   const saveNewTask = () => {
     if (!newTask.name || !newTask.startDate || (!newTask.endDate && newTask.type !== 'MILESTONE')) {
-      alert('Vänligen fyll i alla obligatoriska fält');
+      toast({
+        title: "Formuläret är ofullständigt",
+        description: "Vänligen fyll i alla obligatoriska fält",
+        variant: "destructive",
+      });
       return;
     }
     
@@ -557,6 +562,12 @@ const ModernGanttChart: React.FC = () => {
     };
     
     setTasks(prev => [...prev, newTaskItem]);
+    
+    toast({
+      title: "Uppgift skapad",
+      description: `${newTaskItem.type} "${newTaskItem.name}" har lagts till i Gantt-diagrammet.`,
+    });
+    
     cancelCreateTask();
   };
   
@@ -601,6 +612,15 @@ const ModernGanttChart: React.FC = () => {
         
         // Starta med den valda uppgiften
         findTasksToDelete(taskToDelete.id);
+        
+        // Beräkna antalet uppgifter som tas bort
+        const deletedCount = taskIds.size;
+        
+        // Visa bekräftelse med toast
+        toast({
+          title: "Uppgift borttagen",
+          description: `${taskToDelete.name} ${deletedCount > 1 ? `och ${deletedCount - 1} relaterade uppgifter` : ''} har tagits bort från Gantt-diagrammet.`,
+        });
         
         // Returnera en ny lista utan de borttagna uppgifterna
         return prev.filter(t => !taskIds.has(t.id));
