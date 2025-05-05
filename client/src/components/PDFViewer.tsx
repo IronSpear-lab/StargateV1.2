@@ -936,6 +936,10 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       // Använd samma logik för att få fileId som i andra funktioner
       let fileId = fileData.fileId;
       
+      // Använd vår nya hjälpfunktion för att få ett konsekvent ID
+      const canonicalFileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
+      const consistentFileId = getConsistentFileId(fileData.filename);
+      
       // Om vi inte har något fileId, kolla om vi har ett mappat
       if (!fileId) {
         try {
@@ -943,26 +947,14 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
           fileId = fileIdMappings[fileData.filename];
           
           if (!fileId) {
-            console.log(`[${Date.now()}] No fileId found for annotations auto-save, skipping...`);
-            return; // Hopp över sparande om vi inte kan bestämma ett bra fileId
+            // Använd det konsekventa ID:t som fallback
+            fileId = consistentFileId;
           }
         } catch (e) {
           console.error("Error getting fileId mapping:", e);
-          return; // Om vi inte kan läsa mappings, hoppa över
+          // Använd det konsekventa ID:t som fallback
+          fileId = consistentFileId;
         }
-      }
-      
-      // Använd samma konsistenta ID-system som i övriga koden
-      const canonicalFileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
-      
-      // Generera ett konsekvent ID baserat på filnamnet, precis som i övriga koden
-      let consistentFileId = '';
-      try {
-        // Samma metod som i laddningskoden
-        consistentFileId = `file_${canonicalFileName}_${Buffer.from(canonicalFileName).toString('hex').substring(0, 8)}`;
-      } catch (error) {
-        // Fallback om hashing misslyckas
-        consistentFileId = `file_${canonicalFileName}_fallback`;
       }
       
       // Använd det konsekventa ID:t för att skapa en pålitlig nyckel
@@ -1198,14 +1190,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         console.log(`[${Date.now()}] Copying ${existingAnnotations.length} annotations to new version`);
         const canonicalFileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
         
-        // Skapa ett konsekvent ID precis som för versioner
-        let consistentAnnotationFileId = '';
-        try {
-          consistentAnnotationFileId = `file_${canonicalFileName}_${Buffer.from(canonicalFileName).toString('hex').substring(0, 8)}`;
-        } catch (error) {
-          // Fallback om hashing misslyckas
-          consistentAnnotationFileId = `file_${canonicalFileName}_fallback`;
-        }
+        // Skapa ett konsekvent ID med vår hjälpfunktion
+        const consistentAnnotationFileId = getConsistentFileId(fileData.filename);
         
         // Använd samma nyckelformat som i auto-save useEffect
         const consistentAnnotationsKey = `pdf_annotations_${canonicalFileName}_${consistentAnnotationFileId}`;
@@ -1238,15 +1224,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
         // Använd samma konsistenta nyckelgenereringslogik som i laddningskoden
         const canonicalFileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
         
-        // Generera ett konsekvent ID baserat på filnamnet
-        let currentVersionId = '';
-        try {
-          // Samma metod som i laddningskoden
-          currentVersionId = `file_${canonicalFileName}_${Buffer.from(canonicalFileName).toString('hex').substring(0, 8)}`;
-        } catch (error) {
-          // Fallback om hashing misslyckas
-          currentVersionId = `file_${canonicalFileName}_fallback`;
-        }
+        // Använd vår hjälpfunktion för att få ett konsekvent ID
+        const currentVersionId = getConsistentFileId(fileData.filename);
         
         // Använd det konsekventa ID:t för att skapa en pålitlig nyckel
         const consistentVersionsKey = `pdf_versions_${canonicalFileName}_${currentVersionId}`;
@@ -1282,16 +1261,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       try {
         // Oavsett om fileData har ett fileId, uppdatera alltid mappningen med det konsekventa ID:t
         // för att säkerställa att alla filer använder samma ID-system framöver
-        const canonicalFileName = fileData.filename.replace(/\s+/g, '_').toLowerCase();
-        let currentConsistentId = '';
-        
-        try {
-          // Generera samma konsekventa ID som tidigare
-          currentConsistentId = `file_${canonicalFileName}_${Buffer.from(canonicalFileName).toString('hex').substring(0, 8)}`;
-        } catch (error) {
-          // Fallback om hashing misslyckas
-          currentConsistentId = `file_${canonicalFileName}_fallback`;
-        }
+        // Använd vår hjälpfunktion för att få ett konsekvent ID
+        const currentConsistentId = getConsistentFileId(fileData.filename);
         
         const fileIdMappings = JSON.parse(localStorage.getItem('pdf_file_id_mappings') || '{}');
         // Uppdatera mappningen med det konsekventa ID:t
