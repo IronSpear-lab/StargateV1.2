@@ -96,7 +96,7 @@ export function WidgetArea({ children, className, onWidgetPositionChange }: Widg
         className
       )}
       style={{
-        backgroundImage: "linear-gradient(to bottom, rgba(241, 245, 249, 0.8), rgba(241, 245, 249, 0.9)), url('/hero-pattern.svg')",
+        backgroundImage: "var(--dashboard-bg-gradient)",
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "repeat"
@@ -106,7 +106,7 @@ export function WidgetArea({ children, className, onWidgetPositionChange }: Widg
       onDrop={handleDrop}
     >
       {/* Subtle overlay */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-blue-50/20 to-white/30 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-tr from-background/20 to-background/30 dark:from-background/40 dark:to-background/50 pointer-events-none" />
       
       {/* Widget content */}
       <div className="col-span-12 grid grid-cols-12 gap-4 relative z-10">
