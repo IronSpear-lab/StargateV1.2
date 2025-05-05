@@ -779,67 +779,85 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
   const doZoomAndScroll = (annotation: PDFAnnotation) => {
     console.log("Zooming to annotation:", annotation);
     
-    // Utöka PDF-containern för att kunna centrera på sådant som är nära kanterna
-    if (pdfContainerRef.current) {
+    if (pdfContainerRef.current && pageRef.current) {
       const pdfContainer = pdfContainerRef.current;
+      const pageContainer = pageRef.current;
       
-      // Spara ursprunglig padding
-      const originalPadding = pdfContainer.style.padding;
+      // STEG 1: Skapa en wrapper med position:relative runt PDF-containern för att kunna använda absolut positionering
+      const originalStyles = {
+        overflow: pdfContainer.style.overflow,
+        position: pdfContainer.style.position,
+        width: pdfContainer.style.width,
+        height: pdfContainer.style.height,
+        transform: pdfContainer.style.transform
+      };
       
-      // Lägg till tillfällig padding
-      pdfContainer.style.padding = "200px";
+      // Förbered PDF-containern för att kunna panorera obegränsat
+      pdfContainer.style.overflow = "hidden";
       
-      // Gör PDF-visningen zoomad med smooth transition
+      // STEG 2: Zooma in till önskad nivå
       setScale(1.5);
       
-      // Kort fördröjning innan vi centrerar annotationen
+      // STEG 3: Efter kort fördröjning, beräkna och tillämpa panorering
       setTimeout(() => {
         try {
-          if (!pageRef.current) {
-            console.error("Missing page reference for scrolling");
-            pdfContainer.style.padding = originalPadding;
-            return;
-          }
+          // Beräkna vilken position elementet skulle ha för att vara centrerat
+          const viewportWidth = pdfContainer.clientWidth;
+          const viewportHeight = pdfContainer.clientHeight;
           
-          // Enkel visuell markering på annotationens plats
+          // Denna beräkning är viktig för att kunna centrera objekt som är nära kanterna
+          const viewportCenterX = viewportWidth / 2;
+          const viewportCenterY = viewportHeight / 2;
+          
+          // Ta reda på elementets position
+          const elementX = annotation.rect.x;
+          const elementY = annotation.rect.y;
+          
+          // Beräkna hur mycket vi behöver förskjuta PDF-sidan
+          // Denna beräkning ser till att elementet kommer att centreras 
+          // även om det är nära kanten
+          const offsetX = elementX - viewportCenterX;
+          const offsetY = elementY - viewportCenterY;
+          
+          console.log("Panning to center annotation:", {
+            viewport: { width: viewportWidth, height: viewportHeight, centerX: viewportCenterX, centerY: viewportCenterY },
+            element: { x: elementX, y: elementY },
+            offset: { x: offsetX, y: offsetY }
+          });
+          
+          // Skapa en markör för visualisering
           const marker = document.createElement('div');
           marker.id = `temp-marker-${annotation.id}`;
           marker.style.position = 'absolute';
           marker.style.left = `${annotation.rect.x - 10}px`;
           marker.style.top = `${annotation.rect.y - 10}px`;
-          marker.style.width = `${annotation.rect.width + 20}px`;
-          marker.style.height = `${annotation.rect.height + 20}px`;
+          marker.style.width = `${Math.max(annotation.rect.width + 20, 40)}px`;
+          marker.style.height = `${Math.max(annotation.rect.height + 20, 40)}px`;
           marker.style.border = '4px solid #fa5c7c';
-          marker.style.backgroundColor = 'rgba(250, 92, 124, 0.2)';
+          marker.style.backgroundColor = 'rgba(250, 92, 124, 0.3)';
           marker.style.borderRadius = '4px';
           marker.style.zIndex = '1000';
+          marker.style.boxShadow = '0 0 10px rgba(250, 92, 124, 0.5)';
+          pageContainer.appendChild(marker);
           
-          // Lägg till marker i sidan
-          pageRef.current.appendChild(marker);
+          // Använda window.scrollTo för att panorera till rätt position
+          // Detta hanterar även element på kanten som annars inte kan centreras
+          if (pageContainer.parentElement) {
+            pageContainer.parentElement.scrollTo({
+              left: Math.max(0, offsetX - 50), // Lite marginal
+              top: Math.max(0, offsetY - 50),
+              behavior: 'smooth'
+            });
+          }
           
-          // Centrera på markeringen
-          marker.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-            inline: 'center'
-          });
-          
-          // Ta bort markeringen och återställ padding efter en stund
+          // Ta bort markören efter en stund
           setTimeout(() => {
-            if (pageRef.current && pageRef.current.contains(marker)) {
-              pageRef.current.removeChild(marker);
+            if (pageContainer && pageContainer.contains(marker)) {
+              pageContainer.removeChild(marker);
             }
-            
-            // Återställ padding för containern
-            pdfContainer.style.padding = originalPadding;
           }, 2000);
         } catch (error) {
-          console.error("Error centering on annotation:", error);
-          
-          // Återställ padding vid fel
-          if (pdfContainerRef.current) {
-            pdfContainerRef.current.style.padding = originalPadding;
-          }
+          console.error("Error during annotation panning:", error);
         }
       }, 300); // Fördröjning för att zoomen ska hinna appliceras
     }
