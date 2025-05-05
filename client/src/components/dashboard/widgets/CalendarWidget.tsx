@@ -451,7 +451,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
                 <div className="space-y-1">
                   {isLoading ? (
                     <div className="flex items-center justify-center h-full">
-                      <div className="animate-spin h-4 w-4 border-2 border-[#727cf5] border-t-transparent rounded-full"></div>
+                      <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
                     </div>
                   ) : (
                     getEventsForDay(day, events).map((event) => (
@@ -509,7 +509,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
             <div 
               className={cn(
                 "mx-auto flex h-8 w-8 items-center justify-center rounded-full text-sm",
-                isToday(selectedDay) && "bg-[#727cf5] text-white",
+                isToday(selectedDay) && "bg-primary text-white",
                 !isToday(selectedDay) && "bg-gray-100 text-gray-900"
               )}
             >
@@ -521,7 +521,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
             <div className="space-y-2">
               {isLoading ? (
                 <div className="flex items-center justify-center h-full py-12">
-                  <div className="animate-spin h-5 w-5 border-2 border-[#727cf5] border-t-transparent rounded-full"></div>
+                  <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
                 </div>
               ) : dayEvents.length > 0 ? (
                 dayEvents.map((event) => (
@@ -647,7 +647,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
               size="sm"
               className={cn(
                 "h-7 px-2 text-xs rounded-none",
-                viewMode === "day" ? "bg-[#727cf5] hover:bg-[#727cf5]" : "hover:bg-gray-50"
+                viewMode === "day" ? "bg-primary hover:bg-primary/90" : "hover:bg-gray-50"
               )}
               onClick={() => setViewMode("day")}
             >
@@ -658,7 +658,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
               size="sm"
               className={cn(
                 "h-7 px-2 text-xs rounded-none",
-                viewMode === "week" ? "bg-[#727cf5] hover:bg-[#727cf5]" : "hover:bg-gray-50" 
+                viewMode === "week" ? "bg-primary hover:bg-primary/90" : "hover:bg-gray-50"
               )}
               onClick={() => setViewMode("week")}
             >
@@ -669,7 +669,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
               size="sm"
               className={cn(
                 "h-7 px-2 text-xs rounded-none",
-                viewMode === "month" ? "bg-[#727cf5] hover:bg-[#727cf5]" : "hover:bg-gray-50"
+                viewMode === "month" ? "bg-primary hover:bg-primary/90" : "hover:bg-gray-50"
               )}
               onClick={() => setViewMode("month")}
             >
@@ -681,7 +681,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
             <DialogTrigger asChild>
               <Button
                 size="sm"
-                className="h-7 bg-[#0acf97] hover:bg-[#0acf97]/90"
+                className="h-7 bg-primary hover:bg-primary/90"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
                 Event
@@ -823,7 +823,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
                     </Button>
                     <Button 
                       type="submit" 
-                      className="bg-[#0acf97] hover:bg-[#0acf97]/90"
+                      className="bg-primary hover:bg-primary/90"
                       disabled={isCreating}
                     >
                       {isCreating ? (
