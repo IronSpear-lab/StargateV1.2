@@ -2,7 +2,9 @@ import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc, asc } from "drizzle-orm";
+import { db } from "../db";
+import { users } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -13,7 +15,10 @@ import {
   comments, 
   projects, 
   wikiPages,
-  taskTimeEntries
+  taskTimeEntries,
+  conversations,
+  conversationParticipants,
+  messages
 } from "@shared/schema";
 
 // Set up multer for file uploads
@@ -588,6 +593,301 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting calendar event:", error);
       res.status(500).json({ error: "Failed to delete calendar event" });
+    }
+  });
+
+  // Messaging API
+  // Get conversations for a user
+  app.get(`${apiPrefix}/conversations`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      // Get all conversations where the user is a participant
+      const userConversations = await db.select()
+        .from(conversationParticipants)
+        .where(eq(conversationParticipants.userId, req.user!.id));
+      
+      const conversationIds = userConversations.map(uc => uc.conversationId);
+      
+      // Get conversations with latest message and participants
+      const result = await Promise.all(conversationIds.map(async (id) => {
+        const conversation = await db.select().from(conversations).where(eq(conversations.id, id)).then(res => res[0]);
+        
+        // Get participants
+        const participantsWithUsers = await db.select()
+          .from(conversationParticipants)
+          .where(eq(conversationParticipants.conversationId, id))
+          .innerJoin(users, eq(conversationParticipants.userId, users.id));
+        
+        // Get latest message
+        const latestMessage = await db.select()
+          .from(messages)
+          .where(eq(messages.conversationId, id))
+          .orderBy(desc(messages.sentAt))
+          .limit(1)
+          .then(res => res[0] || null);
+        
+        return {
+          ...conversation,
+          participants: participantsWithUsers.map(p => ({
+            ...p.conversation_participants,
+            user: {
+              id: p.users.id,
+              username: p.users.username,
+              role: p.users.role
+            }
+          })),
+          latestMessage
+        };
+      }));
+      
+      // Sort by last message date
+      result.sort((a, b) => {
+        const dateA = a.latestMessage ? new Date(a.latestMessage.sentAt).getTime() : 0;
+        const dateB = b.latestMessage ? new Date(b.latestMessage.sentAt).getTime() : 0;
+        return dateB - dateA;
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+      res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+  
+  // Get a single conversation with all messages
+  app.get(`${apiPrefix}/conversations/:id`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const conversationId = parseInt(req.params.id);
+      
+      // Check if user is a participant
+      const participant = await db.select()
+        .from(conversationParticipants)
+        .where(and(
+          eq(conversationParticipants.conversationId, conversationId),
+          eq(conversationParticipants.userId, req.user!.id)
+        ))
+        .then(res => res[0]);
+      
+      if (!participant) {
+        return res.status(403).json({ error: "You are not a participant in this conversation" });
+      }
+      
+      // Get conversation
+      const conversation = await db.select()
+        .from(conversations)
+        .where(eq(conversations.id, conversationId))
+        .then(res => res[0]);
+      
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      
+      // Get participants with user details
+      const participantsWithUsers = await db.select()
+        .from(conversationParticipants)
+        .where(eq(conversationParticipants.conversationId, conversationId))
+        .innerJoin(users, eq(conversationParticipants.userId, users.id));
+      
+      // Get messages with sender details
+      const messagesWithSenders = await db.select()
+        .from(messages)
+        .where(eq(messages.conversationId, conversationId))
+        .innerJoin(users, eq(messages.senderId, users.id))
+        .orderBy(asc(messages.sentAt));
+      
+      const result = {
+        ...conversation,
+        participants: participantsWithUsers.map(p => ({
+          ...p.conversation_participants,
+          user: {
+            id: p.users.id,
+            username: p.users.username,
+            role: p.users.role
+          }
+        })),
+        messages: messagesWithSenders.map(m => ({
+          ...m.messages,
+          sender: {
+            id: m.users.id,
+            username: m.users.username,
+            role: m.users.role
+          }
+        }))
+      };
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching conversation:", error);
+      res.status(500).json({ error: "Failed to fetch conversation" });
+    }
+  });
+  
+  // Create a new conversation
+  app.post(`${apiPrefix}/conversations`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const { title, participantIds, isGroup = false, initialMessage } = req.body;
+      
+      // Validate required fields
+      if (!participantIds || !Array.isArray(participantIds) || participantIds.length === 0) {
+        return res.status(400).json({ error: "At least one participant is required" });
+      }
+      
+      // Ensure the current user is included in participants
+      const allParticipantIds = [...new Set([...participantIds.map(id => parseInt(id)), req.user!.id])];
+      
+      // Create the conversation
+      const newConversation = await db.insert(conversations)
+        .values({
+          title: title || null,
+          isGroup,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          lastMessageAt: new Date()
+        })
+        .returning()
+        .then(res => res[0]);
+      
+      // Add participants
+      await Promise.all(allParticipantIds.map(async (userId) => {
+        return db.insert(conversationParticipants)
+          .values({
+            conversationId: newConversation.id,
+            userId,
+            joinedAt: new Date(),
+            isAdmin: userId === req.user!.id // Creator is admin
+          });
+      }));
+      
+      // Add initial message if provided
+      if (initialMessage) {
+        await db.insert(messages)
+          .values({
+            content: initialMessage,
+            conversationId: newConversation.id,
+            senderId: req.user!.id,
+            sentAt: new Date()
+          });
+      }
+      
+      // Get the complete conversation with participants
+      const participantsWithUsers = await db.select()
+        .from(conversationParticipants)
+        .where(eq(conversationParticipants.conversationId, newConversation.id))
+        .innerJoin(users, eq(conversationParticipants.userId, users.id));
+      
+      const result = {
+        ...newConversation,
+        participants: participantsWithUsers.map(p => ({
+          ...p.conversation_participants,
+          user: {
+            id: p.users.id,
+            username: p.users.username,
+            role: p.users.role
+          }
+        }))
+      };
+      
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+      res.status(500).json({ error: "Failed to create conversation" });
+    }
+  });
+  
+  // Send a message in a conversation
+  app.post(`${apiPrefix}/conversations/:id/messages`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const conversationId = parseInt(req.params.id);
+      const { content } = req.body;
+      
+      if (!content || typeof content !== 'string' || content.trim() === '') {
+        return res.status(400).json({ error: "Message content is required" });
+      }
+      
+      // Check if user is a participant
+      const participant = await db.select()
+        .from(conversationParticipants)
+        .where(and(
+          eq(conversationParticipants.conversationId, conversationId),
+          eq(conversationParticipants.userId, req.user!.id)
+        ))
+        .then(res => res[0]);
+      
+      if (!participant) {
+        return res.status(403).json({ error: "You are not a participant in this conversation" });
+      }
+      
+      // Send message
+      const newMessage = await db.insert(messages)
+        .values({
+          content,
+          conversationId,
+          senderId: req.user!.id,
+          sentAt: new Date()
+        })
+        .returning()
+        .then(res => res[0]);
+      
+      // Update lastMessageAt in conversation
+      await db.update(conversations)
+        .set({ lastMessageAt: new Date() })
+        .where(eq(conversations.id, conversationId));
+      
+      // Get sender details
+      const sender = await db.select()
+        .from(users)
+        .where(eq(users.id, req.user!.id))
+        .then(res => res[0]);
+      
+      const messageWithSender = {
+        ...newMessage,
+        sender: {
+          id: sender.id,
+          username: sender.username,
+          role: sender.role
+        }
+      };
+      
+      res.status(201).json(messageWithSender);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+  
+  // Get all users (for creating new conversations)
+  app.get(`${apiPrefix}/users`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const allUsers = await db.select({
+        id: users.id,
+        username: users.username,
+        role: users.role
+      })
+      .from(users);
+      
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
     }
   });
 
