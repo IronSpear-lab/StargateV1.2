@@ -85,13 +85,23 @@ export function DwgIfcViewer() {
     loadStoredFiles();
   }, []);
 
-  // Initialize a very simple ThreeJS viewer with just a cube
+  // Re-initialize ThreeJS viewer whenever a file is selected
   useEffect(() => {
-    // Only create viewer if container exists and we don't already have a viewer
-    if (viewerContainerRef.current && !viewerRef.current) {
-      console.log("Initializing DwgIfcViewer 3D scene...");
+    // Dispose of current viewer if it exists
+    if (viewerRef.current) {
+      viewerRef.current.dispose();
+      viewerRef.current = null;
+    }
+    
+    // Initialize viewer if container exists and we have a selected file
+    if (viewerContainerRef.current && selectedFile) {
+      console.log("Initializing DwgIfcViewer 3D scene with file:", selectedFile.name);
       
       try {
+        // Force clean any previous viewer elements
+        if (viewerContainerRef.current.childNodes.length > 0) {
+          viewerContainerRef.current.innerHTML = '';
+        }
         // Create scene
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf0f0f0); // Light gray background
@@ -203,7 +213,7 @@ export function DwgIfcViewer() {
         setError("Kunde inte initiera 3D-visaren. Vänligen försök ladda om sidan.");
       }
     }
-  }, []);
+  }, [selectedFile]);
 
   // Handle file upload
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
