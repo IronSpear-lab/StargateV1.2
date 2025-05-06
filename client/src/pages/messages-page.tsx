@@ -58,6 +58,10 @@ interface Message {
   sentAt: string;
   sender?: UserBasic;
   readBy: number[]; // Array of user IDs who have read this message
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
+  attachmentType?: string | null;
+  attachmentSize?: number | null;
 }
 
 interface Conversation {
@@ -540,6 +544,77 @@ const MessageView = ({
                         }`}
                       >
                         <p className="text-sm">{message.content}</p>
+                        
+                        {/* Display attachment if available */}
+                        {message.attachmentUrl && (
+                          <div className="mt-2 border rounded-md overflow-hidden">
+                            {message.attachmentType?.startsWith('image/') ? (
+                              // For images
+                              <a 
+                                href={message.attachmentUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="block"
+                              >
+                                <img 
+                                  src={message.attachmentUrl} 
+                                  alt={message.attachmentName || 'Image attachment'} 
+                                  className="max-w-full max-h-[200px] object-contain"
+                                />
+                              </a>
+                            ) : message.attachmentType === 'application/pdf' ? (
+                              // For PDFs
+                              <div className="p-3 flex items-center gap-2 bg-background/80">
+                                <svg className="h-8 w-8 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M12.819 14.427c.064.267.077.679-.021.948-.128.351-.381.528-.754.528h-.637v-2.12h.496c.474 0 .803.173.916.644zm3.091-8.65c2.047-.479 4.805.279 6.09 1.179-1.494-1.997-5.23-5.708-7.432-6.882 1.157 1.168 1.563 4.235 1.342 5.703zm-7.457 7.955h-.546v.943h.546c.235 0 .467-.027.576-.227.067-.123.067-.366 0-.489-.121-.198-.352-.227-.576-.227zm13.547-2.732v13h-20v-24h8.409c4.858 0 3.334 8 3.334 8 3.011-.745 8.257-.42 8.257 3zm-12.108 2.761c-.16-.484-.606-.761-1.224-.761h-1.668v3.686h.907v-1.277h.761c.619 0 1.064-.277 1.224-.763.094-.292.094-.597 0-.885zm3.407-.303c-.297-.299-.711-.458-1.199-.458h-1.599v3.686h1.599c.537 0 .961-.181 1.262-.535.554-.659.586-2.035-.063-2.693zm3.701-.458h-2.628v3.686h.907v-1.472h1.49v-.732h-1.49v-.698h1.721v-.784z" />
+                                </svg>
+                                <div className="flex-1 truncate">
+                                  <div className="text-sm font-medium truncate">
+                                    {message.attachmentName || 'PDF Document'}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {message.attachmentSize ? `${Math.round(message.attachmentSize / 1024)} KB` : 'PDF'}
+                                  </div>
+                                </div>
+                                <a 
+                                  href={message.attachmentUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className={`px-2 py-1 text-xs rounded-md ${
+                                    isMine ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"
+                                  }`}
+                                >
+                                  Open
+                                </a>
+                              </div>
+                            ) : (
+                              // For other file types
+                              <div className="p-3 flex items-center gap-2 bg-background/80">
+                                <svg className="h-8 w-8 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M15.004 3h2.996v5h-2.996v-5zm8.996 1v20h-24v-24h20l4 4zm-19 5h14v-7h-14v7zm16 4h-18v9h18v-9z" />
+                                </svg>
+                                <div className="flex-1 truncate">
+                                  <div className="text-sm font-medium truncate">
+                                    {message.attachmentName || 'File attachment'}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {message.attachmentSize ? `${Math.round(message.attachmentSize / 1024)} KB` : 'File'}
+                                  </div>
+                                </div>
+                                <a 
+                                  href={message.attachmentUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className={`px-2 py-1 text-xs rounded-md ${
+                                    isMine ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"
+                                  }`}
+                                >
+                                  Download
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1 text-right">
                         {format(new Date(message.sentAt), "HH:mm")}
