@@ -77,7 +77,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Serve files from the uploads directory
     const options = {
       root: uploadsDir,
-      dotfiles: 'deny',
+      dotfiles: 'deny' as 'deny', // Explicitly type as valid option
       headers: {
         'Cache-Control': 'private, max-age=86400',
       }
@@ -1221,6 +1221,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error marking messages as read:", error);
       res.status(500).json({ error: "Failed to mark messages as read" });
+    }
+  });
+
+  // Endpoint for uploading message attachments
+  app.post(`${apiPrefix}/messages/upload`, upload.single('file'), async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+      
+      const { conversationId } = req.body;
+      if (!conversationId) {
+        return res.status(400).json({ error: "Conversation ID is required" });
+      }
+      
+      // Validate that the conversation exists and user is a participant
+      const userParticipation = await db.select()
+        .from(conversationParticipants)
+        .where(and(
+          eq(conversationParticipants.conversationId, parseInt(conversationId)),
+          eq(conversationParticipants.userId, req.user!.id)
+        ))
+        .then(result => result[0]);
+      
+      if (!userParticipation) {
+        // Delete the uploaded file since we won't be using it
+        if (req.file.path) {
+          fs.unlink(req.file.path, (err) => {
+            if (err) console.error("Error deleting unused file:", err);
+          });
+        }
+        return res.status(403).json({ error: "You are not a participant in this conversation" });
+      }
+      
+      // Get file information
+      const attachmentName = req.file.originalname;
+      const attachmentType = req.file.mimetype;
+      const attachmentSize = req.file.size;
+      
+      // Create relative URL (to be used by the client)
+      const attachmentUrl = `/uploads/${path.basename(req.file.path)}`;
+      
+      // Create a message with the attachment in the database
+      const newMessage = await db.insert(messages)
+        .values({
+          content: `Shared a file: ${attachmentName}`,
+          conversationId: parseInt(conversationId),
+          senderId: req.user!.id,
+          sentAt: new Date(),
+          readBy: [req.user!.id],
+          attachmentUrl,
+          attachmentName,
+          attachmentType,
+          attachmentSize,
+        })
+        .returning();
+      
+      // Update conversation's lastMessageAt
+      await db.update(conversations)
+        .set({ 
+          lastMessageAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(conversations.id, parseInt(conversationId)));
+      
+      // Send back the attachment information
+      res.status(201).json({
+        success: true,
+        message: newMessage[0],
+        attachmentUrl,
+        attachmentName,
+        attachmentType,
+        attachmentSize
+      });
+    } catch (error) {
+      console.error("Error uploading message attachment:", error);
+      res.status(500).json({ error: "Failed to upload attachment" });
     }
   });
 
