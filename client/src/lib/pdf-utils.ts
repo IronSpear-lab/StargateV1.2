@@ -9,6 +9,31 @@ export function isPdf(filename: string): boolean {
   return /\.pdf$/i.test(filename);
 }
 
+/**
+ * Konverterar en fileId från string till number.
+ * Hanterar både "rena" nummer som strängar och sammansatta ID-strängar
+ * med format som "file_1234" eller liknande.
+ * 
+ * @param fileId - Fil-ID:t som string
+ * @returns number - Sifferdelen av ID:t, eller NaN om det inte är ett giltigt ID
+ */
+export function getConsistentFileId(fileId: string): number {
+  // Om fileId är helt numeriskt
+  if (/^\d+$/.test(fileId)) {
+    return parseInt(fileId, 10);
+  }
+
+  // Om fileId har format file_1234 eller liknande
+  const matches = fileId.match(/(\d+)/);
+  if (matches && matches[1]) {
+    return parseInt(matches[1], 10);
+  }
+
+  // Om inget matchas, försök att tolka hela strängen som ett nummer
+  // (detta kommer att returnera NaN om det inte är möjligt)
+  return parseInt(fileId, 10);
+}
+
 // Interface för PDF Version
 export interface PDFVersion {
   id: number;

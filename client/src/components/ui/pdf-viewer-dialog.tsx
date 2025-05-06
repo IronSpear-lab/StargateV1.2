@@ -39,11 +39,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { storeFileForReuse, getStoredFileById } from "@/lib/file-utils";
-import { 
-  getConsistentFileId, 
-  addPdfViewerAnimations,
-  centerElementInView 
-} from "../../lib/ui-utils";
+import { addPdfViewerAnimations, centerElementInView } from "@/lib/ui-utils";
 import {
   getPDFVersions,
   uploadPDFVersion,
@@ -52,9 +48,10 @@ import {
   savePDFAnnotation,
   deletePDFAnnotation,
   getLatestPDFVersion,
+  getConsistentFileId,
   PDFVersion as ApiPDFVersion,
   PDFAnnotation as ApiPDFAnnotation
-} from "../../lib/pdf-utils";
+} from "@/lib/pdf-utils";
 
 // Configure worker for react-pdf
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -282,7 +279,7 @@ export function PDFViewerDialog({
     });
   };
 
-  const completeMarking = (e: React.MouseEvent) => {
+  const completeMarking = async (e: React.MouseEvent) => {
     if (!isMarking || !markingStart || !markingEnd || !pageRef.current || !user) return;
     
     e.preventDefault();
@@ -314,12 +311,66 @@ export function PDFViewerDialog({
       setActiveAnnotation(newAnnotation);
       setIsAddingComment(true);
       
-      // Spara alla annotationer till localStorage
+      // Försök spara till databasen om vi har en giltig fileId
       if (fileData?.fileId) {
-        localStorage.setItem(
-          `pdf_annotations_${fileData.fileId}`, 
-          JSON.stringify([...annotations, newAnnotation])
-        );
+        try {
+          const fileId = getConsistentFileId(fileData.fileId);
+          
+          if (!isNaN(fileId)) {
+            // Skapa ny annotation via API
+            const savedAnnotation = await savePDFAnnotation(fileId, {
+              position: {
+                x: newAnnotation.rect.x,
+                y: newAnnotation.rect.y,
+                width: newAnnotation.rect.width,
+                height: newAnnotation.rect.height,
+                pageNumber: newAnnotation.rect.pageNumber
+              },
+              status: newAnnotation.status,
+              color: newAnnotation.color,
+              content: newAnnotation.comment,
+              createdAt: newAnnotation.createdAt,
+              createdBy: newAnnotation.createdBy,
+              versionId: activeVersionId ? parseInt(activeVersionId) : undefined
+            });
+            
+            if (savedAnnotation && savedAnnotation.id) {
+              // Uppdatera lokalt state med det korrekt tilldelade ID:t från databasen
+              const annotationsWithUpdatedId = [...annotations, {
+                ...newAnnotation,
+                id: savedAnnotation.id.toString()
+              }];
+              
+              setAnnotations(annotationsWithUpdatedId);
+              setActiveAnnotation({
+                ...newAnnotation,
+                id: savedAnnotation.id.toString()
+              });
+              
+              console.log(`[${Date.now()}] Saved new annotation to database with ID: ${savedAnnotation.id}`);
+            } else {
+              // Fallback till localStorage vid fel eller om ingen annotation returnerades
+              localStorage.setItem(
+                `pdf_annotations_${fileData.fileId}`, 
+                JSON.stringify([...annotations, newAnnotation])
+              );
+            }
+          } else {
+            // Fallback till localStorage om fileId inte är ett giltigt nummer
+            localStorage.setItem(
+              `pdf_annotations_${fileData.fileId}`, 
+              JSON.stringify([...annotations, newAnnotation])
+            );
+          }
+        } catch (error) {
+          console.error('Error saving annotation to database:', error);
+          
+          // Fallback till localStorage vid fel
+          localStorage.setItem(
+            `pdf_annotations_${fileData.fileId}`, 
+            JSON.stringify([...annotations, newAnnotation])
+          );
+        }
       }
     }
     
@@ -331,24 +382,92 @@ export function PDFViewerDialog({
   };
 
   // Funktion för att lägga till eller uppdatera en kommentar
-  const handleSaveComment = () => {
+  const handleSaveComment = async () => {
     if (!activeAnnotation || !fileData?.fileId) return;
     
-    // Uppdatera kommentaren för aktiv annotation
+    // Skapa en uppdaterad annotation
+    const updatedAnnotation = {
+      ...activeAnnotation,
+      comment: newComment
+    };
+    
+    // Uppdatera lokalt state först (optimistisk uppdatering)
     const updatedAnnotations = annotations.map(annotation => 
-      annotation.id === activeAnnotation.id 
-        ? { ...annotation, comment: newComment } 
-        : annotation
+      annotation.id === activeAnnotation.id ? updatedAnnotation : annotation
     );
     
     setAnnotations(updatedAnnotations);
     setIsAddingComment(false);
     
-    // Spara till localStorage
-    localStorage.setItem(
-      `pdf_annotations_${fileData.fileId}`, 
-      JSON.stringify(updatedAnnotations)
-    );
+    // Försök spara till databasen
+    try {
+      const fileId = getConsistentFileId(fileData.fileId);
+      
+      if (!isNaN(fileId)) {
+        // Om annotationen redan finns i databasen (har ett numeriskt ID)
+        if (!isNaN(parseInt(activeAnnotation.id))) {
+          await savePDFAnnotation(fileId, {
+            id: parseInt(activeAnnotation.id),
+            content: newComment,
+            position: {
+              x: activeAnnotation.rect.x,
+              y: activeAnnotation.rect.y,
+              width: activeAnnotation.rect.width,
+              height: activeAnnotation.rect.height,
+              pageNumber: activeAnnotation.rect.pageNumber
+            },
+            status: activeAnnotation.status,
+            color: activeAnnotation.color,
+            createdAt: activeAnnotation.createdAt,
+            createdBy: activeAnnotation.createdBy,
+            versionId: activeVersionId ? parseInt(activeVersionId) : undefined
+          });
+          
+          console.log(`[${Date.now()}] Updated annotation in database`);
+        } else {
+          // Om det är en ny annotation (har ett genererat ID-format)
+          const savedAnnotation = await savePDFAnnotation(fileId, {
+            content: newComment,
+            position: {
+              x: activeAnnotation.rect.x,
+              y: activeAnnotation.rect.y,
+              width: activeAnnotation.rect.width,
+              height: activeAnnotation.rect.height,
+              pageNumber: activeAnnotation.rect.pageNumber
+            },
+            status: activeAnnotation.status,
+            color: activeAnnotation.color,
+            createdAt: activeAnnotation.createdAt,
+            createdBy: activeAnnotation.createdBy,
+            versionId: activeVersionId ? parseInt(activeVersionId) : undefined
+          });
+          
+          if (savedAnnotation) {
+            // Uppdatera annotation-ID i lokalt state
+            const annotationsWithUpdatedId = updatedAnnotations.map(a => 
+              a.id === activeAnnotation.id ? {...a, id: savedAnnotation.id.toString()} : a
+            );
+            setAnnotations(annotationsWithUpdatedId);
+            console.log(`[${Date.now()}] Saved new annotation to database with ID: ${savedAnnotation.id}`);
+          }
+        }
+      } else {
+        // Fallback till localStorage om fileId inte är ett giltigt nummer
+        console.log(`[${Date.now()}] Invalid fileId, falling back to localStorage`);
+        localStorage.setItem(
+          `pdf_annotations_${fileData.fileId}`, 
+          JSON.stringify(updatedAnnotations)
+        );
+      }
+    } catch (error) {
+      console.error('Error saving annotation to database:', error);
+      
+      // Fallback till localStorage vid fel
+      localStorage.setItem(
+        `pdf_annotations_${fileData.fileId}`, 
+        JSON.stringify(updatedAnnotations)
+      );
+    }
     
     // Uppdatera kommentarsräknaren för aktiv filversion
     if (activeVersionId) {
@@ -361,6 +480,8 @@ export function PDFViewerDialog({
       });
       
       setFileVersions(updatedVersions);
+      
+      // Spara versioner till localStorage som fallback
       localStorage.setItem(
         `pdf_versions_${fileData.fileId}`, 
         JSON.stringify(updatedVersions)
@@ -369,22 +490,68 @@ export function PDFViewerDialog({
   };
 
   // Funktion för att ändra status på en annotation
-  const handleStatusChange = (annotationId: string, status: 'open' | 'resolved' | 'action_required' | 'reviewing') => {
+  const handleStatusChange = async (annotationId: string, status: 'open' | 'resolved' | 'action_required' | 'reviewing') => {
     if (!fileData?.fileId) return;
     
+    // Hitta annotationen som ska uppdateras
+    const annotationToUpdate = annotations.find(a => a.id === annotationId);
+    if (!annotationToUpdate) return;
+    
+    // Skapa en uppdaterad annotation
+    const updatedAnnotation = {
+      ...annotationToUpdate,
+      status,
+      color: statusColors[status]
+    };
+    
+    // Uppdatera lokalt state först (optimistisk uppdatering)
     const updatedAnnotations = annotations.map(annotation => 
-      annotation.id === annotationId 
-        ? { ...annotation, status, color: statusColors[status] } 
-        : annotation
+      annotation.id === annotationId ? updatedAnnotation : annotation
     );
     
     setAnnotations(updatedAnnotations);
     
-    // Spara till localStorage
-    localStorage.setItem(
-      `pdf_annotations_${fileData.fileId}`, 
-      JSON.stringify(updatedAnnotations)
-    );
+    // Försök spara till databasen
+    try {
+      const fileId = getConsistentFileId(fileData.fileId);
+      
+      if (!isNaN(fileId) && !isNaN(parseInt(annotationId))) {
+        // Uppdatera status i databasen
+        await savePDFAnnotation(fileId, {
+          id: parseInt(annotationId),
+          content: updatedAnnotation.comment,
+          position: {
+            x: updatedAnnotation.rect.x,
+            y: updatedAnnotation.rect.y,
+            width: updatedAnnotation.rect.width,
+            height: updatedAnnotation.rect.height,
+            pageNumber: updatedAnnotation.rect.pageNumber
+          },
+          status: status,
+          color: statusColors[status],
+          createdAt: updatedAnnotation.createdAt,
+          createdBy: updatedAnnotation.createdBy,
+          versionId: activeVersionId ? parseInt(activeVersionId) : undefined
+        });
+        
+        console.log(`[${Date.now()}] Updated annotation status in database`);
+      } else {
+        // Fallback till localStorage om ID inte är ett giltigt nummer
+        console.log(`[${Date.now()}] Invalid ID format, falling back to localStorage`);
+        localStorage.setItem(
+          `pdf_annotations_${fileData.fileId}`, 
+          JSON.stringify(updatedAnnotations)
+        );
+      }
+    } catch (error) {
+      console.error('Error updating annotation status in database:', error);
+      
+      // Fallback till localStorage vid fel
+      localStorage.setItem(
+        `pdf_annotations_${fileData.fileId}`, 
+        JSON.stringify(updatedAnnotations)
+      );
+    }
   };
 
   // Funktion för att zooma till en specifik annotation
@@ -420,39 +587,96 @@ export function PDFViewerDialog({
   };
 
   // Funktion för att lägga till en ny version
-  const handleAddVersion = () => {
+  const handleAddVersion = async () => {
     if (!selectedVersionFile || !fileData?.fileId || !user) return;
     
-    // Skapa en fil-URL för den nya versionen
-    const fileUrl = URL.createObjectURL(selectedVersionFile);
+    // Skapa temporärt URL för optimistisk uppdatering
+    const tempFileUrl = URL.createObjectURL(selectedVersionFile);
     
-    // Spara filen för återanvändning
-    const fileId = `file_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    storeFileForReuse(selectedVersionFile, fileId);
+    try {
+      const fileId = getConsistentFileId(fileData.fileId);
+      
+      if (!isNaN(fileId)) {
+        // Försök ladda upp versionen till API:et
+        const uploadedVersion = await uploadPDFVersion(
+          fileId,
+          selectedVersionFile,
+          newVersionDescription || `Version ${fileVersions.length + 1}`
+        );
+        
+        if (uploadedVersion) {
+          console.log(`[${Date.now()}] Version uploaded to database with ID: ${uploadedVersion.id}`);
+          
+          // Konvertera API-version till UI-format
+          const newVersion: FileVersion = {
+            id: uploadedVersion.id.toString(),
+            versionNumber: uploadedVersion.versionNumber,
+            filename: uploadedVersion.metadata?.fileName || selectedVersionFile.name,
+            fileUrl: `/api/pdf/versions/${uploadedVersion.id}/content`,
+            description: uploadedVersion.description,
+            uploaded: uploadedVersion.uploadedAt,
+            uploadedBy: uploadedVersion.uploadedBy,
+            commentCount: 0
+          };
+          
+          // Uppdatera versionslistan
+          const updatedVersions = [...fileVersions, newVersion];
+          setFileVersions(updatedVersions);
+          setActiveVersionId(newVersion.id);
+          setPdfUrl(newVersion.fileUrl);
+          
+          // Spara i localStorage som backup
+          localStorage.setItem(
+            `pdf_versions_${fileData.fileId}`, 
+            JSON.stringify(updatedVersions)
+          );
+          
+          console.log(`[${Date.now()}] Updated version list with new version from API`);
+        } else {
+          console.error(`[${Date.now()}] Failed to upload version to API`);
+          fallbackToLocalStorage();
+        }
+      } else {
+        console.log(`[${Date.now()}] Invalid fileId: ${fileData.fileId}, falling back to localStorage`);
+        fallbackToLocalStorage();
+      }
+    } catch (error) {
+      console.error(`[${Date.now()}] Error uploading version:`, error);
+      fallbackToLocalStorage();
+    }
     
-    // Skapa ny versionsinfo
-    const newVersion: FileVersion = {
-      id: fileId,
-      versionNumber: fileVersions.length + 1,
-      filename: selectedVersionFile.name,
-      fileUrl,
-      description: newVersionDescription || `Version ${fileVersions.length + 1}`,
-      uploaded: new Date().toISOString(),
-      uploadedBy: user.username,
-      commentCount: 0
-    };
-    
-    // Uppdatera versionslistan
-    const updatedVersions = [...fileVersions, newVersion];
-    setFileVersions(updatedVersions);
-    setActiveVersionId(newVersion.id);
-    setPdfUrl(fileUrl);
-    
-    // Spara till localStorage
-    localStorage.setItem(
-      `pdf_versions_${fileData.fileId}`, 
-      JSON.stringify(updatedVersions)
-    );
+    // Hjälpfunktion för att använda localStorage som fallback
+    function fallbackToLocalStorage() {
+      // Spara filen för återanvändning
+      const localFileId = `file_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      storeFileForReuse(selectedVersionFile, localFileId);
+      
+      // Skapa ny versionsinfo
+      const newVersion: FileVersion = {
+        id: localFileId,
+        versionNumber: fileVersions.length + 1,
+        filename: selectedVersionFile.name,
+        fileUrl: tempFileUrl,
+        description: newVersionDescription || `Version ${fileVersions.length + 1}`,
+        uploaded: new Date().toISOString(),
+        uploadedBy: user.username,
+        commentCount: 0
+      };
+      
+      // Uppdatera versionslistan
+      const updatedVersions = [...fileVersions, newVersion];
+      setFileVersions(updatedVersions);
+      setActiveVersionId(newVersion.id);
+      setPdfUrl(tempFileUrl);
+      
+      // Spara till localStorage
+      localStorage.setItem(
+        `pdf_versions_${fileData.fileId}`, 
+        JSON.stringify(updatedVersions)
+      );
+      
+      console.log(`[${Date.now()}] Created local version with ID: ${localFileId}`);
+    }
     
     // Återställ formuläret
     setSelectedVersionFile(null);
