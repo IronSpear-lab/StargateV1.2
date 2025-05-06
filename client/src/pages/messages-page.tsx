@@ -315,17 +315,17 @@ const MessageView = ({
   });
   
   // When conversation is fully loaded and component is mounted, mark messages as read
+  // and scroll to bottom
   useEffect(() => {
     if (conversation && conversation.id && !hasMarkedAsRead.current) {
       console.log("Conversation loaded, marking as read:", conversation.id);
       
-      // Använd requestAnimationFrame för att säkerställa att UI har renderats
-      // Detta är mycket snabbare än setTimeout men väntar fortfarande på att skärmen har uppdaterats
-      requestAnimationFrame(() => {
-        markAsReadMutation.mutate(conversation.id);
-        hasMarkedAsRead.current = true;
-        // Händelsen skickas nu i mutationsfunktionen så vi behöver inte skicka den här
-      });
+      // Mark messages as read
+      markAsReadMutation.mutate(conversation.id);
+      hasMarkedAsRead.current = true;
+      
+      // Initial auto-scroll to bottom with a delay to ensure DOM is ready
+      scrollToBottom(100);
     }
     
     return () => {
@@ -333,6 +333,13 @@ const MessageView = ({
       hasMarkedAsRead.current = false;
     };
   }, [conversation?.id]);
+  
+  // Always scroll to bottom when messages array changes length (new messages)
+  useEffect(() => {
+    if (conversation?.messages?.length) {
+      scrollToBottom(100);
+    }
+  }, [conversation?.messages?.length]);
   
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -351,24 +358,9 @@ const MessageView = ({
     return scrollHeight - scrollTop - clientHeight < 100;
   };
   
-  // Auto-scroll to bottom när meddelanden ändras, men bara om det inte kommer 
-  // från vår optimistiska uppdatering (som redan har scrollningskod)
-  useEffect(() => {
-    // Scrollar endast när det kommer nya meddelanden från andra personer
-    // (våra egna meddelanden hanteras direkt i handleSendMessage)
-    const messages = conversation?.messages || [];
-    const lastMessage = messages[messages.length - 1];
-    const isFromOtherUser = lastMessage && lastMessage.senderId !== (window as any).currentUser?.id;
-    
-    // Scrolla endast om meddelandet är från någon annan OCH användaren redan är nära botten
-    if (isFromOtherUser && isUserAtBottom() && scrollAreaRef.current) {
-      requestAnimationFrame(() => {
-        if (scrollAreaRef.current) {
-          scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-        }
-      });
-    }
-  }, [conversation?.messages?.length]);
+  // Denna scrollningseffekt har flyttats till en separat scrollToBottom-funktion
+  // och anropas nu från olika ställen i koden med en delay för att säkerställa  
+  // att DOM-uppdateringar har slutförts
   
   if (!conversation) {
     return (
@@ -977,24 +969,59 @@ export default function MessagesPage() {
     return scrollHeight - scrollTop - clientHeight < 100;
   };
   
+  // Helper to scroll to bottom with a specified delay to ensure DOM update
+  const scrollToBottom = (delay = 50) => {
+    setTimeout(() => {
+      if (scrollAreaRef.current) {
+        requestAnimationFrame(() => {
+          if (scrollAreaRef.current) {
+            scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+            console.log("Scrolled to bottom, height:", scrollAreaRef.current.scrollHeight);
+          }
+        });
+      }
+    }, delay);
+  };
+  
   const handleSendMessage = (content: string) => {
     if (selectedConversationId) {
-      // Check if user is at bottom of the conversation before sending
-      const shouldScrollToBottom = isUserAtBottom();
+      // Immediately apply an optimistic update to show the message right away
+      if (selectedConversation) {
+        const optNewMessage = {
+          id: Date.now(), // Tillfälligt ID som ersätts när servern svarar
+          content,
+          conversationId: selectedConversationId,
+          senderId: (window as any).currentUser?.id,
+          sentAt: new Date().toISOString(),
+          readBy: [],
+          edited: false,
+          attachmentUrl: null,
+          sender: (window as any).currentUser
+        };
+        
+        // Update cache directly with the optimistic message
+        queryClient.setQueryData(
+          ['/api/conversations', selectedConversationId], 
+          (oldData: Conversation | undefined) => {
+            if (!oldData) return oldData;
+            
+            return {
+              ...oldData,
+              lastMessageAt: new Date().toISOString(),
+              messages: [...(oldData.messages || []), optNewMessage]
+            };
+          }
+        );
+        
+        // Scroll to bottom after optimistic update with a delay to ensure DOM has updated
+        scrollToBottom(50);
+      }
       
+      // Then send to server
       sendMessageMutation.mutate({ 
         conversationId: selectedConversationId, 
         content 
       });
-      
-      // Scrolla endast om användaren redan var längst ner
-      if (shouldScrollToBottom && scrollAreaRef.current) {
-        requestAnimationFrame(() => {
-          if (scrollAreaRef.current) {
-            scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-          }
-        });
-      }
     }
   };
   
