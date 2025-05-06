@@ -514,11 +514,22 @@ export default function MessagesPage() {
   });
   
   // Fetch selected conversation with messages
-  const { data: selectedConversation } = useQuery<Conversation>({
+  const { data: selectedConversation, refetch: refetchConversation } = useQuery<Conversation>({
     queryKey: ['/api/conversations', selectedConversationId],
     enabled: selectedConversationId !== null,
-    staleTime: 5000, // 5 seconds
+    staleTime: 1000, // 1 second 
   });
+  
+  // Setup polling for new messages when a conversation is selected
+  useEffect(() => {
+    if (selectedConversationId === null) return;
+    
+    const intervalId = setInterval(() => {
+      refetchConversation();
+    }, 2000); // Poll every 2 seconds
+    
+    return () => clearInterval(intervalId);
+  }, [selectedConversationId, refetchConversation]);
   
   // Create new conversation mutation
   const createConversationMutation = useMutation({
