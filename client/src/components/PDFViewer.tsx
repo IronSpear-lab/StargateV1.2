@@ -663,15 +663,15 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
           existingElement.parentNode.removeChild(existingElement);
         }
         
-        // Skapa ett nytt element med korrekt skalning
+        // Skapa ett nytt element utan skalning (vi är redan i skalat element)
         const element = document.createElement('div');
         element.id = annotationElementId;
         element.className = "annotation-element";
         element.style.position = "absolute";
-        element.style.left = `${Number(annotation.rect.x) * scale}px`;
-        element.style.top = `${Number(annotation.rect.y) * scale}px`;
-        element.style.width = `${annotation.rect.width * scale}px`;
-        element.style.height = `${annotation.rect.height * scale}px`;
+        element.style.left = `${Number(annotation.rect.x)}px`;
+        element.style.top = `${Number(annotation.rect.y)}px`;
+        element.style.width = `${annotation.rect.width}px`;
+        element.style.height = `${annotation.rect.height}px`;
         element.style.border = `2px solid ${annotation.color}`;
         element.style.backgroundColor = `${annotation.color}33`;
         element.style.zIndex = "100";
@@ -1022,15 +1022,15 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
           return;
         }
         
-        // Skapa ett nytt element med korrekt skalning
+        // Skapa ett nytt element utan skalning (vi är redan i skalat element)
         const annotationElement = document.createElement('div');
         annotationElement.id = annotationElementId;
         annotationElement.className = "annotation-element";
         annotationElement.style.position = "absolute";
-        annotationElement.style.left = `${targetX}px`;
-        annotationElement.style.top = `${targetY}px`;
-        annotationElement.style.width = `${annotation.rect.width * zoomScale}px`;
-        annotationElement.style.height = `${annotation.rect.height * zoomScale}px`;
+        annotationElement.style.left = `${originalX}px`; // Använd original koordinater
+        annotationElement.style.top = `${originalY}px`; // Använd original koordinater
+        annotationElement.style.width = `${annotation.rect.width}px`; // Använd original storlek
+        annotationElement.style.height = `${annotation.rect.height}px`; // Använd original storlek
         annotationElement.style.border = `2px solid ${annotation.color}`;
         annotationElement.style.backgroundColor = `${annotation.color}33`;
         annotationElement.style.zIndex = "100";
@@ -1053,9 +1053,9 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
           const viewportCenterX = containerRect.width / 2;
           const viewportCenterY = containerRect.height / 2;
           
-          // Beräkna den mängd som behöver scrollas för att centrera
-          const scrollLeft = targetX - viewportCenterX + (annotation.rect.width * zoomScale) / 2;
-          const scrollTop = targetY - viewportCenterY + (annotation.rect.height * zoomScale) / 2;
+          // Beräkna den mängd som behöver scrollas för att centrera, med hänsyn till aktuell skala
+          const scrollLeft = (originalX * zoomScale) - viewportCenterX + (annotation.rect.width * zoomScale) / 2;
+          const scrollTop = (originalY * zoomScale) - viewportCenterY + (annotation.rect.height * zoomScale) / 2;
           
           // Utför scrollningen
           pdfContainerRef.current.scrollTo({
@@ -1069,10 +1069,10 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
           marker.id = markerId;
           marker.className = "annotation-marker";
           marker.style.position = "absolute";
-          marker.style.left = `${targetX - 10}px`; 
-          marker.style.top = `${targetY - 10}px`;
-          marker.style.width = `${(annotation.rect.width + 20) * zoomScale}px`;
-          marker.style.height = `${(annotation.rect.height + 20) * zoomScale}px`;
+          marker.style.left = `${originalX - 10}px`; // Använd original koordinater
+          marker.style.top = `${originalY - 10}px`; // Använd original koordinater
+          marker.style.width = `${annotation.rect.width + 20}px`; // Använd original storlek
+          marker.style.height = `${annotation.rect.height + 20}px`; // Använd original storlek
           marker.style.zIndex = "1000";
           marker.style.border = `3px solid ${annotation.color}`;
           marker.style.borderRadius = "5px";
@@ -1548,10 +1548,10 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     
     return {
       position: 'absolute' as const,
-      left: `${left * scale}px`, // Skalad position
-      top: `${top * scale}px`, // Skalad position
-      width: `${width * scale}px`, // Skalad bredd
-      height: `${height * scale}px`, // Skalad höjd
+      left: `${left}px`, // Använd original koordinater eftersom vi redan är i skalad container
+      top: `${top}px`, // Använd original koordinater eftersom vi redan är i skalad container 
+      width: `${width}px`, // Använd original storlek eftersom vi redan är i skalad container
+      height: `${height}px`, // Använd original storlek eftersom vi redan är i skalad container
       background: 'rgba(114, 124, 245, 0.3)',
       border: '2px dashed #727cf5',
       pointerEvents: 'none' as const,
