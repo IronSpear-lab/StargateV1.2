@@ -362,8 +362,15 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   // State för att lagra mappar som användaren har skapat
   const [userCreatedFolders, setUserCreatedFolders] = useState<{name: string; parent: string}[]>([]);
   
-  // State för användarens profilbild
-  const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  // State för användarens profilbild med lagring i localStorage
+  const [userAvatar, setUserAvatar] = useState<string | null>(() => {
+    // Hämta profil från localStorage vid initialisering
+    if (typeof window !== 'undefined') {
+      const savedAvatar = localStorage.getItem('userAvatar');
+      return savedAvatar;
+    }
+    return null;
+  });
   
   // Import queryClient vid toppen av filen
   const queryClient = useQueryClient();
@@ -1183,10 +1190,14 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           // I verklig implementering skulle detta anropa ett API-endpoint
           // som uppdaterar användarens profilbild
           
-          // För demo: spara profilbilden i lokal state
+          // För demo: spara profilbilden i lokal state och localStorage
           if (formData.get('avatarPath')) {
             const avatarPath = formData.get('avatarPath') as string;
             setUserAvatar(avatarPath);
+            
+            // Spara i localStorage för att behålla mellan sessioner
+            localStorage.setItem('userAvatar', avatarPath);
+            
             toast({
               title: "Profilbild uppdaterad",
               description: "Din profilbild har uppdaterats med den valda bilden"
@@ -1199,6 +1210,10 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
             reader.onload = () => {
               const dataUrl = reader.result as string;
               setUserAvatar(dataUrl);
+              
+              // Spara i localStorage för att behålla mellan sessioner
+              localStorage.setItem('userAvatar', dataUrl);
+              
               toast({
                 title: "Profilbild uppdaterad",
                 description: "Din profilbild har uppdaterats med den uppladdade bilden"
