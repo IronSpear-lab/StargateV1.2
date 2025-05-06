@@ -137,6 +137,8 @@ const ConversationsList = ({
   // When a conversation is selected, mark it as read
   useEffect(() => {
     if (selectedConversation !== null) {
+      console.log(`Marking conversation ${selectedConversation} as read`);
+      
       // Update local unread counts immediately in the UI for faster feedback
       setUnreadCounts(prev => ({
         ...prev,
@@ -148,6 +150,9 @@ const ConversationsList = ({
       
       // Also invalidate the unread messages count query to trigger a refetch
       queryClient.invalidateQueries({ queryKey: ['/api/messages/unread-count'] });
+      
+      // Also invalidate the specific conversation query to update read status in the UI
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation] });
     }
   }, [selectedConversation]);
   
