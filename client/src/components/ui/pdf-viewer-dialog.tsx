@@ -43,13 +43,61 @@ export function PDFViewerDialog({
     setLoading(true);
     setPageNumber(1);
   }, [url]);
+  
+  // Center PDF when it first loads or when page changes
+  useEffect(() => {
+    if (!loading && containerRef.current) {
+      setTimeout(() => {
+        if (containerRef.current) {
+          // Center horizontally
+          containerRef.current.scrollLeft = (containerRef.current.scrollWidth - containerRef.current.clientWidth) / 2;
+          // Center vertically
+          containerRef.current.scrollTop = (containerRef.current.scrollHeight - containerRef.current.clientHeight) / 2;
+        }
+      }, 50);
+    }
+  }, [loading, pageNumber]);
 
   const handleZoomIn = () => {
-    setScale((prevScale) => Math.min(prevScale + 0.25, 3));
+    // When zooming in, reset scroll position to center
+    if (containerRef.current) {
+      setScale((prevScale) => {
+        const newScale = Math.min(prevScale + 0.25, 3);
+        
+        // Allow a small delay for the document to re-render with the new scale
+        setTimeout(() => {
+          if (containerRef.current) {
+            // Reset to center when zooming
+            containerRef.current.scrollLeft = (containerRef.current.scrollWidth - containerRef.current.clientWidth) / 2;
+          }
+        }, 10);
+        
+        return newScale;
+      });
+    } else {
+      setScale((prevScale) => Math.min(prevScale + 0.25, 3));
+    }
   };
 
   const handleZoomOut = () => {
-    setScale((prevScale) => Math.max(prevScale - 0.25, 0.5));
+    // When zooming out, reset scroll position to center
+    if (containerRef.current) {
+      setScale((prevScale) => {
+        const newScale = Math.max(prevScale - 0.25, 0.5);
+        
+        // Allow a small delay for the document to re-render with the new scale
+        setTimeout(() => {
+          if (containerRef.current) {
+            // Reset to center when zooming
+            containerRef.current.scrollLeft = (containerRef.current.scrollWidth - containerRef.current.clientWidth) / 2;
+          }
+        }, 10);
+        
+        return newScale;
+      });
+    } else {
+      setScale((prevScale) => Math.max(prevScale - 0.25, 0.5));
+    }
   };
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
@@ -193,7 +241,7 @@ export function PDFViewerDialog({
             </div>
           )}
           
-          <div className="p-8">
+          <div className="flex justify-center items-center" style={{ minWidth: "100%", padding: "32px" }}>
             <Document
               file={url}
               onLoadSuccess={onDocumentLoadSuccess}
@@ -205,14 +253,16 @@ export function PDFViewerDialog({
                 </div>
               }
             >
-              <Page
-                pageNumber={pageNumber}
-                renderTextLayer={false}
-                renderAnnotationLayer={false}
-                scale={scale}
-                loading={null}
-                className={loading ? "hidden" : ""}
-              />
+              <div className="shadow-lg">
+                <Page
+                  pageNumber={pageNumber}
+                  renderTextLayer={false}
+                  renderAnnotationLayer={false}
+                  scale={scale}
+                  loading={null}
+                  className={loading ? "hidden" : ""}
+                />
+              </div>
             </Document>
           </div>
         </div>
