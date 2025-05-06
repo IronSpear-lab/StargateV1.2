@@ -21,6 +21,7 @@ import {
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { User, Send, MoreVertical, UserPlus, Search } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
@@ -174,8 +175,8 @@ const ConversationsList = ({
             ) : (
               <div className="relative">
                 <Avatar className="h-10 w-10 border">
-                  <AvatarImage src="" />
-                  <AvatarFallback>
+                  <AvatarImage src="/avatars/user.svg" />
+                  <AvatarFallback className="bg-[#0acf97]">
                     {/* Use participant initials */}
                     {conversation.displayName ? conversation.displayName.substring(0, 2).toUpperCase() : ""}
                   </AvatarFallback>
@@ -271,9 +272,12 @@ const MessageView = ({
               <AvatarFallback className="bg-primary/10 text-primary">G</AvatarFallback>
             </Avatar>
           ) : (
-            <div className="h-8 w-8 rounded-full bg-[#727cf5] flex items-center justify-center">
-              <span className="text-white font-medium text-sm">PL</span>
-            </div>
+            <Avatar className="h-8 w-8">
+              <AvatarImage src="/avatars/project_leader.svg" alt="Project Leader" />
+              <AvatarFallback className="bg-[#727cf5]">
+                PL
+              </AvatarFallback>
+            </Avatar>
           )}
           <div>
             <h3 className="font-medium text-sm">
@@ -340,9 +344,20 @@ const MessageView = ({
                 >
                   <div className="flex gap-2 max-w-[80%]">
                     {!isMine && (
-                      <div className="h-8 w-8 mt-1 rounded-full bg-[#0acf97] flex items-center justify-center">
-                        <span className="text-white font-medium text-sm">US</span>
-                      </div>
+                      <Avatar className="h-8 w-8 mt-1">
+                        <AvatarImage src={`/avatars/${message.sender?.role || 'user'}.svg`} alt={message.sender?.username || 'User'} />
+                        <AvatarFallback className={`${
+                          message.sender?.role === 'project_leader' 
+                            ? 'bg-[#727cf5]' 
+                            : message.sender?.role === 'admin'
+                              ? 'bg-[#fa5c7c]'
+                              : message.sender?.role === 'superuser'
+                                ? 'bg-[#ffc35a]'
+                                : 'bg-[#0acf97]'
+                        }`}>
+                          {message.sender?.username?.slice(0, 2).toUpperCase() || 'US'}
+                        </AvatarFallback>
+                      </Avatar>
                     )}
                     <div>
                       {!isMine && (
@@ -507,16 +522,17 @@ const NewConversationDialog = ({ onCreateConversation }: { onCreateConversation:
                     onClick={() => toggleUserSelection(user)}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`h-8 w-8 rounded-full ${
-                        user.role === 'project_leader' ? 'bg-[#727cf5]' : 
-                        user.role === 'admin' ? 'bg-[#fa5c7c]' : 
-                        user.role === 'superuser' ? 'bg-[#ffc35a]' : 
-                        'bg-[#0acf97]'
-                      } flex items-center justify-center`}>
-                        <span className="text-white font-medium text-sm">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={`/avatars/${user.role || 'user'}.svg`} alt={user.username || 'User'} />
+                        <AvatarFallback className={`${
+                          user.role === 'project_leader' ? 'bg-[#727cf5]' : 
+                          user.role === 'admin' ? 'bg-[#fa5c7c]' : 
+                          user.role === 'superuser' ? 'bg-[#ffc35a]' : 
+                          'bg-[#0acf97]'
+                        }`}>
                           {user.username ? user.username.substring(0, 2).toUpperCase() : ""}
-                        </span>
-                      </div>
+                        </AvatarFallback>
+                      </Avatar>
                       <div>
                         <p className="text-sm font-medium">{user.username}</p>
                         <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
