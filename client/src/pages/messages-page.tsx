@@ -177,7 +177,7 @@ const ConversationsList = ({
                   <AvatarImage src="" />
                   <AvatarFallback>
                     {/* Use participant initials */}
-                    {conversation.displayName ? conversation.displayName.substring(0, 2).toUpperCase() : "UN"}
+                    {conversation.displayName ? conversation.displayName.substring(0, 2).toUpperCase() : ""}
                   </AvatarFallback>
                 </Avatar>
                 
@@ -277,7 +277,7 @@ const MessageView = ({
                 {/* Use participant initials from displayName if available */}
                 {conversation.displayName 
                   ? conversation.displayName.substring(0, 2).toUpperCase() 
-                  : (conversation.participants?.find(p => p.userId !== (window as any).currentUser?.id)?.user?.username || "UN").substring(0, 2).toUpperCase()}
+                  : (conversation.participants?.find(p => p.userId !== (window as any).currentUser?.id)?.user?.username || "").substring(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
           )}
@@ -348,8 +348,8 @@ const MessageView = ({
                     {!isMine && (
                       <Avatar className="h-8 w-8 mt-1">
                         <AvatarImage src="" />
-                        <AvatarFallback className={message.senderId === (window as any).currentUser?.id ? "bg-primary/20" : "bg-secondary/20"}>
-                          {message.sender?.username ? message.sender.username.substring(0, 2).toUpperCase() : "UN"}
+                        <AvatarFallback className="bg-secondary/20">
+                          {message.sender?.username ? message.sender.username.substring(0, 2).toUpperCase() : ""}
                         </AvatarFallback>
                       </Avatar>
                     )}
@@ -518,7 +518,7 @@ const NewConversationDialog = ({ onCreateConversation }: { onCreateConversation:
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
                         <AvatarFallback>
-                          {user.username.substring(0, 2).toUpperCase()}
+                          {user.username ? user.username.substring(0, 2).toUpperCase() : ""}
                         </AvatarFallback>
                       </Avatar>
                       <div>
