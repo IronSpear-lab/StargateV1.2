@@ -327,3 +327,91 @@ export const insertCalendarEventSchema = createInsertSchema(calendarEvents, {
 });
 export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
+
+// Messaging system tables
+export const conversations = pgTable("conversations", {
+  id: serial("id").primaryKey(),
+  title: text("title"),
+  isGroup: boolean("is_group").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
+  projectId: integer("project_id").references(() => projects.id)
+});
+
+export const conversationParticipants = pgTable("conversation_participants", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  conversationId: integer("conversation_id").references(() => conversations.id).notNull(),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+  leftAt: timestamp("left_at"),
+  isAdmin: boolean("is_admin").default(false).notNull()
+});
+
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  content: text("content").notNull(),
+  senderId: integer("sender_id").references(() => users.id).notNull(),
+  conversationId: integer("conversation_id").references(() => conversations.id).notNull(),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+  edited: boolean("edited").default(false).notNull(),
+  readBy: integer("read_by").array().default([]),
+  attachmentUrl: text("attachment_url")
+});
+
+// Define relationships
+export const conversationsRelations = relations(conversations, ({ one, many }) => ({
+  messages: many(messages),
+  participants: many(conversationParticipants),
+  project: one(projects, {
+    fields: [conversations.projectId],
+    references: [projects.id]
+  })
+}));
+
+export const conversationParticipantsRelations = relations(conversationParticipants, ({ one }) => ({
+  user: one(users, {
+    fields: [conversationParticipants.userId],
+    references: [users.id]
+  }),
+  conversation: one(conversations, {
+    fields: [conversationParticipants.conversationId],
+    references: [conversations.id]
+  })
+}));
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  sender: one(users, {
+    fields: [messages.senderId],
+    references: [users.id]
+  }),
+  conversation: one(conversations, {
+    fields: [messages.conversationId],
+    references: [conversations.id]
+  })
+}));
+
+// Update user relations to include messaging
+export const usersRelationsWithMessaging = {
+  ...usersRelations.config,
+  relations: {
+    ...usersRelations.config.relations,
+    sentMessages: { relationName: 'sentMessages', references: [messages.id] },
+    conversations: { through: [conversationParticipants, 'userId', 'conversationId'] }
+  }
+};
+
+// Schemas
+export const insertConversationSchema = createInsertSchema(conversations);
+export const insertConversationParticipantSchema = createInsertSchema(conversationParticipants);
+export const insertMessageSchema = createInsertSchema(messages);
+
+// Types
+export type Conversation = typeof conversations.$inferSelect;
+export type InsertConversation = z.infer<typeof insertConversationSchema>;
+
+export type ConversationParticipant = typeof conversationParticipants.$inferSelect;
+export type InsertConversationParticipant = z.infer<typeof insertConversationParticipantSchema>;
+
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
