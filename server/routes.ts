@@ -18,9 +18,9 @@ import {
   taskTimeEntries,
   conversations,
   conversationParticipants,
-  messages,
   pdfVersions,
-  pdfAnnotations
+  pdfAnnotations,
+  messages
 } from "@shared/schema";
 
 // Set up multer for file uploads
@@ -490,6 +490,325 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating wiki page:", error);
       res.status(500).json({ error: "Failed to create wiki page" });
+    }
+  });
+  
+  // ================ PDF Versioning and Annotation API Endpoints ================
+  
+  // Get all versions for a PDF file
+  app.get(`${apiPrefix}/pdf/:fileId/versions`, async (req, res) => {
+    try {
+      const fileId = parseInt(req.params.fileId);
+      if (isNaN(fileId)) {
+        return res.status(400).json({ error: "Invalid file ID" });
+      }
+      
+      // Get the file to make sure it exists and user has access
+      const file = await storage.getFile(fileId);
+      if (!file) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      
+      // Get all versions
+      const versions = await db.query.pdfVersions.findMany({
+        where: eq(pdfVersions.fileId, fileId),
+        orderBy: [asc(pdfVersions.versionNumber)],
+        with: {
+          uploadedBy: {
+            columns: {
+              id: true,
+              username: true,
+            }
+          }
+        }
+      });
+      
+      // Format versions for client
+      const formattedVersions = versions.map(version => ({
+        id: version.id,
+        fileId: version.fileId,
+        versionNumber: version.versionNumber,
+        filePath: version.filePath,
+        description: version.description,
+        uploadedAt: version.uploadedAt,
+        uploadedById: version.uploadedById,
+        uploadedBy: version.uploadedBy.username,
+        metadata: version.metadata
+      }));
+      
+      res.json(formattedVersions);
+    } catch (error) {
+      console.error("Error fetching PDF versions:", error);
+      res.status(500).json({ error: "Failed to fetch PDF versions" });
+    }
+  });
+  
+  // Upload a new version for a PDF file
+  app.post(`${apiPrefix}/pdf/:fileId/versions`, upload.single('file'), async (req, res) => {
+    try {
+      const fileId = parseInt(req.params.fileId);
+      if (isNaN(fileId)) {
+        return res.status(400).json({ error: "Invalid file ID" });
+      }
+      
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+      
+      // Get the file to make sure it exists and user has access
+      const file = await storage.getFile(fileId);
+      if (!file) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      
+      const description = req.body.description || 'New version';
+      
+      // Get the latest version number
+      const latestVersion = await db.query.pdfVersions.findFirst({
+        where: eq(pdfVersions.fileId, fileId),
+        orderBy: [desc(pdfVersions.versionNumber)]
+      });
+      
+      const versionNumber = latestVersion ? latestVersion.versionNumber + 1 : 1;
+      
+      // Create new version
+      const [newVersion] = await db.insert(pdfVersions)
+        .values({
+          fileId,
+          versionNumber,
+          filePath: req.file.path,
+          description,
+          uploadedById: req.user!.id,
+          metadata: {
+            fileSize: req.file.size,
+            fileName: req.file.originalname
+          }
+        })
+        .returning();
+      
+      // Get user data for response
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id),
+        columns: {
+          username: true
+        }
+      });
+      
+      const responseVersion = {
+        ...newVersion,
+        uploadedBy: user?.username || 'Unknown'
+      };
+      
+      res.status(201).json(responseVersion);
+    } catch (error) {
+      console.error("Error uploading PDF version:", error);
+      res.status(500).json({ error: "Failed to upload PDF version" });
+    }
+  });
+  
+  // Get content of a specific PDF version
+  app.get(`${apiPrefix}/pdf/versions/:versionId`, async (req, res) => {
+    try {
+      const versionId = parseInt(req.params.versionId);
+      if (isNaN(versionId)) {
+        return res.status(400).json({ error: "Invalid version ID" });
+      }
+      
+      // Get the version to get the file path
+      const version = await db.query.pdfVersions.findFirst({
+        where: eq(pdfVersions.id, versionId),
+        with: {
+          file: true
+        }
+      });
+      
+      if (!version) {
+        return res.status(404).json({ error: "Version not found" });
+      }
+      
+      // Check if file exists on disk
+      if (!fs.existsSync(version.filePath)) {
+        return res.status(404).json({ error: "Version content not found" });
+      }
+      
+      // Stream the file with the correct content type
+      res.type('application/pdf');
+      const fileStream = fs.createReadStream(version.filePath);
+      fileStream.pipe(res);
+    } catch (error) {
+      console.error("Error streaming PDF version:", error);
+      res.status(500).json({ error: "Failed to stream PDF version" });
+    }
+  });
+  
+  // Get all annotations for a PDF version
+  app.get(`${apiPrefix}/pdf/versions/:versionId/annotations`, async (req, res) => {
+    try {
+      const versionId = parseInt(req.params.versionId);
+      if (isNaN(versionId)) {
+        return res.status(400).json({ error: "Invalid version ID" });
+      }
+      
+      // Check if version exists
+      const version = await db.query.pdfVersions.findFirst({
+        where: eq(pdfVersions.id, versionId)
+      });
+      
+      if (!version) {
+        return res.status(404).json({ error: "Version not found" });
+      }
+      
+      // Get all annotations
+      const annotations = await db.query.pdfAnnotations.findMany({
+        where: eq(pdfAnnotations.pdfVersionId, versionId),
+        with: {
+          createdBy: {
+            columns: {
+              id: true,
+              username: true
+            }
+          }
+        }
+      });
+      
+      // Format annotations for client
+      const formattedAnnotations = annotations.map(annotation => ({
+        id: annotation.id,
+        pdfVersionId: annotation.pdfVersionId,
+        rect: annotation.rect,
+        color: annotation.color,
+        comment: annotation.comment,
+        status: annotation.status,
+        createdAt: annotation.createdAt,
+        createdById: annotation.createdById,
+        createdBy: annotation.createdBy.username
+      }));
+      
+      res.json(formattedAnnotations);
+    } catch (error) {
+      console.error("Error fetching PDF annotations:", error);
+      res.status(500).json({ error: "Failed to fetch PDF annotations" });
+    }
+  });
+  
+  // Create or update an annotation
+  app.post(`${apiPrefix}/pdf/versions/:versionId/annotations`, async (req, res) => {
+    try {
+      const versionId = parseInt(req.params.versionId);
+      if (isNaN(versionId)) {
+        return res.status(400).json({ error: "Invalid version ID" });
+      }
+      
+      // Check if version exists
+      const version = await db.query.pdfVersions.findFirst({
+        where: eq(pdfVersions.id, versionId)
+      });
+      
+      if (!version) {
+        return res.status(404).json({ error: "Version not found" });
+      }
+      
+      // If an ID is provided, update existing annotation
+      if (req.body.id) {
+        const annotationId = parseInt(req.body.id);
+        if (isNaN(annotationId)) {
+          return res.status(400).json({ error: "Invalid annotation ID" });
+        }
+        
+        // Check if annotation exists
+        const existingAnnotation = await db.query.pdfAnnotations.findFirst({
+          where: eq(pdfAnnotations.id, annotationId)
+        });
+        
+        if (!existingAnnotation) {
+          return res.status(404).json({ error: "Annotation not found" });
+        }
+        
+        // Update the annotation
+        const [updatedAnnotation] = await db.update(pdfAnnotations)
+          .set({
+            rect: req.body.rect,
+            color: req.body.color,
+            comment: req.body.comment,
+            status: req.body.status
+          })
+          .where(eq(pdfAnnotations.id, annotationId))
+          .returning();
+          
+        // Get user data for response
+        const user = await db.query.users.findFirst({
+          where: eq(users.id, updatedAnnotation.createdById!),
+          columns: {
+            username: true
+          }
+        });
+        
+        const responseAnnotation = {
+          ...updatedAnnotation,
+          createdBy: user?.username || 'Unknown'
+        };
+        
+        res.json(responseAnnotation);
+      } else {
+        // Create new annotation
+        const [newAnnotation] = await db.insert(pdfAnnotations)
+          .values({
+            pdfVersionId: versionId,
+            rect: req.body.rect,
+            color: req.body.color,
+            comment: req.body.comment,
+            status: req.body.status,
+            createdById: req.user!.id
+          })
+          .returning();
+        
+        // Get user data for response
+        const user = await db.query.users.findFirst({
+          where: eq(users.id, req.user!.id),
+          columns: {
+            username: true
+          }
+        });
+        
+        const responseAnnotation = {
+          ...newAnnotation,
+          createdBy: user?.username || 'Unknown'
+        };
+        
+        res.status(201).json(responseAnnotation);
+      }
+    } catch (error) {
+      console.error("Error saving PDF annotation:", error);
+      res.status(500).json({ error: "Failed to save PDF annotation" });
+    }
+  });
+  
+  // Delete an annotation
+  app.delete(`${apiPrefix}/pdf/annotations/:annotationId`, async (req, res) => {
+    try {
+      const annotationId = parseInt(req.params.annotationId);
+      if (isNaN(annotationId)) {
+        return res.status(400).json({ error: "Invalid annotation ID" });
+      }
+      
+      // Get the annotation to check if it exists and to return the version ID
+      const annotation = await db.query.pdfAnnotations.findFirst({
+        where: eq(pdfAnnotations.id, annotationId)
+      });
+      
+      if (!annotation) {
+        return res.status(404).json({ error: "Annotation not found" });
+      }
+      
+      // Delete the annotation
+      await db.delete(pdfAnnotations)
+        .where(eq(pdfAnnotations.id, annotationId));
+      
+      // Return the version ID so the client can invalidate the cache
+      res.json({ versionId: annotation.pdfVersionId });
+    } catch (error) {
+      console.error("Error deleting PDF annotation:", error);
+      res.status(500).json({ error: "Failed to delete PDF annotation" });
     }
   });
 

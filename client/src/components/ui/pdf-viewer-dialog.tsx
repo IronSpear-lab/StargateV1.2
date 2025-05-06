@@ -43,7 +43,7 @@ import {
   getConsistentFileId, 
   addPdfViewerAnimations,
   centerElementInView 
-} from "@/lib/ui-utils";
+} from "../../lib/ui-utils";
 import {
   getPDFVersions,
   uploadPDFVersion,
@@ -51,9 +51,10 @@ import {
   getPDFAnnotations,
   savePDFAnnotation,
   deletePDFAnnotation,
+  getLatestPDFVersion,
   PDFVersion as ApiPDFVersion,
   PDFAnnotation as ApiPDFAnnotation
-} from "@/lib/pdf-utils";
+} from "../../lib/pdf-utils";
 
 // Configure worker for react-pdf
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
