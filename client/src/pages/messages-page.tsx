@@ -23,7 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { User, Send, MoreVertical, UserPlus, Search } from "lucide-react";
+import { User, Send, MoreVertical, UserPlus, Search, FileIcon, Paperclip, X, FileText, Image as ImageIcon, Loader2 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Sidebar } from "@/components/Sidebar";
@@ -278,9 +278,13 @@ const MessageView = ({
   onSendMessage: (content: string) => void 
 }) => {
   const [newMessage, setNewMessage] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const hasMarkedAsRead = useRef(false);
+  const { toast } = useToast();
   
   // Helper to scroll to bottom with a specified delay to ensure DOM update
   const scrollToBottom = (delay = 50) => {
@@ -367,8 +371,97 @@ const MessageView = ({
     }
   }, [conversation?.messages?.length]);
   
-  const handleSendMessage = (e: React.FormEvent) => {
+  // Handle file selection
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      // Check file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Maximum file size is 10MB",
+          variant: "destructive"
+        });
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+  
+  // Clear selected file
+  const clearSelectedFile = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+  
+  // Upload file and send message
+  const uploadFileAndSendMessage = async () => {
+    if (!selectedFile || !conversation?.id) return;
+    
+    try {
+      setIsUploading(true);
+      
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('conversationId', conversation.id.toString());
+      
+      // Upload the file
+      const response = await fetch('/api/messages/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to upload file');
+      }
+      
+      const result = await response.json();
+      
+      // Now send a message with the file attachment
+      const content = newMessage.trim() 
+        ? newMessage
+        : `Shared a file: ${selectedFile.name}`;
+        
+      onSendMessage(content);
+      
+      // Clear the form
+      setNewMessage("");
+      clearSelectedFile();
+      
+      // Force scroll to bottom after sending
+      scrollToBottom(50);
+      
+      toast({
+        title: "File uploaded",
+        description: "Your file has been shared",
+      });
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Failed to upload file",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+  
+  // Handle form submission
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // If there's a file selected, upload it and send the message
+    if (selectedFile) {
+      await uploadFileAndSendMessage();
+      return;
+    }
+    
+    // Otherwise just send a regular text message
     if (newMessage.trim()) {
       onSendMessage(newMessage);
       setNewMessage("");
@@ -636,15 +729,69 @@ const MessageView = ({
       </div>
       
       <div className="p-3 border-t">
+        {/* Hidden file input */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileSelect}
+          className="hidden"
+          accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+        />
+        
+        {/* Selected file preview */}
+        {selectedFile && (
+          <div className="mb-2 p-2 bg-muted rounded-md flex items-center justify-between">
+            <div className="flex items-center space-x-2 overflow-hidden">
+              {selectedFile.type.startsWith('image/') ? (
+                <ImageIcon className="h-5 w-5 text-blue-500 flex-shrink-0" />
+              ) : selectedFile.type === 'application/pdf' ? (
+                <FileText className="h-5 w-5 text-red-500 flex-shrink-0" />
+              ) : (
+                <FileIcon className="h-5 w-5 text-green-500 flex-shrink-0" />
+              )}
+              <span className="text-sm truncate">{selectedFile.name}</span>
+              <span className="text-xs text-muted-foreground">
+                {Math.round(selectedFile.size / 1024)} KB
+              </span>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={clearSelectedFile}
+              className="h-6 w-6"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        
         <form onSubmit={handleSendMessage} className="flex gap-2">
+          <Button 
+            type="button" 
+            variant="outline"
+            size="icon"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="flex-shrink-0"
+          >
+            <Paperclip className="h-4 w-4" />
+          </Button>
+          
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type a message..."
             className="flex-1"
+            disabled={isUploading}
           />
-          <Button type="submit" size="icon">
-            <Send className="h-4 w-4" />
+          
+          <Button type="submit" size="icon" disabled={isUploading}>
+            {isUploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </form>
       </div>
