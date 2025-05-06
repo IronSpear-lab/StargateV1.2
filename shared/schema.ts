@@ -3,6 +3,9 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 
+// PDF annotation status enum
+export const pdfAnnotationStatusEnum = pgEnum('pdf_annotation_status', ['open', 'resolved', 'action_required', 'reviewing']);
+
 // Define role enum for users
 export const userRoleEnum = pgEnum('user_role', ['admin', 'project_leader', 'user']);
 
@@ -261,9 +264,6 @@ export const insertTimeEntrySchema = createInsertSchema(taskTimeEntries);
 export const insertCommentSchema = createInsertSchema(comments);
 export const insertWikiPageSchema = createInsertSchema(wikiPages);
 export const insertUserProjectSchema = createInsertSchema(userProjects);
-
-// PDF annotation status enum
-export const pdfAnnotationStatusEnum = pgEnum('pdf_annotation_status', ['open', 'resolved', 'action_required', 'reviewing']);
 
 // PDF Versions table
 export const pdfVersions = pgTable("pdf_versions", {

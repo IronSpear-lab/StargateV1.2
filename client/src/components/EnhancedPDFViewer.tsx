@@ -928,6 +928,57 @@ export default function EnhancedPDFViewer({
                 <div className="mt-6">
                   <h4 className="text-sm font-medium text-muted-foreground mb-2">Aktivitet</h4>
                   
+                  {/* Annotations activity */}
+                  {annotations.length > 0 && (
+                    <div className="mb-6">
+                      <h5 className="text-xs font-medium uppercase text-muted-foreground mb-2">Kommentarer</h5>
+                      {annotations.slice().reverse().map((annotation) => (
+                        <div 
+                          key={annotation.id} 
+                          className="mb-3 p-2 border rounded hover:bg-gray-50 cursor-pointer"
+                          onClick={() => {
+                            // Set page number if different
+                            if (pageNumber !== annotation.rect.pageNumber) {
+                              setPageNumber(annotation.rect.pageNumber);
+                            }
+                            
+                            // Highlight the annotation
+                            setActiveAnnotation(annotation);
+                            setSidebarMode('comment');
+                            
+                            // Scroll to annotation after a short delay
+                            setTimeout(() => {
+                              zoomToAnnotation(annotation);
+                            }, 100);
+                          }}
+                        >
+                          <div className="flex items-start">
+                            <div 
+                              className="w-3 h-3 mt-1 rounded-full mr-2 flex-shrink-0" 
+                              style={{ backgroundColor: annotation.color }}
+                            />
+                            <div className="flex-1 overflow-hidden">
+                              <div className="font-medium text-sm truncate">
+                                {annotation.comment.substring(0, 40)}{annotation.comment.length > 40 ? '...' : ''}
+                              </div>
+                              <div className="flex items-center text-xs text-muted-foreground mt-1">
+                                <Avatar className="h-4 w-4 mr-1">
+                                  <AvatarImage src={`https://avatar.vercel.sh/${annotation.createdBy}.png`} />
+                                  <AvatarFallback>{annotation.createdBy.substring(0, 1).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <span className="mr-1">{annotation.createdBy},</span>
+                                <span>sid {annotation.rect.pageNumber}</span>
+                                <Badge className="ml-2" variant="outline">{annotation.status}</Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Version history activity */}
+                  <h5 className="text-xs font-medium uppercase text-muted-foreground mb-2">Versioner</h5>
                   {fileVersions.slice().reverse().map((version, i) => (
                     <div key={version.id} className="mb-4">
                       <div className="flex justify-between items-center">

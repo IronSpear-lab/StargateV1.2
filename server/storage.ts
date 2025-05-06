@@ -13,6 +13,8 @@ import {
   taskTimeEntries,
   userProjects,
   calendarEvents,
+  pdfVersions,
+  pdfAnnotations,
   insertUserSchema,
   insertFileSchema,
   insertFolderSchema,
@@ -23,6 +25,8 @@ import {
   insertTimeEntrySchema,
   insertUserProjectSchema,
   insertCalendarEventSchema,
+  insertPdfVersionSchema,
+  insertPdfAnnotationSchema,
   User,
   File,
   Folder,
@@ -33,7 +37,9 @@ import {
   TimeEntry,
   UserProject,
   CalendarEvent,
-  InsertCalendarEvent
+  InsertCalendarEvent,
+  PdfVersion,
+  PdfAnnotation
 } from "@shared/schema";
 import { eq, and, or, isNull } from "drizzle-orm";
 
@@ -56,6 +62,16 @@ export interface IStorage {
   getFiles(projectId: number, folderId?: number): Promise<File[]>;
   getFile(id: number): Promise<File | undefined>;
   createFile(file: Omit<File, "id" | "uploadDate">): Promise<File>;
+  
+  // PDF Handling
+  getPDFVersions(fileId: number): Promise<PdfVersion[]>;
+  getPDFVersion(versionId: number): Promise<PdfVersion | undefined>;
+  createPDFVersion(version: Omit<PdfVersion, "id" | "uploadedAt">): Promise<PdfVersion>;
+  getPDFAnnotations(versionId: number): Promise<PdfAnnotation[]>;
+  getPDFAnnotation(annotationId: number): Promise<PdfAnnotation | undefined>;
+  createPDFAnnotation(annotation: Omit<PdfAnnotation, "id" | "createdAt">): Promise<PdfAnnotation>;
+  updatePDFAnnotation(id: number, annotation: Partial<PdfAnnotation>): Promise<PdfAnnotation>;
+  deletePDFAnnotation(id: number): Promise<{ success: boolean, versionId: number }>;
   
   // Tasks
   getTasks(projectId: number): Promise<Task[]>;
@@ -91,13 +107,82 @@ export interface IStorage {
 }
 
 class DatabaseStorage implements IStorage {
-  sessionStore: session.SessionStore;
+  sessionStore: any; // Change from session.SessionStore to any to resolve type issues
 
   constructor() {
     this.sessionStore = new PostgresSessionStore({ 
       pool, 
       createTableIfMissing: true 
     });
+  }
+  
+  // PDF handling methods
+  async getPDFVersions(fileId: number): Promise<PdfVersion[]> {
+    return await db
+      .select()
+      .from(pdfVersions)
+      .where(eq(pdfVersions.fileId, fileId))
+      .orderBy(pdfVersions.versionNumber);
+  }
+  
+  async getPDFVersion(versionId: number): Promise<PdfVersion | undefined> {
+    const result = await db.select().from(pdfVersions).where(eq(pdfVersions.id, versionId));
+    return result[0];
+  }
+  
+  async createPDFVersion(version: Omit<PdfVersion, "id" | "uploadedAt">): Promise<PdfVersion> {
+    const validatedData = insertPdfVersionSchema.parse({
+      ...version,
+      uploadedAt: new Date()
+    });
+    const result = await db.insert(pdfVersions).values(validatedData).returning();
+    return result[0];
+  }
+  
+  async getPDFAnnotations(versionId: number): Promise<PdfAnnotation[]> {
+    return await db
+      .select()
+      .from(pdfAnnotations)
+      .where(eq(pdfAnnotations.versionId, versionId));
+  }
+  
+  async getPDFAnnotation(annotationId: number): Promise<PdfAnnotation | undefined> {
+    const result = await db.select().from(pdfAnnotations).where(eq(pdfAnnotations.id, annotationId));
+    return result[0];
+  }
+  
+  async createPDFAnnotation(annotation: Omit<PdfAnnotation, "id" | "createdAt">): Promise<PdfAnnotation> {
+    const validatedData = insertPdfAnnotationSchema.parse({
+      ...annotation,
+      createdAt: new Date()
+    });
+    const result = await db.insert(pdfAnnotations).values(validatedData).returning();
+    return result[0];
+  }
+  
+  async updatePDFAnnotation(id: number, annotation: Partial<PdfAnnotation>): Promise<PdfAnnotation> {
+    const result = await db
+      .update(pdfAnnotations)
+      .set(annotation)
+      .where(eq(pdfAnnotations.id, id))
+      .returning();
+    return result[0];
+  }
+  
+  async deletePDFAnnotation(id: number): Promise<{ success: boolean, versionId: number }> {
+    // First get the version ID so we can return it after deletion
+    const annotation = await this.getPDFAnnotation(id);
+    if (!annotation) {
+      throw new Error(`Annotation with ID ${id} not found`);
+    }
+    
+    const versionId = annotation.versionId;
+    
+    await db
+      .delete(pdfAnnotations)
+      .where(eq(pdfAnnotations.id, id));
+    
+    return { success: true, versionId };
   }
 
   // Auth methods
