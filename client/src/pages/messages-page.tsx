@@ -300,6 +300,17 @@ const MessageView = ({
             <p className="text-sm">Be the first to send a message!</p>
           </div>
         )}
+        
+        {/* Debug information to help troubleshoot */}
+        <div className="p-2 text-xs bg-muted/30 rounded m-2">
+          <pre className="overflow-auto max-h-32 text-xs">
+            {JSON.stringify({ 
+              hasMessages: Boolean(conversation.messages?.length),
+              messageCount: conversation.messages?.length || 0,
+              messagesByDate: Object.keys(messagesByDate).length
+            }, null, 2)}
+          </pre>
+        </div>
       </ScrollArea>
       
       <div className="p-3 border-t">
@@ -518,11 +529,20 @@ export default function MessagesPage() {
     queryKey: ['/api/conversations', selectedConversationId],
     queryFn: async () => {
       if (!selectedConversationId) throw new Error("No conversation selected");
-      const response = await fetch(`/api/conversations/${selectedConversationId}`);
+      
+      // Make sure we're including credentials for the session cookie
+      const response = await fetch(`/api/conversations/${selectedConversationId}`, {
+        credentials: 'include'
+      });
+      
       if (!response.ok) {
+        console.error("Failed to fetch conversation:", await response.text());
         throw new Error("Failed to fetch conversation");
       }
-      return response.json();
+      
+      const data = await response.json();
+      console.log("Fetched conversation with messages:", data);
+      return data;
     },
     enabled: selectedConversationId !== null,
     staleTime: 1000, // 1 second 
