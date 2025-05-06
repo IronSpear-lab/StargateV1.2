@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
-import { XeokitViewer } from './XeokitViewer';
+import { HouseViewer } from './HouseViewer';
 
 // Simple type for our file storage
 type FileEntry = {
@@ -79,7 +79,7 @@ export function DwgIfcViewer() {
       viewerRef.current = null;
     }
     
-    // Skip initialization if the viewer isn't needed (for IFC files we use XeokitViewer)
+    // Skip initialization if the viewer isn't needed (for IFC files we use HouseViewer)
     if (selectedFile?.name.toLowerCase().endsWith('.ifc')) {
       return;
     }
@@ -585,8 +585,8 @@ export function DwgIfcViewer() {
               
               {/* Choose the appropriate viewer based on file type */}
               {selectedFile.name.toLowerCase().endsWith('.ifc') ? (
-                // Use Xeokit Viewer for IFC files
-                <XeokitViewer 
+                // Use House Viewer for IFC files
+                <HouseViewer 
                   fileName={selectedFile.name}
                   onLoadComplete={() => setLoading(false)}
                 />
