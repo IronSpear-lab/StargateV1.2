@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { MeshBasicMaterial } from 'three';  // Explicitly import for type checking
+import { WebIFC } from 'web-ifc';
 
 import { Upload, FileText, Loader2, XCircle, ZoomIn, ZoomOut, RotateCw, Expand, Ruler, Map, Navigation, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,11 +22,13 @@ type FileEntry = {
 };
 
 // Define a minimal structure for our 3D cube viewer 
-interface CubeViewer {
+interface Viewer3D {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
-  cube: THREE.Mesh;
+  cube?: THREE.Mesh;
+  ifcModels?: THREE.Mesh[];
+  ifcLoader?: IFCLoader;
   animationId: number;
   dispose: () => void;
 }
@@ -41,7 +44,7 @@ export function DwgIfcViewer() {
   const [isWalkMode, setIsWalkMode] = useState<boolean>(false);
   const [measurePoints, setMeasurePoints] = useState<THREE.Vector3[]>([]);
   const viewerContainerRef = useRef<HTMLDivElement>(null);
-  const viewerRef = useRef<CubeViewer | null>(null);
+  const viewerRef = useRef<Viewer3D | null>(null);
   const minimapRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
