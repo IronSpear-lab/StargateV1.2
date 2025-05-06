@@ -356,7 +356,10 @@ export const messages = pgTable("messages", {
   sentAt: timestamp("sent_at").defaultNow().notNull(),
   edited: boolean("edited").default(false).notNull(),
   readBy: integer("read_by").array().default([]),
-  attachmentUrl: text("attachment_url")
+  attachmentUrl: text("attachment_url"),
+  attachmentName: text("attachment_name"),
+  attachmentType: text("attachment_type"),
+  attachmentSize: integer("attachment_size")
 });
 
 // Define relationships
