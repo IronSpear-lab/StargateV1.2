@@ -536,17 +536,115 @@ export function PDFViewerDialog({
 
   // Ladda annotationer och versioner när komponenten öppnas
   useEffect(() => {
-    if (open && fileData?.fileId) {
-      // Hämta befintliga annotationer från localStorage
+    async function loadPdfData() {
+      if (open && fileData?.fileId) {
+        const fileId = getConsistentFileId(fileData.fileId);
+        console.log(`[${Date.now()}] Loading PDF data for fileId: ${fileId}`);
+        
+        if (!isNaN(fileId)) {
+          // Ladda versioner från API
+          try {
+            const versions = await getPDFVersions(fileId);
+            
+            if (versions && versions.length > 0) {
+              console.log(`[${Date.now()}] Loaded ${versions.length} versions from API`);
+              
+              // Konvertera API-versioner till UI-format
+              const uiVersions: FileVersion[] = versions.map(version => ({
+                id: version.id.toString(),
+                versionNumber: version.versionNumber,
+                filename: version.metadata?.fileName || fileData.filename,
+                fileUrl: `/api/pdf/versions/${version.id}/content`,
+                description: version.description,
+                uploaded: version.uploadedAt,
+                uploadedBy: version.uploadedBy,
+                commentCount: 0 // Vi kan uppdatera detta senare
+              }));
+              
+              setFileVersions(uiVersions);
+              
+              // Välj den senaste versionen (högst versionsnummer)
+              const latestVersion = findLatestVersion(uiVersions);
+              
+              if (!activeVersionId) {
+                setActiveVersionId(latestVersion.id);
+                if (latestVersion.fileUrl !== url) {
+                  setPdfUrl(latestVersion.fileUrl);
+                }
+              }
+            } else {
+              console.log(`[${Date.now()}] No versions found in API, checking localStorage...`);
+              loadFromLocalStorage();
+            }
+          } catch (error) {
+            console.error('Error loading PDF versions from API:', error);
+            loadFromLocalStorage();
+          }
+          
+          // Ladda annotationer från API
+          try {
+            const apiAnnotations = await getPDFAnnotations(fileId);
+            
+            if (apiAnnotations && apiAnnotations.length > 0) {
+              console.log(`[${Date.now()}] Loaded ${apiAnnotations.length} annotations from API`);
+              
+              // Konvertera API-annotationer till UI-format
+              const uiAnnotations: PDFAnnotation[] = apiAnnotations.map(anno => ({
+                id: anno.id.toString(),
+                rect: {
+                  x: anno.position.x,
+                  y: anno.position.y,
+                  width: anno.position.width,
+                  height: anno.position.height,
+                  pageNumber: anno.position.pageNumber
+                },
+                color: anno.color || statusColors[anno.status as keyof typeof statusColors],
+                comment: anno.content,
+                status: anno.status as 'open' | 'resolved' | 'action_required' | 'reviewing',
+                createdBy: anno.createdBy,
+                createdAt: anno.createdAt
+              }));
+              
+              setAnnotations(uiAnnotations);
+            } else {
+              // Fallback till localStorage för annotationer
+              loadAnnotationsFromLocal();
+            }
+          } catch (error) {
+            console.error('Error loading PDF annotations from API:', error);
+            // Fallback till localStorage för annotationer
+            loadAnnotationsFromLocal();
+          }
+        } else {
+          console.log(`[${Date.now()}] Invalid fileId: ${fileData.fileId}, using localStorage`);
+          loadFromLocalStorage();
+        }
+      }
+    }
+    
+    // Funktion för att ladda annotationer från localStorage
+    function loadAnnotationsFromLocal() {
+      if (!fileData?.fileId) return;
+      
       const savedAnnotations = localStorage.getItem(`pdf_annotations_${fileData.fileId}`);
       if (savedAnnotations) {
         try {
-          setAnnotations(JSON.parse(savedAnnotations));
+          const localAnnotations = JSON.parse(savedAnnotations);
+          setAnnotations(localAnnotations);
+          console.log(`[${Date.now()}] Loaded ${localAnnotations.length} annotations from localStorage`);
         } catch (error) {
           console.error('Error parsing saved annotations:', error);
         }
       }
-
+    }
+    
+    // Funktion för att ladda från localStorage som fallback
+    function loadFromLocalStorage() {
+      if (!fileData?.fileId) return;
+      
+      // Hämta annotationer
+      loadAnnotationsFromLocal();
+      
       // Hämta versionsinformation från localStorage
       const savedVersions = localStorage.getItem(`pdf_versions_${fileData.fileId}`);
       if (savedVersions) {
@@ -582,6 +680,8 @@ export function PDFViewerDialog({
         localStorage.setItem(`pdf_versions_${fileData.fileId}`, JSON.stringify([initialVersion]));
       }
     }
+    
+    loadPdfData();
   }, [open, fileData, url, activeVersionId, user]);
 
   return (
