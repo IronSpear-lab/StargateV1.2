@@ -908,6 +908,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     fs.mkdirSync(chatUploadsDir, { recursive: true });
   }
   
+  // Create directory for PDF versions
+  const pdfUploadsDir = path.join(uploadsDir, 'pdf');
+  if (!fs.existsSync(pdfUploadsDir)) {
+    fs.mkdirSync(pdfUploadsDir, { recursive: true });
+  }
+  
   const chatStorage = multer.diskStorage({
     destination: function (req, file, cb) {
       cb(null, chatUploadsDir);

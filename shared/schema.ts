@@ -262,6 +262,79 @@ export const insertCommentSchema = createInsertSchema(comments);
 export const insertWikiPageSchema = createInsertSchema(wikiPages);
 export const insertUserProjectSchema = createInsertSchema(userProjects);
 
+// PDF annotation status enum
+export const pdfAnnotationStatusEnum = pgEnum('pdf_annotation_status', ['open', 'resolved', 'action_required', 'reviewing']);
+
+// PDF Versions table
+export const pdfVersions = pgTable("pdf_versions", {
+  id: serial("id").primaryKey(),
+  fileId: integer("file_id").references(() => files.id).notNull(),
+  versionNumber: integer("version_number").notNull(),
+  filePath: text("file_path").notNull(),
+  description: text("description"),
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+  uploadedById: integer("uploaded_by_id").references(() => users.id).notNull(),
+  metadata: jsonb("metadata"), // För att lagra ytterligare metadata om filen (storlek, dimension etc.)
+});
+
+// PDF Annotations table
+export const pdfAnnotations = pgTable("pdf_annotations", {
+  id: serial("id").primaryKey(),
+  pdfVersionId: integer("pdf_version_id").references(() => pdfVersions.id).notNull(),
+  rect: jsonb("rect").notNull(), // Spara x, y, width, height och pageNumber
+  color: text("color").notNull(),
+  comment: text("comment"),
+  status: pdfAnnotationStatusEnum("status").default("open").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdById: integer("created_by_id").references(() => users.id).notNull(),
+});
+
+// PDF version relations
+export const pdfVersionsRelations = relations(pdfVersions, ({ one, many }) => ({
+  file: one(files, {
+    fields: [pdfVersions.fileId],
+    references: [files.id]
+  }),
+  uploadedBy: one(users, {
+    fields: [pdfVersions.uploadedById],
+    references: [users.id]
+  }),
+  annotations: many(pdfAnnotations)
+}));
+
+// PDF annotations relations
+export const pdfAnnotationsRelations = relations(pdfAnnotations, ({ one }) => ({
+  pdfVersion: one(pdfVersions, {
+    fields: [pdfAnnotations.pdfVersionId],
+    references: [pdfVersions.id]
+  }),
+  createdBy: one(users, {
+    fields: [pdfAnnotations.createdById],
+    references: [users.id]
+  })
+}));
+
+// Additional relations for files and users
+export const filesRelationsExtended = relations(files, ({ many }) => ({
+  pdfVersions: many(pdfVersions)
+}));
+
+export const usersRelationsExtended = relations(users, ({ many }) => ({
+  uploadedPdfVersions: many(pdfVersions),
+  createdPdfAnnotations: many(pdfAnnotations)
+}));
+
+// Create insert schemas
+export const insertPdfVersionSchema = createInsertSchema(pdfVersions);
+export const insertPdfAnnotationSchema = createInsertSchema(pdfAnnotations);
+
+// Define types for PDF versions and annotations
+export type PdfVersion = typeof pdfVersions.$inferSelect;
+export type InsertPdfVersion = z.infer<typeof insertPdfVersionSchema>;
+
+export type PdfAnnotation = typeof pdfAnnotations.$inferSelect;
+export type InsertPdfAnnotation = z.infer<typeof insertPdfAnnotationSchema>;
+
 // Define types for use in the application
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
