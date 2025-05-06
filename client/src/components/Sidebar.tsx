@@ -1516,9 +1516,12 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         currentUser={user}
         onSaveProfile={(formData) => {
           // I verklig implementering skulle detta anropa ett API-endpoint
-          // som uppdaterar användarens profilbild
+          // som uppdaterar användarens profilinformation
           
-          // För demo: spara profilbilden i lokal state och localStorage
+          // För demo: spara profilinformation i localStorage
+          const userPrefix = user?.username ? `userProfile_${user.username}_` : '';
+          
+          // Hantera profilbild
           if (formData.get('avatarPath')) {
             const avatarPath = formData.get('avatarPath') as string;
             setUserAvatar(avatarPath);
@@ -1527,11 +1530,6 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
             if (user?.username) {
               localStorage.setItem(`userAvatar_${user.username}`, avatarPath);
             }
-            
-            toast({
-              title: "Profilbild uppdaterad",
-              description: "Din profilbild har uppdaterats med den valda bilden"
-            });
           } else if (formData.get('avatar')) {
             // I en verklig implementering skulle vi ladda upp bilden till servern
             // och spara URL:en i databasen
@@ -1545,14 +1543,42 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               if (user?.username) {
                 localStorage.setItem(`userAvatar_${user.username}`, dataUrl);
               }
-              
-              toast({
-                title: "Profilbild uppdaterad",
-                description: "Din profilbild har uppdaterats med den uppladdade bilden"
-              });
             };
             reader.readAsDataURL(file);
+          } else if (formData.get('avatarDataUrl')) {
+            const dataUrl = formData.get('avatarDataUrl') as string;
+            setUserAvatar(dataUrl);
+            
+            if (user?.username) {
+              localStorage.setItem(`userAvatar_${user.username}`, dataUrl);
+            }
           }
+          
+          // Spara övriga profilinställningar om användaren är inloggad
+          if (user?.username) {
+            // Hämta värden från formData
+            const displayName = formData.get('displayName') as string;
+            const email = formData.get('email') as string;
+            const phoneNumber = formData.get('phoneNumber') as string;
+            const birthDate = formData.get('birthDate') as string;
+            const jobTitle = formData.get('jobTitle') as string;
+            const department = formData.get('department') as string;
+            const bio = formData.get('bio') as string;
+            
+            // Spara i localStorage med användarspecifikt prefix
+            localStorage.setItem(`${userPrefix}displayName`, displayName || '');
+            localStorage.setItem(`${userPrefix}email`, email || '');
+            localStorage.setItem(`${userPrefix}phoneNumber`, phoneNumber || '');
+            localStorage.setItem(`${userPrefix}birthDate`, birthDate || '');
+            localStorage.setItem(`${userPrefix}jobTitle`, jobTitle || '');
+            localStorage.setItem(`${userPrefix}department`, department || '');
+            localStorage.setItem(`${userPrefix}bio`, bio || '');
+          }
+          
+          toast({
+            title: "Profilinformation uppdaterad",
+            description: "Dina profilinställningar har sparats"
+          });
         }}
       />
     </>
