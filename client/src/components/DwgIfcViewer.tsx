@@ -83,7 +83,7 @@ export function DwgIfcViewer() {
   useEffect(() => {
     // Only create viewer if container exists and we don't already have a viewer
     if (viewerContainerRef.current && !viewerRef.current) {
-      console.log("Initializing 3D viewer...");
+      console.log("Initializing DwgIfcViewer 3D scene...");
       
       try {
         // Create scene
@@ -566,7 +566,7 @@ export function DwgIfcViewer() {
                 ref={viewerContainerRef} 
                 className="h-full w-full relative"
               >
-                <canvas id="dwg-ifc-canvas" className="w-full h-full"></canvas>
+                {/* Canvas is auto-created by Three.js renderer */}
                 <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur-sm p-2 rounded border">
                   <p className="text-sm font-medium">{selectedFile.name}</p>
                   <div className="flex items-center mt-1">
