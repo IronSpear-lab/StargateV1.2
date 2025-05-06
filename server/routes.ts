@@ -688,10 +688,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all annotations for a PDF version
   app.get(`${apiPrefix}/pdf/versions/:versionId/annotations`, async (req, res) => {
     try {
-      const versionId = parseInt(req.params.versionId);
+      // Hantera stora version-ID på samma sätt som vi gör med fileId
+      const versionIdStr = req.params.versionId;
+      let versionId: number;
+      
+      // Om versionId är helt numeriskt och kan vara ett stort heltal
+      if (versionIdStr.length > 10) {
+        // Extrahera ett kortare ID från strängen
+        const matches = versionIdStr.match(/(\d{1,9})/);
+        if (matches && matches[1]) {
+          versionId = parseInt(matches[1], 10);
+        } else {
+          // Fallback: använd ett hashat värde baserat på strängen
+          versionId = Math.abs(
+            versionIdStr.split('').reduce((hash, char) => 
+              ((hash << 5) - hash) + char.charCodeAt(0), 0)
+          ) % 1000000; // Begränsa till ett 6-siffrigt tal
+        }
+      } else {
+        versionId = parseInt(versionIdStr);
+      }
+      
       if (isNaN(versionId)) {
         return res.status(400).json({ error: "Invalid version ID" });
       }
+      
+      console.log(`Fetching annotations for version ID: ${versionIdStr} (converted to: ${versionId})`);
       
       // Check if version exists
       const version = await db.query.pdfVersions.findFirst({
@@ -738,10 +760,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create or update an annotation
   app.post(`${apiPrefix}/pdf/versions/:versionId/annotations`, async (req, res) => {
     try {
-      const versionId = parseInt(req.params.versionId);
+      // Hantera stora version-ID på samma sätt som vi gör med annotations API
+      const versionIdStr = req.params.versionId;
+      let versionId: number;
+      
+      // Om versionId är helt numeriskt och kan vara ett stort heltal
+      if (versionIdStr.length > 10) {
+        // Extrahera ett kortare ID från strängen
+        const matches = versionIdStr.match(/(\d{1,9})/);
+        if (matches && matches[1]) {
+          versionId = parseInt(matches[1], 10);
+        } else {
+          // Fallback: använd ett hashat värde baserat på strängen
+          versionId = Math.abs(
+            versionIdStr.split('').reduce((hash, char) => 
+              ((hash << 5) - hash) + char.charCodeAt(0), 0)
+          ) % 1000000; // Begränsa till ett 6-siffrigt tal
+        }
+      } else {
+        versionId = parseInt(versionIdStr);
+      }
+      
       if (isNaN(versionId)) {
         return res.status(400).json({ error: "Invalid version ID" });
       }
+      
+      console.log(`Creating/updating annotation for version ID: ${versionIdStr} (converted to: ${versionId})`);
       
       // Check if version exists
       const version = await db.query.pdfVersions.findFirst({
