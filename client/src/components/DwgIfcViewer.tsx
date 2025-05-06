@@ -47,36 +47,19 @@ export function DwgIfcViewer() {
   const minimapRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Load stored files on mount
+  // Load stored file info on mount, but don't attempt to load file data
   useEffect(() => {
     const loadStoredFiles = () => {
       try {
         const storedFiles = localStorage.getItem('dwg_ifc_files');
         if (storedFiles) {
           const fileInfos = JSON.parse(storedFiles);
+          console.log("Found file info records in localStorage:", fileInfos.length);
           
-          // We need to load the actual file data from separate storage
-          const loadedFiles: FileEntry[] = [];
-          fileInfos.forEach((fileInfo: Omit<FileEntry, 'data'>) => {
-            const fileData = localStorage.getItem(`dwg_ifc_file_${fileInfo.id}`);
-            if (fileData) {
-              // Convert base64 back to Blob
-              const byteCharacters = atob(fileData);
-              const byteArrays = [];
-              for (let i = 0; i < byteCharacters.length; i++) {
-                byteArrays.push(byteCharacters.charCodeAt(i));
-              }
-              const blob = new Blob([new Uint8Array(byteArrays)], { type: fileInfo.type });
-              
-              loadedFiles.push({
-                ...fileInfo,
-                data: blob,
-                date: new Date(fileInfo.date)
-              });
-            }
-          });
-          
-          setFiles(loadedFiles);
+          // Since we're not storing actual file data in localStorage anymore (due to quota issues),
+          // we'll just display the stored file info without content
+          // In a real implementation, files would be stored on the server or in IndexedDB
+          setFiles([]);
         }
       } catch (err) {
         console.error('Error loading stored files:', err);
@@ -513,23 +496,24 @@ export function DwgIfcViewer() {
       setFiles(prevFiles => {
         const newFiles = [...prevFiles, fileEntry];
         
-        // Store file info in localStorage (without the blob data)
+        // Store only file info in localStorage (without the actual file data)
+        // This avoids exceeding the localStorage quota with large files
         const fileInfos = newFiles.map(file => ({
           id: file.id,
           name: file.name,
           type: file.type,
           date: file.date
         }));
-        localStorage.setItem('dwg_ifc_files', JSON.stringify(fileInfos));
         
-        // Store the file data separately using base64 encoding
-        const reader = new FileReader();
-        reader.onload = () => {
-          const base64data = reader.result as string;
-          const base64Content = base64data.split(',')[1]; // Remove the data URL prefix
-          localStorage.setItem(`dwg_ifc_file_${fileId}`, base64Content);
-        };
-        reader.readAsDataURL(file);
+        try {
+          localStorage.setItem('dwg_ifc_files', JSON.stringify(fileInfos));
+          console.log("File info saved to localStorage");
+        } catch (err) {
+          console.warn("Could not save file info to localStorage:", err);
+        }
+        
+        // Skip storing actual file data in localStorage as it causes quota errors
+        // Files will remain in memory during current session
         
         return newFiles;
       });
@@ -649,17 +633,18 @@ export function DwgIfcViewer() {
     setFiles(prevFiles => {
       const newFiles = prevFiles.filter(file => file.id !== fileId);
       
-      // Update stored file info
-      const fileInfos = newFiles.map(file => ({
-        id: file.id,
-        name: file.name,
-        type: file.type,
-        date: file.date
-      }));
-      localStorage.setItem('dwg_ifc_files', JSON.stringify(fileInfos));
-      
-      // Remove file data
-      localStorage.removeItem(`dwg_ifc_file_${fileId}`);
+      // Update stored file info only
+      try {
+        const fileInfos = newFiles.map(file => ({
+          id: file.id,
+          name: file.name,
+          type: file.type,
+          date: file.date
+        }));
+        localStorage.setItem('dwg_ifc_files', JSON.stringify(fileInfos));
+      } catch (err) {
+        console.warn("Failed to update localStorage:", err);
+      }
       
       return newFiles;
     });
@@ -670,8 +655,8 @@ export function DwgIfcViewer() {
     }
     
     toast({
-      title: "File deleted",
-      description: "The file has been removed.",
+      title: "Fil borttagen",
+      description: "Filen har tagits bort.",
     });
   };
 
