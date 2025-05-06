@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,11 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { X, ZoomIn, ZoomOut, Download } from "lucide-react";
+import { X, ZoomIn, ZoomOut, Download, Loader2 } from "lucide-react";
+import { Document, Page, pdfjs } from "react-pdf";
+
+// Configure worker for react-pdf
+pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.js`;
 
 interface PDFViewerDialogProps {
   open: boolean;
@@ -24,13 +28,17 @@ export function PDFViewerDialog({
   url,
   title,
 }: PDFViewerDialogProps) {
-  const [loading, setLoading] = useState(true);
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Reset scale when URL changes
   useEffect(() => {
     setScale(1);
     setLoading(true);
+    setPageNumber(1);
   }, [url]);
 
   const handleZoomIn = () => {
@@ -41,20 +49,9 @@ export function PDFViewerDialog({
     setScale((prevScale) => Math.max(prevScale - 0.25, 0.5));
   };
 
-  // Force a max height for the iframe and make it scrollable
-  const iframeStyle = {
-    width: "100%",
-    height: "75vh",
-    border: "none",
-    transform: `scale(${scale})`,
-    transformOrigin: "top left",
-    transition: "transform 0.2s ease",
-  };
-
-  const containerStyle = {
-    overflow: "auto",
-    maxHeight: "75vh",
-    width: "100%",
+  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    setNumPages(numPages);
+    setLoading(false);
   };
 
   return (
@@ -94,19 +91,43 @@ export function PDFViewerDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {loading && (
-          <div className="flex justify-center items-center h-40">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        )}
-
-        <div style={containerStyle}>
-          <iframe
-            src={url}
-            style={iframeStyle}
-            onLoad={() => setLoading(false)}
-            className={loading ? "hidden" : ""}
-          ></iframe>
+        <div 
+          ref={containerRef}
+          className="pdf-container overflow-auto"
+          style={{ 
+            height: "75vh",
+            width: "100%", 
+            display: "flex", 
+            justifyContent: "center",
+            background: "#f5f5f5"
+          }}
+        >
+          {loading && (
+            <div className="flex justify-center items-center h-40 w-full">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          )}
+          
+          <Document
+            file={url}
+            onLoadSuccess={onDocumentLoadSuccess}
+            loading={null}
+            error={
+              <div className="flex flex-col items-center justify-center h-40">
+                <p className="text-red-500 mb-2">Kunde inte ladda dokumentet</p>
+                <p className="text-gray-600 text-sm">Kontrollera att det är en giltig PDF-fil</p>
+              </div>
+            }
+          >
+            <Page
+              pageNumber={pageNumber}
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
+              scale={scale}
+              loading={null}
+              className={loading ? "hidden" : ""}
+            />
+          </Document>
         </div>
       </DialogContent>
     </Dialog>
