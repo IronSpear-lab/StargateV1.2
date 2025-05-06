@@ -116,14 +116,33 @@ const ConversationsList = ({
     setUnreadCounts(actualUnread);
   }, [conversations]);
   
-  // When a conversation is selected, mark it as read and force query invalidation
+  // Mark messages as read mutation
+  const markAsReadMutation = useMutation({
+    mutationFn: async (conversationId: number) => {
+      const response = await apiRequest(
+        "POST",
+        `/api/messages/mark-as-read`,
+        { conversationId }
+      );
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate unread counts query to update badge
+      queryClient.invalidateQueries({ queryKey: ['/api/messages/unread-count'] });
+    }
+  });
+  
+  // When a conversation is selected, mark it as read
   useEffect(() => {
     if (selectedConversation !== null) {
-      // Update local unread counts immediately in the UI
+      // Update local unread counts immediately in the UI for faster feedback
       setUnreadCounts(prev => ({
         ...prev,
         [selectedConversation]: 0
       }));
+      
+      // Call the API to mark messages as read server-side
+      markAsReadMutation.mutate(selectedConversation);
       
       // Also invalidate the unread messages count query to trigger a refetch
       queryClient.invalidateQueries({ queryKey: ['/api/messages/unread-count'] });

@@ -863,13 +863,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "You are not a participant in this conversation" });
       }
       
+      // Initialize readBy with sender ID (message is already read by sender)
+      const readBy = [req.user!.id];
+      
       // Send message
       const newMessage = await db.insert(messages)
         .values({
           content,
           conversationId,
           senderId: req.user!.id,
-          sentAt: new Date()
+          sentAt: new Date(),
+          readBy // Add this to mark message as read by sender
         })
         .returning()
         .then(res => res[0]);
@@ -893,6 +897,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           role: sender.role
         }
       };
+      
+      // Log message details for debugging
+      console.log(`User ${req.user!.id} sent message ${newMessage.id} in conversation ${conversationId}`);
       
       res.status(201).json(messageWithSender);
     } catch (error) {
@@ -930,6 +937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const userId = req.user!.id;
+      console.log(`Getting unread count for user ID: ${userId}`);
       
       // Get all conversations where user is a participant
       const userConversations = await db.select()
@@ -952,10 +960,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
         !msg.readBy.includes(userId)
       );
       
+      console.log(`User ${userId} has ${unreadMessages.length} unread messages`);
       res.json({ count: unreadMessages.length });
     } catch (error) {
       console.error("Error counting unread messages:", error);
       res.status(500).json({ error: "Failed to count unread messages" });
+    }
+  });
+  
+  // Add a dedicated endpoint to mark messages as read
+  app.post(`${apiPrefix}/messages/mark-as-read`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const userId = req.user!.id;
+      const { messageIds, conversationId } = req.body;
+      
+      // If no messageIds but conversationId is provided, mark all messages in conversation as read
+      if (!messageIds && conversationId) {
+        // Get all messages in the conversation not sent by current user
+        const conversationMessages = await db.select()
+          .from(messages)
+          .where(and(
+            eq(messages.conversationId, conversationId),
+            ne(messages.senderId, userId)
+          ));
+        
+        // Update each message to mark as read
+        await Promise.all(conversationMessages.map(async (message) => {
+          const readBy = message.readBy || [];
+          if (!readBy.includes(userId)) {
+            readBy.push(userId);
+            await db.update(messages)
+              .set({ readBy })
+              .where(eq(messages.id, message.id));
+          }
+        }));
+        
+        console.log(`User ${userId} marked all messages in conversation ${conversationId} as read`);
+        return res.json({ success: true });
+      }
+      
+      // If specific messageIds are provided
+      if (messageIds && Array.isArray(messageIds)) {
+        // Update each message
+        await Promise.all(messageIds.map(async (messageId) => {
+          const message = await db.select()
+            .from(messages)
+            .where(eq(messages.id, messageId))
+            .then(res => res[0]);
+          
+          if (message) {
+            const readBy = message.readBy || [];
+            if (!readBy.includes(userId)) {
+              readBy.push(userId);
+              await db.update(messages)
+                .set({ readBy })
+                .where(eq(messages.id, message.id));
+            }
+          }
+        }));
+        
+        console.log(`User ${userId} marked messages ${messageIds.join(', ')} as read`);
+        return res.json({ success: true });
+      }
+      
+      return res.status(400).json({ error: "Either messageIds or conversationId is required" });
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+      res.status(500).json({ error: "Failed to mark messages as read" });
     }
   });
 
