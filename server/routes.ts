@@ -65,6 +65,34 @@ const upload = multer({
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
+  
+  // Serve uploaded files statically
+  app.use('/uploads', (req, res, next) => {
+    // Check if user is authenticated for secure file access
+    if (!req.isAuthenticated()) {
+      return res.status(401).send('Unauthorized');
+    }
+    next();
+  }, (req, res, next) => {
+    // Serve files from the uploads directory
+    const options = {
+      root: uploadsDir,
+      dotfiles: 'deny',
+      headers: {
+        'Cache-Control': 'private, max-age=86400',
+      }
+    };
+    
+    const fileName = req.url.substring(1); // Remove leading slash
+    res.sendFile(fileName, options, (err) => {
+      if (err) {
+        console.error(`Error serving file ${fileName}:`, err);
+        if (!res.headersSent) {
+          res.status(404).send('File not found');
+        }
+      }
+    });
+  });
 
   // API routes
   const apiPrefix = "/api";
