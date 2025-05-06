@@ -584,15 +584,14 @@ export default function RitningarPage() {
       </div>
       
       {/* PDF-visare */}
-      {selectedFile && (
-        <PDFViewer
-          isOpen={!!selectedFile}
-          onClose={() => setSelectedFile(null)}
-          file={selectedFile.file}
-          fileUrl={selectedFile.fileUrl}
-          fileData={selectedFile.fileData}
-        />
-      )}
+      <PDFViewerDialog
+        open={!!selectedFile}
+        onOpenChange={(open) => {
+          if (!open) setSelectedFile(null);
+        }}
+        url={selectedFile?.fileUrl || ""}
+        title={selectedFile?.fileData?.filename || "Dokument"}
+      />
     </div>
   );
 }
