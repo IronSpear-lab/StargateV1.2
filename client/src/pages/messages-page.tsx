@@ -116,13 +116,17 @@ const ConversationsList = ({
     setUnreadCounts(actualUnread);
   }, [conversations]);
   
-  // When a conversation is selected, mark it as read
+  // When a conversation is selected, mark it as read and force query invalidation
   useEffect(() => {
     if (selectedConversation !== null) {
+      // Update local unread counts immediately in the UI
       setUnreadCounts(prev => ({
         ...prev,
         [selectedConversation]: 0
       }));
+      
+      // Also invalidate the unread messages count query to trigger a refetch
+      queryClient.invalidateQueries({ queryKey: ['/api/messages/unread-count'] });
     }
   }, [selectedConversation]);
   

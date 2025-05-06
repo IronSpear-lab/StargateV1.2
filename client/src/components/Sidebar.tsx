@@ -160,7 +160,8 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   // Fetch unread message count
   const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ['/api/messages/unread-count'],
-    refetchInterval: 30000, // Polling every 30 seconds
+    refetchInterval: 5000, // Polling every 5 seconds for faster updates
+    staleTime: 2000, // Mark data as stale quickly
   });
 
   useEffect(() => {
