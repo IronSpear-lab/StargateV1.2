@@ -69,6 +69,13 @@ export interface PDFAnnotation {
   taskId?: string;
 }
 
+// Add type declaration to augment the ApiPDFAnnotation interface
+declare module '@/lib/pdf-utils' {
+  interface PDFAnnotation {
+    assignedTo?: string;
+  }
+}
+
 // File Version interface
 export interface FileVersion {
   id: string;
@@ -640,12 +647,14 @@ export default function EnhancedPDFViewer({
     }
     
     function fallbackToLocalStorage() {
+      if (!newVersionFile || !user) return;
+      
       // Create local file URL
       const tempFileUrl = URL.createObjectURL(newVersionFile);
       
       // Store file for reuse
       const localFileId = `file_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-      storeFileForReuse(newVersionFile, localFileId);
+      storeFileForReuse(newVersionFile, { uniqueId: localFileId });
       
       // Create new version info
       const newVersion: FileVersion = {
