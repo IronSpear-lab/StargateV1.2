@@ -23,6 +23,7 @@ import {
   Clock,
   PieChart,
   MessageSquare,
+  Mail,
   HelpCircle,
   CircleUser,
   Search,
