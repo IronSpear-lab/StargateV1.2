@@ -707,7 +707,7 @@ const MessageView = ({
                                 </div>
                                 <div className="flex gap-2">
                                   <Button 
-                                    variant="outline" 
+                                    variant="secondary" 
                                     size="sm"
                                     onClick={() => openPdfViewer(message.attachmentUrl!, message.attachmentName || 'PDF Document')}
                                     className="px-2 py-1 h-auto text-xs flex items-center gap-1"

@@ -59,7 +59,7 @@ export function PDFViewerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-full">
+      <DialogContent className="max-w-4xl w-full" hideCloseButton>
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center justify-between">
             <span className="truncate max-w-md">{title}</span>
