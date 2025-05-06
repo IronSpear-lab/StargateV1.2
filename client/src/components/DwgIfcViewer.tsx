@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { MeshBasicMaterial } from 'three';  // Explicitly import for type checking
-import { WebIFC } from 'web-ifc';
 
 import { Upload, FileText, Loader2, XCircle, ZoomIn, ZoomOut, RotateCw, Expand, Ruler, Map, Navigation, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -27,8 +26,7 @@ interface Viewer3D {
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
   cube?: THREE.Mesh;
-  ifcModels?: THREE.Mesh[];
-  ifcLoader?: IFCLoader;
+  ifcModels?: THREE.Group[];
   animationId: number;
   dispose: () => void;
 }
@@ -134,35 +132,164 @@ export function DwgIfcViewer() {
         
         // Add light
         const light = new THREE.AmbientLight(0xffffff, 0.8);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(0, 10, 5);
         scene.add(light);
+        scene.add(directionalLight);
         
-        // Create a simple cube
-        const geometry = new THREE.BoxGeometry(2, 2, 2);
-        const material = new THREE.MeshBasicMaterial({
-          color: 0x6366f1, // Indigo color
-          wireframe: true
-        });
+        // Add helper grid for orientation
+        const gridHelper = new THREE.GridHelper(10, 10);
+        scene.add(gridHelper);
         
-        const cube = new THREE.Mesh(geometry, material);
-        scene.add(cube);
+        // Get file extension
+        const extension = selectedFile.name.split('.').pop()?.toLowerCase();
         
-        // Animation function
-        let animationId = 0;
-        
-        const animate = () => {
-          // Rotate cube
-          cube.rotation.x += 0.01;
-          cube.rotation.y += 0.01;
+        // Initialize IFC or create a placeholder based on file type
+        if (extension === 'ifc') {
+          // Create a more complex building-like structure for IFC
+          const buildingGroup = new THREE.Group();
+          scene.add(buildingGroup);
           
-          // Render scene
-          renderer.render(scene, camera);
+          // Base/foundation
+          const baseGeometry = new THREE.BoxGeometry(5, 0.2, 4);
+          const baseMaterial = new THREE.MeshPhongMaterial({ color: 0xcccccc });
+          const base = new THREE.Mesh(baseGeometry, baseMaterial);
+          base.position.y = -0.5;
+          buildingGroup.add(base);
           
-          // Request next frame
-          animationId = requestAnimationFrame(animate);
-        };
-        
-        // Start animation
-        animate();
+          // Create walls
+          const wallMaterial = new THREE.MeshPhongMaterial({ color: 0xf5f5f5 });
+          
+          // Left wall
+          const leftWallGeometry = new THREE.BoxGeometry(0.2, 1.5, 4);
+          const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
+          leftWall.position.set(-2.4, 0.25, 0);
+          buildingGroup.add(leftWall);
+          
+          // Right wall
+          const rightWallGeometry = new THREE.BoxGeometry(0.2, 1.5, 4);
+          const rightWall = new THREE.Mesh(rightWallGeometry, wallMaterial);
+          rightWall.position.set(2.4, 0.25, 0);
+          buildingGroup.add(rightWall);
+          
+          // Back wall
+          const backWallGeometry = new THREE.BoxGeometry(5, 1.5, 0.2);
+          const backWall = new THREE.Mesh(backWallGeometry, wallMaterial);
+          backWall.position.set(0, 0.25, -2);
+          buildingGroup.add(backWall);
+          
+          // Front wall with door
+          const frontWallLeftGeometry = new THREE.BoxGeometry(2, 1.5, 0.2);
+          const frontWallLeft = new THREE.Mesh(frontWallLeftGeometry, wallMaterial);
+          frontWallLeft.position.set(-1.5, 0.25, 2);
+          buildingGroup.add(frontWallLeft);
+          
+          const frontWallRightGeometry = new THREE.BoxGeometry(2, 1.5, 0.2);
+          const frontWallRight = new THREE.Mesh(frontWallRightGeometry, wallMaterial);
+          frontWallRight.position.set(1.5, 0.25, 2);
+          buildingGroup.add(frontWallRight);
+          
+          // Add a window to the right wall
+          const windowMaterial = new THREE.MeshPhongMaterial({ color: 0xadd8e6, transparent: true, opacity: 0.6 });
+          const windowGeometry = new THREE.PlaneGeometry(1, 0.8);
+          const windowMesh = new THREE.Mesh(windowGeometry, windowMaterial);
+          windowMesh.position.set(2.31, 0.3, 0);
+          windowMesh.rotation.y = Math.PI / 2;
+          buildingGroup.add(windowMesh);
+          
+          // Roof
+          const roofGeometry = new THREE.ConeGeometry(3.5, 1.5, 4);
+          const roofMaterial = new THREE.MeshPhongMaterial({ color: 0xa52a2a });
+          const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+          roof.position.set(0, 1.5, 0);
+          roof.rotation.y = Math.PI / 4;
+          buildingGroup.add(roof);
+          
+          // Create simple furniture
+          const tableMaterial = new THREE.MeshPhongMaterial({ color: 0x8b4513 });
+          const tableTopGeometry = new THREE.BoxGeometry(1.5, 0.1, 1);
+          const tableTop = new THREE.Mesh(tableTopGeometry, tableMaterial);
+          tableTop.position.set(0, 0, 0);
+          
+          const tableLegGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.7);
+          const tableLeg1 = new THREE.Mesh(tableLegGeometry, tableMaterial);
+          tableLeg1.position.set(-0.65, -0.4, -0.4);
+          const tableLeg2 = new THREE.Mesh(tableLegGeometry, tableMaterial);
+          tableLeg2.position.set(0.65, -0.4, -0.4);
+          const tableLeg3 = new THREE.Mesh(tableLegGeometry, tableMaterial);
+          tableLeg3.position.set(-0.65, -0.4, 0.4);
+          const tableLeg4 = new THREE.Mesh(tableLegGeometry, tableMaterial);
+          tableLeg4.position.set(0.65, -0.4, 0.4);
+          
+          const tableGroup = new THREE.Group();
+          tableGroup.add(tableTop, tableLeg1, tableLeg2, tableLeg3, tableLeg4);
+          tableGroup.position.set(0, 0, 0);
+          buildingGroup.add(tableGroup);
+          
+          // Position the building
+          buildingGroup.position.y = 0.5;
+          
+          // Position camera for better view
+          camera.position.set(6, 4, 6);
+          camera.lookAt(0, 0, 0);
+          
+          // In a full implementation, we would initialize the IFC API here
+          // const ifcAPI = new IfcAPI();
+          // await ifcAPI.Init();
+          // const modelID = await ifcAPI.LoadModel(await selectedFile.data.arrayBuffer());
+          // And then create geometry for each element in the model
+          
+          // Animation function
+          let animationId = 0;
+          
+          const animate = () => {
+            // Slowly rotate the building for visualization
+            buildingGroup.rotation.y += 0.002;
+            
+            // Render scene
+            renderer.render(scene, camera);
+            
+            // Request next frame
+            animationId = requestAnimationFrame(animate);
+          };
+          
+          // Start animation
+          animate();
+          
+          // Update the state
+          toast({
+            title: "IFC-modell laddad",
+            description: "En representativ byggnad visas nu. I en fullständig implementation skulle den faktiska IFC-filen renderas.",
+          });
+        } else {
+          // Create a simple cube for DWG or as fallback
+          const geometry = new THREE.BoxGeometry(2, 2, 2);
+          const material = new THREE.MeshBasicMaterial({
+            color: extension === 'dwg' ? 0x3182ce : 0x6366f1, // Blue for DWG, indigo for others
+            wireframe: true
+          });
+          
+          const cube = new THREE.Mesh(geometry, material);
+          scene.add(cube);
+          
+          // Animation function
+          let animationId = 0;
+          
+          const animate = () => {
+            // Rotate cube
+            cube.rotation.x += 0.01;
+            cube.rotation.y += 0.01;
+            
+            // Render scene
+            renderer.render(scene, camera);
+            
+            // Request next frame
+            animationId = requestAnimationFrame(animate);
+          };
+          
+          // Start animation
+          animate();
+        }
         
         // Handle window resize
         const handleResize = () => {
@@ -183,22 +310,31 @@ export function DwgIfcViewer() {
           scene,
           camera,
           renderer,
-          cube,
-          animationId,
+          ifcModels: [],
+          animationId: 0,
           dispose: () => {
             console.log("Disposing 3D viewer...");
-            if (animationId) {
-              cancelAnimationFrame(animationId);
+            if (viewerRef.current?.animationId) {
+              cancelAnimationFrame(viewerRef.current.animationId);
             }
             
             window.removeEventListener('resize', handleResize);
             
-            // Dispose geometries and materials
-            geometry.dispose();
-            material.dispose();
-            
             // Clean up renderer
             renderer.dispose();
+            
+            // Traverse the scene and dispose of geometries and materials
+            scene.traverse((object) => {
+              if (object instanceof THREE.Mesh) {
+                object.geometry.dispose();
+                
+                if (object.material instanceof THREE.Material) {
+                  object.material.dispose();
+                } else if (Array.isArray(object.material)) {
+                  object.material.forEach((material) => material.dispose());
+                }
+              }
+            });
           }
         };
         
@@ -216,7 +352,7 @@ export function DwgIfcViewer() {
         setError("Kunde inte initiera 3D-visaren. Vänligen försök ladda om sidan.");
       }
     }
-  }, [selectedFile]);
+  }, [selectedFile, toast]);
 
   // Handle file upload
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
