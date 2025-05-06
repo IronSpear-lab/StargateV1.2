@@ -710,13 +710,9 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     staleTime: 2000, // Mark data as stale quickly
   });
   
-  // Synka denna hook med URL:en för att nollställa notifikationer när användaren öppnar meddelanden
-  useEffect(() => {
-    if (location === "/messages" && unreadData?.count && unreadData.count > 0) {
-      // Direkt nollställning av notifikationsikonen när sidan öppnas
-      queryClient.setQueryData(['/api/messages/unread-count'], { count: 0 });
-    }
-  }, [location, unreadData?.count]);
+  // Ta bort automatisk nollställning när messages-sidan öppnas
+  // Notiser ska endast försvinna när en specifik konversation öppnas
+  // Inte bara när messages-sidan navigeras till
 
   useEffect(() => {
     setIsOpen(!isMobile);
