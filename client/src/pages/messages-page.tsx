@@ -109,9 +109,10 @@ const ConversationsList = ({
               <Avatar className="h-10 w-10 border">
                 <AvatarImage src="" />
                 <AvatarFallback>
-                  {conversation.participants
-                    .find(p => p.userId !== (window as any).currentUser?.id)
-                    ?.user.username.substring(0, 2).toUpperCase() || "UN"}
+                  {/* Safely get participant initials */}
+                  {conversation.participants && conversation.participants.length > 0
+                    ? (conversation.participants.find(p => p.userId !== (window as any).currentUser?.id)?.user?.username || "UN").substring(0, 2).toUpperCase()
+                    : "UN"}
                 </AvatarFallback>
               </Avatar>
             )}
@@ -119,10 +120,12 @@ const ConversationsList = ({
               <div className="flex items-center justify-between">
                 <h3 className="font-medium truncate">
                   {conversation.title || 
-                    conversation.participants
-                      .filter(p => p.userId !== (window as any).currentUser?.id)
-                      .map(p => p.user.username)
-                      .join(", ")}
+                    (conversation.participants && conversation.participants.length > 0
+                      ? conversation.participants
+                          .filter(p => p.userId !== (window as any).currentUser?.id)
+                          .map(p => p.user?.username || "Unknown")
+                          .join(", ")
+                      : "New Conversation")}
                 </h3>
                 {conversation.latestMessage && (
                   <span className="text-xs text-muted-foreground">
@@ -190,21 +193,24 @@ const MessageView = ({
             <Avatar className="h-8 w-8">
               <AvatarImage src="" />
               <AvatarFallback>
-                {conversation.participants
-                  .find(p => p.userId !== (window as any).currentUser?.id)
-                  ?.user.username.substring(0, 2).toUpperCase() || "UN"}
+                {/* Safely get participant initials */}
+                {conversation.participants && conversation.participants.length > 0
+                  ? (conversation.participants.find(p => p.userId !== (window as any).currentUser?.id)?.user?.username || "UN").substring(0, 2).toUpperCase()
+                  : "UN"}
               </AvatarFallback>
             </Avatar>
           )}
           <div>
             <h3 className="font-medium text-sm">
               {conversation.title || 
-                conversation.participants
-                  .filter(p => p.userId !== (window as any).currentUser?.id)
-                  .map(p => p.user.username)
-                  .join(", ")}
+                (conversation.participants && conversation.participants.length > 0
+                  ? conversation.participants
+                      .filter(p => p.userId !== (window as any).currentUser?.id)
+                      .map(p => p.user?.username || "Unknown")
+                      .join(", ")
+                  : "New Conversation")}
             </h3>
-            {conversation.isGroup && (
+            {conversation.isGroup && conversation.participants && (
               <p className="text-xs text-muted-foreground">
                 {conversation.participants.length} members
               </p>
