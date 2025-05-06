@@ -665,13 +665,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const conversationId = parseInt(req.params.id);
+      const userId = req.user!.id;
       
       // Check if user is a participant
       const participant = await db.select()
         .from(conversationParticipants)
         .where(and(
           eq(conversationParticipants.conversationId, conversationId),
-          eq(conversationParticipants.userId, req.user!.id)
+          eq(conversationParticipants.userId, userId)
         ))
         .then(res => res[0]);
       
@@ -701,6 +702,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(messages.conversationId, conversationId))
         .innerJoin(users, eq(messages.senderId, users.id))
         .orderBy(asc(messages.sentAt));
+      
+      // Mark messages as read when a conversation is opened
+      const messagesToUpdate = messagesWithSenders
+        .filter(m => 
+          m.messages.senderId !== userId && 
+          (!m.messages.readBy || !m.messages.readBy.includes(userId))
+        )
+        .map(m => m.messages.id);
+      
+      if (messagesToUpdate.length > 0) {
+        // For each message that needs updating
+        await Promise.all(messagesToUpdate.map(async (messageId) => {
+          // Get current readBy array
+          const message = await db.select()
+            .from(messages)
+            .where(eq(messages.id, messageId))
+            .then(res => res[0]);
+          
+          // Add current user to readBy array
+          const readBy = message.readBy || [];
+          if (!readBy.includes(userId)) {
+            readBy.push(userId);
+            
+            // Update the message
+            await db.update(messages)
+              .set({ readBy })
+              .where(eq(messages.id, messageId));
+          }
+        }));
+      }
       
       const result = {
         ...conversation,
