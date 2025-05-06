@@ -20,7 +20,8 @@ import {
   Check,
   AlertCircle,
   Upload,
-  FileText
+  FileText,
+  Eye
 } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
@@ -34,6 +35,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { storeFileForReuse, getStoredFileById } from "@/lib/file-utils";
 import { 
@@ -785,45 +788,169 @@ export function PDFViewerDialog({
         
         {/* Versionshanteringspanel */}
         {showVersionsPanel && fileData?.fileId && (
-          <div className="absolute top-[60px] right-0 w-[300px] h-[calc(100%-60px)] bg-white border-l shadow-lg p-4 overflow-auto z-10">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-medium">Versioner</h3>
-              <Button 
-                size="sm" 
-                variant="outline"
-                onClick={() => setShowUploadVersionDialog(true)}
-              >
-                <Upload className="h-4 w-4 mr-1" /> Ladda upp version
-              </Button>
+          <div className="absolute top-[60px] right-0 w-[320px] h-[calc(100%-60px)] bg-white border-l shadow-lg overflow-auto z-10">
+            {/* Header med titel */}
+            <div className="p-4 border-b sticky top-0 bg-white z-10">
+              <div className="flex justify-between items-center">
+                <h3 className="font-medium text-lg">Aktivitet</h3>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => setShowUploadVersionDialog(true)}
+                >
+                  <Upload className="h-4 w-4 mr-1" /> Ladda upp version
+                </Button>
+              </div>
             </div>
             
-            <div className="space-y-3 mt-4">
-              {fileVersions.map(version => (
-                <div 
-                  key={version.id} 
-                  className={`p-3 rounded-md ${activeVersionId === version.id ? 'bg-primary/10 border border-primary/30' : 'bg-gray-100 hover:bg-gray-200'} cursor-pointer`}
-                  onClick={() => {
-                    setActiveVersionId(version.id);
-                    setPdfUrl(version.fileUrl);
-                  }}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium text-sm">Version {version.versionNumber}</p>
-                      <p className="text-xs text-muted-foreground truncate">{version.filename}</p>
-                    </div>
-                    {version.commentCount ? (
-                      <div className="bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                        {version.commentCount}
+            <div className="p-4">
+              {fileVersions.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                    Version {fileVersions.find(v => v.id === activeVersionId)?.versionNumber || fileVersions[0].versionNumber} - aktuell för närvarande
+                  </h4>
+                  
+                  {fileVersions.map((version, index) => (
+                    <div key={version.id} className="mb-4 last:mb-0">
+                      <div className="flex gap-3 mb-2">
+                        <div className="flex-none">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={`https://avatar.vercel.sh/${version.uploadedBy}.png`} alt={version.uploadedBy} />
+                            <AvatarFallback>{version.uploadedBy.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex justify-between mb-1">
+                            <div>
+                              <span className="font-medium">{version.uploadedBy}</span>
+                              <span className="text-muted-foreground text-sm ml-2">
+                                för {Math.floor((Date.now() - new Date(version.uploaded).getTime()) / (1000 * 60 * 60 * 24))} dagar sen
+                              </span>
+                            </div>
+                            <Button 
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => {
+                                setActiveVersionId(version.id);
+                                setPdfUrl(version.fileUrl);
+                              }}
+                            >
+                              Visa version
+                            </Button>
+                          </div>
+                          
+                          <div className="text-sm">
+                            {version.description || `Laddade upp version ${version.versionNumber}`}
+                          </div>
+                          
+                          <div className="mt-2">
+                            {version.id === activeVersionId ? (
+                              <Badge variant="secondary" className="bg-primary/10 text-primary border border-primary/30">
+                                Nuvarande version
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-muted-foreground">
+                                Version {version.versionNumber}
+                              </Badge>
+                            )}
+                            
+                            {version.commentCount && version.commentCount > 0 ? (
+                              <Badge variant="outline" className="ml-2">
+                                <MessageSquare className="h-3 w-3 mr-1" /> {version.commentCount} kommentarer
+                              </Badge>
+                            ) : null}
+                          </div>
+                        </div>
                       </div>
-                    ) : null}
-                  </div>
-                  <p className="text-xs mt-1 text-muted-foreground">{version.description}</p>
-                  <p className="text-xs mt-2">
-                    {new Date(version.uploaded).toLocaleDateString()} av {version.uploadedBy}
-                  </p>
+                      
+                      {/* Linje för att separera versioner */}
+                      {index < fileVersions.length - 1 && (
+                        <div className="ml-4 pl-4 border-l h-4 border-dashed border-gray-300"></div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
+              
+              {/* Kommentarssection */}
+              {annotations.filter(a => a.comment.trim() !== '').length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-3">Kommentarer ({annotations.filter(a => a.comment.trim() !== '').length})</h4>
+                  
+                  {annotations
+                    .filter(a => a.comment.trim() !== '')
+                    .map((annotation) => (
+                      <div key={annotation.id} className="mb-4 pb-4 border-b last:border-0">
+                        <div className="flex gap-3">
+                          <div className="flex-none">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={`https://avatar.vercel.sh/${annotation.createdBy}.png`} alt={annotation.createdBy} />
+                              <AvatarFallback>{annotation.createdBy.substring(0, 2).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex justify-between mb-1">
+                              <div>
+                                <span className="font-medium">{annotation.createdBy}</span>
+                                <span className="text-muted-foreground text-sm ml-2">
+                                  {new Date(annotation.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <Button 
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs"
+                                onClick={() => zoomToAnnotation(annotation)}
+                              >
+                                Visa markering
+                              </Button>
+                            </div>
+                            
+                            <div className="text-sm">{annotation.comment}</div>
+                            
+                            <div className="mt-2 flex gap-2 items-center">
+                              <Badge 
+                                variant="outline" 
+                                className="flex items-center gap-1"
+                                style={{
+                                  borderColor: annotation.color,
+                                  backgroundColor: `${annotation.color}10`,
+                                  color: annotation.color
+                                }}
+                              >
+                                {annotation.status === 'open' && <span className="h-2 w-2 rounded-full bg-current"></span>}
+                                {annotation.status === 'resolved' && <Check className="h-3 w-3" />}
+                                {annotation.status === 'action_required' && <AlertCircle className="h-3 w-3" />}
+                                {annotation.status === 'reviewing' && <Eye className="h-3 w-3" />}
+                                
+                                {annotation.status === 'open' && 'Öppen'}
+                                {annotation.status === 'resolved' && 'Löst'}
+                                {annotation.status === 'action_required' && 'Kräver åtgärd'}
+                                {annotation.status === 'reviewing' && 'Under granskning'}
+                              </Badge>
+                              
+                              <Select 
+                                value={annotation.status} 
+                                onValueChange={(value) => handleStatusChange(annotation.id, value as any)}
+                              >
+                                <SelectTrigger className="h-6 text-xs px-2 w-[130px]">
+                                  <SelectValue placeholder="Ändra status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="open">Öppen</SelectItem>
+                                  <SelectItem value="resolved">Löst</SelectItem>
+                                  <SelectItem value="action_required">Kräver åtgärd</SelectItem>
+                                  <SelectItem value="reviewing">Under granskning</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           </div>
         )}
