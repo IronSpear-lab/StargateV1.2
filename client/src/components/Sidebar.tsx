@@ -42,7 +42,7 @@ import { ModeToggle } from "@/components/mode-toggle";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface SidebarProps {
   className?: string;
@@ -157,8 +157,11 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   // State för att lagra mappar som användaren har skapat
   const [userCreatedFolders, setUserCreatedFolders] = useState<{name: string; parent: string}[]>([]);
   
+  // Import queryClient vid toppen av filen
+  const queryClient = useQueryClient();
+
   // Fetch unread message count
-  const { data: unreadData, setData: setUnreadData } = useQuery<{ count: number }>({
+  const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ['/api/messages/unread-count'],
     refetchInterval: 5000, // Polling every 5 seconds for faster updates
     staleTime: 2000, // Mark data as stale quickly
@@ -168,7 +171,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   useEffect(() => {
     if (location === "/messages" && unreadData?.count && unreadData.count > 0) {
       // Direkt nollställning av notifikationsikonen när sidan öppnas
-      setUnreadData({ count: 0 });
+      queryClient.setQueryData(['/api/messages/unread-count'], { count: 0 });
     }
   }, [location, unreadData?.count]);
 
