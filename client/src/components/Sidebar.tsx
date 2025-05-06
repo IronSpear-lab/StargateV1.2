@@ -42,6 +42,7 @@ import { ModeToggle } from "@/components/mode-toggle";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
+import { useQuery } from "@tanstack/react-query";
 
 interface SidebarProps {
   className?: string;
@@ -155,6 +156,12 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   
   // State för att lagra mappar som användaren har skapat
   const [userCreatedFolders, setUserCreatedFolders] = useState<{name: string; parent: string}[]>([]);
+  
+  // Fetch unread message count
+  const { data: unreadData } = useQuery<{ count: number }>({
+    queryKey: ['/api/messages/unread-count'],
+    refetchInterval: 30000, // Polling every 30 seconds
+  });
 
   useEffect(() => {
     setIsOpen(!isMobile);
@@ -296,7 +303,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       label: "Communication",
       icon: <MessageSquare className="w-5 h-5" />,
       active: location === "/communication" || location === "/messages" || location.startsWith("/communication/"),
-      badge: "3", // Visar totalt antal olästa meddelanden
+      badge: unreadData?.count > 0 ? String(unreadData.count) : undefined, // Visar reella antalet olästa meddelanden
       children: [
         {
           href: "/messages",
@@ -304,7 +311,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           icon: <Mail className="w-4 h-4" />,
           active: location === "/messages" || location === "/communication/messages",
           indent: 1,
-          badge: "3" // Visar att det finns 3 olästa meddelanden
+          badge: unreadData?.count > 0 ? String(unreadData.count) : undefined // Visar reella antalet olästa meddelanden
         }
       ]
     },
@@ -313,7 +320,6 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       label: "3D Viewer",
       icon: <Box className="w-5 h-5" />,
       active: location === "/3d-viewer",
-      badge: "1"
     },
     {
       href: "#",
