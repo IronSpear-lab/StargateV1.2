@@ -842,6 +842,14 @@ const MessageView = ({
           </Button>
         </form>
       </div>
+      
+      {/* PDF Viewer Dialog */}
+      <PDFViewerDialog
+        open={pdfViewerOpen}
+        onOpenChange={setPdfViewerOpen}
+        url={pdfUrl}
+        title={pdfTitle}
+      />
     </div>
   );
 };
