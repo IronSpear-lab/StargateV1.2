@@ -342,6 +342,15 @@ const MessageView = ({
     }
   };
   
+  // Helper function to check if user is at bottom of scroll
+  const isUserAtBottom = () => {
+    if (!scrollAreaRef.current) return false;
+    
+    const { scrollTop, scrollHeight, clientHeight } = scrollAreaRef.current;
+    // Consider "at bottom" if within 100px of the bottom
+    return scrollHeight - scrollTop - clientHeight < 100;
+  };
+  
   // Auto-scroll to bottom när meddelanden ändras, men bara om det inte kommer 
   // från vår optimistiska uppdatering (som redan har scrollningskod)
   useEffect(() => {
@@ -351,7 +360,8 @@ const MessageView = ({
     const lastMessage = messages[messages.length - 1];
     const isFromOtherUser = lastMessage && lastMessage.senderId !== (window as any).currentUser?.id;
     
-    if (isFromOtherUser && scrollAreaRef.current) {
+    // Scrolla endast om meddelandet är från någon annan OCH användaren redan är nära botten
+    if (isFromOtherUser && isUserAtBottom() && scrollAreaRef.current) {
       requestAnimationFrame(() => {
         if (scrollAreaRef.current) {
           scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
@@ -940,14 +950,8 @@ export default function MessagesPage() {
       // Uppdatera konversationslistan för att visa senaste meddelandet
       queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
       
-      // Scrolla automatiskt till botten efter att servern har svarat
-      if (scrollAreaRef.current) {
-        requestAnimationFrame(() => {
-          if (scrollAreaRef.current) {
-            scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-          }
-        });
-      }
+      // Vi behöver inte scrolla här - scrollning hanteras vid sändningstillfället baserat på 
+      // användarens scrollposition. Optimistisk UI har redan scrollat om det behövdes.
     },
     onError: (error: Error) => {
       toast({
@@ -964,15 +968,27 @@ export default function MessagesPage() {
     }
   });
   
+  // Helper function to check if user is at bottom of scroll
+  const isUserAtBottom = () => {
+    if (!scrollAreaRef.current) return false;
+    
+    const { scrollTop, scrollHeight, clientHeight } = scrollAreaRef.current;
+    // Consider "at bottom" if within 100px of the bottom
+    return scrollHeight - scrollTop - clientHeight < 100;
+  };
+  
   const handleSendMessage = (content: string) => {
     if (selectedConversationId) {
+      // Check if user is at bottom of the conversation before sending
+      const shouldScrollToBottom = isUserAtBottom();
+      
       sendMessageMutation.mutate({ 
         conversationId: selectedConversationId, 
         content 
       });
       
-      // Scrolla omedelbart ner vid sändning (innan servern svarar)
-      if (scrollAreaRef.current) {
+      // Scrolla endast om användaren redan var längst ner
+      if (shouldScrollToBottom && scrollAreaRef.current) {
         requestAnimationFrame(() => {
           if (scrollAreaRef.current) {
             scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
