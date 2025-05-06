@@ -498,10 +498,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all versions for a PDF file
   app.get(`${apiPrefix}/pdf/:fileId/versions`, async (req, res) => {
     try {
-      const fileId = parseInt(req.params.fileId);
+      // Leta efter en numerisk del i fileId-parametern för att hantera långa ID-värden
+      const fileIdStr = req.params.fileId;
+      let fileId: number;
+      
+      // Om fileId är helt numeriskt och kan vara ett stort heltal
+      if (fileIdStr.length > 10) {
+        // Extrahera ett kortare ID från strängen
+        const matches = fileIdStr.match(/(\d{1,9})/);
+        if (matches && matches[1]) {
+          fileId = parseInt(matches[1], 10);
+        } else {
+          // Fallback: använd ett hashat värde baserat på strängen
+          fileId = Math.abs(
+            fileIdStr.split('').reduce((hash, char) => 
+              ((hash << 5) - hash) + char.charCodeAt(0), 0)
+          ) % 1000000; // Begränsa till ett 6-siffrigt tal
+        }
+      } else {
+        fileId = parseInt(fileIdStr);
+      }
+      
       if (isNaN(fileId)) {
         return res.status(400).json({ error: "Invalid file ID" });
       }
+      
+      console.log(`Processing PDF versions request for file ID: ${fileIdStr} (converted to: ${fileId})`);
       
       // Get the file to make sure it exists and user has access
       const file = await storage.getFile(fileId);
@@ -546,10 +568,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Upload a new version for a PDF file
   app.post(`${apiPrefix}/pdf/:fileId/versions`, upload.single('file'), async (req, res) => {
     try {
-      const fileId = parseInt(req.params.fileId);
+      // Samma konverteringslogik som i GET-metoden
+      const fileIdStr = req.params.fileId;
+      let fileId: number;
+      
+      // Om fileId är helt numeriskt och kan vara ett stort heltal
+      if (fileIdStr.length > 10) {
+        // Extrahera ett kortare ID från strängen
+        const matches = fileIdStr.match(/(\d{1,9})/);
+        if (matches && matches[1]) {
+          fileId = parseInt(matches[1], 10);
+        } else {
+          // Fallback: använd ett hashat värde baserat på strängen
+          fileId = Math.abs(
+            fileIdStr.split('').reduce((hash, char) => 
+              ((hash << 5) - hash) + char.charCodeAt(0), 0)
+          ) % 1000000; // Begränsa till ett 6-siffrigt tal
+        }
+      } else {
+        fileId = parseInt(fileIdStr);
+      }
+      
       if (isNaN(fileId)) {
         return res.status(400).json({ error: "Invalid file ID" });
       }
+      
+      console.log(`Processing PDF version upload for file ID: ${fileIdStr} (converted to: ${fileId})`);
       
       if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });

@@ -844,10 +844,12 @@ export function PDFViewerDialogNew({
             setPdfUrl(fileUrl);
             
             // Spara i localStorage
-            localStorage.setItem(
-              `pdf_versions_${fileData.fileId}`, 
-              JSON.stringify([initialVersion])
-            );
+            if (fileData?.fileId) {
+              localStorage.setItem(
+                `pdf_versions_${fileData.fileId}`, 
+                JSON.stringify([initialVersion])
+              );
+            }
           }
           
           // Ladda annotationer från localStorage
