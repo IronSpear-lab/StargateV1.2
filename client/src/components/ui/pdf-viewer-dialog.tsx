@@ -13,7 +13,7 @@ import { X, ZoomIn, ZoomOut, Download, Loader2 } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 
 // Configure worker for react-pdf
-pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 interface PDFViewerDialogProps {
   open: boolean;

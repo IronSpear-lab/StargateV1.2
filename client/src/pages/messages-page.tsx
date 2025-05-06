@@ -706,14 +706,18 @@ const MessageView = ({
                                   </div>
                                 </div>
                                 <div className="flex gap-2">
-                                  <button 
-                                    onClick={() => openPdfViewer(message.attachmentUrl!, message.attachmentName || 'PDF Document')}
+                                  <a 
+                                    href="#"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      openPdfViewer(message.attachmentUrl!, message.attachmentName || 'PDF Document');
+                                    }}
                                     className={`px-2 py-1 text-xs rounded-md flex items-center gap-1 ${
                                       isMine ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"
                                     }`}
                                   >
                                     <ExternalLink className="h-3 w-3" /> View
-                                  </button>
+                                  </a>
                                   <a 
                                     href={message.attachmentUrl} 
                                     download
