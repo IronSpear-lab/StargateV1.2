@@ -102,6 +102,9 @@ const ConversationsList = ({
     if (!currentUserId) return;
     
     conversations.forEach(conv => {
+      // Don't immediately hide unread indicator when conversation is selected
+      // Keep showing the unread badge until the conversation is fully loaded
+      // This prevents the badge from disappearing before content is visible
       if (conv.latestMessage) {
         // Count messages not read by current user
         const unreadCount = conv.messages?.filter(msg => 
@@ -115,8 +118,18 @@ const ConversationsList = ({
       }
     });
     
-    setUnreadCounts(actualUnread);
-  }, [conversations]);
+    setUnreadCounts(prev => {
+      // Keep existing unread count for selected conversation
+      // so indicator doesn't disappear until fully loaded
+      if (selectedConversation && prev[selectedConversation]) {
+        return {
+          ...actualUnread,
+          [selectedConversation]: prev[selectedConversation]
+        };
+      }
+      return actualUnread;
+    });
+  }, [conversations, selectedConversation]);
   
   // Mark messages as read mutation
   const markAsReadMutation = useMutation({
@@ -134,27 +147,8 @@ const ConversationsList = ({
     }
   });
   
-  // When a conversation is selected, mark it as read
-  useEffect(() => {
-    if (selectedConversation !== null) {
-      console.log(`Marking conversation ${selectedConversation} as read`);
-      
-      // Update local unread counts immediately in the UI for faster feedback
-      setUnreadCounts(prev => ({
-        ...prev,
-        [selectedConversation]: 0
-      }));
-      
-      // Call the API to mark messages as read server-side
-      markAsReadMutation.mutate(selectedConversation);
-      
-      // Also invalidate the unread messages count query to trigger a refetch
-      queryClient.invalidateQueries({ queryKey: ['/api/messages/unread-count'] });
-      
-      // Also invalidate the specific conversation query to update read status in the UI
-      queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation] });
-    }
-  }, [selectedConversation]);
+  // Do not mark as read immediately when selecting a conversation
+  // We'll mark as read only when the conversation data is loaded and displayed
   
   return (
     <ScrollArea className="h-[calc(100vh-13rem)] pr-3">
@@ -244,6 +238,41 @@ const MessageView = ({
 }) => {
   const [newMessage, setNewMessage] = useState("");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+  const hasMarkedAsRead = useRef(false);
+  
+  // Mark messages as read mutation
+  const markAsReadMutation = useMutation({
+    mutationFn: async (conversationId: number) => {
+      console.log("Marking conversation as read:", conversationId);
+      const response = await apiRequest(
+        "POST",
+        `/api/messages/mark-as-read`,
+        { conversationId }
+      );
+      return response.json();
+    },
+    onSuccess: () => {
+      console.log("Successfully marked messages as read");
+      // Invalidate queries to update UI
+      queryClient.invalidateQueries({ queryKey: ['/api/messages/unread-count'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+    }
+  });
+  
+  // When conversation is fully loaded and component is mounted, mark messages as read
+  useEffect(() => {
+    if (conversation && conversation.id && !hasMarkedAsRead.current) {
+      console.log("Conversation loaded, marking as read:", conversation.id);
+      markAsReadMutation.mutate(conversation.id);
+      hasMarkedAsRead.current = true;
+    }
+    
+    return () => {
+      // Reset flag when component unmounts or conversation changes
+      hasMarkedAsRead.current = false;
+    };
+  }, [conversation?.id]);
   
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
