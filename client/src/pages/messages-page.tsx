@@ -91,18 +91,30 @@ const ConversationsList = ({
   // Track unread messages (This would normally be server-driven)
   const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
   
-  // Demo function to simulate unread messages - in a real app this would be server-driven
+  // Calculate actual unread messages based on message readBy arrays
   useEffect(() => {
-    // This is just for demo - in a real app we'd track read status on the server
-    const mockUnread: Record<number, number> = {};
+    const actualUnread: Record<number, number> = {};
+    
+    // Get current user ID
+    const currentUserId = (window as any).currentUser?.id;
+    if (!currentUserId) return;
+    
     conversations.forEach(conv => {
-      // Random unread count for demo purposes
-      if (conv.id !== selectedConversation && Math.random() > 0.6) {
-        mockUnread[conv.id] = Math.floor(Math.random() * 5) + 1;
+      if (conv.latestMessage) {
+        // Count messages not read by current user
+        const unreadCount = conv.messages?.filter(msg => 
+          msg.senderId !== currentUserId && 
+          !msg.readBy?.includes(currentUserId)
+        )?.length || 0;
+        
+        if (unreadCount > 0) {
+          actualUnread[conv.id] = unreadCount;
+        }
       }
     });
-    setUnreadCounts(mockUnread);
-  }, [conversations.length]);
+    
+    setUnreadCounts(actualUnread);
+  }, [conversations]);
   
   // When a conversation is selected, mark it as read
   useEffect(() => {
