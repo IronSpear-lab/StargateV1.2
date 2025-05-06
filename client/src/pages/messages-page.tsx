@@ -173,7 +173,13 @@ const MessageView = ({
   // Group messages by date
   const messagesByDate: Record<string, Message[]> = {};
   
-  conversation.messages?.forEach(message => {
+  // Ensure we have valid messages to iterate through
+  const messages = conversation.messages || [];
+  
+  // Log the messages for debugging
+  console.log("Processing messages:", messages.length, "total messages");
+  
+  messages.forEach(message => {
     const date = new Date(message.sentAt).toLocaleDateString();
     if (!messagesByDate[date]) {
       messagesByDate[date] = [];
@@ -498,25 +504,78 @@ export default function MessagesPage() {
   const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   
+  // State for authentication
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+  const [loginForm, setLoginForm] = useState({
+    username: '',
+    password: ''
+  });
+
   // Get current user from window (temporarily)
   useEffect(() => {
     // Set current user on window for easy access
     const fetchCurrentUser = async () => {
       try {
-        const response = await fetch('/api/user');
+        setIsAuthLoading(true);
+        const response = await fetch('/api/user', {
+          credentials: 'include'
+        });
         if (response.ok) {
           const user = await response.json();
           (window as any).currentUser = user;
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
         }
       } catch (error) {
         console.error('Error fetching current user:', error);
+        setIsAuthenticated(false);
+      } finally {
+        setIsAuthLoading(false);
       }
     };
     
-    if (!(window as any).currentUser) {
-      fetchCurrentUser();
-    }
+    fetchCurrentUser();
   }, []);
+  
+  // Handle login
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(loginForm)
+      });
+      
+      if (response.ok) {
+        const user = await response.json();
+        (window as any).currentUser = user;
+        setIsAuthenticated(true);
+        toast({
+          title: "Welcome back!",
+          description: `Logged in as ${user.username}`,
+        });
+      } else {
+        toast({
+          title: "Login failed",
+          description: "Please check your credentials and try again",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast({
+        title: "Login failed",
+        description: "An error occurred during login",
+        variant: "destructive",
+      });
+    }
+  };
   
   // Fetch all conversations
   const { data: conversations = [], isLoading } = useQuery<Conversation[]>({
@@ -620,6 +679,65 @@ export default function MessagesPage() {
     createConversationMutation.mutate(data);
   };
   
+  // Show login form if not authenticated
+  if (isAuthLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Card className="w-[400px]">
+          <CardHeader>
+            <CardTitle className="text-xl text-center">Loading...</CardTitle>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
+  if (!isAuthenticated) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Card className="w-[400px]">
+          <CardHeader>
+            <CardTitle className="text-xl text-center">Login Required</CardTitle>
+            <p className="text-center text-muted-foreground">Please login to access Messages</p>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input 
+                  id="username" 
+                  value={loginForm.username} 
+                  onChange={e => setLoginForm({...loginForm, username: e.target.value})}
+                  placeholder="projectleader"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input 
+                  id="password" 
+                  type="password"
+                  value={loginForm.password} 
+                  onChange={e => setLoginForm({...loginForm, password: e.target.value})}
+                  placeholder="******"
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full">Login</Button>
+              <p className="text-xs text-center text-muted-foreground pt-4">
+                Hint: Try projectleader / 123456
+              </p>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Main content when authenticated
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
