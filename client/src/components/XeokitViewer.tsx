@@ -31,22 +31,22 @@ export function XeokitViewer({ fileName, onLoadComplete }: XeokitViewerProps) {
       });
       
       // Add a NavCube to help with orientation
-      const navCube = new NavCubePlugin(viewer, {
+      new NavCubePlugin(viewer, {
         canvasId: "navCubeCanvas",
         visible: true
       });
       
       // Add section planes plugin for cutting the model
-      const sectionPlanes = new SectionPlanesPlugin(viewer, {
+      new SectionPlanesPlugin(viewer, {
         overviewCanvasId: "mySectionPlanesOverviewCanvas",
         overviewVisible: false
       });
       
       // Add BCF viewpoints capability
-      const bcfViewpoints = new BCFViewpointsPlugin(viewer);
+      new BCFViewpointsPlugin(viewer);
       
       // Add measurement tools 
-      const measurements = new DistanceMeasurementsPlugin(viewer);
+      new DistanceMeasurementsPlugin(viewer);
       
       // Store the viewer reference
       viewerRef.current = viewer;
@@ -69,22 +69,22 @@ export function XeokitViewer({ fileName, onLoadComplete }: XeokitViewerProps) {
     if (!viewerRef.current || !fileName) return;
     
     const loadModel = async () => {
+      // This null check is redundant but helps TypeScript understand we've already checked
+      if (!viewerRef.current) return;
+      
       try {
         setIsLoading(true);
         setErrorMessage(null);
         
         // Create an XKT loader for IFC models
-        const xktLoader = new XKTLoaderPlugin(viewerRef.current);
+        const viewer = viewerRef.current as Viewer; // Type assertion tells TypeScript this is not null
+        const xktLoader = new XKTLoaderPlugin(viewer);
         
-        // We would normally process the IFC file to XKT format
-        // Since direct IFC loading is more complex, we'll use a placeholder model here
-        
-        // For testing purposes, we can load a model from a URL
-        // This would normally be your converted XKT file from the IFC
+        // For testing purposes, we use a sample model
         const modelId = "model";
         
         // In production, you would convert IFC to XKT on the server and load that
-        // For now we'll just display a placeholder model
+        // For now we'll use a placeholder model from xeokit examples
         await xktLoader.load({
           id: modelId,
           src: "https://xeokit.io/examples/models/xkt/schependomlaan/schependomlaan.xkt",
@@ -92,8 +92,11 @@ export function XeokitViewer({ fileName, onLoadComplete }: XeokitViewerProps) {
         });
         
         // Fit view to loaded model
-        viewerRef.current.cameraFlight.flyTo({
-          aabb: viewerRef.current.scene.getAABB(modelId),
+        const modelIds = [modelId];
+        const aabb = viewer.scene.getAABB(modelIds);
+        
+        viewer.cameraFlight.flyTo({
+          aabb: aabb,
           duration: 0.5
         });
         
@@ -112,7 +115,7 @@ export function XeokitViewer({ fileName, onLoadComplete }: XeokitViewerProps) {
     };
     
     loadModel();
-  }, [fileData, fileName, onLoadComplete]);
+  }, [fileName, onLoadComplete]);
   
   return (
     <div ref={containerRef} className="w-full h-full relative">
@@ -120,7 +123,7 @@ export function XeokitViewer({ fileName, onLoadComplete }: XeokitViewerProps) {
       <canvas id="xeokit-canvas" className="w-full h-full"></canvas>
       
       {/* Canvas for the navigation cube */}
-      <canvas id="navCubeCanvas" className="absolute bottom-4 right-4"></canvas>
+      <canvas id="navCubeCanvas" className="absolute bottom-4 right-4 w-[100px] h-[100px]"></canvas>
       
       {/* Canvas for section planes overview */}
       <canvas id="mySectionPlanesOverviewCanvas" className="hidden"></canvas>
