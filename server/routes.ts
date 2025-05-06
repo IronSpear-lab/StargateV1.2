@@ -2,7 +2,7 @@ import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { eq, and, desc, asc, inArray, ne } from "drizzle-orm";
 import { db } from "../db";
 import { users } from "@shared/schema";
 import multer from "multer";
@@ -888,6 +888,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+  
+  // Get unread message count for the current user
+  app.get(`${apiPrefix}/messages/unread-count`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const userId = req.user!.id;
+      
+      // Get all conversations where user is a participant
+      const userConversations = await db.select()
+        .from(conversationParticipants)
+        .where(eq(conversationParticipants.userId, userId));
+      
+      const conversationIds = userConversations.map(uc => uc.conversationId);
+      
+      // Get all messages from these conversations where sender is not current user
+      const allMessages = await db.select()
+        .from(messages)
+        .where(and(
+          inArray(messages.conversationId, conversationIds),
+          ne(messages.senderId, userId) // Only count messages not sent by current user
+        ))
+        .orderBy(asc(messages.sentAt));
+      
+      // Count messages where the current user is not in readBy array
+      const unreadMessages = allMessages.filter(msg => 
+        !msg.readBy.includes(userId)
+      );
+      
+      res.json({ count: unreadMessages.length });
+    } catch (error) {
+      console.error("Error counting unread messages:", error);
+      res.status(500).json({ error: "Failed to count unread messages" });
     }
   });
 
