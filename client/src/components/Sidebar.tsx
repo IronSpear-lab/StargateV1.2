@@ -31,7 +31,7 @@ import {
   Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMobile } from "@/hooks/use-mobile";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -140,6 +140,210 @@ function AddFolderDialog({
   );
 }
 
+// Profile Settings Dialog Component
+function ProfileSettingsDialog({
+  isOpen,
+  onClose,
+  currentUser,
+  onSaveProfile
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  currentUser: any;
+  onSaveProfile: (formData: FormData) => void;
+}) {
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+  
+  // Reset state when dialog opens or user changes
+  useEffect(() => {
+    if (isOpen && currentUser) {
+      // Set preview to current user avatar if available
+      if (currentUser?.avatarUrl) {
+        setPreviewUrl(currentUser.avatarUrl);
+      } else if (currentUser?.role) {
+        setPreviewUrl(`/avatars/${currentUser.role}.svg`);
+      } else {
+        setPreviewUrl(null);
+      }
+      setSelectedImage(null);
+    }
+  }, [isOpen, currentUser]);
+  
+  // Handle file selection
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({
+          title: "Filen är för stor",
+          description: "Vänligen välj en bild som är mindre än 5MB",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Ogiltigt filformat",
+          description: "Vänligen välj en bildfil",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setSelectedImage(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  const handleBrowseClick = () => {
+    fileInputRef.current?.click();
+  };
+  
+  const handleSave = () => {
+    if (!selectedImage && !previewUrl) {
+      toast({
+        title: "Ingen bild vald",
+        description: "Vänligen välj en profilbild",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const formData = new FormData();
+    if (selectedImage) {
+      formData.append('avatar', selectedImage);
+    } else if (previewUrl && previewUrl.startsWith('/avatars/')) {
+      // Use existing avatar from predefined ones
+      formData.append('avatarPath', previewUrl);
+    }
+    
+    onSaveProfile(formData);
+    onClose();
+  };
+  
+  const handleSelectPredefined = (role: string) => {
+    setSelectedImage(null);
+    setPreviewUrl(`/avatars/${role}.svg`);
+  };
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Profilinställningar</DialogTitle>
+          <DialogDescription>
+            Ändra din profilbild
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="grid gap-6 py-4">
+          <div className="flex flex-col items-center gap-4">
+            <Avatar className="h-24 w-24">
+              {previewUrl ? (
+                <AvatarImage src={previewUrl} alt="Förhandsgranskning" />
+              ) : null}
+              <AvatarFallback className={`text-lg ${
+                currentUser?.role === 'project_leader' ? 'bg-[#727cf5]' :
+                currentUser?.role === 'admin' ? 'bg-[#fa5c7c]' :
+                currentUser?.role === 'superuser' ? 'bg-[#ffc35a]' :
+                'bg-[#0acf97]'
+              }`}>
+                {currentUser?.username ? currentUser.username.slice(0, 2).toUpperCase() : "??"}
+              </AvatarFallback>
+            </Avatar>
+            
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/*"
+              className="hidden"
+            />
+            
+            <Button type="button" onClick={handleBrowseClick} variant="outline">
+              Välj från dator
+            </Button>
+          </div>
+          
+          <Separator />
+          
+          <div>
+            <Label className="mb-2 block">Eller välj en fördefinierad avatar</Label>
+            <div className="grid grid-cols-4 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="p-2 h-auto"
+                onClick={() => handleSelectPredefined('admin')}
+              >
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src="/avatars/admin.svg" alt="Admin" />
+                  <AvatarFallback className="bg-[#fa5c7c]">AD</AvatarFallback>
+                </Avatar>
+              </Button>
+              
+              <Button
+                type="button"
+                variant="outline"
+                className="p-2 h-auto"
+                onClick={() => handleSelectPredefined('project_leader')}
+              >
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src="/avatars/project_leader.svg" alt="Project Leader" />
+                  <AvatarFallback className="bg-[#727cf5]">PL</AvatarFallback>
+                </Avatar>
+              </Button>
+              
+              <Button
+                type="button"
+                variant="outline"
+                className="p-2 h-auto"
+                onClick={() => handleSelectPredefined('user')}
+              >
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src="/avatars/user.svg" alt="User" />
+                  <AvatarFallback className="bg-[#0acf97]">US</AvatarFallback>
+                </Avatar>
+              </Button>
+              
+              <Button
+                type="button"
+                variant="outline"
+                className="p-2 h-auto"
+                onClick={() => handleSelectPredefined('superuser')}
+              >
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src="/avatars/superuser.svg" alt="Super User" />
+                  <AvatarFallback className="bg-[#ffc35a]">SU</AvatarFallback>
+                </Avatar>
+              </Button>
+            </div>
+          </div>
+        </div>
+        
+        <DialogFooter className="sm:justify-end">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Avbryt
+          </Button>
+          <Button type="button" onClick={handleSave}>
+            Spara
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function Sidebar({ className }: SidebarProps): JSX.Element {
   const { user, logoutMutation } = useAuth();
   const [location] = useLocation();
@@ -152,10 +356,14 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   });
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [selectedParentFolder, setSelectedParentFolder] = useState("");
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const { toast } = useToast();
   
   // State för att lagra mappar som användaren har skapat
   const [userCreatedFolders, setUserCreatedFolders] = useState<{name: string; parent: string}[]>([]);
+  
+  // State för användarens profilbild
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
   
   // Import queryClient vid toppen av filen
   const queryClient = useQueryClient();
@@ -907,8 +1115,19 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           )}>
             <div className="relative group">
               <Avatar className="h-8 w-8">
-                <AvatarImage src="https://github.com/shadcn.png" />
-                <AvatarFallback>
+                {userAvatar ? (
+                  <AvatarImage src={userAvatar} alt={user?.username || "Användare"} />
+                ) : user?.role ? (
+                  <AvatarImage src={`/avatars/${user.role}.svg`} alt={user.username} />
+                ) : (
+                  <AvatarImage src="https://github.com/shadcn.png" />
+                )}
+                <AvatarFallback className={`${
+                  user?.role === 'project_leader' ? 'bg-[#727cf5]' :
+                  user?.role === 'admin' ? 'bg-[#fa5c7c]' :
+                  user?.role === 'superuser' ? 'bg-[#ffc35a]' :
+                  'bg-[#0acf97]'
+                }`}>
                   {user ? getInitials(user.username) : "??"}
                 </AvatarFallback>
               </Avatar>
@@ -933,7 +1152,12 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
             
             {isOpen && (
               <div className="ml-auto">
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8" 
+                  onClick={() => setProfileDialogOpen(true)}
+                >
                   <Settings className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </div>
@@ -948,6 +1172,41 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         onClose={() => setFolderDialogOpen(false)}
         parentFolderName={selectedParentFolder}
         onCreateFolder={createFolder}
+      />
+      
+      {/* Profile settings dialog */}
+      <ProfileSettingsDialog
+        isOpen={profileDialogOpen}
+        onClose={() => setProfileDialogOpen(false)}
+        currentUser={user}
+        onSaveProfile={(formData) => {
+          // I verklig implementering skulle detta anropa ett API-endpoint
+          // som uppdaterar användarens profilbild
+          
+          // För demo: spara profilbilden i lokal state
+          if (formData.get('avatarPath')) {
+            const avatarPath = formData.get('avatarPath') as string;
+            setUserAvatar(avatarPath);
+            toast({
+              title: "Profilbild uppdaterad",
+              description: "Din profilbild har uppdaterats med den valda bilden"
+            });
+          } else if (formData.get('avatar')) {
+            // I en verklig implementering skulle vi ladda upp bilden till servern
+            // och spara URL:en i databasen
+            const file = formData.get('avatar') as File;
+            const reader = new FileReader();
+            reader.onload = () => {
+              const dataUrl = reader.result as string;
+              setUserAvatar(dataUrl);
+              toast({
+                title: "Profilbild uppdaterad",
+                description: "Din profilbild har uppdaterats med den uppladdade bilden"
+              });
+            };
+            reader.readAsDataURL(file);
+          }
+        }}
       />
     </>
   );
