@@ -836,6 +836,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Set up multer for chat attachments
+  const chatUploadsDir = path.join(process.cwd(), 'uploads/chat');
+  
+  // Create chat uploads directory if it doesn't exist
+  if (!fs.existsSync(chatUploadsDir)) {
+    fs.mkdirSync(chatUploadsDir, { recursive: true });
+  }
+  
+  const chatStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, chatUploadsDir);
+    },
+    filename: function (req, file, cb) {
+      const uniquePrefix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, uniquePrefix + '-' + file.originalname);
+    }
+  });
+  
+  const chatUpload = multer({ 
+    storage: chatStorage,
+    fileFilter: (req, file, cb) => {
+      // Accept PDF files and common document/image types
+      const allowedFileTypes = [
+        'application/pdf',
+        'image/jpeg',
+        'image/png',
+        'image/gif',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      ];
+      
+      if (allowedFileTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Only PDF, images, and Office documents are allowed.'), false);
+      }
+    }
+  });
+  
   // Send a message in a conversation
   app.post(`${apiPrefix}/conversations/:id/messages`, async (req, res) => {
     try {
@@ -965,6 +1006,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error counting unread messages:", error);
       res.status(500).json({ error: "Failed to count unread messages" });
+    }
+  });
+  
+  // Endpoint for uploading file attachments to messages
+  app.post(`${apiPrefix}/conversations/:id/attachment`, chatUpload.single('file'), async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+      
+      const conversationId = parseInt(req.params.id);
+      const { content } = req.body;
+      
+      // Check if user is a participant
+      const participant = await db.select()
+        .from(conversationParticipants)
+        .where(and(
+          eq(conversationParticipants.conversationId, conversationId),
+          eq(conversationParticipants.userId, req.user!.id)
+        ))
+        .then(res => res[0]);
+      
+      if (!participant) {
+        return res.status(403).json({ error: "You are not a participant in this conversation" });
+      }
+      
+      // Get file information
+      const fileName = req.file.originalname;
+      const fileType = req.file.mimetype;
+      const fileSize = req.file.size;
+      const filePath = req.file.path;
+      
+      // Create URL for the attachment
+      const fileUrl = `/api/chat-attachments/${path.basename(filePath)}`;
+      
+      // Initialize readBy with sender ID (message is already read by sender)
+      const readBy = [req.user!.id];
+      
+      // Create message with attachment
+      const newMessage = await db.insert(messages)
+        .values({
+          content: content || `Shared a file: ${fileName}`,
+          conversationId,
+          senderId: req.user!.id,
+          sentAt: new Date(),
+          readBy,
+          attachmentUrl: fileUrl,
+          attachmentName: fileName,
+          attachmentType: fileType,
+          attachmentSize: fileSize
+        })
+        .returning()
+        .then(res => res[0]);
+      
+      // Update lastMessageAt in conversation
+      await db.update(conversations)
+        .set({ lastMessageAt: new Date() })
+        .where(eq(conversations.id, conversationId));
+      
+      // Get sender details
+      const sender = await db.select()
+        .from(users)
+        .where(eq(users.id, req.user!.id))
+        .then(res => res[0]);
+      
+      const messageWithSender = {
+        ...newMessage,
+        sender: {
+          id: sender.id,
+          username: sender.username,
+          role: sender.role
+        }
+      };
+      
+      console.log(`User ${req.user!.id} sent file attachment ${fileName} in conversation ${conversationId}`);
+      
+      res.status(201).json(messageWithSender);
+    } catch (error) {
+      console.error("Error sending file attachment:", error);
+      res.status(500).json({ error: "Failed to send file attachment" });
+    }
+  });
+  
+  // Serve chat attachments
+  app.get(`${apiPrefix}/chat-attachments/:filename`, (req, res) => {
+    try {
+      const filename = req.params.filename;
+      const filepath = path.join(process.cwd(), 'uploads/chat', filename);
+      
+      // Check if file exists
+      if (!fs.existsSync(filepath)) {
+        return res.status(404).json({ error: "Attachment not found" });
+      }
+      
+      // Set content type based on file extension
+      const ext = path.extname(filename).toLowerCase();
+      const mimeTypes: {[key: string]: string} = {
+        '.pdf': 'application/pdf',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.gif': 'image/gif',
+        '.doc': 'application/msword',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.xls': 'application/vnd.ms-excel',
+        '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      };
+      
+      const contentType = mimeTypes[ext] || 'application/octet-stream';
+      res.setHeader('Content-Type', contentType);
+      
+      // Stream the file
+      const fileStream = fs.createReadStream(filepath);
+      fileStream.pipe(res);
+    } catch (error) {
+      console.error("Error serving attachment:", error);
+      res.status(500).json({ error: "Failed to serve attachment" });
     }
   });
   
