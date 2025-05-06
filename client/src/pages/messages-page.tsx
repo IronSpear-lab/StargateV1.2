@@ -28,6 +28,13 @@ import { format, isToday, isYesterday } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Sidebar } from "@/components/Sidebar";
 
+// Custom event declaration for TypeScript
+declare global {
+  interface WindowEventMap {
+    'conversation-read': CustomEvent<{ conversationId: number }>;
+  }
+}
+
 // Types for the messaging system
 interface UserBasic {
   id: number;
@@ -93,6 +100,35 @@ const ConversationsList = ({
   // Track unread messages (This would normally be server-driven)
   const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
   
+  // Den här ref-flaggan indikerar om vi har faktiskt läst meddelanden för den valda konversationen
+  const conversationReadByRef = useRef<Record<number, boolean>>({});
+  const queryClient = useQueryClient(); // Importera från global scope
+
+  // Lyssna på ändringar i conversationReadByRef data från MessageView via vår globala EventEmitter
+  useEffect(() => {
+    // Lyssna på MessageView-komponenten om när meddelanden faktiskt har markerats som lästa
+    const handleConversationRead = (event: CustomEvent) => {
+      const { conversationId } = event.detail;
+      if (conversationId) {
+        console.log("ConversationList: Received conversation read event for:", conversationId);
+        conversationReadByRef.current[conversationId] = true;
+        
+        // Ta bort notifikation när konversationen markeras som läst
+        setUnreadCounts(prev => {
+          const updated = { ...prev };
+          delete updated[conversationId];
+          return updated;
+        });
+      }
+    };
+
+    // Skapa en anpassad händelselyssnare
+    window.addEventListener('conversation-read', handleConversationRead as EventListener);
+    return () => {
+      window.removeEventListener('conversation-read', handleConversationRead as EventListener);
+    };
+  }, []);
+  
   // Calculate actual unread messages based on message readBy arrays
   useEffect(() => {
     const actualUnread: Record<number, number> = {};
@@ -102,9 +138,13 @@ const ConversationsList = ({
     if (!currentUserId) return;
     
     conversations.forEach(conv => {
+      // Om konversationen är markerad som läst i vår ref, visa inte notifikationer
+      if (conversationReadByRef.current[conv.id]) {
+        return;
+      }
+      
       // Don't immediately hide unread indicator when conversation is selected
       // Keep showing the unread badge until the conversation is fully loaded
-      // This prevents the badge from disappearing before content is visible
       if (conv.latestMessage) {
         // Count messages not read by current user
         const unreadCount = conv.messages?.filter(msg => 
@@ -119,15 +159,12 @@ const ConversationsList = ({
     });
     
     setUnreadCounts(prev => {
-      // Keep existing unread count for selected conversation
-      // so indicator doesn't disappear until fully loaded
-      if (selectedConversation && prev[selectedConversation]) {
-        return {
-          ...actualUnread,
-          [selectedConversation]: prev[selectedConversation]
-        };
+      const newCounts = { ...actualUnread };
+      // Behåll alltid olästa räknare för valda konversationer tills de markeras som lästa
+      if (selectedConversation && prev[selectedConversation] && !conversationReadByRef.current[selectedConversation]) {
+        newCounts[selectedConversation] = prev[selectedConversation];
       }
-      return actualUnread;
+      return newCounts;
     });
   }, [conversations, selectedConversation]);
   
@@ -252,8 +289,15 @@ const MessageView = ({
       );
       return response.json();
     },
-    onSuccess: () => {
-      console.log("Successfully marked messages as read");
+    onSuccess: (data, variables) => {
+      console.log("Successfully marked messages as read for conversation:", variables);
+      
+      // Skicka en anpassad event för att meddela ConversationsList att denna konversation har lästs
+      const event = new CustomEvent('conversation-read', { 
+        detail: { conversationId: variables } 
+      });
+      window.dispatchEvent(event);
+      
       // Invalidate queries to update UI
       queryClient.invalidateQueries({ queryKey: ['/api/messages/unread-count'] });
       queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
@@ -264,8 +308,16 @@ const MessageView = ({
   useEffect(() => {
     if (conversation && conversation.id && !hasMarkedAsRead.current) {
       console.log("Conversation loaded, marking as read:", conversation.id);
-      markAsReadMutation.mutate(conversation.id);
-      hasMarkedAsRead.current = true;
+      
+      // Fördröj markering av läst tills konversationen är fullt synlig
+      const timer = setTimeout(() => {
+        markAsReadMutation.mutate(conversation.id);
+        hasMarkedAsRead.current = true;
+      }, 500); // Vänta 500ms för att säkerställa att UI har renderats
+      
+      return () => {
+        clearTimeout(timer);
+      };
     }
     
     return () => {
