@@ -25,6 +25,7 @@ import VaultPage from "@/pages/vault-page";
 import RitningarPage from "@/pages/ritningar-page";
 import DwgIfcViewerPage from "@/pages/dwg-ifc-viewer-page";
 import SimpleViewerPage from "@/pages/simple-viewer-page";
+import MessagesPage from "@/pages/messages-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -58,6 +59,8 @@ function Router() {
       <ProtectedRoute path="/simple-viewer" component={SimpleViewerPage} />
       <ProtectedRoute path="/vault" component={VaultPage} />
       <ProtectedRoute path="/vault/:section" component={VaultPage} />
+      <ProtectedRoute path="/messages" component={MessagesPage} />
+      <ProtectedRoute path="/communication/messages" component={MessagesPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>

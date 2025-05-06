@@ -291,10 +291,19 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       ]
     },
     {
-      href: "/communication",
+      href: "#",
       label: "Communication",
       icon: <MessageSquare className="w-5 h-5" />,
-      active: location === "/communication"
+      active: location === "/communication" || location === "/messages" || location.startsWith("/communication/"),
+      children: [
+        {
+          href: "/messages",
+          label: "Messages",
+          icon: <Mail className="w-4 h-4" />,
+          active: location === "/messages" || location === "/communication/messages",
+          indent: 1
+        }
+      ]
     },
     {
       href: "/3d-viewer",
