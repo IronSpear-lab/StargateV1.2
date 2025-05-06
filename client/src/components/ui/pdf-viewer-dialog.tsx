@@ -30,7 +30,9 @@ export function PDFViewerDialog({
 }: PDFViewerDialogProps) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
+  // Store both scale and page width state
   const [scale, setScale] = useState(1);
+  const [pdfWidth, setPdfWidth] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -44,7 +46,7 @@ export function PDFViewerDialog({
     setPageNumber(1);
   }, [url]);
   
-  // Center PDF when it first loads or when page changes
+  // Center PDF when it first loads, when page changes, or when scale changes
   useEffect(() => {
     if (!loading && containerRef.current) {
       setTimeout(() => {
@@ -56,7 +58,7 @@ export function PDFViewerDialog({
         }
       }, 50);
     }
-  }, [loading, pageNumber]);
+  }, [loading, pageNumber, scale]);
 
   const handleZoomIn = () => {
     // When zooming in, reset scroll position to center
@@ -103,6 +105,17 @@ export function PDFViewerDialog({
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
     setLoading(false);
+    
+    // Recalculate container width whenever the PDF loads
+    if (containerRef.current) {
+      const containerWidth = containerRef.current.clientWidth;
+      console.log("Container width:", containerWidth);
+      
+      // Use container width minus padding for PDF width
+      // This ensures PDF stays within viewport when zooming
+      const availableWidth = containerWidth - 100;  // 50px padding on each side
+      setPdfWidth(availableWidth);
+    }
   };
 
   const nextPage = () => {
@@ -241,29 +254,32 @@ export function PDFViewerDialog({
             </div>
           )}
           
-          <div className="flex justify-center items-center" style={{ minWidth: "100%", padding: "32px" }}>
-            <Document
-              file={url}
-              onLoadSuccess={onDocumentLoadSuccess}
-              loading={null}
-              error={
-                <div className="flex flex-col items-center justify-center h-40">
-                  <p className="text-red-500 mb-2">Kunde inte ladda dokumentet</p>
-                  <p className="text-gray-600 text-sm">Kontrollera att det är en giltig PDF-fil</p>
+          <div className="flex justify-center items-center w-full" style={{ padding: "32px" }}>
+            <div className="max-w-full overflow-hidden" style={{ marginLeft: 'auto', marginRight: 'auto' }}>
+              <Document
+                file={url}
+                onLoadSuccess={onDocumentLoadSuccess}
+                loading={null}
+                error={
+                  <div className="flex flex-col items-center justify-center h-40">
+                    <p className="text-red-500 mb-2">Kunde inte ladda dokumentet</p>
+                    <p className="text-gray-600 text-sm">Kontrollera att det är en giltig PDF-fil</p>
+                  </div>
+                }
+              >
+                <div className="shadow-lg transform-origin-center">
+                  <Page
+                    pageNumber={pageNumber}
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
+                    scale={scale}
+                    loading={null}
+                    className={loading ? "hidden" : ""}
+                    width={pdfWidth}
+                  />
                 </div>
-              }
-            >
-              <div className="shadow-lg">
-                <Page
-                  pageNumber={pageNumber}
-                  renderTextLayer={false}
-                  renderAnnotationLayer={false}
-                  scale={scale}
-                  loading={null}
-                  className={loading ? "hidden" : ""}
-                />
-              </div>
-            </Document>
+              </Document>
+            </div>
           </div>
         </div>
         
