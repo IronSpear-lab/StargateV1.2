@@ -736,6 +736,7 @@ export default function MessagesPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   // State for authentication
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
