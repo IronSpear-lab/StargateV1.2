@@ -80,20 +80,168 @@ export function XeokitViewer({ fileName, onLoadComplete }: XeokitViewerProps) {
         const viewer = viewerRef.current as Viewer; // Type assertion tells TypeScript this is not null
         const xktLoader = new XKTLoaderPlugin(viewer);
         
-        // For testing purposes, we use a sample model
-        const modelId = "model";
+        // Skapa en enkel byggnadsmodell direkt med xeokit istället för att ladda externt
+        // Create a simple building directly with xeokit entities
+        const modelId = "house-model";
         
-        // In production, you would convert IFC to XKT on the server and load that
-        // For now we'll use a placeholder model from xeokit examples
-        await xktLoader.load({
-          id: modelId,
-          src: "https://xeokit.io/examples/models/xkt/schependomlaan/schependomlaan.xkt",
-          edges: true
+        // Create a ground plane
+        viewer.scene.createMesh({
+          id: "ground",
+          primitive: "triangles",
+          positions: [
+            -20, 0, -20, 20, 0, -20, 20, 0, 20, -20, 0, 20
+          ],
+          normals: [
+            0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0
+          ],
+          indices: [
+            0, 1, 2, 0, 2, 3
+          ],
+          edgeIndices: [
+            0, 1, 1, 2, 2, 3, 3, 0
+          ],
+          material: {
+            type: "MetallicMaterial",
+            baseColor: [0.6, 0.7, 0.6]
+          }
         });
         
-        // Fit view to loaded model
-        const modelIds = [modelId];
-        const aabb = viewer.scene.getAABB(modelIds);
+        // Create house base/foundation
+        viewer.scene.createMesh({
+          id: "house-foundation",
+          primitive: "triangles",
+          positions: [
+            -5, 0, -4, 5, 0, -4, 5, 0, 4, -5, 0, 4,
+            -5, 0.3, -4, 5, 0.3, -4, 5, 0.3, 4, -5, 0.3, 4
+          ],
+          indices: [
+            0, 1, 2, 0, 2, 3, // Bottom face
+            4, 5, 6, 4, 6, 7, // Top face
+            0, 4, 5, 0, 5, 1, // Side face
+            1, 5, 6, 1, 6, 2, // Side face
+            2, 6, 7, 2, 7, 3, // Side face
+            3, 7, 4, 3, 4, 0  // Side face
+          ],
+          material: {
+            type: "MetallicMaterial",
+            baseColor: [0.6, 0.6, 0.6]
+          }
+        });
+        
+        // Create house walls
+        viewer.scene.createMesh({
+          id: "house-walls",
+          primitive: "triangles",
+          positions: [
+            -4.5, 0.3, -3.5, 4.5, 0.3, -3.5, 4.5, 0.3, 3.5, -4.5, 0.3, 3.5,
+            -4.5, 3.0, -3.5, 4.5, 3.0, -3.5, 4.5, 3.0, 3.5, -4.5, 3.0, 3.5
+          ],
+          indices: [
+            4, 5, 6, 4, 6, 7, // Top face
+            0, 4, 5, 0, 5, 1, // Side face (back)
+            1, 5, 6, 1, 6, 2, // Side face (right)
+            2, 6, 7, 2, 7, 3, // Side face (front)
+            3, 7, 4, 3, 4, 0  // Side face (left)
+          ],
+          material: {
+            type: "MetallicMaterial",
+            baseColor: [0.9, 0.9, 0.9]
+          }
+        });
+        
+        // Create house roof
+        viewer.scene.createMesh({
+          id: "house-roof",
+          primitive: "triangles",
+          positions: [
+            -4.5, 3.0, -3.5, 4.5, 3.0, -3.5, 4.5, 3.0, 3.5, -4.5, 3.0, 3.5,
+            0, 5.5, 0 // Roof peak
+          ],
+          indices: [
+            0, 1, 4, // Roof panel (back)
+            1, 2, 4, // Roof panel (right)
+            2, 3, 4, // Roof panel (front)
+            3, 0, 4  // Roof panel (left)
+          ],
+          material: {
+            type: "MetallicMaterial",
+            baseColor: [0.8, 0.2, 0.2]
+          }
+        });
+        
+        // Create door
+        viewer.scene.createMesh({
+          id: "house-door",
+          primitive: "triangles",
+          positions: [
+            -1, 0.3, 3.51, 1, 0.3, 3.51, 1, 2.5, 3.51, -1, 2.5, 3.51
+          ],
+          indices: [
+            0, 1, 2, 0, 2, 3 // Door face
+          ],
+          material: {
+            type: "MetallicMaterial",
+            baseColor: [0.6, 0.4, 0.2]
+          }
+        });
+        
+        // Create windows
+        viewer.scene.createMesh({
+          id: "window-front",
+          primitive: "triangles",
+          positions: [
+            -3.5, 1.2, 3.51, -2.0, 1.2, 3.51, -2.0, 2.2, 3.51, -3.5, 2.2, 3.51
+          ],
+          indices: [
+            0, 1, 2, 0, 2, 3 // Window face
+          ],
+          material: {
+            type: "MetallicMaterial",
+            baseColor: [0.3, 0.6, 0.9],
+            metallic: 0.1,
+            roughness: 0.2
+          }
+        });
+        
+        viewer.scene.createMesh({
+          id: "window-front2",
+          primitive: "triangles",
+          positions: [
+            2.0, 1.2, 3.51, 3.5, 1.2, 3.51, 3.5, 2.2, 3.51, 2.0, 2.2, 3.51
+          ],
+          indices: [
+            0, 1, 2, 0, 2, 3 // Window face
+          ],
+          material: {
+            type: "MetallicMaterial",
+            baseColor: [0.3, 0.6, 0.9],
+            metallic: 0.1,
+            roughness: 0.2
+          }
+        });
+        
+        viewer.scene.createMesh({
+          id: "window-side",
+          primitive: "triangles",
+          positions: [
+            4.51, 1.2, -1.5, 4.51, 1.2, 0, 4.51, 2.2, 0, 4.51, 2.2, -1.5
+          ],
+          indices: [
+            0, 1, 2, 0, 2, 3 // Window face
+          ],
+          material: {
+            type: "MetallicMaterial",
+            baseColor: [0.3, 0.6, 0.9],
+            metallic: 0.1,
+            roughness: 0.2
+          }
+        });
+        
+        // Calculate a bounding box for our model
+        const aabb = {
+          min: [-5, 0, -4],
+          max: [5, 5.5, 4]
+        };
         
         viewer.cameraFlight.flyTo({
           aabb: aabb,
