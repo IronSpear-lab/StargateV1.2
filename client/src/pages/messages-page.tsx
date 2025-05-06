@@ -61,6 +61,10 @@ interface Conversation {
   participants: Participant[];
   latestMessage?: Message;
   messages?: Message[];
+  // For UI display name in conversation list
+  displayName?: string;
+  // For unread message count
+  unreadCount?: number;
 }
 
 function formatMessageDate(dateString: string) {
@@ -84,6 +88,32 @@ const ConversationsList = ({
   selectedConversation: number | null, 
   onSelectConversation: (id: number) => void 
 }) => {
+  // Track unread messages (This would normally be server-driven)
+  const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
+  
+  // Demo function to simulate unread messages - in a real app this would be server-driven
+  useEffect(() => {
+    // This is just for demo - in a real app we'd track read status on the server
+    const mockUnread: Record<number, number> = {};
+    conversations.forEach(conv => {
+      // Random unread count for demo purposes
+      if (conv.id !== selectedConversation && Math.random() > 0.6) {
+        mockUnread[conv.id] = Math.floor(Math.random() * 5) + 1;
+      }
+    });
+    setUnreadCounts(mockUnread);
+  }, [conversations.length]);
+  
+  // When a conversation is selected, mark it as read
+  useEffect(() => {
+    if (selectedConversation !== null) {
+      setUnreadCounts(prev => ({
+        ...prev,
+        [selectedConversation]: 0
+      }));
+    }
+  }, [selectedConversation]);
+  
   return (
     <ScrollArea className="h-[calc(100vh-13rem)] pr-3">
       {conversations.length === 0 ? (
@@ -106,26 +136,27 @@ const ConversationsList = ({
                 </AvatarFallback>
               </Avatar>
             ) : (
-              <Avatar className="h-10 w-10 border">
-                <AvatarImage src="" />
-                <AvatarFallback>
-                  {/* Safely get participant initials */}
-                  {conversation.participants && conversation.participants.length > 0
-                    ? (conversation.participants.find(p => p.userId !== (window as any).currentUser?.id)?.user?.username || "UN").substring(0, 2).toUpperCase()
-                    : "UN"}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="h-10 w-10 border">
+                  <AvatarImage src="" />
+                  <AvatarFallback>
+                    {/* Use participant initials */}
+                    {conversation.displayName ? conversation.displayName.substring(0, 2).toUpperCase() : "UN"}
+                  </AvatarFallback>
+                </Avatar>
+                
+                {/* Unread message indicator */}
+                {unreadCounts[conversation.id] > 0 && (
+                  <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {unreadCounts[conversation.id]}
+                  </div>
+                )}
+              </div>
             )}
             <div className="flex-1 overflow-hidden">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium truncate">
-                  {conversation.title || 
-                    (conversation.participants && conversation.participants.length > 0
-                      ? conversation.participants
-                          .filter(p => p.userId !== (window as any).currentUser?.id)
-                          .map(p => p.user?.username || "Unknown")
-                          .join(", ")
-                      : "New Conversation")}
+                  {conversation.title || conversation.displayName || "New Conversation"}
                 </h3>
                 {conversation.latestMessage && (
                   <span className="text-xs text-muted-foreground">
@@ -152,6 +183,7 @@ const MessageView = ({
   onSendMessage: (content: string) => void 
 }) => {
   const [newMessage, setNewMessage] = useState("");
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,6 +192,16 @@ const MessageView = ({
       setNewMessage("");
     }
   };
+  
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      const scrollArea = scrollAreaRef.current;
+      setTimeout(() => {
+        scrollArea.scrollTop = scrollArea.scrollHeight;
+      }, 100);
+    }
+  }, [conversation?.messages?.length]);
   
   if (!conversation) {
     return (
@@ -175,9 +217,6 @@ const MessageView = ({
   
   // Ensure we have valid messages to iterate through
   const messages = conversation.messages || [];
-  
-  // Log the messages for debugging
-  console.log("Processing messages:", messages.length, "total messages");
   
   messages.forEach(message => {
     const date = new Date(message.sentAt).toLocaleDateString();
@@ -199,16 +238,16 @@ const MessageView = ({
             <Avatar className="h-8 w-8">
               <AvatarImage src="" />
               <AvatarFallback>
-                {/* Safely get participant initials */}
-                {conversation.participants && conversation.participants.length > 0
-                  ? (conversation.participants.find(p => p.userId !== (window as any).currentUser?.id)?.user?.username || "UN").substring(0, 2).toUpperCase()
-                  : "UN"}
+                {/* Use participant initials from displayName if available */}
+                {conversation.displayName 
+                  ? conversation.displayName.substring(0, 2).toUpperCase() 
+                  : (conversation.participants?.find(p => p.userId !== (window as any).currentUser?.id)?.user?.username || "UN").substring(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
           )}
           <div>
             <h3 className="font-medium text-sm">
-              {conversation.title || 
+              {conversation.title || conversation.displayName || 
                 (conversation.participants && conversation.participants.length > 0
                   ? conversation.participants
                       .filter(p => p.userId !== (window as any).currentUser?.id)
@@ -237,7 +276,11 @@ const MessageView = ({
         </DropdownMenu>
       </div>
       
-      <ScrollArea className="flex-1 p-3">
+      {/* Use a regular div with scroll instead of ScrollArea for direct scroll control */}
+      <div 
+        ref={scrollAreaRef}
+        className="flex-1 p-3 overflow-y-auto"
+      >
         {Object.entries(messagesByDate).map(([date, messages]) => (
           <div key={date} className="mb-4">
             <div className="flex items-center gap-2 mb-2">
@@ -306,18 +349,7 @@ const MessageView = ({
             <p className="text-sm">Be the first to send a message!</p>
           </div>
         )}
-        
-        {/* Debug information to help troubleshoot */}
-        <div className="p-2 text-xs bg-muted/30 rounded m-2">
-          <pre className="overflow-auto max-h-32 text-xs">
-            {JSON.stringify({ 
-              hasMessages: Boolean(conversation.messages?.length),
-              messageCount: conversation.messages?.length || 0,
-              messagesByDate: Object.keys(messagesByDate).length
-            }, null, 2)}
-          </pre>
-        </div>
-      </ScrollArea>
+      </div>
       
       <div className="p-3 border-t">
         <form onSubmit={handleSendMessage} className="flex gap-2">
@@ -581,6 +613,21 @@ export default function MessagesPage() {
   const { data: conversations = [], isLoading } = useQuery<Conversation[]>({
     queryKey: ['/api/conversations'],
     staleTime: 10000, // 10 seconds
+    select: (data) => {
+      // Make sure we use the conversation participants to get the correct display name
+      return data.map(conversation => {
+        // For conversation list display, we need to show the other participant's name
+        // If you're the sender, it should show the recipient's name
+        const otherParticipant = conversation.participants?.find(p => 
+          p.userId !== (window as any).currentUser?.id
+        );
+        
+        return {
+          ...conversation,
+          displayName: otherParticipant?.user?.username || "Unknown"
+        };
+      });
+    }
   });
   
   // Fetch selected conversation with messages
