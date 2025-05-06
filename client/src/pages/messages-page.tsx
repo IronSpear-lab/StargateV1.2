@@ -911,7 +911,17 @@ export default function MessagesPage() {
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async ({ conversationId, content }: { conversationId: number, content: string }) => {
-      // Optimistiskt uppdatera meddelanden innan servern svarar
+      // Gör serveranropet
+      const response = await apiRequest(
+        "POST", 
+        `/api/conversations/${conversationId}/messages`, 
+        { content }
+      );
+      return response.json();
+    },
+    // Optimistisk uppdatering innan servern svarar
+    onMutate: async ({ conversationId, content }) => {
+      // Skapa en tillfällig optimistisk meddelande-objekt
       const optNewMessage = {
         id: Date.now(), // Tillfälligt ID som ersätts när servern svarar
         content,
@@ -924,7 +934,13 @@ export default function MessagesPage() {
         sender: (window as any).currentUser
       };
       
-      // Uppdatera cache med det optimistiska meddelandet
+      // Avbryt pågående hämtningar för att undvika att de skriver över vår optimistiska uppdatering
+      await queryClient.cancelQueries({ queryKey: ['/api/conversations', conversationId] });
+      
+      // Spara tidigare data för att kunna återställa vid fel
+      const previousData = queryClient.getQueryData(['/api/conversations', conversationId]);
+      
+      // Uppdatera cache med optimistiskt data
       if (selectedConversation) {
         queryClient.setQueryData(
           ['/api/conversations', conversationId], 
@@ -938,29 +954,41 @@ export default function MessagesPage() {
             };
           }
         );
+        
+        // Scrolla till botten när vi gör en optimistisk uppdatering
+        // Använd en fördröjning för att ge DOM tid att uppdateras
+        setTimeout(() => {
+          const messageContainers = document.querySelectorAll('.flex-1.p-3.overflow-y-auto');
+          messageContainers.forEach((container) => {
+            if (container instanceof HTMLElement) {
+              container.scrollTop = container.scrollHeight;
+              console.log("Scrolled to bottom after sending message, height:", container.scrollHeight);
+            }
+          });
+        }, 50);
       }
       
-      // Gör serveranropet
-      const response = await apiRequest(
-        "POST", 
-        `/api/conversations/${conversationId}/messages`, 
-        { content }
-      );
-      return response.json();
+      // Returnera tidigare data för att kunna återställa vid fel
+      return { previousData };
     },
     onSuccess: (newMessage, variables) => {
       // Invalidera för att hämta korrekta data från servern
       queryClient.invalidateQueries({ queryKey: ['/api/conversations', variables.conversationId] });
       // Uppdatera konversationslistan för att visa senaste meddelandet
       queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
-      
-      // Scrollning hanteras nu i MessageView-komponenten genom en egen scrollToBottom-funktion
-      // som anropas efter att meddelandet skickats.
     },
-    onError: (error: Error) => {
+    onError: (error, variables, context) => {
+      // Vid fel, återställ till föregående data
+      if (context?.previousData) {
+        queryClient.setQueryData(
+          ['/api/conversations', variables.conversationId], 
+          context.previousData
+        );
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to send message: " + error.message,
+        description: "Failed to send message: " + (error as Error).message,
         variant: "destructive",
       });
       
@@ -997,43 +1025,13 @@ export default function MessagesPage() {
   
   const handleSendMessage = (content: string) => {
     if (selectedConversationId) {
-      // Immediately apply an optimistic update to show the message right away
-      if (selectedConversation) {
-        const optNewMessage = {
-          id: Date.now(), // Tillfälligt ID som ersätts när servern svarar
-          content,
-          conversationId: selectedConversationId,
-          senderId: (window as any).currentUser?.id,
-          sentAt: new Date().toISOString(),
-          readBy: [],
-          edited: false,
-          attachmentUrl: null,
-          sender: (window as any).currentUser
-        };
-        
-        // Update cache directly with the optimistic message
-        queryClient.setQueryData(
-          ['/api/conversations', selectedConversationId], 
-          (oldData: Conversation | undefined) => {
-            if (!oldData) return oldData;
-            
-            return {
-              ...oldData,
-              lastMessageAt: new Date().toISOString(),
-              messages: [...(oldData.messages || []), optNewMessage]
-            };
-          }
-        );
-        
-        // Scroll to bottom after optimistic update with a delay to ensure DOM has updated
-        scrollToBottom(50);
-      }
-      
-      // Then send to server
+      // Skicka till servern direkt - optimistisk uppdatering hanteras av sendMessageMutation
       sendMessageMutation.mutate({ 
         conversationId: selectedConversationId, 
         content 
       });
+      
+      // Scrollningshantering sker i MessageView-komponenten
     }
   };
   
