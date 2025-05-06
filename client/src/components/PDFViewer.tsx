@@ -1959,43 +1959,49 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                       {/* Visa befintliga markeringar inuti samma div som PDF-sidan */}
                       {annotations
                         .filter(ann => ann.rect.pageNumber === pageNumber)
-                        .map(annotation => (
-                          <div
-                            key={annotation.id}
-                            id={`annotation-${annotation.id}`}
-                            className={`annotation border-2 transition-all duration-300 ${
-                              activeAnnotation?.id === annotation.id 
-                                ? 'z-20 ring-4 ring-blue-400 scale-105 shadow-lg' 
-                                : 'z-10 hover:scale-102 hover:shadow-md'
-                            }`}
-                            style={{
-                              position: 'absolute',
-                              left: `${Number(annotation.rect.x) * scale}px`,
-                              top: `${Number(annotation.rect.y) * scale}px`,
-                              width: `${annotation.rect.width * scale}px`,
-                              height: `${annotation.rect.height * scale}px`,
-                              backgroundColor: `${annotation.color}33`,
-                              borderColor: annotation.color,
-                              boxShadow: activeAnnotation?.id === annotation.id ? '0 0 15px rgba(59, 130, 246, 0.6)' : 'none',
-                              transform: activeAnnotation?.id === annotation.id ? 'scale(1.05)' : 'scale(1)',
-                              transformOrigin: 'center',
-                              cursor: 'pointer',
-                              pointerEvents: 'auto',
-                              // Tillägg för att behålla proportioner när storlek ändras
-                              boxSizing: 'border-box'
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation(); // Förhindra att klicket når underliggande element
-                              zoomToAnnotation(annotation);
-                            }}
-                          >
-                            {/* Lägg till en liten indikator i hörnet som alltid syns tydligt */}
-                            <div 
-                              className="absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800"
-                              style={{ backgroundColor: annotation.color }}
-                            />
-                          </div>
-                        ))}
+                        .map(annotation => {
+                          // Beräkna position baserat på original-koordinater, inte skalade
+                          const originalX = Number(annotation.rect.x);
+                          const originalY = Number(annotation.rect.y);
+                          const originalWidth = annotation.rect.width;
+                          const originalHeight = annotation.rect.height;
+                          
+                          return (
+                            <div
+                              key={annotation.id}
+                              id={`annotation-${annotation.id}`}
+                              className={`annotation border-2 transition-all duration-300 ${
+                                activeAnnotation?.id === annotation.id 
+                                  ? 'z-20 ring-4 ring-blue-400 shadow-lg' 
+                                  : 'z-10 hover:shadow-md'
+                              }`}
+                              style={{
+                                position: 'absolute',
+                                left: `${originalX}px`,
+                                top: `${originalY}px`,
+                                width: `${originalWidth}px`,
+                                height: `${originalHeight}px`,
+                                backgroundColor: `${annotation.color}33`,
+                                borderColor: annotation.color,
+                                boxShadow: activeAnnotation?.id === annotation.id ? '0 0 15px rgba(59, 130, 246, 0.6)' : 'none',
+                                transformOrigin: 'center',
+                                cursor: 'pointer',
+                                pointerEvents: 'auto',
+                                boxSizing: 'border-box'
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation(); // Förhindra att klicket når underliggande element
+                                zoomToAnnotation(annotation);
+                              }}
+                            >
+                              {/* Lägg till en liten indikator i hörnet som alltid syns tydligt */}
+                              <div 
+                                className="absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800"
+                                style={{ backgroundColor: annotation.color }}
+                              />
+                            </div>
+                          );
+                        })}
                         
                       {/* Visa temporär markering under pågående markering */}
                       {markingStart && markingEnd && (
