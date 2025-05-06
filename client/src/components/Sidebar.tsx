@@ -158,11 +158,19 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   const [userCreatedFolders, setUserCreatedFolders] = useState<{name: string; parent: string}[]>([]);
   
   // Fetch unread message count
-  const { data: unreadData } = useQuery<{ count: number }>({
+  const { data: unreadData, setData: setUnreadData } = useQuery<{ count: number }>({
     queryKey: ['/api/messages/unread-count'],
     refetchInterval: 5000, // Polling every 5 seconds for faster updates
     staleTime: 2000, // Mark data as stale quickly
   });
+  
+  // Synka denna hook med URL:en för att nollställa notifikationer när användaren öppnar meddelanden
+  useEffect(() => {
+    if (location === "/messages" && unreadData?.count && unreadData.count > 0) {
+      // Direkt nollställning av notifikationsikonen när sidan öppnas
+      setUnreadData({ count: 0 });
+    }
+  }, [location, unreadData?.count]);
 
   useEffect(() => {
     setIsOpen(!isMobile);
