@@ -584,7 +584,7 @@ export default function RitningarPage() {
       </div>
       
       {/* PDF-visare */}
-      <PDFViewerDialogNew
+      <PDFViewerDialog
         open={!!selectedFile}
         onOpenChange={(open) => {
           if (!open) setSelectedFile(null);
