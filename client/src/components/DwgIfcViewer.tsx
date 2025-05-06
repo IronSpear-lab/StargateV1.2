@@ -106,8 +106,11 @@ export function DwgIfcViewer() {
           viewerContainerRef.current.clientHeight
         );
         
-        // Clear container and add the canvas element
-        viewerContainerRef.current.innerHTML = '';
+        // Clear container and add the canvas element - safely
+        if (viewerContainerRef.current.childNodes.length > 0) {
+          viewerContainerRef.current.textContent = ''; // Safer than innerHTML=''
+        }
+        
         viewerContainerRef.current.appendChild(renderer.domElement);
         
         // Add light
