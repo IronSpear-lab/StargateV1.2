@@ -278,6 +278,29 @@ const MessageView = ({
   const queryClient = useQueryClient();
   const hasMarkedAsRead = useRef(false);
   
+  // Helper to scroll to bottom with a specified delay to ensure DOM update
+  const scrollToBottom = (delay = 50) => {
+    setTimeout(() => {
+      if (scrollAreaRef.current) {
+        requestAnimationFrame(() => {
+          if (scrollAreaRef.current) {
+            scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+            console.log("Scrolled to bottom, height:", scrollAreaRef.current.scrollHeight);
+          }
+        });
+      }
+    }, delay);
+  };
+  
+  // Helper function to check if user is at bottom of scroll
+  const isUserAtBottom = () => {
+    if (!scrollAreaRef.current) return false;
+    
+    const { scrollTop, scrollHeight, clientHeight } = scrollAreaRef.current;
+    // Consider "at bottom" if within 100px of the bottom
+    return scrollHeight - scrollTop - clientHeight < 100;
+  };
+  
   // Mark messages as read mutation
   const markAsReadMutation = useMutation({
     mutationFn: async (conversationId: number) => {
@@ -314,8 +337,7 @@ const MessageView = ({
     }
   });
   
-  // When conversation is fully loaded and component is mounted, mark messages as read
-  // and scroll to bottom
+  // When conversation is fully loaded, mark messages as read AND scroll to bottom
   useEffect(() => {
     if (conversation && conversation.id && !hasMarkedAsRead.current) {
       console.log("Conversation loaded, marking as read:", conversation.id);
@@ -334,7 +356,7 @@ const MessageView = ({
     };
   }, [conversation?.id]);
   
-  // Always scroll to bottom when messages array changes length (new messages)
+  // Always scroll to bottom when messages array changes (new messages)
   useEffect(() => {
     if (conversation?.messages?.length) {
       scrollToBottom(100);
@@ -346,21 +368,11 @@ const MessageView = ({
     if (newMessage.trim()) {
       onSendMessage(newMessage);
       setNewMessage("");
+      
+      // Force scroll to bottom after sending a message
+      scrollToBottom(50);
     }
   };
-  
-  // Helper function to check if user is at bottom of scroll
-  const isUserAtBottom = () => {
-    if (!scrollAreaRef.current) return false;
-    
-    const { scrollTop, scrollHeight, clientHeight } = scrollAreaRef.current;
-    // Consider "at bottom" if within 100px of the bottom
-    return scrollHeight - scrollTop - clientHeight < 100;
-  };
-  
-  // Denna scrollningseffekt har flyttats till en separat scrollToBottom-funktion
-  // och anropas nu från olika ställen i koden med en delay för att säkerställa  
-  // att DOM-uppdateringar har slutförts
   
   if (!conversation) {
     return (
@@ -942,8 +954,8 @@ export default function MessagesPage() {
       // Uppdatera konversationslistan för att visa senaste meddelandet
       queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
       
-      // Vi behöver inte scrolla här - scrollning hanteras vid sändningstillfället baserat på 
-      // användarens scrollposition. Optimistisk UI har redan scrollat om det behövdes.
+      // Scrollning hanteras nu i MessageView-komponenten genom en egen scrollToBottom-funktion
+      // som anropas efter att meddelandet skickats.
     },
     onError: (error: Error) => {
       toast({
