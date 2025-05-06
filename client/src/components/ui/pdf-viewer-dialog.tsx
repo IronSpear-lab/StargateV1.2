@@ -193,26 +193,28 @@ export function PDFViewerDialog({
             </div>
           )}
           
-          <Document
-            file={url}
-            onLoadSuccess={onDocumentLoadSuccess}
-            loading={null}
-            error={
-              <div className="flex flex-col items-center justify-center h-40">
-                <p className="text-red-500 mb-2">Kunde inte ladda dokumentet</p>
-                <p className="text-gray-600 text-sm">Kontrollera att det är en giltig PDF-fil</p>
-              </div>
-            }
-          >
-            <Page
-              pageNumber={pageNumber}
-              renderTextLayer={false}
-              renderAnnotationLayer={false}
-              scale={scale}
+          <div className="p-8">
+            <Document
+              file={url}
+              onLoadSuccess={onDocumentLoadSuccess}
               loading={null}
-              className={loading ? "hidden" : ""}
-            />
-          </Document>
+              error={
+                <div className="flex flex-col items-center justify-center h-40">
+                  <p className="text-red-500 mb-2">Kunde inte ladda dokumentet</p>
+                  <p className="text-gray-600 text-sm">Kontrollera att det är en giltig PDF-fil</p>
+                </div>
+              }
+            >
+              <Page
+                pageNumber={pageNumber}
+                renderTextLayer={false}
+                renderAnnotationLayer={false}
+                scale={scale}
+                loading={null}
+                className={loading ? "hidden" : ""}
+              />
+            </Document>
+          </div>
         </div>
         
         {/* Page navigation buttons for mobile */}
