@@ -315,7 +315,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       label: "Communication",
       icon: <MessageSquare className="w-5 h-5" />,
       active: location === "/communication" || location === "/messages" || location.startsWith("/communication/"),
-      badge: unreadData?.count > 0 ? String(unreadData.count) : undefined, // Visar reella antalet olästa meddelanden
+      badge: unreadData?.count && unreadData.count > 0 ? String(unreadData.count) : undefined,
       children: [
         {
           href: "/messages",
@@ -323,7 +323,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           icon: <Mail className="w-4 h-4" />,
           active: location === "/messages" || location === "/communication/messages",
           indent: 1,
-          badge: unreadData?.count > 0 ? String(unreadData.count) : undefined // Visar reella antalet olästa meddelanden
+          badge: unreadData?.count && unreadData.count > 0 ? String(unreadData.count) : undefined
         }
       ]
     },

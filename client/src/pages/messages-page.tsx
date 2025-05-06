@@ -49,6 +49,7 @@ interface Message {
   senderId: number;
   sentAt: string;
   sender?: UserBasic;
+  readBy: number[]; // Array of user IDs who have read this message
 }
 
 interface Conversation {
@@ -347,8 +348,8 @@ const MessageView = ({
                     {!isMine && (
                       <Avatar className="h-8 w-8 mt-1">
                         <AvatarImage src="" />
-                        <AvatarFallback>
-                          {message.sender?.username.substring(0, 2).toUpperCase() || "UN"}
+                        <AvatarFallback className={message.senderId === (window as any).currentUser?.id ? "bg-primary/20" : "bg-secondary/20"}>
+                          {message.sender?.username ? message.sender.username.substring(0, 2).toUpperCase() : "UN"}
                         </AvatarFallback>
                       </Avatar>
                     )}
