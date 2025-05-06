@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PDFViewerDialog } from "@/components/ui/pdf-viewer-dialog";
+import EnhancedPDFViewer from "@/components/EnhancedPDFViewer";
 import { 
   storeFiles, 
   getUploadedFileUrl, 
