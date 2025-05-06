@@ -282,6 +282,15 @@ const MessageView = ({
   const markAsReadMutation = useMutation({
     mutationFn: async (conversationId: number) => {
       console.log("Marking conversation as read:", conversationId);
+      
+      // Skicka en anpassad event omedelbart för att uppdatera UI direkt
+      // utan att vänta på serversvaret
+      const event = new CustomEvent('conversation-read', { 
+        detail: { conversationId: conversationId } 
+      });
+      window.dispatchEvent(event);
+      
+      // Sedan skicka anropet till servern
       const response = await apiRequest(
         "POST",
         `/api/messages/mark-as-read`,
@@ -292,13 +301,14 @@ const MessageView = ({
     onSuccess: (data, variables) => {
       console.log("Successfully marked messages as read for conversation:", variables);
       
-      // Skicka en anpassad event för att meddela ConversationsList att denna konversation har lästs
-      const event = new CustomEvent('conversation-read', { 
-        detail: { conversationId: variables } 
-      });
-      window.dispatchEvent(event);
+      // Invalidate queries to update data from server
+      queryClient.invalidateQueries({ queryKey: ['/api/messages/unread-count'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+    },
+    onError: (error) => {
+      console.error("Failed to mark messages as read:", error);
       
-      // Invalidate queries to update UI
+      // Återställ händelsen vid fel
       queryClient.invalidateQueries({ queryKey: ['/api/messages/unread-count'] });
       queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
     }
@@ -309,15 +319,13 @@ const MessageView = ({
     if (conversation && conversation.id && !hasMarkedAsRead.current) {
       console.log("Conversation loaded, marking as read:", conversation.id);
       
-      // Fördröj markering av läst tills konversationen är fullt synlig
-      const timer = setTimeout(() => {
+      // Använd requestAnimationFrame för att säkerställa att UI har renderats
+      // Detta är mycket snabbare än setTimeout men väntar fortfarande på att skärmen har uppdaterats
+      requestAnimationFrame(() => {
         markAsReadMutation.mutate(conversation.id);
         hasMarkedAsRead.current = true;
-      }, 500); // Vänta 500ms för att säkerställa att UI har renderats
-      
-      return () => {
-        clearTimeout(timer);
-      };
+        // Händelsen skickas nu i mutationsfunktionen så vi behöver inte skicka den här
+      });
     }
     
     return () => {
@@ -334,13 +342,21 @@ const MessageView = ({
     }
   };
   
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom när meddelanden ändras, men bara om det inte kommer 
+  // från vår optimistiska uppdatering (som redan har scrollningskod)
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      const scrollArea = scrollAreaRef.current;
-      setTimeout(() => {
-        scrollArea.scrollTop = scrollArea.scrollHeight;
-      }, 100);
+    // Scrollar endast när det kommer nya meddelanden från andra personer
+    // (våra egna meddelanden hanteras direkt i handleSendMessage)
+    const messages = conversation?.messages || [];
+    const lastMessage = messages[messages.length - 1];
+    const isFromOtherUser = lastMessage && lastMessage.senderId !== (window as any).currentUser?.id;
+    
+    if (isFromOtherUser && scrollAreaRef.current) {
+      requestAnimationFrame(() => {
+        if (scrollAreaRef.current) {
+          scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+        }
+      });
     }
   }, [conversation?.messages?.length]);
   
@@ -880,14 +896,57 @@ export default function MessagesPage() {
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async ({ conversationId, content }: { conversationId: number, content: string }) => {
-      const response = await apiRequest("POST", `/api/conversations/${conversationId}/messages`, { content });
+      // Optimistiskt uppdatera meddelanden innan servern svarar
+      const optNewMessage = {
+        id: Date.now(), // Tillfälligt ID som ersätts när servern svarar
+        content,
+        conversationId,
+        senderId: (window as any).currentUser?.id,
+        sentAt: new Date().toISOString(),
+        readBy: [],
+        edited: false,
+        attachmentUrl: null,
+        sender: (window as any).currentUser
+      };
+      
+      // Uppdatera cache med det optimistiska meddelandet
+      if (selectedConversation) {
+        queryClient.setQueryData(
+          ['/api/conversations', conversationId], 
+          (oldData: Conversation | undefined) => {
+            if (!oldData) return oldData;
+            
+            return {
+              ...oldData,
+              lastMessageAt: new Date().toISOString(),
+              messages: [...(oldData.messages || []), optNewMessage]
+            };
+          }
+        );
+      }
+      
+      // Gör serveranropet
+      const response = await apiRequest(
+        "POST", 
+        `/api/conversations/${conversationId}/messages`, 
+        { content }
+      );
       return response.json();
     },
-    onSuccess: () => {
-      // Invalidate the conversation to refresh messages
-      queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversationId] });
-      // Also update the conversation list to show the latest message
+    onSuccess: (newMessage, variables) => {
+      // Invalidera för att hämta korrekta data från servern
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations', variables.conversationId] });
+      // Uppdatera konversationslistan för att visa senaste meddelandet
       queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      
+      // Scrolla automatiskt till botten efter att servern har svarat
+      if (scrollAreaRef.current) {
+        requestAnimationFrame(() => {
+          if (scrollAreaRef.current) {
+            scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+          }
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -895,6 +954,12 @@ export default function MessagesPage() {
         description: "Failed to send message: " + error.message,
         variant: "destructive",
       });
+      
+      // Vid fel, se till att uppdatera från servern igen
+      if (selectedConversationId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversationId] });
+        queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      }
     }
   });
   
@@ -904,6 +969,15 @@ export default function MessagesPage() {
         conversationId: selectedConversationId, 
         content 
       });
+      
+      // Scrolla omedelbart ner vid sändning (innan servern svarar)
+      if (scrollAreaRef.current) {
+        requestAnimationFrame(() => {
+          if (scrollAreaRef.current) {
+            scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+          }
+        });
+      }
     }
   };
   
