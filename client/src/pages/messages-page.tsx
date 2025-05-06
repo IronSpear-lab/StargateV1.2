@@ -272,13 +272,9 @@ const MessageView = ({
             </Avatar>
           ) : (
             <Avatar className="h-8 w-8">
-              <AvatarImage 
-                src={`/avatars/${conversation.displayName || 'user'}.svg`}
-                alt={conversation.displayName || "User"}
-              />
-              <AvatarFallback>
-                {conversation.displayName ? conversation.displayName.substring(0, 2).toUpperCase() : "US"}
-              </AvatarFallback>
+              <div className="w-full h-full rounded-full bg-[#727cf5] flex items-center justify-center">
+                <span className="text-white font-medium text-sm">PL</span>
+              </div>
             </Avatar>
           )}
           <div>
@@ -347,13 +343,9 @@ const MessageView = ({
                   <div className="flex gap-2 max-w-[80%]">
                     {!isMine && (
                       <Avatar className="h-8 w-8 mt-1">
-                        <AvatarImage 
-                          src={`/avatars/${message.sender?.username || 'user'}.svg`} 
-                          alt={message.sender?.username || "User"} 
-                        />
-                        <AvatarFallback className="bg-secondary/20">
-                          {message.sender?.username ? message.sender.username.substring(0, 2).toUpperCase() : "US"}
-                        </AvatarFallback>
+                        <div className="w-full h-full rounded-full bg-[#0acf97] flex items-center justify-center">
+                          <span className="text-white font-medium text-sm">US</span>
+                        </div>
                       </Avatar>
                     )}
                     <div>
