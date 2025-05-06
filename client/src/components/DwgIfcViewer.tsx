@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { MeshBasicMaterial } from 'three';  // Explicitly import for type checking
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { IfcAPI } from 'web-ifc';
 
 import { Upload, FileText, Loader2, XCircle, ZoomIn, ZoomOut, RotateCw, Expand, Ruler, Map, Navigation, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -146,105 +148,101 @@ export function DwgIfcViewer() {
         
         // Initialize IFC or create a placeholder based on file type
         if (extension === 'ifc') {
-          // Create a more complex building-like structure for IFC
-          const buildingGroup = new THREE.Group();
-          scene.add(buildingGroup);
-          
-          // Base/foundation
-          const baseGeometry = new THREE.BoxGeometry(5, 0.2, 4);
-          const baseMaterial = new THREE.MeshPhongMaterial({ color: 0xcccccc });
-          const base = new THREE.Mesh(baseGeometry, baseMaterial);
-          base.position.y = -0.5;
-          buildingGroup.add(base);
-          
-          // Create walls
-          const wallMaterial = new THREE.MeshPhongMaterial({ color: 0xf5f5f5 });
-          
-          // Left wall
-          const leftWallGeometry = new THREE.BoxGeometry(0.2, 1.5, 4);
-          const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
-          leftWall.position.set(-2.4, 0.25, 0);
-          buildingGroup.add(leftWall);
-          
-          // Right wall
-          const rightWallGeometry = new THREE.BoxGeometry(0.2, 1.5, 4);
-          const rightWall = new THREE.Mesh(rightWallGeometry, wallMaterial);
-          rightWall.position.set(2.4, 0.25, 0);
-          buildingGroup.add(rightWall);
-          
-          // Back wall
-          const backWallGeometry = new THREE.BoxGeometry(5, 1.5, 0.2);
-          const backWall = new THREE.Mesh(backWallGeometry, wallMaterial);
-          backWall.position.set(0, 0.25, -2);
-          buildingGroup.add(backWall);
-          
-          // Front wall with door
-          const frontWallLeftGeometry = new THREE.BoxGeometry(2, 1.5, 0.2);
-          const frontWallLeft = new THREE.Mesh(frontWallLeftGeometry, wallMaterial);
-          frontWallLeft.position.set(-1.5, 0.25, 2);
-          buildingGroup.add(frontWallLeft);
-          
-          const frontWallRightGeometry = new THREE.BoxGeometry(2, 1.5, 0.2);
-          const frontWallRight = new THREE.Mesh(frontWallRightGeometry, wallMaterial);
-          frontWallRight.position.set(1.5, 0.25, 2);
-          buildingGroup.add(frontWallRight);
-          
-          // Add a window to the right wall
-          const windowMaterial = new THREE.MeshPhongMaterial({ color: 0xadd8e6, transparent: true, opacity: 0.6 });
-          const windowGeometry = new THREE.PlaneGeometry(1, 0.8);
-          const windowMesh = new THREE.Mesh(windowGeometry, windowMaterial);
-          windowMesh.position.set(2.31, 0.3, 0);
-          windowMesh.rotation.y = Math.PI / 2;
-          buildingGroup.add(windowMesh);
-          
-          // Roof
-          const roofGeometry = new THREE.ConeGeometry(3.5, 1.5, 4);
-          const roofMaterial = new THREE.MeshPhongMaterial({ color: 0xa52a2a });
-          const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-          roof.position.set(0, 1.5, 0);
-          roof.rotation.y = Math.PI / 4;
-          buildingGroup.add(roof);
-          
-          // Create simple furniture
-          const tableMaterial = new THREE.MeshPhongMaterial({ color: 0x8b4513 });
-          const tableTopGeometry = new THREE.BoxGeometry(1.5, 0.1, 1);
-          const tableTop = new THREE.Mesh(tableTopGeometry, tableMaterial);
-          tableTop.position.set(0, 0, 0);
-          
-          const tableLegGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.7);
-          const tableLeg1 = new THREE.Mesh(tableLegGeometry, tableMaterial);
-          tableLeg1.position.set(-0.65, -0.4, -0.4);
-          const tableLeg2 = new THREE.Mesh(tableLegGeometry, tableMaterial);
-          tableLeg2.position.set(0.65, -0.4, -0.4);
-          const tableLeg3 = new THREE.Mesh(tableLegGeometry, tableMaterial);
-          tableLeg3.position.set(-0.65, -0.4, 0.4);
-          const tableLeg4 = new THREE.Mesh(tableLegGeometry, tableMaterial);
-          tableLeg4.position.set(0.65, -0.4, 0.4);
-          
-          const tableGroup = new THREE.Group();
-          tableGroup.add(tableTop, tableLeg1, tableLeg2, tableLeg3, tableLeg4);
-          tableGroup.position.set(0, 0, 0);
-          buildingGroup.add(tableGroup);
-          
-          // Position the building
-          buildingGroup.position.y = 0.5;
-          
-          // Position camera for better view
-          camera.position.set(6, 4, 6);
+          // Setup camera for IFC viewing
+          camera.position.set(10, 10, 10);
           camera.lookAt(0, 0, 0);
           
-          // In a full implementation, we would initialize the IFC API here
-          // const ifcAPI = new IfcAPI();
-          // await ifcAPI.Init();
-          // const modelID = await ifcAPI.LoadModel(await selectedFile.data.arrayBuffer());
-          // And then create geometry for each element in the model
+          // Add controls for better interaction
+          const controls = new THREE.OrbitControls(camera, renderer.domElement);
+          controls.enableDamping = true;
+          controls.dampingFactor = 0.1;
+          controls.screenSpacePanning = true;
+          
+          // Create IFC loader and setup
+          const ifcLoader = new IFCLoader();
+          
+          // Use the web-ifc-three loader to load the IFC file
+          setLoading(true);
+          
+          // Create a function to load the IFC model
+          const loadIFCModel = async () => {
+            try {
+              // Convert the selected file to an array buffer
+              const arrayBuffer = await selectedFile.data.arrayBuffer();
+              const url = URL.createObjectURL(new Blob([arrayBuffer]));
+              
+              // Load the IFC model
+              ifcLoader.load(url, (ifcModel) => {
+                // Scale the model to a reasonable size
+                const box = new THREE.Box3().setFromObject(ifcModel);
+                const size = box.getSize(new THREE.Vector3());
+                const maxSize = Math.max(size.x, size.y, size.z);
+                const scale = 10 / maxSize;
+                
+                ifcModel.scale.set(scale, scale, scale);
+                
+                // Center the model
+                box.setFromObject(ifcModel);
+                box.getCenter(ifcModel.position);
+                ifcModel.position.multiplyScalar(-1);
+                
+                // Add the model to the scene
+                scene.add(ifcModel);
+                
+                // Position camera to see the whole model
+                const boxSize = box.getSize(new THREE.Vector3());
+                const boxCenter = box.getCenter(new THREE.Vector3());
+                const maxDim = Math.max(boxSize.x, boxSize.y, boxSize.z);
+                const fov = camera.fov * (Math.PI / 180);
+                let cameraDistance = Math.abs(maxDim / Math.sin(fov / 2));
+                
+                // Adjust distance for better viewing
+                cameraDistance *= 1.5;
+                
+                // Position camera
+                camera.position.set(
+                  boxCenter.x + cameraDistance,
+                  boxCenter.y + cameraDistance,
+                  boxCenter.z + cameraDistance
+                );
+                camera.lookAt(boxCenter);
+                
+                // Update controls
+                controls.target.copy(boxCenter);
+                controls.update();
+                
+                // Hide loading state
+                setLoading(false);
+                
+                toast({
+                  title: "IFC-modell laddad",
+                  description: "Den faktiska IFC-modellen har renderats framgångsrikt.",
+                });
+              },
+              (xhr) => {
+                // Show loading progress
+                const percentage = Math.round((xhr.loaded / xhr.total) * 100);
+                console.log('Loading IFC: ' + percentage + '%');
+              },
+              (error) => {
+                console.error('Error loading IFC file:', error);
+                setError('Kunde inte ladda IFC-filen. Kontrollera filformatet.');
+                setLoading(false);
+              });
+            } catch (err) {
+              console.error('Error processing IFC file:', err);
+              setError('Kunde inte bearbeta IFC-filen.');
+              setLoading(false);
+            }
+          };
+          
+          loadIFCModel();
           
           // Animation function
           let animationId = 0;
           
           const animate = () => {
-            // Slowly rotate the building for visualization
-            buildingGroup.rotation.y += 0.002;
+            controls.update(); // Update controls in each frame
             
             // Render scene
             renderer.render(scene, camera);
@@ -255,12 +253,6 @@ export function DwgIfcViewer() {
           
           // Start animation
           animate();
-          
-          // Update the state
-          toast({
-            title: "IFC-modell laddad",
-            description: "En representativ byggnad visas nu. I en fullständig implementation skulle den faktiska IFC-filen renderas.",
-          });
         } else {
           // Create a simple cube for DWG or as fallback
           const geometry = new THREE.BoxGeometry(2, 2, 2);
