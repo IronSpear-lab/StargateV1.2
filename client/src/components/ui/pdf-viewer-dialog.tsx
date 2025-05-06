@@ -106,15 +106,20 @@ export function PDFViewerDialog({
     setNumPages(numPages);
     setLoading(false);
     
-    // Recalculate container width whenever the PDF loads
+    // Rather than constraining the PDF width, let it scale naturally
+    // and rely on the container's scroll capabilities
+    setPdfWidth(undefined);
+    
+    // Center the PDF after it loads
     if (containerRef.current) {
-      const containerWidth = containerRef.current.clientWidth;
-      console.log("Container width:", containerWidth);
-      
-      // Use container width minus padding for PDF width
-      // This ensures PDF stays within viewport when zooming
-      const availableWidth = containerWidth - 100;  // 50px padding on each side
-      setPdfWidth(availableWidth);
+      setTimeout(() => {
+        if (containerRef.current) {
+          // Center horizontally
+          containerRef.current.scrollLeft = (containerRef.current.scrollWidth - containerRef.current.clientWidth) / 2;
+          // Center vertically
+          containerRef.current.scrollTop = (containerRef.current.scrollHeight - containerRef.current.clientHeight) / 2;
+        }
+      }, 100);
     }
   };
 
@@ -242,7 +247,10 @@ export function PDFViewerDialog({
             display: "flex", 
             justifyContent: "center",
             background: "#f5f5f5",
-            cursor: isDragging ? "grabbing" : "grab"
+            cursor: isDragging ? "grabbing" : "grab",
+            // Detta är viktigt för att möjliggöra scroll och panorera i alla riktningar
+            position: "relative",
+            overscrollBehavior: "auto"
           }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -254,33 +262,32 @@ export function PDFViewerDialog({
             </div>
           )}
           
-          <div className="flex justify-center items-center w-full" style={{ padding: "32px" }}>
-            <div className="max-w-full overflow-hidden" style={{ marginLeft: 'auto', marginRight: 'auto' }}>
-              <Document
-                file={url}
-                onLoadSuccess={onDocumentLoadSuccess}
+          <Document
+            file={url}
+            onLoadSuccess={onDocumentLoadSuccess}
+            loading={null}
+            error={
+              <div className="flex flex-col items-center justify-center h-40">
+                <p className="text-red-500 mb-2">Kunde inte ladda dokumentet</p>
+                <p className="text-gray-600 text-sm">Kontrollera att det är en giltig PDF-fil</p>
+              </div>
+            }
+            className="w-full min-w-full flex justify-center items-center"
+          >
+            {/* PDF är centrerad direkt i scrollbehållaren utan mellanliggande div-element som kan begränsa scollning */}
+            {/* Lägger till extra plats för att säkerställa att PDF:en kan scrollas åt alla håll */}
+            <div className="shadow-lg" style={{ margin: '64px', minWidth: '150%', minHeight: '150%' }}>
+              <Page
+                pageNumber={pageNumber}
+                renderTextLayer={false}
+                renderAnnotationLayer={false}
+                scale={scale}
                 loading={null}
-                error={
-                  <div className="flex flex-col items-center justify-center h-40">
-                    <p className="text-red-500 mb-2">Kunde inte ladda dokumentet</p>
-                    <p className="text-gray-600 text-sm">Kontrollera att det är en giltig PDF-fil</p>
-                  </div>
-                }
-              >
-                <div className="shadow-lg transform-origin-center">
-                  <Page
-                    pageNumber={pageNumber}
-                    renderTextLayer={false}
-                    renderAnnotationLayer={false}
-                    scale={scale}
-                    loading={null}
-                    className={loading ? "hidden" : ""}
-                    width={pdfWidth}
-                  />
-                </div>
-              </Document>
+                className={loading ? "hidden" : ""}
+                // Ta bort width-begränsningen helt för att låta PDF skala naturligt
+              />
             </div>
-          </div>
+          </Document>
         </div>
         
         {/* Page navigation buttons for mobile */}
