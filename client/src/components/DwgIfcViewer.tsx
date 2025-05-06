@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
+import { SimpleIFCViewer } from './SimpleIFCViewer';
 
 // Simple type for our file storage
 type FileEntry = {
@@ -939,68 +940,34 @@ export function DwgIfcViewer() {
                   <Home className="h-4 w-4" />
                 </div>
               </div>
-              <div 
-                ref={viewerContainerRef} 
-                className="h-full w-full relative"
-              >
-                {/* Canvas is auto-created by Three.js renderer */}
-                <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur-sm p-2 rounded border">
-                  <p className="text-sm font-medium">{selectedFile.name}</p>
-                  <div className="flex items-center mt-1">
-                    <p className="text-xs text-muted-foreground mr-2">
-                      {selectedFile.name.toLowerCase().endsWith('.dwg') ? 'CAD Drawing' : 'BIM Model'}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      • Size: {formatBytes(selectedFile.data.size)}
-                    </p>
-                  </div>
+              {/* 3D Viewer Container */}
+              {selectedFile.name.toLowerCase().endsWith('.ifc') ? (
+                <SimpleIFCViewer 
+                  fileName={selectedFile.name}
+                  onLoadComplete={() => setLoading(false)}
+                />
+              ) : (
+                <div ref={viewerContainerRef} className="w-full h-full"></div>
+              )}
+              
+              {/* Minimap (if enabled) */}
+              {showMinimap && (
+                <div 
+                  ref={minimapRef} 
+                  className="absolute top-4 left-4 w-48 h-48 border rounded-md bg-black/80 shadow-lg pointer-events-none"
+                >
+                  <div className="text-center text-xs text-white p-1">Minimap</div>
                 </div>
-                
-                {showMinimap && (
-                  <div 
-                    ref={minimapRef}
-                    className="absolute top-2 left-2 w-32 h-32 bg-white/90 dark:bg-black/90 border rounded-sm overflow-hidden"
-                  >
-                    <div className="p-1 text-xs font-medium">Minimap View</div>
-                    <div className="w-full h-full bg-slate-200 dark:bg-slate-800 relative">
-                      <div className="absolute top-1/2 left-1/2 w-2 h-2 bg-blue-500 rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
-                      <div className="absolute top-1/2 left-1/2 w-8 h-8 border-2 border-blue-500 rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
-                    </div>
-                  </div>
-                )}
-                
-                {showMeasureTool && measurePoints.length > 0 && (
-                  <div className="absolute bottom-24 left-2 bg-background/80 backdrop-blur-sm p-2 rounded border">
-                    <p className="text-sm font-medium">Measurement Tool</p>
-                    <div className="flex items-center mt-1">
-                      <p className="text-xs text-muted-foreground">
-                        Distance: {measurePoints.length >= 2 ? 
-                          (Math.sqrt(
-                            Math.pow(measurePoints[0].x - measurePoints[1].x, 2) + 
-                            Math.pow(measurePoints[0].y - measurePoints[1].y, 2) + 
-                            Math.pow(measurePoints[0].z - measurePoints[1].z, 2)
-                          ).toFixed(2) + " m") : 
-                          "Click to place second point"}
-                      </p>
-                    </div>
-                  </div>
-                )}
-                
-                {isWalkMode && (
-                  <div className="absolute bottom-24 right-2 bg-background/80 backdrop-blur-sm p-2 rounded border">
-                    <p className="text-sm font-medium">Walk Mode Controls</p>
-                    <div className="grid grid-cols-3 gap-1 mt-1">
-                      <div></div>
-                      <div className="p-1 bg-primary/20 text-center rounded text-xs">W</div>
-                      <div></div>
-                      <div className="p-1 bg-primary/20 text-center rounded text-xs">A</div>
-                      <div className="p-1 bg-primary/20 text-center rounded text-xs">S</div>
-                      <div className="p-1 bg-primary/20 text-center rounded text-xs">D</div>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Mouse: Look around</p>
-                  </div>
-                )}
-              </div>
+              )}
+              
+              {/* Measurement info */}
+              {showMeasureTool && (
+                <div className="absolute bottom-4 left-4 p-2 bg-black/80 text-white rounded-md text-sm">
+                  <p>Klicka för att placera mätpunkter</p>
+                  <p>Avstånd: {measurePoints.length === 2 ? measurePoints[0].distanceTo(measurePoints[1]).toFixed(2) + ' enheter' : '...'}</p>
+                </div>
+              )}
+              
             </>
           )}
         </div>
