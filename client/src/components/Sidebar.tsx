@@ -28,7 +28,8 @@ import {
   CircleUser,
   Search,
   Box,
-  Plus
+  Plus,
+  Shield
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
@@ -38,6 +39,8 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -157,10 +160,22 @@ function ProfileSettingsDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
-  // Reset state when dialog opens or user changes
+  // För nya profilfält
+  const [displayName, setDisplayName] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
+  const [phoneNumber, setPhoneNumber] = useState<string>("");
+  const [birthDate, setBirthDate] = useState<string>("");
+  const [jobTitle, setJobTitle] = useState<string>("");
+  const [department, setDepartment] = useState<string>("");
+  const [bio, setBio] = useState<string>("");
+  
+  // Aktiv flik i profilen
+  const [activeTab, setActiveTab] = useState<"personal" | "appearance" | "notifications" | "account">("personal");
+  
+  // Återställ state när dialogrutan öppnas eller användaren ändras
   useEffect(() => {
     if (isOpen && currentUser) {
-      // Set preview to current user avatar if available
+      // Ställ in förhandsgranskning av avatar
       if (currentUser?.avatarUrl) {
         setPreviewUrl(currentUser.avatarUrl);
       } else if (currentUser?.role) {
@@ -169,14 +184,25 @@ function ProfileSettingsDialog({
         setPreviewUrl(null);
       }
       setSelectedImage(null);
+      
+      // Hämta sparade profiluppgifter från localStorage
+      const userPrefix = `userProfile_${currentUser.username}_`;
+      
+      setDisplayName(localStorage.getItem(`${userPrefix}displayName`) || currentUser.username || "");
+      setEmail(localStorage.getItem(`${userPrefix}email`) || "");
+      setPhoneNumber(localStorage.getItem(`${userPrefix}phoneNumber`) || "");
+      setBirthDate(localStorage.getItem(`${userPrefix}birthDate`) || "");
+      setJobTitle(localStorage.getItem(`${userPrefix}jobTitle`) || "");
+      setDepartment(localStorage.getItem(`${userPrefix}department`) || "");
+      setBio(localStorage.getItem(`${userPrefix}bio`) || "");
     }
   }, [isOpen, currentUser]);
   
-  // Handle file selection
+  // Hantera filinladdning
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      if (file.size > 5 * 1024 * 1024) { // 5MB gräns
         toast({
           title: "Filen är för stor",
           description: "Vänligen välj en bild som är mindre än 5MB",
@@ -196,7 +222,7 @@ function ProfileSettingsDialog({
       
       setSelectedImage(file);
       
-      // Create preview URL
+      // Skapa förhandsgransknings-URL
       const reader = new FileReader();
       reader.onload = () => {
         setPreviewUrl(reader.result as string);
@@ -210,7 +236,8 @@ function ProfileSettingsDialog({
   };
   
   const handleSave = () => {
-    if (!selectedImage && !previewUrl) {
+    // Kontrollera avatar
+    if (activeTab === "appearance" && !selectedImage && !previewUrl) {
       toast({
         title: "Ingen bild vald",
         description: "Vänligen välj en profilbild",
@@ -219,14 +246,42 @@ function ProfileSettingsDialog({
       return;
     }
     
+    // Skapa FormData för att skicka till föräldrakomponenten
     const formData = new FormData();
+    
+    // Lägg till profilbild om den finns
     if (selectedImage) {
       formData.append('avatar', selectedImage);
     } else if (previewUrl && previewUrl.startsWith('/avatars/')) {
-      // Use existing avatar from predefined ones
+      // Använd befintlig avatar från fördefinierade
       formData.append('avatarPath', previewUrl);
+    } else if (previewUrl) {
+      // Använd dataBild 
+      formData.append('avatarDataUrl', previewUrl);
     }
     
+    // Lägg till övriga profiluppgifter
+    formData.append('displayName', displayName);
+    formData.append('email', email);
+    formData.append('phoneNumber', phoneNumber);
+    formData.append('birthDate', birthDate);
+    formData.append('jobTitle', jobTitle);
+    formData.append('department', department);
+    formData.append('bio', bio);
+    
+    // Spara all information i localStorage med användarspecifikt prefix
+    if (currentUser?.username) {
+      const userPrefix = `userProfile_${currentUser.username}_`;
+      localStorage.setItem(`${userPrefix}displayName`, displayName);
+      localStorage.setItem(`${userPrefix}email`, email);
+      localStorage.setItem(`${userPrefix}phoneNumber`, phoneNumber);
+      localStorage.setItem(`${userPrefix}birthDate`, birthDate);
+      localStorage.setItem(`${userPrefix}jobTitle`, jobTitle);
+      localStorage.setItem(`${userPrefix}department`, department);
+      localStorage.setItem(`${userPrefix}bio`, bio);
+    }
+    
+    // Skicka till parent
     onSaveProfile(formData);
     onClose();
   };
@@ -238,105 +293,370 @@ function ProfileSettingsDialog({
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Profilinställningar</DialogTitle>
+          <DialogTitle className="text-2xl">Profilinställningar</DialogTitle>
           <DialogDescription>
-            Ändra din profilbild
+            Hantera din profilinformation och inställningar
           </DialogDescription>
         </DialogHeader>
         
-        <div className="grid gap-6 py-4">
-          <div className="flex flex-col items-center gap-4">
-            <Avatar className="h-24 w-24">
-              {previewUrl ? (
-                <AvatarImage src={previewUrl} alt="Förhandsgranskning" />
-              ) : null}
-              <AvatarFallback className={`text-lg ${
-                currentUser?.role === 'project_leader' ? 'bg-[#727cf5]' :
-                currentUser?.role === 'admin' ? 'bg-[#fa5c7c]' :
-                currentUser?.role === 'superuser' ? 'bg-[#ffc35a]' :
-                'bg-[#0acf97]'
-              }`}>
-                {currentUser?.username ? currentUser.username.slice(0, 2).toUpperCase() : "??"}
-              </AvatarFallback>
-            </Avatar>
-            
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept="image/*"
-              className="hidden"
-            />
-            
-            <Button type="button" onClick={handleBrowseClick} variant="outline">
-              Välj från dator
+        <div className="flex flex-1 overflow-hidden gap-6 pt-6">
+          {/* Sidomeny för flikar */}
+          <div className="w-48 border-r pr-4 flex flex-col gap-2">
+            <Button 
+              variant={activeTab === "personal" ? "default" : "ghost"} 
+              className="justify-start" 
+              onClick={() => setActiveTab("personal")}
+            >
+              <CircleUser className="h-4 w-4 mr-2" />
+              Personuppgifter
+            </Button>
+            <Button 
+              variant={activeTab === "appearance" ? "default" : "ghost"} 
+              className="justify-start" 
+              onClick={() => setActiveTab("appearance")}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Utseende
+            </Button>
+            <Button 
+              variant={activeTab === "notifications" ? "default" : "ghost"} 
+              className="justify-start" 
+              onClick={() => setActiveTab("notifications")}
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              Notifikationer
+            </Button>
+            <Button 
+              variant={activeTab === "account" ? "default" : "ghost"} 
+              className="justify-start" 
+              onClick={() => setActiveTab("account")}
+            >
+              <Shield className="h-4 w-4 mr-2" />
+              Konto
             </Button>
           </div>
           
-          <Separator />
-          
-          <div>
-            <Label className="mb-2 block">Eller välj en fördefinierad avatar</Label>
-            <div className="grid grid-cols-4 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="p-2 h-auto"
-                onClick={() => handleSelectPredefined('admin')}
-              >
-                <Avatar className="h-12 w-12">
-                  <AvatarImage src="/avatars/admin.svg" alt="Admin" />
-                  <AvatarFallback className="bg-[#fa5c7c]">AD</AvatarFallback>
-                </Avatar>
-              </Button>
-              
-              <Button
-                type="button"
-                variant="outline"
-                className="p-2 h-auto"
-                onClick={() => handleSelectPredefined('project_leader')}
-              >
-                <Avatar className="h-12 w-12">
-                  <AvatarImage src="/avatars/project_leader.svg" alt="Project Leader" />
-                  <AvatarFallback className="bg-[#727cf5]">PL</AvatarFallback>
-                </Avatar>
-              </Button>
-              
-              <Button
-                type="button"
-                variant="outline"
-                className="p-2 h-auto"
-                onClick={() => handleSelectPredefined('user')}
-              >
-                <Avatar className="h-12 w-12">
-                  <AvatarImage src="/avatars/user.svg" alt="User" />
-                  <AvatarFallback className="bg-[#0acf97]">US</AvatarFallback>
-                </Avatar>
-              </Button>
-              
-              <Button
-                type="button"
-                variant="outline"
-                className="p-2 h-auto"
-                onClick={() => handleSelectPredefined('superuser')}
-              >
-                <Avatar className="h-12 w-12">
-                  <AvatarImage src="/avatars/superuser.svg" alt="Super User" />
-                  <AvatarFallback className="bg-[#ffc35a]">SU</AvatarFallback>
-                </Avatar>
-              </Button>
-            </div>
+          {/* Huvudinnehåll */}
+          <div className="flex-1 overflow-y-auto pr-2">
+            {/* Personuppgifter */}
+            {activeTab === "personal" && (
+              <div className="space-y-6">
+                <div className="flex gap-4 items-center">
+                  <Avatar className="h-20 w-20">
+                    {previewUrl ? (
+                      <AvatarImage src={previewUrl} alt="Profilbild" />
+                    ) : null}
+                    <AvatarFallback className={`text-lg ${
+                      currentUser?.role === 'project_leader' ? 'bg-[#727cf5]' :
+                      currentUser?.role === 'admin' ? 'bg-[#fa5c7c]' :
+                      currentUser?.role === 'superuser' ? 'bg-[#ffc35a]' :
+                      'bg-[#0acf97]'
+                    }`}>
+                      {currentUser?.username ? currentUser.username.slice(0, 2).toUpperCase() : "??"}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  <div>
+                    <h3 className="text-lg font-semibold">{displayName || currentUser?.username || "Användare"}</h3>
+                    <p className="text-muted-foreground text-sm capitalize">{currentUser?.role || "användare"}</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="displayName">Visningsnamn</Label>
+                    <Input
+                      id="displayName"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      placeholder="Ditt namn"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="email">E-post</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="din.mail@exempel.se"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="phoneNumber">Telefonnummer</Label>
+                    <Input
+                      id="phoneNumber"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="+46 70 123 45 67"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="birthDate">Födelsedatum</Label>
+                    <Input
+                      id="birthDate"
+                      type="date"
+                      value={birthDate}
+                      onChange={(e) => setBirthDate(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="jobTitle">Jobbtitel</Label>
+                    <Input
+                      id="jobTitle"
+                      value={jobTitle}
+                      onChange={(e) => setJobTitle(e.target.value)}
+                      placeholder="Projektledare"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="department">Avdelning</Label>
+                    <Input
+                      id="department"
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                      placeholder="Teknik"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="bio">Om mig</Label>
+                    <Textarea
+                      id="bio"
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      placeholder="Berätta lite om dig själv..."
+                      rows={4}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Utseende */}
+            {activeTab === "appearance" && (
+              <div className="space-y-6">
+                <div className="flex flex-col items-center gap-4">
+                  <h3 className="text-lg font-semibold self-start">Profilbild</h3>
+                  
+                  <Avatar className="h-32 w-32">
+                    {previewUrl ? (
+                      <AvatarImage src={previewUrl} alt="Förhandsgranskning" />
+                    ) : null}
+                    <AvatarFallback className={`text-xl ${
+                      currentUser?.role === 'project_leader' ? 'bg-[#727cf5]' :
+                      currentUser?.role === 'admin' ? 'bg-[#fa5c7c]' :
+                      currentUser?.role === 'superuser' ? 'bg-[#ffc35a]' :
+                      'bg-[#0acf97]'
+                    }`}>
+                      {currentUser?.username ? currentUser.username.slice(0, 2).toUpperCase() : "??"}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  
+                  <Button type="button" onClick={handleBrowseClick} variant="outline">
+                    Välj från dator
+                  </Button>
+                </div>
+                
+                <Separator />
+                
+                <div>
+                  <Label className="mb-2 block">Eller välj en fördefinierad avatar</Label>
+                  <div className="grid grid-cols-4 gap-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="p-3 h-auto"
+                      onClick={() => handleSelectPredefined('admin')}
+                    >
+                      <Avatar className="h-16 w-16">
+                        <AvatarImage src="/avatars/admin.svg" alt="Admin" />
+                        <AvatarFallback className="bg-[#fa5c7c]">AD</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="p-3 h-auto"
+                      onClick={() => handleSelectPredefined('project_leader')}
+                    >
+                      <Avatar className="h-16 w-16">
+                        <AvatarImage src="/avatars/project_leader.svg" alt="Project Leader" />
+                        <AvatarFallback className="bg-[#727cf5]">PL</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="p-3 h-auto"
+                      onClick={() => handleSelectPredefined('user')}
+                    >
+                      <Avatar className="h-16 w-16">
+                        <AvatarImage src="/avatars/user.svg" alt="User" />
+                        <AvatarFallback className="bg-[#0acf97]">US</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="p-3 h-auto"
+                      onClick={() => handleSelectPredefined('superuser')}
+                    >
+                      <Avatar className="h-16 w-16">
+                        <AvatarImage src="/avatars/superuser.svg" alt="Super User" />
+                        <AvatarFallback className="bg-[#ffc35a]">SU</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Temainställningar</h3>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="font-medium">Mörkt läge</h4>
+                      <p className="text-sm text-muted-foreground">Byt mellan ljust och mörkt läge</p>
+                    </div>
+                    <ModeToggle />
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Notifikationer */}
+            {activeTab === "notifications" && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold">Notifikationsinställningar</h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">E-post notifikationer</h4>
+                      <p className="text-sm text-muted-foreground">Få uppdateringar via e-post</p>
+                    </div>
+                    <Switch id="email-notifications" />
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">Webbnotifikationer</h4>
+                      <p className="text-sm text-muted-foreground">Få notifikationer i webbläsaren</p>
+                    </div>
+                    <Switch id="browser-notifications" />
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">Nya meddelanden</h4>
+                      <p className="text-sm text-muted-foreground">Notifiera mig om nya meddelanden</p>
+                    </div>
+                    <Switch id="message-notifications" defaultChecked />
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">Uppgiftsändringar</h4>
+                      <p className="text-sm text-muted-foreground">Notifiera mig när uppgifter ändras</p>
+                    </div>
+                    <Switch id="task-notifications" defaultChecked />
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Kontoinställningar */}
+            {activeTab === "account" && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold">Kontoinställningar</h3>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="username">Användarnamn</Label>
+                    <Input
+                      id="username"
+                      value={currentUser?.username || ""}
+                      disabled
+                      className="bg-muted"
+                    />
+                    <p className="text-xs text-muted-foreground">Kontakta administratören för att ändra användarnamn</p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Roll</Label>
+                    <Input
+                      id="role"
+                      value={currentUser?.role || ""}
+                      disabled
+                      className="bg-muted capitalize"
+                    />
+                    <p className="text-xs text-muted-foreground">Din användarroll i systemet</p>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Byt lösenord</h4>
+                    <p className="text-sm text-muted-foreground mb-4">Uppdatera ditt lösenord</p>
+                    
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="current-password">Nuvarande lösenord</Label>
+                        <Input id="current-password" type="password" />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="new-password">Nytt lösenord</Label>
+                        <Input id="new-password" type="password" />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="confirm-password">Bekräfta nytt lösenord</Label>
+                        <Input id="confirm-password" type="password" />
+                      </div>
+                      
+                      <Button type="button" className="mt-2">
+                        Uppdatera lösenord
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         
-        <DialogFooter className="sm:justify-end">
+        <DialogFooter className="border-t pt-4 mt-4">
           <Button type="button" variant="secondary" onClick={onClose}>
             Avbryt
           </Button>
           <Button type="button" onClick={handleSave}>
-            Spara
+            Spara ändringar
           </Button>
         </DialogFooter>
       </DialogContent>
