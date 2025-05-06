@@ -398,6 +398,18 @@ const MessageView = ({
     }
   };
   
+  // För att hantera PDF-visning
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState("");
+  const [pdfTitle, setPdfTitle] = useState("");
+  
+  // Öppna PDF i dialogrutan
+  const openPdfViewer = (url: string, title: string) => {
+    setPdfUrl(url);
+    setPdfTitle(title);
+    setPdfViewerOpen(true);
+  };
+  
   // Upload file and send message
   const uploadFileAndSendMessage = async () => {
     if (!selectedFile || !conversation?.id) return;
@@ -408,7 +420,6 @@ const MessageView = ({
       // Create FormData for file upload
       const formData = new FormData();
       formData.append('file', selectedFile);
-      formData.append('conversationId', conversation.id.toString());
       
       // If we have text content, we'll use it in place of the default file name message
       if (newMessage.trim()) {
@@ -416,7 +427,7 @@ const MessageView = ({
       }
       
       // Upload the file and create the message in one step
-      const response = await fetch('/api/messages/upload', {
+      const response = await fetch(`/api/conversations/${conversation.id}/attachment`, {
         method: 'POST',
         body: formData,
         credentials: 'include' // Important for cookie-based auth
@@ -694,16 +705,27 @@ const MessageView = ({
                                     {message.attachmentSize ? `${Math.round(message.attachmentSize / 1024)} KB` : 'PDF'}
                                   </div>
                                 </div>
-                                <a 
-                                  href={message.attachmentUrl} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className={`px-2 py-1 text-xs rounded-md ${
-                                    isMine ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"
-                                  }`}
-                                >
-                                  Open
-                                </a>
+                                <div className="flex gap-2">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => openPdfViewer(message.attachmentUrl!, message.attachmentName || 'PDF Document')}
+                                    className="px-2 py-1 h-auto text-xs flex items-center gap-1"
+                                  >
+                                    <ExternalLink className="h-3 w-3" /> View
+                                  </Button>
+                                  <a 
+                                    href={message.attachmentUrl} 
+                                    download
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className={`px-2 py-1 text-xs rounded-md ${
+                                      isMine ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"
+                                    }`}
+                                  >
+                                    Download
+                                  </a>
+                                </div>
                               </div>
                             ) : (
                               // For other file types
