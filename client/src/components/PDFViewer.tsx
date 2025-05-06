@@ -735,6 +735,46 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     }
   };
   
+  // Hantera mousewheel-zoom med CTRL-tangenten
+  const handleWheel = (e: WheelEvent) => {
+    if (e.ctrlKey) {
+      e.preventDefault();
+      // Bestäm zoomriktning
+      const delta = e.deltaY < 0 ? 0.1 : -0.1;
+      const newScale = Math.max(0.5, Math.min(3, scale + delta));
+      
+      if (newScale !== scale) {
+        setScale(newScale);
+      }
+    }
+  };
+  
+  // Lägg till händelselyssnare för mousewheel
+  useEffect(() => {
+    const container = pdfContainerRef.current;
+    if (container) {
+      container.addEventListener('wheel', handleWheel as any, { passive: false });
+      
+      return () => {
+        container.removeEventListener('wheel', handleWheel as any);
+      };
+    }
+  }, [scale]);
+  
+  // Lägg till globala händelselyssnare för mouseup
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      setIsDragging(false);
+      document.body.style.userSelect = '';
+    };
+    
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => {
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+      document.body.style.userSelect = '';
+    };
+  }, []);
+  
   // Avslutar markeringen och visar dialogrutan för att lägga till kommentar
   const handleMouseUp = (e?: React.MouseEvent) => {
     // Hantera drag-to-pan
