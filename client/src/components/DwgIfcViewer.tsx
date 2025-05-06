@@ -39,8 +39,10 @@ export function DwgIfcViewer() {
   const [showMeasureTool, setShowMeasureTool] = useState<boolean>(false);
   const [showMinimap, setShowMinimap] = useState<boolean>(false);
   const [isWalkMode, setIsWalkMode] = useState<boolean>(false);
+  const [measurePoints, setMeasurePoints] = useState<THREE.Vector3[]>([]);
   const viewerContainerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<CubeViewer | null>(null);
+  const minimapRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // Load stored files on mount
@@ -497,6 +499,7 @@ export function DwgIfcViewer() {
   // Toggle measurement tool
   const toggleMeasureTool = () => {
     setShowMeasureTool(prev => !prev);
+    setMeasurePoints([]);
     
     // In a full implementation, we would:
     // 1. Add a ruler line that follows the cursor
@@ -552,75 +555,82 @@ export function DwgIfcViewer() {
           : "grid-cols-1 md:grid-cols-3 gap-6"
       )}>
         {/* File List Panel */}
-        <div className="md:col-span-1 p-4 border rounded-md bg-background flex flex-col h-[70vh] md:h-[80vh]">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium">Files</h3>
-            <div>
-              <Label htmlFor="file-upload" className="cursor-pointer">
-                <div className="flex items-center gap-1 bg-primary text-white px-2 py-1 rounded-md hover:bg-primary/90">
-                  <Upload className="h-4 w-4" />
-                  <span>Upload</span>
-                </div>
-                <Input 
-                  id="file-upload" 
-                  type="file" 
-                  className="hidden" 
-                  accept=".dwg,.ifc"
-                  onChange={handleFileUpload}
-                  disabled={loading}
-                />
-              </Label>
+        {!isFullscreen && (
+          <div className="md:col-span-1 p-4 border rounded-md bg-background flex flex-col h-[70vh] md:h-[80vh]">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium">Files</h3>
+              <div>
+                <Label htmlFor="file-upload" className="cursor-pointer">
+                  <div className="flex items-center gap-1 bg-primary text-white px-2 py-1 rounded-md hover:bg-primary/90">
+                    <Upload className="h-4 w-4" />
+                    <span>Upload</span>
+                  </div>
+                  <Input 
+                    id="file-upload" 
+                    type="file" 
+                    className="hidden" 
+                    accept=".dwg,.ifc"
+                    onChange={handleFileUpload}
+                    disabled={loading}
+                  />
+                </Label>
+              </div>
             </div>
-          </div>
 
-          {loading ? (
-            <div className="flex items-center justify-center h-40">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <div className="overflow-y-auto flex-grow">
-              {files.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No files uploaded yet</p>
-                  <p className="text-sm">Upload DWG or IFC files to view them</p>
-                </div>
-              ) : (
-                <ul className="space-y-2">
-                  {files.map(file => (
-                    <li 
-                      key={file.id}
-                      className={cn(
-                        "border rounded-md p-3 flex items-center justify-between cursor-pointer hover:bg-muted transition-colors",
-                        selectedFile?.id === file.id && "bg-primary/10 border-primary/30"
-                      )}
-                      onClick={() => selectFile(file)}
-                    >
-                      <div className="flex items-center gap-3">
-                        {getFileIcon(file.name)}
-                        <div className="overflow-hidden">
-                          <p className="font-medium truncate max-w-[150px]">{file.name}</p>
-                          <p className="text-xs text-muted-foreground">{formatDate(file.date)}</p>
-                        </div>
-                      </div>
-                      <div 
-                        className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteFile(file.id);
-                        }}
+            {loading ? (
+              <div className="flex items-center justify-center h-40">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <div className="overflow-y-auto flex-grow">
+                {files.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No files uploaded yet</p>
+                    <p className="text-sm">Upload DWG or IFC files to view them</p>
+                  </div>
+                ) : (
+                  <ul className="space-y-2">
+                    {files.map(file => (
+                      <li 
+                        key={file.id}
+                        className={cn(
+                          "border rounded-md p-3 flex items-center justify-between cursor-pointer hover:bg-muted transition-colors",
+                          selectedFile?.id === file.id && "bg-primary/10 border-primary/30"
+                        )}
+                        onClick={() => selectFile(file)}
                       >
-                        <XCircle className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
+                        <div className="flex items-center gap-3">
+                          {getFileIcon(file.name)}
+                          <div className="overflow-hidden">
+                            <p className="font-medium truncate max-w-[150px]">{file.name}</p>
+                            <p className="text-xs text-muted-foreground">{formatDate(file.date)}</p>
+                          </div>
+                        </div>
+                        <div 
+                          className="p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteFile(file.id);
+                          }}
+                        >
+                          <XCircle className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Viewer Panel */}
-        <div className="md:col-span-2 border rounded-md overflow-hidden bg-background relative h-[70vh] md:h-[80vh]">
+        <div className={cn(
+          "border rounded-md overflow-hidden bg-background relative",
+          isFullscreen 
+            ? "col-span-full h-screen" 
+            : "md:col-span-2 h-[70vh] md:h-[80vh]"
+        )}>
           {!selectedFile ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
@@ -642,28 +652,28 @@ export function DwgIfcViewer() {
                   <RotateCw className="h-4 w-4" />
                 </div>
                 <div className="rounded p-1 border bg-background cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700" 
-                     onClick={() => setIsFullscreen(!isFullscreen)}>
+                     onClick={toggleFullscreen}>
                   <Expand className="h-4 w-4" />
                 </div>
                 <div className={cn(
                   "rounded p-1 border bg-background cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700", 
                   showMeasureTool && "bg-slate-200 dark:bg-slate-700"
                 )}
-                     onClick={() => setShowMeasureTool(!showMeasureTool)}>
+                     onClick={toggleMeasureTool}>
                   <Ruler className="h-4 w-4" />
                 </div>
                 <div className={cn(
                   "rounded p-1 border bg-background cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700",
                   showMinimap && "bg-slate-200 dark:bg-slate-700"
                 )}
-                     onClick={() => setShowMinimap(!showMinimap)}>
+                     onClick={toggleMinimap}>
                   <Map className="h-4 w-4" />
                 </div>
                 <div className={cn(
                   "rounded p-1 border bg-background cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700",
                   isWalkMode && "bg-slate-200 dark:bg-slate-700"
                 )}
-                     onClick={() => setIsWalkMode(!isWalkMode)}>
+                     onClick={toggleWalkMode}>
                   <Navigation className="h-4 w-4" />
                 </div>
                 <div className="rounded p-1 border bg-background cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700"
@@ -687,6 +697,51 @@ export function DwgIfcViewer() {
                     </p>
                   </div>
                 </div>
+                
+                {showMinimap && (
+                  <div 
+                    ref={minimapRef}
+                    className="absolute top-2 left-2 w-32 h-32 bg-white/90 dark:bg-black/90 border rounded-sm overflow-hidden"
+                  >
+                    <div className="p-1 text-xs font-medium">Minimap View</div>
+                    <div className="w-full h-full bg-slate-200 dark:bg-slate-800 relative">
+                      <div className="absolute top-1/2 left-1/2 w-2 h-2 bg-blue-500 rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
+                      <div className="absolute top-1/2 left-1/2 w-8 h-8 border-2 border-blue-500 rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
+                    </div>
+                  </div>
+                )}
+                
+                {showMeasureTool && measurePoints.length > 0 && (
+                  <div className="absolute bottom-24 left-2 bg-background/80 backdrop-blur-sm p-2 rounded border">
+                    <p className="text-sm font-medium">Measurement Tool</p>
+                    <div className="flex items-center mt-1">
+                      <p className="text-xs text-muted-foreground">
+                        Distance: {measurePoints.length >= 2 ? 
+                          (Math.sqrt(
+                            Math.pow(measurePoints[0].x - measurePoints[1].x, 2) + 
+                            Math.pow(measurePoints[0].y - measurePoints[1].y, 2) + 
+                            Math.pow(measurePoints[0].z - measurePoints[1].z, 2)
+                          ).toFixed(2) + " m") : 
+                          "Click to place second point"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                {isWalkMode && (
+                  <div className="absolute bottom-24 right-2 bg-background/80 backdrop-blur-sm p-2 rounded border">
+                    <p className="text-sm font-medium">Walk Mode Controls</p>
+                    <div className="grid grid-cols-3 gap-1 mt-1">
+                      <div></div>
+                      <div className="p-1 bg-primary/20 text-center rounded text-xs">W</div>
+                      <div></div>
+                      <div className="p-1 bg-primary/20 text-center rounded text-xs">A</div>
+                      <div className="p-1 bg-primary/20 text-center rounded text-xs">S</div>
+                      <div className="p-1 bg-primary/20 text-center rounded text-xs">D</div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Mouse: Look around</p>
+                  </div>
+                )}
               </div>
             </>
           )}
