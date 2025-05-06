@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { MeshBasicMaterial } from 'three';  // Explicitly import for type checking
 
 import { Upload, FileText, Loader2, XCircle, ZoomIn, ZoomOut, RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,9 +11,6 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 
-// Add MeshStandardMaterial and MeshBasicMaterial for type safety
-import { MeshStandardMaterial, MeshBasicMaterial, MeshPhongMaterial } from 'three';
-
 // Simple type for our file storage
 type FileEntry = {
   id: string;
@@ -22,13 +20,13 @@ type FileEntry = {
   date: Date;
 };
 
-// Define a simple structure for the viewer reference
-interface SimpleCubeViewer {
+// Define a minimal structure for our 3D cube viewer 
+interface CubeViewer {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
   cube: THREE.Mesh;
-  animationId?: number;
+  animationId: number;
   dispose: () => void;
 }
 
@@ -38,7 +36,7 @@ export function DwgIfcViewer() {
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileEntry | null>(null);
   const viewerContainerRef = useRef<HTMLDivElement>(null);
-  const viewerRef = useRef<SimpleCubeViewer | null>(null);
+  const viewerRef = useRef<CubeViewer | null>(null);
   const { toast } = useToast();
 
   // Load stored files on mount
@@ -108,25 +106,19 @@ export function DwgIfcViewer() {
           viewerContainerRef.current.clientHeight
         );
         
-        // Clear container and add new canvas
-        while (viewerContainerRef.current.firstChild) {
-          viewerContainerRef.current.removeChild(viewerContainerRef.current.firstChild);
-        }
+        // Clear container and add the canvas element
+        viewerContainerRef.current.innerHTML = '';
         viewerContainerRef.current.appendChild(renderer.domElement);
         
-        // Add lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-        scene.add(ambientLight);
-        
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(1, 1, 1);
-        scene.add(directionalLight);
+        // Add light
+        const light = new THREE.AmbientLight(0xffffff, 0.8);
+        scene.add(light);
         
         // Create a simple cube
         const geometry = new THREE.BoxGeometry(2, 2, 2);
-        const material = new THREE.MeshPhongMaterial({
+        const material = new THREE.MeshBasicMaterial({
           color: 0x6366f1, // Indigo color
-          wireframe: false
+          wireframe: true
         });
         
         const cube = new THREE.Mesh(geometry, material);
@@ -181,9 +173,7 @@ export function DwgIfcViewer() {
             
             // Dispose geometries and materials
             geometry.dispose();
-            if (material instanceof THREE.Material) {
-              material.dispose();
-            }
+            material.dispose();
             
             // Clean up renderer
             renderer.dispose();
@@ -271,7 +261,7 @@ export function DwgIfcViewer() {
       if (viewerRef.current && viewerRef.current.cube) {
         if (extension === 'dwg') {
           // Change cube color for DWG files (blue)
-          if (viewerRef.current.cube.material instanceof THREE.Material) {
+          if (viewerRef.current.cube.material instanceof THREE.MeshBasicMaterial) {
             viewerRef.current.cube.material.color.set(0x3182ce); // Blue
           }
           
@@ -287,7 +277,7 @@ export function DwgIfcViewer() {
           });
         } else if (extension === 'ifc') {
           // Change cube color for IFC files (green)
-          if (viewerRef.current.cube.material instanceof THREE.Material) {
+          if (viewerRef.current.cube.material instanceof MeshBasicMaterial) {
             viewerRef.current.cube.material.color.set(0x38a169); // Green
           }
           
@@ -336,7 +326,7 @@ export function DwgIfcViewer() {
     if (viewerRef.current?.cube) {
       if (extension === 'dwg') {
         // Change cube color for DWG files (blue)
-        if (viewerRef.current.cube.material instanceof THREE.Material) {
+        if (viewerRef.current.cube.material instanceof MeshBasicMaterial) {
           viewerRef.current.cube.material.color.set(0x3182ce); // Blue
         }
         
@@ -353,7 +343,7 @@ export function DwgIfcViewer() {
         });
       } else if (extension === 'ifc') {
         // Change cube color for IFC files (green)
-        if (viewerRef.current.cube.material instanceof THREE.Material) {
+        if (viewerRef.current.cube.material instanceof MeshBasicMaterial) {
           viewerRef.current.cube.material.color.set(0x38a169); // Green
         }
         
