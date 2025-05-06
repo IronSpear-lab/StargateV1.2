@@ -25,6 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { User, Send, MoreVertical, UserPlus, Search } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Sidebar } from "@/components/Sidebar";
 
 // Types for the messaging system
 interface UserBasic {
@@ -478,6 +479,7 @@ export default function MessagesPage() {
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   
   // Get current user from window (temporarily)
   useEffect(() => {
@@ -574,39 +576,44 @@ export default function MessagesPage() {
   };
   
   return (
-    <div className="container mx-auto py-6">
-      <h1 className="text-3xl font-bold mb-6">Messages</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="md:col-span-1">
-          <CardHeader className="p-4">
-            <CardTitle className="text-xl">Conversations</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <NewConversationDialog onCreateConversation={handleCreateConversation} />
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar />
+      <div className="flex-1 overflow-auto">
+        <div className="container py-6 px-4 md:px-6">
+          <h1 className="text-3xl font-bold mb-6">Messages</h1>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="md:col-span-1">
+              <CardHeader className="p-4">
+                <CardTitle className="text-xl">Conversations</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <NewConversationDialog onCreateConversation={handleCreateConversation} />
+                
+                {isLoading ? (
+                  <div className="py-8 text-center">
+                    <p className="text-muted-foreground">Loading conversations...</p>
+                  </div>
+                ) : (
+                  <ConversationsList 
+                    conversations={conversations}
+                    selectedConversation={selectedConversationId}
+                    onSelectConversation={(id) => setSelectedConversationId(id)}
+                  />
+                )}
+              </CardContent>
+            </Card>
             
-            {isLoading ? (
-              <div className="py-8 text-center">
-                <p className="text-muted-foreground">Loading conversations...</p>
-              </div>
-            ) : (
-              <ConversationsList 
-                conversations={conversations}
-                selectedConversation={selectedConversationId}
-                onSelectConversation={(id) => setSelectedConversationId(id)}
-              />
-            )}
-          </CardContent>
-        </Card>
-        
-        <Card className="md:col-span-2">
-          <CardContent className="p-0 h-[calc(100vh-12rem)]">
-            <MessageView
-              conversation={selectedConversation}
-              onSendMessage={handleSendMessage}
-            />
-          </CardContent>
-        </Card>
+            <Card className="md:col-span-2">
+              <CardContent className="p-0 h-[calc(100vh-13rem)]">
+                <MessageView
+                  conversation={selectedConversation}
+                  onSendMessage={handleSendMessage}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
