@@ -660,46 +660,46 @@ export function PDFViewerDialogNew({
       // Fallback: skapa en lokal version för demo
       fallbackToLocalStorage();
     }
+  };
     
-    function fallbackToLocalStorage() {
-      if (!selectedVersionFile) return;
-      
-      // Skapa en URL för filen
-      const fileUrl = URL.createObjectURL(selectedVersionFile);
-      
-      // Lägg till den nya versionen i filversioner
-      const newVersion: FileVersion = {
-        id: `version_${Date.now()}`,
-        versionNumber: fileVersions.length + 1,
-        filename: selectedVersionFile.name,
-        fileUrl: fileUrl,
-        description: newVersionDescription,
-        uploaded: new Date().toISOString(),
-        uploadedBy: user?.username || 'Anonym',
-      };
-      
-      // Sortera efter versionsnummer (fallande)
-      const updatedVersions = [...fileVersions, newVersion].sort(
-        (a, b) => b.versionNumber - a.versionNumber
+  const fallbackToLocalStorage = () => {
+    if (!selectedVersionFile) return;
+    
+    // Skapa en URL för filen
+    const fileUrl = URL.createObjectURL(selectedVersionFile);
+    
+    // Lägg till den nya versionen i filversioner
+    const newVersion: FileVersion = {
+      id: `version_${Date.now()}`,
+      versionNumber: fileVersions.length + 1,
+      filename: selectedVersionFile.name,
+      fileUrl: fileUrl,
+      description: newVersionDescription,
+      uploaded: new Date().toISOString(),
+      uploadedBy: user?.username || 'Anonym',
+    };
+    
+    // Sortera efter versionsnummer (fallande)
+    const updatedVersions = [...fileVersions, newVersion].sort(
+      (a, b) => b.versionNumber - a.versionNumber
+    );
+    
+    setFileVersions(updatedVersions);
+    setActiveVersionId(newVersion.id);
+    setPdfUrl(fileUrl);
+    
+    // Återställ formuläret
+    setShowUploadVersionDialog(false);
+    setNewVersionDescription('');
+    setSelectedVersionFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    
+    // Spara versioner i localStorage
+    if (fileData?.fileId) {
+      localStorage.setItem(
+        `pdf_versions_${fileData.fileId}`, 
+        JSON.stringify(updatedVersions)
       );
-      
-      setFileVersions(updatedVersions);
-      setActiveVersionId(newVersion.id);
-      setPdfUrl(fileUrl);
-      
-      // Återställ formuläret
-      setShowUploadVersionDialog(false);
-      setNewVersionDescription('');
-      setSelectedVersionFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      
-      // Spara versioner i localStorage
-      if (fileData?.fileId) {
-        localStorage.setItem(
-          `pdf_versions_${fileData.fileId}`, 
-          JSON.stringify(updatedVersions)
-        );
-      }
     }
   };
 
@@ -713,9 +713,14 @@ export function PDFViewerDialogNew({
   // Ladda annotationer från localStorage
   useEffect(() => {
     if (fileData?.fileId) {
-      async function loadPdfData() {
+      const loadPdfData = async () => {
         try {
           // Försök ladda versionerna från databasen
+          if (!fileData?.fileId) {
+            loadFromLocalStorage();
+            return;
+          }
+          
           const fileId = getConsistentFileId(fileData.fileId);
           
           if (!isNaN(fileId)) {
@@ -779,8 +784,10 @@ export function PDFViewerDialogNew({
         }
       }
       
-      function loadAnnotationsFromLocal() {
+      const loadAnnotationsFromLocal = () => {
         try {
+          if (!fileData?.fileId) return;
+          
           const storedAnnotations = localStorage.getItem(`pdf_annotations_${fileData.fileId}`);
           if (storedAnnotations) {
             setAnnotations(JSON.parse(storedAnnotations));
@@ -790,7 +797,7 @@ export function PDFViewerDialogNew({
         }
       }
       
-      function loadFromLocalStorage() {
+      const loadFromLocalStorage = () => {
         try {
           // Försök ladda versioner från localStorage
           const storedVersions = localStorage.getItem(`pdf_versions_${fileData.fileId}`);
@@ -858,9 +865,8 @@ export function PDFViewerDialogNew({
     <Dialog 
       open={open} 
       onOpenChange={onOpenChange}
-      className="max-w-7xl w-full"
     >
-      <DialogContent className="max-w-7xl w-full max-h-[90vh] p-0 gap-0">
+      <DialogContent className="max-w-7xl w-full max-h-[90vh] p-0 gap-0 min-h-[80vh]">
         <DialogHeader className="px-6 py-2 flex flex-row justify-between items-center border-b">
           <div className="flex items-center space-x-2">
             <FileText className="h-5 w-5 text-muted-foreground" />
