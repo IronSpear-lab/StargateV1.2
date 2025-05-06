@@ -175,7 +175,25 @@ const ConversationsList = ({
             ) : (
               <div className="relative">
                 <Avatar className="h-10 w-10 border">
-                  <AvatarImage src="/avatars/user.svg" />
+                  {/* Hämta användarens avatar om den finns i localStorage */}
+                {(() => {
+                  // Försök hitta användarens namn från konversationen
+                  const otherUser = conversation.participants?.find(p => 
+                    p.userId !== (window as any).currentUser?.id
+                  )?.user;
+                    
+                  // Hämta avatar om vi hittade användaren
+                  const userAvatar = otherUser?.username 
+                    ? localStorage.getItem(`userAvatar_${otherUser.username}`)
+                    : null;
+                    
+                  // Visa användardefinierad avatar eller fallback till standard
+                  if (userAvatar) {
+                    return <AvatarImage src={userAvatar} alt={otherUser?.username} />;
+                  }
+                  
+                  return <AvatarImage src="/avatars/user.svg" />;
+                })()}
                   <AvatarFallback className="bg-[#0acf97]">
                     {/* Use participant initials */}
                     {conversation.displayName ? conversation.displayName.substring(0, 2).toUpperCase() : ""}
@@ -273,7 +291,26 @@ const MessageView = ({
             </Avatar>
           ) : (
             <Avatar className="h-8 w-8">
-              <AvatarImage src="/avatars/project_leader.svg" alt="Project Leader" />
+              {/* Kontrollera om det finns en användardefinierad avatar i localStorage */}
+              {(() => {
+                // Hitta den andra personen i konversationen (ej mig själv)
+                const otherUser = conversation.participants?.find(p => 
+                  p.userId !== (window as any).currentUser?.id
+                )?.user;
+                  
+                // Hämta avatar från localStorage baserat på användarnamn
+                const userAvatar = otherUser?.username 
+                  ? localStorage.getItem(`userAvatar_${otherUser.username}`) 
+                  : null;
+                  
+                // Om vi har en användardefinierad avatar, visa den
+                if (userAvatar) {
+                  return <AvatarImage src={userAvatar} alt={otherUser?.username || 'User'} />;
+                }
+                
+                // Annars fall tillbaka på standardavatarer baserat på roll
+                return <AvatarImage src={`/avatars/${otherUser?.role || 'user'}.svg`} alt={otherUser?.username || 'User'} />;
+              })()}
               <AvatarFallback className="bg-[#727cf5]">
                 PL
               </AvatarFallback>
@@ -345,7 +382,21 @@ const MessageView = ({
                   <div className="flex gap-2 max-w-[80%]">
                     {!isMine && (
                       <Avatar className="h-8 w-8 mt-1">
-                        <AvatarImage src={`/avatars/${message.sender?.role || 'user'}.svg`} alt={message.sender?.username || 'User'} />
+                        {/* Kontrollera om det finns en användardefinierad avatar i localStorage */}
+                        {(() => {
+                          // Hämta avatar från localStorage baserat på användarnamn
+                          const userAvatar = message.sender?.username 
+                            ? localStorage.getItem(`userAvatar_${message.sender.username}`) 
+                            : null;
+                            
+                          // Om vi har en användardefinierad avatar, visa den
+                          if (userAvatar) {
+                            return <AvatarImage src={userAvatar} alt={message.sender?.username || 'User'} />;
+                          }
+                          
+                          // Annars fall tillbaka på standardavatarer
+                          return <AvatarImage src={`/avatars/${message.sender?.role || 'user'}.svg`} alt={message.sender?.username || 'User'} />;
+                        })()}
                         <AvatarFallback className={`${
                           message.sender?.role === 'project_leader' 
                             ? 'bg-[#727cf5]' 

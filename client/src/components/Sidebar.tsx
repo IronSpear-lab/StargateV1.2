@@ -365,12 +365,20 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   // State för användarens profilbild med lagring i localStorage
   const [userAvatar, setUserAvatar] = useState<string | null>(() => {
     // Hämta profil från localStorage vid initialisering
-    if (typeof window !== 'undefined') {
-      const savedAvatar = localStorage.getItem('userAvatar');
+    if (typeof window !== 'undefined' && user?.username) {
+      const savedAvatar = localStorage.getItem(`userAvatar_${user.username}`);
       return savedAvatar;
     }
     return null;
   });
+  
+  // Uppdatera avatar när användaren ändras
+  useEffect(() => {
+    if (typeof window !== 'undefined' && user?.username) {
+      const savedAvatar = localStorage.getItem(`userAvatar_${user.username}`);
+      setUserAvatar(savedAvatar);
+    }
+  }, [user?.username]);
   
   // Import queryClient vid toppen av filen
   const queryClient = useQueryClient();
@@ -1196,7 +1204,9 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
             setUserAvatar(avatarPath);
             
             // Spara i localStorage för att behålla mellan sessioner
-            localStorage.setItem('userAvatar', avatarPath);
+            if (user?.username) {
+              localStorage.setItem(`userAvatar_${user.username}`, avatarPath);
+            }
             
             toast({
               title: "Profilbild uppdaterad",
@@ -1212,7 +1222,9 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               setUserAvatar(dataUrl);
               
               // Spara i localStorage för att behålla mellan sessioner
-              localStorage.setItem('userAvatar', dataUrl);
+              if (user?.username) {
+                localStorage.setItem(`userAvatar_${user.username}`, dataUrl);
+              }
               
               toast({
                 title: "Profilbild uppdaterad",
