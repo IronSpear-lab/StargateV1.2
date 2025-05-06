@@ -516,6 +516,14 @@ export default function MessagesPage() {
   // Fetch selected conversation with messages
   const { data: selectedConversation, refetch: refetchConversation } = useQuery<Conversation>({
     queryKey: ['/api/conversations', selectedConversationId],
+    queryFn: async () => {
+      if (!selectedConversationId) throw new Error("No conversation selected");
+      const response = await fetch(`/api/conversations/${selectedConversationId}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch conversation");
+      }
+      return response.json();
+    },
     enabled: selectedConversationId !== null,
     staleTime: 1000, // 1 second 
   });
