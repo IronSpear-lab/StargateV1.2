@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PDFViewerDialog } from "@/components/ui/pdf-viewer-dialog";
+import { PDFViewerDialogNew } from "@/components/ui/pdf-viewer-dialog-new";
 import { 
   storeFiles, 
   getUploadedFileUrl, 
