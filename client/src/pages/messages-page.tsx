@@ -23,10 +23,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { User, Send, MoreVertical, UserPlus, Search, FileIcon, Paperclip, X, FileText, Image as ImageIcon, Loader2 } from "lucide-react";
+import { User, Send, MoreVertical, UserPlus, Search, FileIcon, Paperclip, X, FileText, Image as ImageIcon, Loader2, ExternalLink } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Sidebar } from "@/components/Sidebar";
+import { PDFViewerDialog } from "@/components/ui/pdf-viewer-dialog";
 
 // Custom event declaration for TypeScript
 declare global {
