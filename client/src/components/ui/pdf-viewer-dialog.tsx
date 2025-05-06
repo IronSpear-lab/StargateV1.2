@@ -38,7 +38,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { storeFileForReuse, getStoredFileById } from "@/lib/file-utils";
 import { 
   getConsistentFileId, 
-  getLatestPdfVersion, 
   addPdfViewerAnimations,
   centerElementInView 
 } from "@/lib/pdf-utils";
@@ -229,6 +228,19 @@ export function PDFViewerDialog({
     const y = (e.clientY - pageRect.top) / scale;
     
     setMarkingStart({ x, y });
+  };
+  
+  // Hjälpfunktion för att konvertera en färg med opacitet
+  const colorWithOpacity = (color: string, opacity: number): string => {
+    // Konvertera hex till rgba
+    if (color.startsWith('#')) {
+      const r = parseInt(color.slice(1, 3), 16);
+      const g = parseInt(color.slice(3, 5), 16);
+      const b = parseInt(color.slice(5, 7), 16);
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+    // Om färgen redan är rgba eller annan format, returnera med opacitet
+    return color + opacity.toString();
   };
 
   const updateMarking = (e: React.MouseEvent) => {
@@ -501,6 +513,13 @@ export function PDFViewerDialog({
     };
   }, []);
 
+  // Funktion för att hitta senaste versionen
+  const findLatestVersion = (versions: FileVersion[]): FileVersion => {
+    return versions.reduce((prev, current) => 
+      (prev.versionNumber > current.versionNumber) ? prev : current
+    );
+  };
+
   // Ladda annotationer och versioner när komponenten öppnas
   useEffect(() => {
     if (open && fileData?.fileId) {
@@ -522,7 +541,7 @@ export function PDFViewerDialog({
           setFileVersions(versions);
           // Sätt den senaste versionen som aktiv om ingen är vald
           if (!activeVersionId && versions.length > 0) {
-            const latestVersion = getLatestPdfVersion(versions);
+            const latestVersion = findLatestVersion(versions);
             setActiveVersionId(latestVersion.id);
             if (latestVersion.fileUrl !== url) {
               setPdfUrl(latestVersion.fileUrl);
@@ -673,7 +692,7 @@ export function PDFViewerDialog({
               }}
             >
               <Document
-                file={url}
+                file={pdfUrl || url}
                 onLoadSuccess={onDocumentLoadSuccess}
                 loading={null}
                 error={
@@ -683,17 +702,237 @@ export function PDFViewerDialog({
                   </div>
                 }
               >
-                <Page
-                  pageNumber={pageNumber}
-                  renderTextLayer={false}
-                  renderAnnotationLayer={false}
-                  loading={null}
-                  className={loading ? "hidden" : ""}
-                />
+                <div ref={pageRef} style={{ position: 'relative' }}>
+                  <Page
+                    pageNumber={pageNumber}
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
+                    loading={null}
+                    className={loading ? "hidden" : ""}
+                    width={595.2} // Standardbredd för A4
+                  />
+                  
+                  {/* Temporär markering när användaren drar */}
+                  {isMarking && tempAnnotation && markingStart && markingEnd && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: `${tempAnnotation.rect?.x}px`,
+                        top: `${tempAnnotation.rect?.y}px`,
+                        width: `${tempAnnotation.rect?.width}px`,
+                        height: `${tempAnnotation.rect?.height}px`,
+                        border: `2px solid ${tempAnnotation.color}`,
+                        backgroundColor: `${tempAnnotation.color}33`,
+                        pointerEvents: 'none',
+                      }}
+                    />
+                  )}
+                  
+                  {/* Visa alla annotationer för aktuell sida */}
+                  {annotations
+                    .filter(annotation => annotation.rect.pageNumber === pageNumber)
+                    .map(annotation => (
+                      <div
+                        key={annotation.id}
+                        style={{
+                          position: 'absolute',
+                          left: `${annotation.rect.x}px`,
+                          top: `${annotation.rect.y}px`,
+                          width: `${annotation.rect.width}px`,
+                          height: `${annotation.rect.height}px`,
+                          border: `2px solid ${annotation.color}`,
+                          backgroundColor: `${annotation.color}33`,
+                          cursor: 'pointer',
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveAnnotation(annotation);
+                          setNewComment(annotation.comment);
+                          setIsAddingComment(true);
+                        }}
+                      >
+                        {/* Indikator för status */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '-15px',
+                            right: '-15px',
+                            width: '22px',
+                            height: '22px',
+                            borderRadius: '11px',
+                            backgroundColor: annotation.color,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontSize: '10px',
+                            fontWeight: 'bold',
+                            border: '1px solid white',
+                          }}
+                        >
+                          {annotation.status === 'open' && <span>!</span>}
+                          {annotation.status === 'resolved' && <Check size={14} />}
+                          {annotation.status === 'action_required' && <AlertCircle size={14} />}
+                          {annotation.status === 'reviewing' && <span>?</span>}
+                        </div>
+                      </div>
+                    ))}
+                </div>
               </Document>
             </div>
           </div>
         </div>
+        
+        {/* Versionshanteringspanel */}
+        {showVersionsPanel && fileData?.fileId && (
+          <div className="absolute top-[60px] right-0 w-[300px] h-[calc(100%-60px)] bg-white border-l shadow-lg p-4 overflow-auto z-10">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-medium">Versioner</h3>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => setShowUploadVersionDialog(true)}
+              >
+                <Upload className="h-4 w-4 mr-1" /> Ladda upp version
+              </Button>
+            </div>
+            
+            <div className="space-y-3 mt-4">
+              {fileVersions.map(version => (
+                <div 
+                  key={version.id} 
+                  className={`p-3 rounded-md ${activeVersionId === version.id ? 'bg-primary/10 border border-primary/30' : 'bg-gray-100 hover:bg-gray-200'} cursor-pointer`}
+                  onClick={() => {
+                    setActiveVersionId(version.id);
+                    setPdfUrl(version.fileUrl);
+                  }}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium text-sm">Version {version.versionNumber}</p>
+                      <p className="text-xs text-muted-foreground truncate">{version.filename}</p>
+                    </div>
+                    {version.commentCount ? (
+                      <div className="bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                        {version.commentCount}
+                      </div>
+                    ) : null}
+                  </div>
+                  <p className="text-xs mt-1 text-muted-foreground">{version.description}</p>
+                  <p className="text-xs mt-2">
+                    {new Date(version.uploaded).toLocaleDateString()} av {version.uploadedBy}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Kommentarspanel */}
+        {isAddingComment && activeAnnotation && (
+          <div className="absolute bottom-0 left-0 right-0 bg-white border-t p-4 z-10">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-medium">Kommentar</h3>
+              <div className="flex gap-2">
+                <Select 
+                  value={activeAnnotation.status} 
+                  onValueChange={(value) => handleStatusChange(activeAnnotation.id, value as any)}
+                >
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Öppen</SelectItem>
+                    <SelectItem value="resolved">Löst</SelectItem>
+                    <SelectItem value="action_required">Kräver åtgärd</SelectItem>
+                    <SelectItem value="reviewing">Under granskning</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  onClick={() => setIsAddingComment(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            
+            <Textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Skriv din kommentar här..."
+              className="min-h-[100px]"
+            />
+            
+            <div className="flex justify-end mt-2">
+              <Button 
+                onClick={handleSaveComment}
+                disabled={newComment.trim() === activeAnnotation.comment.trim()}
+              >
+                Spara
+              </Button>
+            </div>
+            
+            <div className="text-xs text-muted-foreground mt-2">
+              Skapad av {activeAnnotation.createdBy} den {new Date(activeAnnotation.createdAt).toLocaleDateString()}
+            </div>
+          </div>
+        )}
+
+        {/* Dialog för att ladda upp ny version */}
+        {showUploadVersionDialog && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
+            <div className="bg-white rounded-lg w-[400px] p-6">
+              <h3 className="text-lg font-medium mb-4">Ladda upp ny version</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Välj PDF-fil</label>
+                  <Input 
+                    type="file" 
+                    accept=".pdf" 
+                    ref={fileInputRef}
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setSelectedVersionFile(e.target.files[0]);
+                      }
+                    }}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-1">Versionsbeskrivning</label>
+                  <Textarea
+                    value={newVersionDescription}
+                    onChange={(e) => setNewVersionDescription(e.target.value)}
+                    placeholder="Beskriv vad som är nytt i denna version..."
+                    className="min-h-[80px]"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end mt-6 gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowUploadVersionDialog(false);
+                    setSelectedVersionFile(null);
+                    setNewVersionDescription('');
+                  }}
+                >
+                  Avbryt
+                </Button>
+                <Button 
+                  onClick={handleAddVersion}
+                  disabled={!selectedVersionFile}
+                >
+                  Ladda upp
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Mobile page navigation */}
         <div className="flex justify-between p-4 md:hidden">
