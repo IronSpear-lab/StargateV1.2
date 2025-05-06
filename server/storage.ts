@@ -143,7 +143,7 @@ class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(pdfAnnotations)
-      .where(eq(pdfAnnotations.versionId, versionId));
+      .where(eq(pdfAnnotations.pdfVersionId, versionId));
   }
   
   async getPDFAnnotation(annotationId: number): Promise<PdfAnnotation | undefined> {
@@ -176,7 +176,7 @@ class DatabaseStorage implements IStorage {
       throw new Error(`Annotation with ID ${id} not found`);
     }
     
-    const versionId = annotation.versionId;
+    const versionId = annotation.pdfVersionId;
     
     await db
       .delete(pdfAnnotations)

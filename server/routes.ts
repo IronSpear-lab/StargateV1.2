@@ -1905,10 +1905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Kontrollera att versionen existerar
-      const version = await db.select()
-        .from(pdfVersions)
-        .where(eq(pdfVersions.id, versionId))
-        .then(result => result[0]);
+      const version = await storage.getPDFVersion(versionId);
       
       if (!version) {
         return res.status(404).json({ error: "Version not found" });
@@ -1916,44 +1913,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Om vi har ett ID, uppdatera befintlig annotation
       if (id) {
-        const existingAnnotation = await db.select()
-          .from(pdfAnnotations)
-          .where(and(
-            eq(pdfAnnotations.id, parseInt(id)),
-            eq(pdfAnnotations.pdfVersionId, versionId)
-          ))
-          .then(result => result[0]);
+        const existingAnnotation = await storage.getPDFAnnotation(parseInt(id));
         
-        if (!existingAnnotation) {
+        if (!existingAnnotation || existingAnnotation.pdfVersionId !== versionId) {
           return res.status(404).json({ error: "Annotation not found" });
         }
         
         // Uppdatera annotation
-        const updatedAnnotation = await db.update(pdfAnnotations)
-          .set({
-            rect,
-            color,
-            comment,
-            status
-          })
-          .where(eq(pdfAnnotations.id, parseInt(id)))
-          .returning()
-          .then(result => result[0]);
+        const updatedAnnotation = await storage.updatePDFAnnotation(parseInt(id), {
+          rect,
+          color,
+          comment,
+          status
+        });
         
         return res.json(updatedAnnotation);
       } else {
         // Skapa ny annotation
-        const newAnnotation = await db.insert(pdfAnnotations)
-          .values({
-            pdfVersionId: versionId,
-            rect,
-            color,
-            comment: comment || '',
-            status: status || 'open',
-            createdById: req.user!.id
-          })
-          .returning()
-          .then(result => result[0]);
+        const newAnnotation = await storage.createPDFAnnotation({
+          pdfVersionId: versionId,
+          rect,
+          color,
+          comment: comment || '',
+          status: status || 'open',
+          createdById: req.user!.id
+        });
         
         // Hämta användarinformation
         const user = await db.select({
@@ -1987,19 +1971,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const versionId = parseInt(req.params.versionId);
       
       // Kontrollera att versionen existerar
-      const version = await db.select()
-        .from(pdfVersions)
-        .where(eq(pdfVersions.id, versionId))
-        .then(result => result[0]);
+      const version = await storage.getPDFVersion(versionId);
       
       if (!version) {
         return res.status(404).json({ error: "Version not found" });
       }
       
       // Hämta alla annotationer för versionen
-      const annotations = await db.select()
-        .from(pdfAnnotations)
-        .where(eq(pdfAnnotations.pdfVersionId, versionId));
+      const annotations = await storage.getPDFAnnotations(versionId);
       
       // Hämta användarinformation
       const userIds = [...new Set(annotations.map(a => a.createdById))];
@@ -2034,20 +2013,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const annotationId = parseInt(req.params.annotationId);
       
       // Kontrollera om annotationen existerar
-      const annotation = await db.select()
-        .from(pdfAnnotations)
-        .where(eq(pdfAnnotations.id, annotationId))
-        .then(result => result[0]);
+      const annotation = await storage.getPDFAnnotation(annotationId);
       
       if (!annotation) {
         return res.status(404).json({ error: "Annotation not found" });
       }
       
       // Ta bort annotationen
-      await db.delete(pdfAnnotations)
-        .where(eq(pdfAnnotations.id, annotationId));
+      const result = await storage.deletePDFAnnotation(annotationId);
       
-      res.json({ success: true, message: "Annotation deleted" });
+      res.json({ 
+        success: true, 
+        message: "Annotation deleted",
+        versionId: result.versionId 
+      });
     } catch (error) {
       console.error("Error deleting annotation:", error);
       res.status(500).json({ error: "Failed to delete annotation" });
