@@ -741,6 +741,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     if (isDragging) {
       setIsDragging(false);
       if (e) e.preventDefault();
+      // Återställ textmarkering
+      document.body.style.userSelect = '';
       return;
     }
     
@@ -1804,13 +1806,14 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
           
           <div 
             ref={pdfContainerRef}
-            className="flex-1 bg-gray-200 pdfViewerContainer" 
+            className="flex-1 bg-gray-200 pdfViewerContainer overflow-auto" 
             style={{ 
               cursor: isMarking ? 'crosshair' : isDragging ? 'grabbing' : 'grab',
-              overflow: 'auto', // Säkerställ att scrollning fungerar i alla riktningar
               width: '100%',
               height: '100%',
               position: 'relative',
+              padding: "2rem",
+              overscrollBehavior: "auto",
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center'
@@ -1822,6 +1825,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                 handleMouseDown(e);
               } else {
                 // Drag-to-pan
+                e.preventDefault(); // Förhindra text-markering
                 if (pdfContainerRef.current) {
                   setIsDragging(true);
                   setDragStart({ x: e.clientX, y: e.clientY });
@@ -1829,6 +1833,8 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                     x: pdfContainerRef.current.scrollLeft,
                     y: pdfContainerRef.current.scrollTop
                   });
+                  // Förhindra textmarkering under drag
+                  document.body.style.userSelect = 'none';
                 }
               }
             }}
@@ -1849,7 +1855,17 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
             onMouseUp={handleMouseUp}
           >
             {file ? (
-              <div className="inline-block" ref={pageRef}>
+              <div 
+                className="inline-block" 
+                ref={pageRef}
+                style={{
+                  width: "200%", // Större container för att säkerställa scrollbarhet
+                  height: "200%", // Större container för att säkerställa scrollbarhet
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
                 <Document
                   file={file}
                   onLoadSuccess={onDocumentLoadSuccess}
@@ -1868,17 +1884,20 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                   className="pdfDocument"
                 >
                   <div className="pdf-page-wrapper" style={{ 
-                    padding: "300px", // Utökade marginaler runt dokumentet för bättre scrollbarhet
-                    background: "transparent", // Genomskinlig bakgrund för att visa grid
                     position: "relative", // Behåll markeringar inom detta element
-                    display: "inline-block" // Försäkra oss om att vi kan scrolla i alla riktningar
+                    display: "inline-block", // Försäkra oss om att vi kan scrolla i alla riktningar
+                    transform: `scale(${scale})`,
+                    transformOrigin: "center center",
+                    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
+                    background: "white",
+                    transition: "transform 0.1s ease-out",
                   }}>
                     <div className="relative">
                       <Page
                         pageNumber={pageNumber}
                         renderTextLayer={false}
                         renderAnnotationLayer={false}
-                        scale={scale}
+                        scale={1} // Använd 1 här eftersom vi skalar med transform istället
                         rotate={rotation}
                         loading={
                           <div className="h-[500px] w-[400px] bg-gray-100 flex items-center justify-center">
