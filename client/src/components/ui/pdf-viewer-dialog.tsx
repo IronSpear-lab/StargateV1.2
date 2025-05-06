@@ -43,6 +43,16 @@ import {
   getConsistentFileId, 
   addPdfViewerAnimations,
   centerElementInView 
+} from "@/lib/ui-utils";
+import {
+  getPDFVersions,
+  uploadPDFVersion,
+  getPDFVersionContent,
+  getPDFAnnotations,
+  savePDFAnnotation,
+  deletePDFAnnotation,
+  PDFVersion as ApiPDFVersion,
+  PDFAnnotation as ApiPDFAnnotation
 } from "@/lib/pdf-utils";
 
 // Configure worker for react-pdf

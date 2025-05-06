@@ -2,7 +2,7 @@ import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { eq, and, desc, asc, inArray, ne } from "drizzle-orm";
+import { eq, and, desc, asc, inArray, ne, sql } from "drizzle-orm";
 import { db } from "../db";
 import { users } from "@shared/schema";
 import multer from "multer";
@@ -18,7 +18,9 @@ import {
   taskTimeEntries,
   conversations,
   conversationParticipants,
-  messages
+  messages,
+  pdfVersions,
+  pdfAnnotations
 } from "@shared/schema";
 
 // Set up multer for file uploads
@@ -247,6 +249,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         uploadedById: req.user!.id,
         uploadDate: new Date()
       });
+      
+      // Om det är en PDF-fil, skapa automatiskt första versionen
+      if (fileType === 'application/pdf') {
+        await db.insert(pdfVersions)
+          .values({
+            fileId: file.id,
+            versionNumber: 1,
+            filePath: filePath,
+            description: 'Ursprunglig version',
+            uploadedById: req.user!.id,
+            metadata: {
+              fileSize: fileSize,
+              fileName: fileName
+            }
+          });
+          
+        console.log(`Created initial PDF version for file ${file.id}`);
+      }
 
       res.status(201).json(file);
     } catch (error) {
@@ -1347,6 +1367,371 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error uploading message attachment:", error);
       res.status(500).json({ error: "Failed to upload attachment" });
+    }
+  });
+
+  // PDF Endpoints
+  
+  // Konfigurera pdfStorage för uppladdning av PDF-versioner
+  const pdfStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, pdfUploadsDir);
+    },
+    filename: function (req, file, cb) {
+      const uniquePrefix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, uniquePrefix + '-' + file.originalname);
+    }
+  });
+  
+  const pdfUpload = multer({ 
+    storage: pdfStorage,
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype === 'application/pdf') {
+        cb(null, true);
+      } else {
+        cb(new Error('Endast PDF-filer tillåts för denna uppladdning.'), false);
+      }
+    }
+  });
+
+  // Hämta alla versioner för en PDF-fil
+  app.get(`${apiPrefix}/pdf/:fileId/versions`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const fileId = parseInt(req.params.fileId);
+      
+      // Hämta originalfilen först för att verifiera att den existerar
+      const file = await db.select()
+        .from(files)
+        .where(eq(files.id, fileId))
+        .then(result => result[0]);
+      
+      if (!file) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      
+      // Hämta alla versioner för filen
+      const versions = await db.select({
+        id: pdfVersions.id,
+        versionNumber: pdfVersions.versionNumber,
+        filePath: pdfVersions.filePath,
+        description: pdfVersions.description,
+        uploadedAt: pdfVersions.uploadedAt,
+        uploadedById: pdfVersions.uploadedById,
+        metadata: pdfVersions.metadata
+      })
+      .from(pdfVersions)
+      .where(eq(pdfVersions.fileId, fileId))
+      .orderBy(desc(pdfVersions.versionNumber));
+      
+      // Hämta användare som laddat upp versionerna
+      const userIds = [...new Set(versions.map(v => v.uploadedById))];
+      const users = await db.select({
+        id: users.id,
+        username: users.username
+      })
+      .from(users)
+      .where(inArray(users.id, userIds));
+      
+      // Mappa användarnamn till versioner
+      const usersMap = new Map(users.map(u => [u.id, u.username]));
+      
+      const versionsWithUsers = await Promise.all(versions.map(async (version) => {
+        // Räkna kommentarer för varje version
+        const annotations = await db.select({ count: sql<number>`count(*)` })
+          .from(pdfAnnotations)
+          .where(and(
+            eq(pdfAnnotations.pdfVersionId, version.id),
+            sql`${pdfAnnotations.comment} IS NOT NULL AND ${pdfAnnotations.comment} != ''`
+          ))
+          .then(result => result[0]?.count || 0);
+        
+        return {
+          ...version,
+          uploadedBy: usersMap.get(version.uploadedById) || "Unknown",
+          commentCount: annotations
+        };
+      }));
+      
+      res.json(versionsWithUsers);
+    } catch (error) {
+      console.error("Error fetching PDF versions:", error);
+      res.status(500).json({ error: "Failed to fetch PDF versions" });
+    }
+  });
+
+  // Ladda upp en ny version av en PDF
+  app.post(`${apiPrefix}/pdf/:fileId/versions`, pdfUpload.single('file'), async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+      
+      const fileId = parseInt(req.params.fileId);
+      const { description } = req.body;
+      
+      // Kontrollera att filen existerar
+      const file = await db.select()
+        .from(files)
+        .where(eq(files.id, fileId))
+        .then(result => result[0]);
+      
+      if (!file) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      
+      // Hämta senaste versionsnumret
+      const latestVersion = await db.select()
+        .from(pdfVersions)
+        .where(eq(pdfVersions.fileId, fileId))
+        .orderBy(desc(pdfVersions.versionNumber))
+        .limit(1)
+        .then(result => result[0]);
+      
+      const newVersionNumber = latestVersion ? latestVersion.versionNumber + 1 : 1;
+      
+      // Skapa ny version
+      const newVersion = await db.insert(pdfVersions)
+        .values({
+          fileId: fileId,
+          versionNumber: newVersionNumber,
+          filePath: req.file.path,
+          description: description || `Version ${newVersionNumber}`,
+          uploadedById: req.user!.id,
+          metadata: {
+            fileSize: req.file.size,
+            fileName: req.file.originalname
+          }
+        })
+        .returning()
+        .then(result => result[0]);
+      
+      // Hämta användarinformation
+      const user = await db.select({
+        id: users.id,
+        username: users.username
+      })
+      .from(users)
+      .where(eq(users.id, req.user!.id))
+      .then(result => result[0]);
+      
+      const versionWithUser = {
+        ...newVersion,
+        uploadedBy: user.username,
+        commentCount: 0
+      };
+      
+      res.status(201).json(versionWithUser);
+    } catch (error) {
+      console.error("Error uploading PDF version:", error);
+      res.status(500).json({ error: "Failed to upload PDF version" });
+    }
+  });
+
+  // Hämta en specifik PDF-version
+  app.get(`${apiPrefix}/pdf/versions/:versionId`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const versionId = parseInt(req.params.versionId);
+      
+      // Hämta versionsinformation
+      const version = await db.select()
+        .from(pdfVersions)
+        .where(eq(pdfVersions.id, versionId))
+        .then(result => result[0]);
+      
+      if (!version) {
+        return res.status(404).json({ error: "Version not found" });
+      }
+      
+      // Kontrollera att filen existerar
+      const filePath = path.resolve(version.filePath);
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: "PDF file not found" });
+      }
+      
+      // Ange content-type och returnera PDF som stream
+      res.setHeader('Content-Type', 'application/pdf');
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+    } catch (error) {
+      console.error("Error fetching PDF version:", error);
+      res.status(500).json({ error: "Failed to fetch PDF version" });
+    }
+  });
+
+  // Skapa eller uppdatera en annotation (markering)
+  app.post(`${apiPrefix}/pdf/versions/:versionId/annotations`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const versionId = parseInt(req.params.versionId);
+      const { rect, color, comment, status, id } = req.body;
+      
+      // Validera indata
+      if (!rect || typeof rect !== 'object') {
+        return res.status(400).json({ error: "Invalid rectangle data" });
+      }
+      
+      // Kontrollera att versionen existerar
+      const version = await db.select()
+        .from(pdfVersions)
+        .where(eq(pdfVersions.id, versionId))
+        .then(result => result[0]);
+      
+      if (!version) {
+        return res.status(404).json({ error: "Version not found" });
+      }
+      
+      // Om vi har ett ID, uppdatera befintlig annotation
+      if (id) {
+        const existingAnnotation = await db.select()
+          .from(pdfAnnotations)
+          .where(and(
+            eq(pdfAnnotations.id, parseInt(id)),
+            eq(pdfAnnotations.pdfVersionId, versionId)
+          ))
+          .then(result => result[0]);
+        
+        if (!existingAnnotation) {
+          return res.status(404).json({ error: "Annotation not found" });
+        }
+        
+        // Uppdatera annotation
+        const updatedAnnotation = await db.update(pdfAnnotations)
+          .set({
+            rect,
+            color,
+            comment,
+            status
+          })
+          .where(eq(pdfAnnotations.id, parseInt(id)))
+          .returning()
+          .then(result => result[0]);
+        
+        return res.json(updatedAnnotation);
+      } else {
+        // Skapa ny annotation
+        const newAnnotation = await db.insert(pdfAnnotations)
+          .values({
+            pdfVersionId: versionId,
+            rect,
+            color,
+            comment: comment || '',
+            status: status || 'open',
+            createdById: req.user!.id
+          })
+          .returning()
+          .then(result => result[0]);
+        
+        // Hämta användarinformation
+        const user = await db.select({
+          id: users.id,
+          username: users.username
+        })
+        .from(users)
+        .where(eq(users.id, req.user!.id))
+        .then(result => result[0]);
+        
+        const annotationWithUser = {
+          ...newAnnotation,
+          createdBy: user.username
+        };
+        
+        res.status(201).json(annotationWithUser);
+      }
+    } catch (error) {
+      console.error("Error creating/updating annotation:", error);
+      res.status(500).json({ error: "Failed to create/update annotation" });
+    }
+  });
+
+  // Hämta alla annotationer för en specifik PDF-version
+  app.get(`${apiPrefix}/pdf/versions/:versionId/annotations`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const versionId = parseInt(req.params.versionId);
+      
+      // Kontrollera att versionen existerar
+      const version = await db.select()
+        .from(pdfVersions)
+        .where(eq(pdfVersions.id, versionId))
+        .then(result => result[0]);
+      
+      if (!version) {
+        return res.status(404).json({ error: "Version not found" });
+      }
+      
+      // Hämta alla annotationer för versionen
+      const annotations = await db.select()
+        .from(pdfAnnotations)
+        .where(eq(pdfAnnotations.pdfVersionId, versionId));
+      
+      // Hämta användarinformation
+      const userIds = [...new Set(annotations.map(a => a.createdById))];
+      const users = await db.select({
+        id: users.id,
+        username: users.username
+      })
+      .from(users)
+      .where(inArray(users.id, userIds));
+      
+      const usersMap = new Map(users.map(u => [u.id, u.username]));
+      
+      const annotationsWithUsers = annotations.map(annotation => ({
+        ...annotation,
+        createdBy: usersMap.get(annotation.createdById) || "Unknown"
+      }));
+      
+      res.json(annotationsWithUsers);
+    } catch (error) {
+      console.error("Error fetching annotations:", error);
+      res.status(500).json({ error: "Failed to fetch annotations" });
+    }
+  });
+
+  // Ta bort en annotation
+  app.delete(`${apiPrefix}/pdf/annotations/:annotationId`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const annotationId = parseInt(req.params.annotationId);
+      
+      // Kontrollera om annotationen existerar
+      const annotation = await db.select()
+        .from(pdfAnnotations)
+        .where(eq(pdfAnnotations.id, annotationId))
+        .then(result => result[0]);
+      
+      if (!annotation) {
+        return res.status(404).json({ error: "Annotation not found" });
+      }
+      
+      // Ta bort annotationen
+      await db.delete(pdfAnnotations)
+        .where(eq(pdfAnnotations.id, annotationId));
+      
+      res.json({ success: true, message: "Annotation deleted" });
+    } catch (error) {
+      console.error("Error deleting annotation:", error);
+      res.status(500).json({ error: "Failed to delete annotation" });
     }
   });
 

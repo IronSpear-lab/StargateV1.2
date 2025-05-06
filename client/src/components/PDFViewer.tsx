@@ -31,9 +31,15 @@ import { useAuth } from "@/hooks/use-auth";
 import { storeFileForReuse, getStoredFileById } from "@/lib/file-utils";
 import { 
   getConsistentFileId, 
-  getLatestPdfVersion, 
   addPdfViewerAnimations,
   centerElementInView 
+} from "@/lib/ui-utils";
+import {
+  getPDFVersions,
+  getPDFVersionContent,
+  getPDFAnnotations,
+  savePDFAnnotation,
+  getLatestPDFVersion
 } from "@/lib/pdf-utils";
 
 // Konfigurera worker för react-pdf - använder CDN för att undvika byggproblem
@@ -206,13 +212,22 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     } else if (fileData) {
       // Om vi varken har en fil eller URL, men har fildata, försök hitta senaste versionen
       console.log(`[${Date.now()}] No file or URL provided, checking for latest version of: ${fileData.filename}`);
-      const latestVersionUrl = getLatestPdfVersion(fileData.filename);
       
-      if (latestVersionUrl) {
-        console.log(`[${Date.now()}] Found latest version URL: ${latestVersionUrl}`);
-        setPdfUrl(latestVersionUrl);
+      // Använd den nya API-funktionen istället för localStorage
+      if (fileData.fileId) {
+        const fileIdNumber = parseInt(fileData.fileId);
+        if (!isNaN(fileIdNumber)) {
+          getLatestPDFVersion(fileIdNumber).then(latestVersion => {
+            if (latestVersion) {
+              console.log(`[${Date.now()}] Found latest version URL from API: ${latestVersion.filePath}`);
+              setPdfUrl(`/api/pdf/versions/${latestVersion.id}`);
+            } else {
+              console.log(`[${Date.now()}] No latest version found from API`);
+            }
+          });
+        }
       } else {
-        console.log(`[${Date.now()}] No latest version found for: ${fileData.filename}`);
+        console.log(`[${Date.now()}] No fileId available to fetch latest version`);
       }
     }
   }, [file, fileUrl, fileData]);
