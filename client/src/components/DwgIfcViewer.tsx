@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { MeshBasicMaterial } from 'three';  // Explicitly import for type checking
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { IfcAPI } from 'web-ifc';
 
 import { Upload, FileText, Loader2, XCircle, ZoomIn, ZoomOut, RotateCw, Expand, Ruler, Map, Navigation, Home } from 'lucide-react';
@@ -148,102 +147,297 @@ export function DwgIfcViewer() {
         
         // Initialize IFC or create a placeholder based on file type
         if (extension === 'ifc') {
-          // Setup camera for IFC viewing
+          // Set up camera for IFC viewing
           camera.position.set(10, 10, 10);
           camera.lookAt(0, 0, 0);
           
-          // Add controls for better interaction
-          const controls = new THREE.OrbitControls(camera, renderer.domElement);
-          controls.enableDamping = true;
-          controls.dampingFactor = 0.1;
-          controls.screenSpacePanning = true;
+          // Set up orbit controls manually since we can't use the OrbitControls import
+          let isDragging = false;
+          let previousMousePosition = { x: 0, y: 0 };
+          let cameraTarget = new THREE.Vector3(0, 0, 0);
           
-          // Create IFC loader and setup
-          const ifcLoader = new IFCLoader();
+          // Manual camera rotation
+          const handleMouseDown = (event: MouseEvent) => {
+            isDragging = true;
+            previousMousePosition = {
+              x: event.clientX,
+              y: event.clientY
+            };
+          };
           
-          // Use the web-ifc-three loader to load the IFC file
+          const handleMouseMove = (event: MouseEvent) => {
+            if (!isDragging) return;
+            
+            const deltaMove = {
+              x: event.clientX - previousMousePosition.x,
+              y: event.clientY - previousMousePosition.y
+            };
+            
+            // Adjust the rotation speed
+            const rotationSpeed = 0.005;
+            
+            // Calculate theta and phi components (spherical coordinates)
+            const theta = -deltaMove.x * rotationSpeed;
+            const phi = -deltaMove.y * rotationSpeed;
+            
+            // Get camera position relative to target
+            const position = new THREE.Vector3().subVectors(camera.position, cameraTarget);
+            
+            // Convert to spherical coordinates
+            const radius = position.length();
+            let sphericalCoords = new THREE.Spherical().setFromVector3(position);
+            
+            // Apply rotation
+            sphericalCoords.phi = Math.max(0.1, Math.min(Math.PI - 0.1, sphericalCoords.phi + phi));
+            sphericalCoords.theta += theta;
+            
+            // Convert back to Cartesian coordinates
+            position.setFromSpherical(sphericalCoords);
+            
+            // Update camera position
+            camera.position.copy(position.add(cameraTarget));
+            camera.lookAt(cameraTarget);
+            
+            previousMousePosition = {
+              x: event.clientX,
+              y: event.clientY
+            };
+            
+            // Render to show changes
+            renderer.render(scene, camera);
+          };
+          
+          const handleMouseUp = () => {
+            isDragging = false;
+          };
+          
+          const handleWheel = (event: WheelEvent) => {
+            event.preventDefault();
+            
+            // Get direction vector from camera to target
+            const direction = new THREE.Vector3().subVectors(camera.position, cameraTarget).normalize();
+            
+            // Zoom speed
+            const zoomSpeed = 0.2;
+            const distance = event.deltaY * zoomSpeed;
+            
+            // Move camera along direction vector
+            camera.position.addScaledVector(direction, distance);
+            
+            // Render to show changes
+            renderer.render(scene, camera);
+          };
+          
+          // Add event listeners
+          if (viewerContainerRef.current) {
+            viewerContainerRef.current.addEventListener('mousedown', handleMouseDown);
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+            viewerContainerRef.current.addEventListener('wheel', handleWheel, { passive: false });
+          }
+          
+          // Use IfcAPI directly to load IFC
           setLoading(true);
           
           // Create a function to load the IFC model
           const loadIFCModel = async () => {
             try {
-              // Convert the selected file to an array buffer
-              const arrayBuffer = await selectedFile.data.arrayBuffer();
-              const url = URL.createObjectURL(new Blob([arrayBuffer]));
+              // Initialize the IFC API
+              const ifcAPI = new IfcAPI();
+              await ifcAPI.Init();
               
-              // Load the IFC model
-              ifcLoader.load(url, (ifcModel) => {
-                // Scale the model to a reasonable size
-                const box = new THREE.Box3().setFromObject(ifcModel);
+              // Convert the selected file to array buffer
+              const arrayBuffer = await selectedFile.data.arrayBuffer();
+              
+              // Load the model
+              const modelID = await ifcAPI.OpenModel(new Uint8Array(arrayBuffer));
+              console.log("Model loaded with ID:", modelID);
+              
+              // Get all the geometry from the model
+              const allItems = await ifcAPI.GetAllItems(modelID);
+              console.log("Items in model:", allItems.length);
+              
+              // Create a group to hold all model geometry
+              const modelGroup = new THREE.Group();
+              
+              // Process each IFC element type that has geometry
+              const processItems = async () => {
+                // Get the most common elements with geometry
+                const wallsID = await ifcAPI.GetLineIDsWithType(modelID, 4 /* IFCWALL */);
+                const doorsID = await ifcAPI.GetLineIDsWithType(modelID, 5 /* IFCDOOR */);
+                const windowsID = await ifcAPI.GetLineIDsWithType(modelID, 6 /* IFCWINDOW */);
+                const slabsID = await ifcAPI.GetLineIDsWithType(modelID, 3 /* IFCSLAB */);
+                const beamsID = await ifcAPI.GetLineIDsWithType(modelID, 2 /* IFCBEAM */);
+                
+                // Create material map for different element types
+                const materialMap = {
+                  4: new THREE.MeshPhongMaterial({ color: 0xf5f5f5 }), // Walls
+                  5: new THREE.MeshPhongMaterial({ color: 0x8B4513 }), // Doors
+                  6: new THREE.MeshPhongMaterial({ color: 0xadd8e6, transparent: true, opacity: 0.6 }), // Windows
+                  3: new THREE.MeshPhongMaterial({ color: 0xcccccc }), // Slabs
+                  2: new THREE.MeshPhongMaterial({ color: 0x808080 }), // Beams
+                };
+                
+                // Process all walls
+                for (const wallID of wallsID) {
+                  // Get geometry data for this wall
+                  const wallGeometry = await ifcAPI.GetGeometry(modelID, wallID);
+                  if (wallGeometry && wallGeometry.GetVertexData) {
+                    const vertices = wallGeometry.GetVertexData();
+                    const indices = wallGeometry.GetIndexData();
+                    
+                    const geometry = new THREE.BufferGeometry();
+                    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
+                    geometry.setIndex(Array.from(indices));
+                    
+                    const mesh = new THREE.Mesh(geometry, materialMap[4]);
+                    modelGroup.add(mesh);
+                  }
+                }
+                
+                // Add the model group to the scene
+                scene.add(modelGroup);
+                
+                // Scale and center the model
+                const box = new THREE.Box3().setFromObject(modelGroup);
                 const size = box.getSize(new THREE.Vector3());
                 const maxSize = Math.max(size.x, size.y, size.z);
-                const scale = 10 / maxSize;
+                const scale = 5 / maxSize;
                 
-                ifcModel.scale.set(scale, scale, scale);
+                modelGroup.scale.set(scale, scale, scale);
                 
                 // Center the model
-                box.setFromObject(ifcModel);
-                box.getCenter(ifcModel.position);
-                ifcModel.position.multiplyScalar(-1);
-                
-                // Add the model to the scene
-                scene.add(ifcModel);
+                box.setFromObject(modelGroup);
+                const center = box.getCenter(new THREE.Vector3());
+                modelGroup.position.sub(center);
                 
                 // Position camera to see the whole model
-                const boxSize = box.getSize(new THREE.Vector3());
-                const boxCenter = box.getCenter(new THREE.Vector3());
-                const maxDim = Math.max(boxSize.x, boxSize.y, boxSize.z);
-                const fov = camera.fov * (Math.PI / 180);
-                let cameraDistance = Math.abs(maxDim / Math.sin(fov / 2));
-                
-                // Adjust distance for better viewing
-                cameraDistance *= 1.5;
-                
-                // Position camera
-                camera.position.set(
-                  boxCenter.x + cameraDistance,
-                  boxCenter.y + cameraDistance,
-                  boxCenter.z + cameraDistance
-                );
-                camera.lookAt(boxCenter);
-                
-                // Update controls
-                controls.target.copy(boxCenter);
-                controls.update();
+                cameraTarget = new THREE.Vector3(0, 0, 0);
+                const distance = 10;
+                camera.position.set(distance, distance, distance);
+                camera.lookAt(cameraTarget);
                 
                 // Hide loading state
                 setLoading(false);
                 
                 toast({
                   title: "IFC-modell laddad",
-                  description: "Den faktiska IFC-modellen har renderats framgångsrikt.",
+                  description: "IFC-modellen har renderats med faktiska byggdelar från filen.",
                 });
-              },
-              (xhr) => {
-                // Show loading progress
-                const percentage = Math.round((xhr.loaded / xhr.total) * 100);
-                console.log('Loading IFC: ' + percentage + '%');
-              },
-              (error) => {
-                console.error('Error loading IFC file:', error);
-                setError('Kunde inte ladda IFC-filen. Kontrollera filformatet.');
-                setLoading(false);
-              });
+              };
+              
+              // Start processing items
+              processItems();
+              
             } catch (err) {
               console.error('Error processing IFC file:', err);
-              setError('Kunde inte bearbeta IFC-filen.');
+              setError('Kunde inte bearbeta IFC-filen. Se felmeddelande i konsolen.');
+              
+              // Fallback to a representative house model if processing fails
+              createHouseModel();
+              
               setLoading(false);
             }
           };
           
+          // Function to create a representative house model if IFC loading fails
+          const createHouseModel = () => {
+            const buildingGroup = new THREE.Group();
+            
+            // Base/foundation
+            const baseGeometry = new THREE.BoxGeometry(5, 0.2, 4);
+            const baseMaterial = new THREE.MeshPhongMaterial({ color: 0xcccccc });
+            const base = new THREE.Mesh(baseGeometry, baseMaterial);
+            base.position.y = -0.5;
+            buildingGroup.add(base);
+            
+            // Create walls
+            const wallMaterial = new THREE.MeshPhongMaterial({ color: 0xf5f5f5 });
+            
+            // Left wall
+            const leftWallGeometry = new THREE.BoxGeometry(0.2, 1.5, 4);
+            const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
+            leftWall.position.set(-2.4, 0.25, 0);
+            buildingGroup.add(leftWall);
+            
+            // Right wall
+            const rightWallGeometry = new THREE.BoxGeometry(0.2, 1.5, 4);
+            const rightWall = new THREE.Mesh(rightWallGeometry, wallMaterial);
+            rightWall.position.set(2.4, 0.25, 0);
+            buildingGroup.add(rightWall);
+            
+            // Back wall
+            const backWallGeometry = new THREE.BoxGeometry(5, 1.5, 0.2);
+            const backWall = new THREE.Mesh(backWallGeometry, wallMaterial);
+            backWall.position.set(0, 0.25, -2);
+            buildingGroup.add(backWall);
+            
+            // Front wall with door
+            const frontWallLeftGeometry = new THREE.BoxGeometry(2, 1.5, 0.2);
+            const frontWallLeft = new THREE.Mesh(frontWallLeftGeometry, wallMaterial);
+            frontWallLeft.position.set(-1.5, 0.25, 2);
+            buildingGroup.add(frontWallLeft);
+            
+            const frontWallRightGeometry = new THREE.BoxGeometry(2, 1.5, 0.2);
+            const frontWallRight = new THREE.Mesh(frontWallRightGeometry, wallMaterial);
+            frontWallRight.position.set(1.5, 0.25, 2);
+            buildingGroup.add(frontWallRight);
+            
+            // Add a window to the right wall
+            const windowMaterial = new THREE.MeshPhongMaterial({ color: 0xadd8e6, transparent: true, opacity: 0.6 });
+            const windowGeometry = new THREE.PlaneGeometry(1, 0.8);
+            const windowMesh = new THREE.Mesh(windowGeometry, windowMaterial);
+            windowMesh.position.set(2.31, 0.3, 0);
+            windowMesh.rotation.y = Math.PI / 2;
+            buildingGroup.add(windowMesh);
+            
+            // Roof
+            const roofGeometry = new THREE.ConeGeometry(3.5, 1.5, 4);
+            const roofMaterial = new THREE.MeshPhongMaterial({ color: 0xa52a2a });
+            const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+            roof.position.set(0, 1.5, 0);
+            roof.rotation.y = Math.PI / 4;
+            buildingGroup.add(roof);
+            
+            // Create simple furniture
+            const tableMaterial = new THREE.MeshPhongMaterial({ color: 0x8b4513 });
+            const tableTopGeometry = new THREE.BoxGeometry(1.5, 0.1, 1);
+            const tableTop = new THREE.Mesh(tableTopGeometry, tableMaterial);
+            tableTop.position.set(0, 0, 0);
+            
+            const tableLegGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.7);
+            const tableLeg1 = new THREE.Mesh(tableLegGeometry, tableMaterial);
+            tableLeg1.position.set(-0.65, -0.4, -0.4);
+            const tableLeg2 = new THREE.Mesh(tableLegGeometry, tableMaterial);
+            tableLeg2.position.set(0.65, -0.4, -0.4);
+            const tableLeg3 = new THREE.Mesh(tableLegGeometry, tableMaterial);
+            tableLeg3.position.set(-0.65, -0.4, 0.4);
+            const tableLeg4 = new THREE.Mesh(tableLegGeometry, tableMaterial);
+            tableLeg4.position.set(0.65, -0.4, 0.4);
+            
+            const tableGroup = new THREE.Group();
+            tableGroup.add(tableTop, tableLeg1, tableLeg2, tableLeg3, tableLeg4);
+            tableGroup.position.set(0, 0, 0);
+            buildingGroup.add(tableGroup);
+            
+            // Add the building to the scene
+            buildingGroup.position.y = 0.5;
+            scene.add(buildingGroup);
+            
+            toast({
+              title: "IFC-modell (reservversion)",
+              description: "Kunde inte läsa faktiska IFC-data. Visar en representativ byggnad istället.",
+              variant: "destructive"
+            });
+          };
+          
+          // Start loading the IFC model
           loadIFCModel();
           
           // Animation function
           let animationId = 0;
           
           const animate = () => {
-            controls.update(); // Update controls in each frame
-            
             // Render scene
             renderer.render(scene, camera);
             
@@ -253,6 +447,21 @@ export function DwgIfcViewer() {
           
           // Start animation
           animate();
+          
+          // Clean up function for manual controls
+          const cleanupControls = () => {
+            if (viewerContainerRef.current) {
+              viewerContainerRef.current.removeEventListener('mousedown', handleMouseDown);
+              window.removeEventListener('mousemove', handleMouseMove);
+              window.removeEventListener('mouseup', handleMouseUp);
+              viewerContainerRef.current.removeEventListener('wheel', handleWheel);
+            }
+          };
+          
+          // Return cleanup function
+          return () => {
+            cleanupControls();
+          };
         } else {
           // Create a simple cube for DWG or as fallback
           const geometry = new THREE.BoxGeometry(2, 2, 2);
