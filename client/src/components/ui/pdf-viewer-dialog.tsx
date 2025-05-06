@@ -122,8 +122,6 @@ export function PDFViewerDialog({
   file,
   fileData
 }: PDFViewerDialogProps) {
-  // Visa alltid kommentarspanelen
-  const [showCommentsSidebar, setShowCommentsSidebar] = useState(true);
   const { user } = useAuth();
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(1);

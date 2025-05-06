@@ -375,8 +375,8 @@ export default function RitningarPage() {
     // För uppladdade filer, använd den lagrade filen
     if (ritning.fileId && ritning.fileId.startsWith('file_')) {
       try {
-        // Använd getStoredFileById för att hämta från persistent lagring om det behövs
-        const storedFileData = await getStoredFileById(ritning.fileId);
+        // Använd asynkron version för att hämta från persistent lagring om det behövs
+        const storedFileData = await getStoredFileAsync(ritning.fileId);
         
         if (storedFileData) {
           console.log(`[${Date.now()}] Successfully loaded file from storage for viewing: ${ritning.fileId}`);
@@ -388,28 +388,16 @@ export default function RitningarPage() {
               version: ritning.version,
               description: ritning.description,
               uploaded: ritning.uploaded,
-              uploadedBy: ritning.uploadedBy,
-              fileId: ritning.fileId // Inkludera fileId för att möjliggöra annotationer
+              uploadedBy: ritning.uploadedBy
             }
           });
           return;
         } else {
           console.error(`[${Date.now()}] Could not find stored file with ID: ${ritning.fileId}`);
-          
-          // Fallback till URL för exempel-PDF om den inte kan hittas
-          const fileUrl = getUploadedFileUrl(ritning.id);
-          console.log(`[${Date.now()}] Falling back to example file URL: ${fileUrl}`);
-          setSelectedFile({
-            file: null,
-            fileUrl,
-            fileData: {
-              filename: ritning.filename,
-              version: ritning.version,
-              description: ritning.description,
-              uploaded: ritning.uploaded,
-              uploadedBy: ritning.uploadedBy,
-              fileId: ritning.id.toString() // Använd ritning.id som fileId
-            }
+          toast({
+            title: "Kunde inte hitta filen",
+            description: "Den uppladdade filen finns inte längre tillgänglig.",
+            variant: "destructive",
           });
         }
       } catch (error) {
@@ -419,40 +407,23 @@ export default function RitningarPage() {
           description: "Ett fel uppstod när filen skulle laddas. Försök igen senare.",
           variant: "destructive",
         });
-        
-        // Fallback till URL för exempel-PDF vid fel
-        const fileUrl = getUploadedFileUrl(ritning.id);
-        console.log(`[${Date.now()}] Error fallback to example file URL: ${fileUrl}`);
-        setSelectedFile({
-          file: null,
-          fileUrl,
-          fileData: {
-            filename: ritning.filename,
-            version: ritning.version,
-            description: ritning.description,
-            uploaded: ritning.uploaded,
-            uploadedBy: ritning.uploadedBy,
-            fileId: ritning.id.toString() // Använd ritning.id som fileId
-          }
-        });
       }
-    } else {
-      // För befintliga/mock-filer, använd exempelfilen
-      const fileUrl = getUploadedFileUrl(ritning.id);
-      console.log(`[${Date.now()}] Using example file URL for file: ${ritning.filename}`);
-      setSelectedFile({
-        file: null,
-        fileUrl,
-        fileData: {
-          filename: ritning.filename,
-          version: ritning.version,
-          description: ritning.description,
-          uploaded: ritning.uploaded,
-          uploadedBy: ritning.uploadedBy,
-          fileId: ritning.id.toString() // Använd ritning.id som fileId
-        }
-      });
     }
+    
+    // För befintliga/mock-filer, använd exempelfilen
+    const fileUrl = getUploadedFileUrl(ritning.id);
+    console.log(`[${Date.now()}] Using example file URL for file: ${ritning.filename}`);
+    setSelectedFile({
+      file: null,
+      fileUrl,
+      fileData: {
+        filename: ritning.filename,
+        version: ritning.version,
+        description: ritning.description,
+        uploaded: ritning.uploaded,
+        uploadedBy: ritning.uploadedBy
+      }
+    });
   };
 
   return (
@@ -620,11 +591,6 @@ export default function RitningarPage() {
         }}
         url={selectedFile?.fileUrl || ""}
         title={selectedFile?.fileData?.filename || "Dokument"}
-        file={selectedFile?.file}
-        fileData={selectedFile?.fileData && {
-          ...selectedFile.fileData,
-          fileId: ritningarData.find(r => r.filename === selectedFile.fileData?.filename)?.fileId
-        }}
       />
     </div>
   );

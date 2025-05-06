@@ -14,41 +14,18 @@ export function isPdf(filename: string): boolean {
  * Hanterar både "rena" nummer som strängar och sammansatta ID-strängar
  * med format som "file_1234" eller liknande.
  * 
- * För stora heltalsvärden (över 10 siffror) hanterar vi dem på ett särskilt sätt
- * för att undvika problem med databashantering.
- * 
  * @param fileId - Fil-ID:t som string
- * @returns number - En konsekvent numerisk representation av ID:t, eller NaN om det inte är ett giltigt ID
+ * @returns number - Sifferdelen av ID:t, eller NaN om det inte är ett giltigt ID
  */
 export function getConsistentFileId(fileId: string): number {
-  // Om fileId är ett enkelt kortare tal
-  if (/^\d{1,9}$/.test(fileId)) {
+  // Om fileId är helt numeriskt
+  if (/^\d+$/.test(fileId)) {
     return parseInt(fileId, 10);
   }
-  
-  // För stora tal och sammansatta ID-strängar
-  if (fileId.length > 10 && /\d/.test(fileId)) {
-    // Extrahera ett kortare ID från strängen - upp till 9 siffror
-    const matches = fileId.match(/(\d{1,9})/);
-    if (matches && matches[1]) {
-      return parseInt(matches[1], 10);
-    }
-    
-    // Fallback: Skapa en hashedVersionID baserad på originalet
-    // Ett standardiserat sätt att få ett deterministiskt tal baserat på en sträng
-    return Math.abs(
-      fileId.split('').reduce((hash, char) => 
-        ((hash << 5) - hash) + char.charCodeAt(0), 0)
-    ) % 1000000; // Begränsa till ett 6-siffrigt tal
-  }
 
-  // För andra format, försök att matcha ut första förekomsten av siffror
+  // Om fileId har format file_1234 eller liknande
   const matches = fileId.match(/(\d+)/);
   if (matches && matches[1]) {
-    // Om siffersekvensen är mycket lång, begränsa den
-    if (matches[1].length > 9) {
-      return parseInt(matches[1].substring(0, 9), 10);
-    }
     return parseInt(matches[1], 10);
   }
 
