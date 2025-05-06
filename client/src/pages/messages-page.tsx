@@ -271,11 +271,9 @@ const MessageView = ({
               <AvatarFallback className="bg-primary/10 text-primary">G</AvatarFallback>
             </Avatar>
           ) : (
-            <Avatar className="h-8 w-8">
-              <div className="w-full h-full rounded-full bg-[#727cf5] flex items-center justify-center">
-                <span className="text-white font-medium text-sm">PL</span>
-              </div>
-            </Avatar>
+            <div className="h-8 w-8 rounded-full bg-[#727cf5] flex items-center justify-center">
+              <span className="text-white font-medium text-sm">PL</span>
+            </div>
           )}
           <div>
             <h3 className="font-medium text-sm">
@@ -342,11 +340,9 @@ const MessageView = ({
                 >
                   <div className="flex gap-2 max-w-[80%]">
                     {!isMine && (
-                      <Avatar className="h-8 w-8 mt-1">
-                        <div className="w-full h-full rounded-full bg-[#0acf97] flex items-center justify-center">
-                          <span className="text-white font-medium text-sm">US</span>
-                        </div>
-                      </Avatar>
+                      <div className="h-8 w-8 mt-1 rounded-full bg-[#0acf97] flex items-center justify-center">
+                        <span className="text-white font-medium text-sm">US</span>
+                      </div>
                     )}
                     <div>
                       {!isMine && (
@@ -511,11 +507,16 @@ const NewConversationDialog = ({ onCreateConversation }: { onCreateConversation:
                     onClick={() => toggleUserSelection(user)}
                   >
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback>
+                      <div className={`h-8 w-8 rounded-full ${
+                        user.role === 'project_leader' ? 'bg-[#727cf5]' : 
+                        user.role === 'admin' ? 'bg-[#fa5c7c]' : 
+                        user.role === 'superuser' ? 'bg-[#ffc35a]' : 
+                        'bg-[#0acf97]'
+                      } flex items-center justify-center`}>
+                        <span className="text-white font-medium text-sm">
                           {user.username ? user.username.substring(0, 2).toUpperCase() : ""}
-                        </AvatarFallback>
-                      </Avatar>
+                        </span>
+                      </div>
                       <div>
                         <p className="text-sm font-medium">{user.username}</p>
                         <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
