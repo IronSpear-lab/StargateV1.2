@@ -23,15 +23,24 @@ import {
 
 // Set up multer for file uploads
 const uploadsDir = path.join(process.cwd(), 'uploads');
+const chatUploadsDir = path.join(uploadsDir, 'chat');
 
-// Create uploads directory if it doesn't exist
+// Create uploads directories if they don't exist
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
+}
+if (!fs.existsSync(chatUploadsDir)) {
+  fs.mkdirSync(chatUploadsDir, { recursive: true });
 }
 
 const storage_config = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, uploadsDir);
+    // Check if this is a message attachment or a regular file
+    if (req.originalUrl.includes('/messages/upload')) {
+      cb(null, chatUploadsDir);
+    } else {
+      cb(null, uploadsDir);
+    }
   },
   filename: function (req, file, cb) {
     const uniquePrefix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -75,23 +84,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   }, (req, res, next) => {
     // Serve files from the uploads directory
-    const options = {
-      root: uploadsDir,
-      dotfiles: 'deny' as 'deny', // Explicitly type as valid option
-      headers: {
-        'Cache-Control': 'private, max-age=86400',
-      }
-    };
-    
-    const fileName = req.url.substring(1); // Remove leading slash
-    res.sendFile(fileName, options, (err) => {
-      if (err) {
-        console.error(`Error serving file ${fileName}:`, err);
-        if (!res.headersSent) {
-          res.status(404).send('File not found');
+    try {
+      // Get the requested path
+      const relativePath = req.url.substring(1); // Remove leading slash
+      
+      // Determine if it's in a subdirectory
+      if (relativePath.startsWith('chat/')) {
+        // For files in the chat uploads directory
+        const filePath = path.join(chatUploadsDir, relativePath.substring(5)); // Remove 'chat/'
+        
+        // Security check - make sure the path is still within chatUploadsDir
+        const resolvedPath = path.resolve(filePath);
+        if (!resolvedPath.startsWith(chatUploadsDir)) {
+          return res.status(403).send('Forbidden');
         }
+        
+        // Serve the file
+        res.sendFile(resolvedPath, {
+          headers: {
+            'Cache-Control': 'private, max-age=86400',
+          }
+        });
+      } else {
+        // For files directly in the uploads directory
+        const filePath = path.join(uploadsDir, relativePath);
+        
+        // Security check - make sure the path is still within uploadsDir
+        const resolvedPath = path.resolve(filePath);
+        if (!resolvedPath.startsWith(uploadsDir)) {
+          return res.status(403).send('Forbidden');
+        }
+        
+        // Serve the file
+        res.sendFile(resolvedPath, {
+          headers: {
+            'Cache-Control': 'private, max-age=86400',
+          }
+        });
       }
-    });
+    } catch (error) {
+      console.error(`Error serving file:`, error);
+      if (!res.headersSent) {
+        res.status(404).send('File not found');
+      }
+    }
   });
 
   // API routes
@@ -1265,12 +1301,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const attachmentSize = req.file.size;
       
       // Create relative URL (to be used by the client)
-      const attachmentUrl = `/uploads/${path.basename(req.file.path)}`;
+      const attachmentUrl = `/uploads/chat/${path.basename(req.file.path)}`;
+      
+      // Get custom content if provided, otherwise use default
+      const content = req.body.content || `Shared a file: ${attachmentName}`;
       
       // Create a message with the attachment in the database
       const newMessage = await db.insert(messages)
         .values({
-          content: `Shared a file: ${attachmentName}`,
+          content,
           conversationId: parseInt(conversationId),
           senderId: req.user!.id,
           sentAt: new Date(),

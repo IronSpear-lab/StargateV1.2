@@ -409,10 +409,16 @@ const MessageView = ({
       formData.append('file', selectedFile);
       formData.append('conversationId', conversation.id.toString());
       
-      // Upload the file
+      // If we have text content, we'll use it in place of the default file name message
+      if (newMessage.trim()) {
+        formData.append('content', newMessage.trim());
+      }
+      
+      // Upload the file and create the message in one step
       const response = await fetch('/api/messages/upload', {
         method: 'POST',
         body: formData,
+        credentials: 'include' // Important for cookie-based auth
       });
       
       if (!response.ok) {
@@ -421,23 +427,41 @@ const MessageView = ({
       
       const result = await response.json();
       
-      // Now send a message with the file attachment
-      const content = newMessage.trim() 
-        ? newMessage
-        : `Shared a file: ${selectedFile.name}`;
-        
-      onSendMessage(content);
-      
       // Clear the form
       setNewMessage("");
       clearSelectedFile();
+      
+      // Add the new message to the conversation
+      if (result.message && conversation?.messages) {
+        // Create a shallow copy of the messages array and add the new message
+        const updatedMessages = [...conversation.messages, result.message];
+        
+        // Use optimistic update to update the UI immediately
+        queryClient.setQueryData(
+          [`/api/conversations/${conversation.id}`], 
+          (oldData: any) => {
+            if (oldData) {
+              return {
+                ...oldData,
+                messages: updatedMessages,
+                lastMessageAt: result.message.sentAt
+              };
+            }
+            return oldData;
+          }
+        );
+        
+        // Invalidate the query to refetch fresh data from server
+        queryClient.invalidateQueries({ queryKey: [`/api/conversations/${conversation.id}`] });
+        queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      }
       
       // Force scroll to bottom after sending
       scrollToBottom(50);
       
       toast({
-        title: "File uploaded",
-        description: "Your file has been shared",
+        title: "File shared",
+        description: "Your file has been uploaded and shared",
       });
     } catch (error) {
       console.error('Error uploading file:', error);
