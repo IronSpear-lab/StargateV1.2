@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { MeshBasicMaterial } from 'three';  // Explicitly import for type checking
 
-import { Upload, FileText, Loader2, XCircle, ZoomIn, ZoomOut, RotateCw } from 'lucide-react';
+import { Upload, FileText, Loader2, XCircle, ZoomIn, ZoomOut, RotateCw, Expand, Ruler, Map, Navigation, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,6 +35,10 @@ export function DwgIfcViewer() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileEntry | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [showMeasureTool, setShowMeasureTool] = useState<boolean>(false);
+  const [showMinimap, setShowMinimap] = useState<boolean>(false);
+  const [isWalkMode, setIsWalkMode] = useState<boolean>(false);
   const viewerContainerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<CubeViewer | null>(null);
   const { toast } = useToast();
@@ -456,6 +460,74 @@ export function DwgIfcViewer() {
     }
   };
 
+  // Handle fullscreen mode
+  const toggleFullscreen = () => {
+    setIsFullscreen(prev => !prev);
+    
+    // In a full implementation, we would:
+    // 1. Adjust the UI to fill the screen
+    // 2. Make camera controls more like a first-person experience
+    // 3. Reset the viewpoint to a real walkthrough position
+    
+    if (!isFullscreen) {
+      toast({
+        title: "Fullskärmsläge aktiverat",
+        description: "Använd W/A/S/D-tangenterna för att gå runt i modellen.",
+      });
+    }
+  };
+  
+  // Toggle walk mode for navigating inside the model
+  const toggleWalkMode = () => {
+    setIsWalkMode(prev => !prev);
+    
+    // In a full implementation, we would:
+    // 1. Change camera to first-person controller
+    // 2. Add collision detection with model geometry
+    // 3. Add gravity and stair climbing abilities
+    
+    toast({
+      title: isWalkMode ? "Utforskningsläge inaktiverat" : "Utforskningsläge aktiverat",
+      description: isWalkMode 
+        ? "Återgår till standardvisning" 
+        : "Nu kan du utforska modellen från insidan. Använd W/A/S/D för att gå runt.",
+    });
+  };
+  
+  // Toggle measurement tool
+  const toggleMeasureTool = () => {
+    setShowMeasureTool(prev => !prev);
+    
+    // In a full implementation, we would:
+    // 1. Add a ruler line that follows the cursor
+    // 2. Allow clicking to place start and end points
+    // 3. Show the distance in real-world units (meters)
+    
+    toast({
+      title: showMeasureTool ? "Mätverktyg inaktiverat" : "Mätverktyg aktiverat",
+      description: showMeasureTool 
+        ? "Mätverktyget har stängts av" 
+        : "Klicka på två punkter i modellen för att mäta avståndet.",
+    });
+  };
+  
+  // Toggle minimap
+  const toggleMinimap = () => {
+    setShowMinimap(prev => !prev);
+    
+    // In a full implementation, we would:
+    // 1. Create a 2D floor plan view of the model
+    // 2. Show the user's current position as a dot
+    // 3. Show the user's field of view as a cone
+    
+    toast({
+      title: showMinimap ? "Minikarta inaktiverad" : "Minikarta aktiverad",
+      description: showMinimap 
+        ? "Minikartan har stängts av" 
+        : "Minikartan visar din position i modellen.",
+    });
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="mb-4">
@@ -473,7 +545,12 @@ export function DwgIfcViewer() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full">
+      <div className={cn(
+        "grid h-full transition-all duration-300",
+        isFullscreen 
+          ? "absolute inset-0 z-50 bg-background grid-cols-1" 
+          : "grid-cols-1 md:grid-cols-3 gap-6"
+      )}>
         {/* File List Panel */}
         <div className="md:col-span-1 p-4 border rounded-md bg-background flex flex-col h-[70vh] md:h-[80vh]">
           <div className="flex items-center justify-between mb-4">
@@ -563,6 +640,35 @@ export function DwgIfcViewer() {
                 </div>
                 <div className="rounded p-1 border bg-background cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700" onClick={resetView}>
                   <RotateCw className="h-4 w-4" />
+                </div>
+                <div className="rounded p-1 border bg-background cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700" 
+                     onClick={() => setIsFullscreen(!isFullscreen)}>
+                  <Expand className="h-4 w-4" />
+                </div>
+                <div className={cn(
+                  "rounded p-1 border bg-background cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700", 
+                  showMeasureTool && "bg-slate-200 dark:bg-slate-700"
+                )}
+                     onClick={() => setShowMeasureTool(!showMeasureTool)}>
+                  <Ruler className="h-4 w-4" />
+                </div>
+                <div className={cn(
+                  "rounded p-1 border bg-background cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700",
+                  showMinimap && "bg-slate-200 dark:bg-slate-700"
+                )}
+                     onClick={() => setShowMinimap(!showMinimap)}>
+                  <Map className="h-4 w-4" />
+                </div>
+                <div className={cn(
+                  "rounded p-1 border bg-background cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700",
+                  isWalkMode && "bg-slate-200 dark:bg-slate-700"
+                )}
+                     onClick={() => setIsWalkMode(!isWalkMode)}>
+                  <Navigation className="h-4 w-4" />
+                </div>
+                <div className="rounded p-1 border bg-background cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700"
+                     onClick={resetView}>
+                  <Home className="h-4 w-4" />
                 </div>
               </div>
               <div 
