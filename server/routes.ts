@@ -185,6 +185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const members = await db.select({
         id: users.id,
         username: users.username,
+        role: userProjects.role
       })
       .from(users)
       .innerJoin(
@@ -199,6 +200,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching project members:', error);
       res.status(500).json({ error: 'Failed to fetch project members' });
+    }
+  });
+  
+  // Lägg till en användare i ett projekt
+  app.post('/api/projects/:projectId/members', async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    const projectId = parseInt(req.params.projectId);
+    const { userId, role } = req.body;
+    
+    if (isNaN(projectId) || !userId) {
+      return res.status(400).json({ error: 'Invalid project ID or user ID' });
+    }
+    
+    try {
+      // Kontrollera att användaren som gör begäran är projektledare för projektet
+      const requesterRole = await db.select()
+        .from(userProjects)
+        .where(and(
+          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.projectId, projectId)
+        ))
+        .limit(1);
+      
+      if (requesterRole.length === 0 || 
+          (requesterRole[0].role !== 'project_leader' && requesterRole[0].role !== 'admin')) {
+        return res.status(403).json({ 
+          error: 'You do not have permission to add members to this project' 
+        });
+      }
+      
+      // Kontrollera om användaren redan är medlem i projektet
+      const existingMember = await db.select()
+        .from(userProjects)
+        .where(and(
+          eq(userProjects.userId, userId),
+          eq(userProjects.projectId, projectId)
+        ))
+        .limit(1);
+      
+      if (existingMember.length > 0) {
+        return res.status(400).json({ error: 'User is already a member of this project' });
+      }
+      
+      // Lägg till användaren i projektet
+      await db.insert(userProjects).values({
+        userId: userId,
+        projectId: projectId,
+        role: role || 'user'
+      });
+      
+      res.status(201).json({ success: true });
+    } catch (error) {
+      console.error('Error adding user to project:', error);
+      res.status(500).json({ error: 'Failed to add user to project' });
+    }
+  });
+  
+  // Ta bort en användare från ett projekt
+  app.delete('/api/projects/:projectId/members/:userId', async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    const projectId = parseInt(req.params.projectId);
+    const userId = parseInt(req.params.userId);
+    
+    if (isNaN(projectId) || isNaN(userId)) {
+      return res.status(400).json({ error: 'Invalid project ID or user ID' });
+    }
+    
+    try {
+      // Kontrollera att användaren som gör begäran är projektledare för projektet
+      const requesterRole = await db.select()
+        .from(userProjects)
+        .where(and(
+          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.projectId, projectId)
+        ))
+        .limit(1);
+      
+      if (requesterRole.length === 0 || 
+          (requesterRole[0].role !== 'project_leader' && requesterRole[0].role !== 'admin')) {
+        return res.status(403).json({ 
+          error: 'You do not have permission to remove members from this project' 
+        });
+      }
+      
+      // Ta bort användaren från projektet
+      await db.delete(userProjects)
+        .where(and(
+          eq(userProjects.userId, userId),
+          eq(userProjects.projectId, projectId)
+        ));
+      
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Error removing user from project:', error);
+      res.status(500).json({ error: 'Failed to remove user from project' });
     }
   });
   
