@@ -445,11 +445,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get(`${apiPrefix}/projects/:id`, async (req, res) => {
     if (!req.isAuthenticated()) {
+      console.log("Unauthorized project access to /api/projects/:id - user not authenticated");
       return res.status(401).send({ error: 'Unauthorized' });
     }
     
     try {
       const projectId = parseInt(req.params.id);
+      const userId = req.user!.id;
       
       if (isNaN(projectId)) {
         return res.status(400).json({ error: 'Invalid project ID' });
@@ -459,14 +461,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userProject = await db.select()
         .from(userProjects)
         .where(and(
-          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.userId, userId),
           eq(userProjects.projectId, projectId)
         ))
         .limit(1);
       
       if (userProject.length === 0) {
+        console.log(`User ${userId} attempted to access project ${projectId} without permission`);
         return res.status(403).json({ error: 'You do not have access to this project' });
       }
+      
+      console.log(`User ${userId} has permission to access project ${projectId} with role: ${userProject[0].role}`);
       
       const project = await storage.getProject(projectId);
       if (!project) {
@@ -1290,49 +1295,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // User projects and roles - med förbättrad behörighetskontroll för superusers
   app.get(`${apiPrefix}/user-projects`, async (req, res) => {
-    // EXTREMT FÖRENKLAD NÖDFALLSLÖSNING: Skicka alltid tillbaka alla projekt
-    console.log("EXTREMT FÖRENKLAD LÖSNING: Returnerar alla projekt oavsett autentisering");
+    // Kontrollera att användaren är autentiserad - nu med förbättrad sessionhantering
+    // Vi har fått sessionhanteringen att fungera, så vi behöver inte nödfallslösningen längre
+    if (!req.isAuthenticated()) {
+      console.log("Unauthorized request to /api/user-projects - user not authenticated");
+      return res.status(401).json({ error: "Unauthorized" });
+    }
     
     try {
-      // Hämta användar-ID för project_leader direkt
-      const userId = 12; // project_leader har ID 12 i databasen
-      console.log("Hämtar projekt för användar-ID", userId);
+      // Hämta användarens ID från sessionen
+      const userId = req.user.id;
+      console.log("Hämtar projekt för autentiserad användare med ID:", userId);
       
-      // Hämta alla projekt som project_leader har tillgång till
-      const projectsWithRole = await db
-        .select({
-          id: projects.id,
-          name: projects.name,
-          description: projects.description,
-          createdAt: projects.createdAt,
-          createdById: projects.createdById,
-          role: userProjects.role
-        })
-        .from(projects)
-        .innerJoin(userProjects, eq(projects.id, userProjects.projectId))
-        .where(eq(userProjects.userId, userId));
+      // Använder den förbättrade getUserProjects-metoden som hanterar superusers
+      const userProjects = await storage.getUserProjects(userId);
       
       // Loggning för felsökning
-      console.log("Hittade projekt:", JSON.stringify(projectsWithRole, null, 2));
-      console.log(`Returnerar ${projectsWithRole.length} projekt för project_leader (userId=${userId})`);
+      console.log(`Returnerar ${userProjects.length} projekt för användar-ID ${userId}`);
       
-      res.json(projectsWithRole);
+      res.json(userProjects);
     } catch (error) {
-      console.error("Error i extremt förenklad lösning:", error);
-      console.error(error.stack);
-      
-      // Om allt annat misslyckas, returnera ett hårdkodat projekt
-      const backupResponse = [{
-        id: 10,
-        name: "te",
-        description: "te",
-        createdAt: new Date().toISOString(),
-        createdById: 12,
-        role: "project_leader"
-      }];
-      
-      console.log("Returnerar hårdkodat svar:", backupResponse);
-      res.json(backupResponse);
+      console.error("Error fetching user projects:", error);
+      res.status(500).json({ error: "Failed to fetch user projects" });
     }
   });
   
