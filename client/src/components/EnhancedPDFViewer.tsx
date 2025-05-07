@@ -182,8 +182,11 @@ export default function EnhancedPDFViewer({
             setActiveVersionId(latestVersion.id);
             setPdfUrl(latestVersion.fileUrl);
             
-            // Load annotations
-            const annots = await getPDFAnnotations(numericFileId);
+            // Load annotations - filtrera per projekt om tillgängligt
+            const annots = await getPDFAnnotations(
+              numericFileId, 
+              currentProject ? currentProject.id : undefined
+            );
             if (annots && annots.length > 0) {
               const uiAnnotations: PDFAnnotation[] = annots.map(anno => ({
                 id: anno.id?.toString() || `anno_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,

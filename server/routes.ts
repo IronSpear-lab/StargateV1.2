@@ -2008,6 +2008,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const versionId = parseInt(req.params.versionId);
+      // Hämta projektID från query params (om det finns)
+      const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
       
       // Kontrollera att versionen existerar
       const version = await storage.getPDFVersion(versionId);
@@ -2019,8 +2021,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hämta alla annotationer för versionen
       const annotations = await storage.getPDFAnnotations(versionId);
       
+      // Filtrera på projektID om det är angivet
+      const filteredAnnotations = projectId 
+        ? annotations.filter(a => a.projectId === projectId)
+        : annotations;
+      
       // Hämta användarinformation
-      const userIds = [...new Set(annotations.map(a => a.createdById))];
+      const userIds = [...new Set(filteredAnnotations.map(a => a.createdById))];
       const users = await db.select({
         id: users.id,
         username: users.username
@@ -2030,7 +2037,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const usersMap = new Map(users.map(u => [u.id, u.username]));
       
-      const annotationsWithUsers = annotations.map(annotation => ({
+      const annotationsWithUsers = filteredAnnotations.map(annotation => ({
         ...annotation,
         createdBy: usersMap.get(annotation.createdById) || "Unknown"
       }));

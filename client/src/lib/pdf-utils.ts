@@ -140,9 +140,13 @@ export async function getPDFVersionContent(versionId: number): Promise<Blob | nu
 }
 
 // Hämta alla annotationer för en version
-export async function getPDFAnnotations(versionId: number): Promise<PDFAnnotation[]> {
+export async function getPDFAnnotations(versionId: number, projectId?: number): Promise<PDFAnnotation[]> {
   try {
-    const res = await apiRequest('GET', `/api/pdf/versions/${versionId}/annotations`);
+    const url = projectId 
+      ? `/api/pdf/versions/${versionId}/annotations?projectId=${projectId}`
+      : `/api/pdf/versions/${versionId}/annotations`;
+      
+    const res = await apiRequest('GET', url);
     if (!res.ok) {
       throw new Error(`Failed to fetch PDF annotations: ${res.statusText}`);
     }
