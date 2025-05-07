@@ -311,6 +311,34 @@ const MessageView = ({
     p => p.userId === (window as any).currentUser?.id
   )?.isAdmin || false;
   
+  // Leave conversation mutation
+  const leaveConversationMutation = useMutation({
+    mutationFn: async (conversationId: number) => {
+      const response = await apiRequest(
+        "POST",
+        `/api/conversations/${conversationId}/leave`,
+        {}
+      );
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      
+      toast({
+        title: "Konversation lämnad",
+        description: "Du har lämnat konversationen",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Fel vid borttagning",
+        description: "Det gick inte att lämna konversationen",
+        variant: "destructive"
+      });
+      console.error("Failed to leave conversation:", error);
+    }
+  });
+  
   // Update group conversation mutation
   const updateGroupMutation = useMutation({
     mutationFn: async ({ 
@@ -491,38 +519,7 @@ const MessageView = ({
     }
   };
   
-  // Leave conversation mutation
-  const leaveConversationMutation = useMutation({
-    mutationFn: async (conversationId: number) => {
-      const response = await apiRequest(
-        "POST",
-        `/api/conversations/${conversationId}/leave`,
-        {}
-      );
-      
-      if (response.status === 204) {
-        return {};
-      }
-      
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
-      
-      toast({
-        title: "Konversation lämnad",
-        description: "Du har lämnat gruppchatten",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Fel vid lämnande av chatten",
-        description: "Det gick inte att lämna gruppchatten",
-        variant: "destructive"
-      });
-      console.error("Failed to leave conversation:", error);
-    }
-  });
+
   
   // Helper to scroll to bottom with a specified delay to ensure DOM update
   const scrollToBottom = (delay = 50) => {

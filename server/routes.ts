@@ -1921,6 +1921,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Allow a user to leave a conversation
+  app.post(`${apiPrefix}/conversations/:id/leave`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const conversationId = parseInt(req.params.id);
+      const userId = req.user!.id;
+      
+      // Check if conversation exists
+      const conversation = await db.select()
+        .from(conversations)
+        .where(eq(conversations.id, conversationId))
+        .then(res => res[0]);
+        
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      
+      // Check if user is a participant
+      const isParticipant = await db.select()
+        .from(conversationParticipants)
+        .where(and(
+          eq(conversationParticipants.conversationId, conversationId),
+          eq(conversationParticipants.userId, userId)
+        ))
+        .then(res => res.length > 0);
+        
+      if (!isParticipant) {
+        return res.status(403).json({ error: "You are not a participant in this conversation" });
+      }
+      
+      // Remove the user from the conversation
+      await db.delete(conversationParticipants)
+        .where(and(
+          eq(conversationParticipants.conversationId, conversationId),
+          eq(conversationParticipants.userId, userId)
+        ));
+      
+      // Check if there are any participants left
+      const remainingParticipants = await db.select()
+        .from(conversationParticipants)
+        .where(eq(conversationParticipants.conversationId, conversationId))
+        .then(res => res.length);
+      
+      // If no participants left, delete the entire conversation
+      if (remainingParticipants === 0) {
+        // Delete all messages in the conversation
+        await db.delete(messages)
+          .where(eq(messages.conversationId, conversationId));
+        
+        // Delete the conversation
+        await db.delete(conversations)
+          .where(eq(conversations.id, conversationId));
+        
+        console.log(`Conversation ${conversationId} deleted as the last participant left`);
+      } else {
+        console.log(`User ${userId} left conversation ${conversationId}, ${remainingParticipants} participants remaining`);
+        
+        // If the user was an admin and there are still other participants, assign admin to someone else
+        const wasAdmin = await db.select()
+          .from(conversationParticipants)
+          .where(and(
+            eq(conversationParticipants.conversationId, conversationId),
+            eq(conversationParticipants.userId, userId),
+            eq(conversationParticipants.isAdmin, true)
+          ))
+          .then(res => res.length > 0);
+        
+        if (wasAdmin) {
+          const remainingAdmins = await db.select()
+            .from(conversationParticipants)
+            .where(and(
+              eq(conversationParticipants.conversationId, conversationId),
+              eq(conversationParticipants.isAdmin, true)
+            ))
+            .then(res => res.length);
+          
+          // If no admins left, promote someone to admin
+          if (remainingAdmins === 0) {
+            // Get the first remaining participant
+            const nextParticipant = await db.select()
+              .from(conversationParticipants)
+              .where(eq(conversationParticipants.conversationId, conversationId))
+              .orderBy(asc(conversationParticipants.joinedAt))
+              .limit(1)
+              .then(res => res[0]);
+            
+            if (nextParticipant) {
+              // Promote this participant to admin
+              await db.update(conversationParticipants)
+                .set({ isAdmin: true })
+                .where(and(
+                  eq(conversationParticipants.conversationId, conversationId),
+                  eq(conversationParticipants.userId, nextParticipant.userId)
+                ));
+              
+              console.log(`User ${nextParticipant.userId} has been promoted to admin in conversation ${conversationId}`);
+            }
+          }
+        }
+        
+        // Add a system message indicating the user left
+        const username = req.user!.username;
+        await db.insert(messages)
+          .values({
+            content: `${username} lämnade konversationen`,
+            conversationId,
+            senderId: 0, // System message
+            sentAt: new Date(),
+            readBy: [] // No one has read this yet
+          });
+        
+        // Update lastMessageAt in conversation
+        await db.update(conversations)
+          .set({ lastMessageAt: new Date() })
+          .where(eq(conversations.id, conversationId));
+      }
+      
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error leaving conversation:", error);
+      res.status(500).json({ error: "Failed to leave conversation" });
+    }
+  });
+  
   // Get unread message count for the current user
   app.get(`${apiPrefix}/messages/unread-count`, async (req, res) => {
     try {
