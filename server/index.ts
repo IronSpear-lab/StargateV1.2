@@ -8,10 +8,26 @@ const app = express();
 
 // CORS and cookie handling
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  // Om vi är i utvecklingsmiljö, använd localhost:5173 (Vite dev server)
+  const allowedOrigins = ['http://localhost:5173', 'http://localhost:5000'];
+  const origin = req.headers.origin;
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else {
+    // För alla andra, använd den aktuella värden
+    res.header('Access-Control-Allow-Origin', req.headers.origin || 'http://localhost:5000');
+  }
+
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With');
   res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Hantera preflight-förfrågningar
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
   next();
 });
 
