@@ -29,6 +29,7 @@ import MessagesPage from "@/pages/messages-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ProjectProvider } from "./contexts/ProjectContext";
 
 function Router() {
   return (
@@ -72,8 +73,10 @@ function App() {
     <ThemeProvider defaultTheme="system">
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <Router />
-          <Toaster />
+          <ProjectProvider>
+            <Router />
+            <Toaster />
+          </ProjectProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>

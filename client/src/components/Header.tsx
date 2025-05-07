@@ -11,29 +11,38 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-export interface Project {
-  id: number;
-  name: string;
-}
+import { useProject } from "@/contexts/ProjectContext";
 
 interface HeaderProps {
   title: string;
   onToggleSidebar: () => void;
-  currentProject?: Project;
-  availableProjects?: Project[];
+  // Dessa är nu valfria eftersom vi prioriterar ProjectContext
+  currentProject?: { id: number; name: string };
+  availableProjects?: { id: number; name: string }[];
   onProjectChange?: (projectId: number) => void;
 }
 
 export function Header({ 
   title, 
   onToggleSidebar, 
-  currentProject, 
-  availableProjects = [],
-  onProjectChange 
+  currentProject: propCurrentProject, 
+  availableProjects: propAvailableProjects,
+  onProjectChange: propOnProjectChange 
 }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const isMobile = useMobile();
+  
+  // Använd ProjectContext om det finns, annars fallback till props
+  const { 
+    currentProject: contextCurrentProject, 
+    projects: contextProjects, 
+    changeProject: contextChangeProject 
+  } = useProject();
+  
+  // Kombinera kontext och props med prioritet till kontext
+  const currentProject = contextCurrentProject || propCurrentProject;
+  const availableProjects = contextProjects.length > 0 ? contextProjects : (propAvailableProjects || []);
+  const onProjectChange = contextChangeProject || propOnProjectChange;
 
   return (
     <header className="bg-background border-b border-border shadow-sm p-4 flex items-center">
@@ -51,7 +60,7 @@ export function Header({
       <div className="flex-1 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-foreground">{title}</h1>
         
-        {currentProject && onProjectChange && (
+        {currentProject && onProjectChange && availableProjects.length > 0 && (
           <div className="absolute left-1/2 transform -translate-x-1/2">
             <div className="relative">
               <div 
@@ -68,6 +77,34 @@ export function Header({
                 value={currentProject.id}
                 onChange={(e) => onProjectChange(Number(e.target.value))}
               >
+                {availableProjects.map(project => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+        
+        {!currentProject && availableProjects.length > 0 && onProjectChange && (
+          <div className="absolute left-1/2 transform -translate-x-1/2">
+            <div className="relative">
+              <div 
+                className="flex items-center gap-1 px-3 py-2 text-base font-medium bg-transparent hover:bg-muted/50 rounded cursor-pointer"
+                onClick={() => document.getElementById('project-selector')?.click()}
+              >
+                Välj projekt
+                <ChevronDown className="h-4 w-4 ml-1" />
+              </div>
+              
+              <select 
+                id="project-selector"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                value=""
+                onChange={(e) => onProjectChange(Number(e.target.value))}
+              >
+                <option value="" disabled>Välj projekt</option>
                 {availableProjects.map(project => (
                   <option key={project.id} value={project.id}>
                     {project.name}
