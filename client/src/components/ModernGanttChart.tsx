@@ -1430,4 +1430,4 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
   );
 };
 
-export default ModernGanttChart;
+export default ModernGanttChart as React.FC<ModernGanttChartProps>;
