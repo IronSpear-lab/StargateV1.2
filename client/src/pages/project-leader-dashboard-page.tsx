@@ -5,9 +5,9 @@ import {
   Header, 
   Widget, 
   WidgetArea, 
-  WidgetGallery,
-  ProjectTeamWidget
+  WidgetGallery
 } from "@/components";
+import ProjectTeamWidget from "@/components/ProjectTeamWidget";
 import { WidthType, HeightType } from "@/components/dashboard/Widget";
 import {
   CustomTextWidget,
@@ -479,7 +479,7 @@ export default function ProjectLeaderDashboardPage() {
       />
 
       <Dialog open={isProjectSettingsOpen} onOpenChange={setIsProjectSettingsOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[800px]">
           <DialogHeader>
             <DialogTitle>Manage Project</DialogTitle>
             <DialogDescription>
@@ -487,58 +487,94 @@ export default function ProjectLeaderDashboardPage() {
             </DialogDescription>
           </DialogHeader>
           
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmitProjectSettings)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Project Name</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+          <Tabs defaultValue="settings" className="mt-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="settings">Project Settings</TabsTrigger>
+              <TabsTrigger value="team">Team Management</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="settings" className="pt-4">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmitProjectSettings)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Project Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea rows={4} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="deadline"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Deadline</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <DialogFooter>
+                    <Button variant="outline" type="button" onClick={() => setIsProjectSettingsOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit">Save changes</Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </TabsContent>
+            
+            <TabsContent value="team" className="pt-4">
+              <div className="space-y-4">
+                <div className="mb-2">
+                  <h3 className="text-lg font-medium">Project Members</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Add or remove members from this project.
+                  </p>
+                </div>
+                
+                <Separator className="my-4" />
+                
+                {currentProjectId ? (
+                  <ProjectTeamWidget projectId={currentProjectId} />
+                ) : (
+                  <div className="py-4 text-center text-muted-foreground">
+                    Save the project first before adding team members.
+                  </div>
                 )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea rows={4} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="deadline"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Deadline</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <DialogFooter>
-                <Button variant="outline" type="button" onClick={() => setIsProjectSettingsOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Save changes</Button>
-              </DialogFooter>
-            </form>
-          </Form>
+                
+                <div className="flex justify-end mt-6">
+                  <Button variant="outline" onClick={() => setIsProjectSettingsOpen(false)}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </div>
