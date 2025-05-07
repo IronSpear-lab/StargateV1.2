@@ -294,17 +294,35 @@ const MessageView = ({
   const hasMarkedAsRead = useRef(false);
   const { toast } = useToast();
   
-  // State for group rename dialog
-  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  // State for group settings dialog
+  const [groupSettingsDialogOpen, setGroupSettingsDialogOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
+  const [groupImageUrl, setGroupImageUrl] = useState<string | null>(null);
+  const [isUploadingGroupImage, setIsUploadingGroupImage] = useState(false);
+  const [showParticipantsTab, setShowParticipantsTab] = useState(false);
+  const groupImageInputRef = useRef<HTMLInputElement>(null);
   
-  // Rename group conversation mutation
-  const renameGroupMutation = useMutation({
-    mutationFn: async ({ conversationId, title }: { conversationId: number, title: string }) => {
+  // Determine if current user is an admin in this conversation
+  const isCurrentUserAdmin = conversation?.participants?.find(
+    p => p.userId === (window as any).currentUser?.id
+  )?.isAdmin || false;
+  
+  // Update group conversation mutation
+  const updateGroupMutation = useMutation({
+    mutationFn: async ({ 
+      conversationId, 
+      updates 
+    }: { 
+      conversationId: number, 
+      updates: { 
+        title?: string, 
+        imageUrl?: string 
+      } 
+    }) => {
       const response = await apiRequest(
         "PATCH",
         `/api/conversations/${conversationId}`,
-        { title }
+        updates
       );
       return response.json();
     },
@@ -313,22 +331,161 @@ const MessageView = ({
       queryClient.invalidateQueries({ queryKey: ['/api/conversations', variables.conversationId] });
       
       toast({
-        title: "Gruppnamn uppdaterat",
-        description: "Gruppchattens namn har ändrats",
+        title: "Grupp uppdaterad",
+        description: "Gruppchattens inställningar har uppdaterats",
       });
       
       // Stäng dialogen
-      setRenameDialogOpen(false);
+      setGroupSettingsDialogOpen(false);
     },
     onError: (error) => {
       toast({
-        title: "Fel vid namnändring",
-        description: "Det gick inte att uppdatera gruppchattens namn",
+        title: "Fel vid uppdatering",
+        description: "Det gick inte att uppdatera gruppchattens inställningar",
         variant: "destructive"
       });
-      console.error("Failed to rename group:", error);
+      console.error("Failed to update group:", error);
     }
   });
+  
+  // Remove participant mutation
+  const removeParticipantMutation = useMutation({
+    mutationFn: async ({ conversationId, userId }: { conversationId: number, userId: number }) => {
+      const response = await apiRequest(
+        "DELETE",
+        `/api/conversations/${conversationId}/participants/${userId}`,
+        {}
+      );
+      return response.status === 204 ? {} : response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations', variables.conversationId] });
+      
+      toast({
+        title: "Deltagare borttagen",
+        description: "Deltagaren har tagits bort från gruppchatten",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Fel vid borttagning",
+        description: "Det gick inte att ta bort deltagaren från gruppchatten",
+        variant: "destructive"
+      });
+      console.error("Failed to remove participant:", error);
+    }
+  });
+  
+  // Toggle admin status mutation
+  const toggleAdminStatusMutation = useMutation({
+    mutationFn: async ({ 
+      conversationId, 
+      userId, 
+      isAdmin 
+    }: { 
+      conversationId: number, 
+      userId: number,
+      isAdmin: boolean 
+    }) => {
+      const response = await apiRequest(
+        "PATCH",
+        `/api/conversations/${conversationId}/participants/${userId}`,
+        { isAdmin }
+      );
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations', variables.conversationId] });
+      
+      const actionText = variables.isAdmin ? "tilldelad admin-rättigheter" : "fråntagen admin-rättigheter";
+      
+      toast({
+        title: "Admin-status uppdaterad",
+        description: `Deltagaren har blivit ${actionText}`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Fel vid statusändring",
+        description: "Det gick inte att ändra deltagarens admin-status",
+        variant: "destructive"
+      });
+      console.error("Failed to update admin status:", error);
+    }
+  });
+  
+  // Handle group image selection
+  const handleGroupImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    const file = files[0];
+    // Check file size (2MB limit for profile images)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "Bilden är för stor",
+        description: "Maximal bildstorlek är 2MB",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Check if it's an image
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Fel filtyp",
+        description: "Välj en bildfil (JPG, PNG, etc.)",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Upload the image
+    uploadGroupImage(file);
+  };
+  
+  // Upload group image
+  const uploadGroupImage = async (file: File) => {
+    if (!conversation) return;
+    
+    setIsUploadingGroupImage(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      const response = await fetch(`/api/conversations/${conversation.id}/image`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+      
+      const data = await response.json();
+      setGroupImageUrl(data.imageUrl);
+      
+      // Update the conversation with the new image URL
+      updateGroupMutation.mutate({
+        conversationId: conversation.id,
+        updates: { imageUrl: data.imageUrl }
+      });
+      
+    } catch (error) {
+      toast({
+        title: "Uppladdningsfel",
+        description: "Det gick inte att ladda upp bilden",
+        variant: "destructive"
+      });
+      console.error("Error uploading image:", error);
+    } finally {
+      setIsUploadingGroupImage(false);
+    }
+  };
   
   // Helper to scroll to bottom with a specified delay to ensure DOM update
   const scrollToBottom = (delay = 50) => {
@@ -633,20 +790,36 @@ const MessageView = ({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {(conversation.isGroup || conversation.participants.length > 2) && (
-              <DropdownMenuItem
-                onClick={() => {
-                  const currentTitle = conversation.title || conversation.participants
-                    .filter(p => p.userId !== (window as any).currentUser?.id)
-                    .map(p => p.user?.username || "Unknown")
-                    .join(", ");
+              <>
+                <DropdownMenuItem
+                  onClick={() => {
+                    const currentTitle = conversation.title || conversation.participants
+                      .filter(p => p.userId !== (window as any).currentUser?.id)
+                      .map(p => p.user?.username || "Unknown")
+                      .join(", ");
 
-                  setNewGroupName(currentTitle);
-                  setRenameDialogOpen(true);
-                }}
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Ändra gruppnamn
-              </DropdownMenuItem>
+                    setNewGroupName(currentTitle);
+                    setGroupImageUrl(conversation.imageUrl || null);
+                    setShowParticipantsTab(false);
+                    setGroupSettingsDialogOpen(true);
+                  }}
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Gruppchatten inställningar
+                </DropdownMenuItem>
+                
+                {isCurrentUserAdmin && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setShowParticipantsTab(true);
+                      setGroupSettingsDialogOpen(true);
+                    }}
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    Hantera deltagare
+                  </DropdownMenuItem>
+                )}
+              </>
             )}
             <DropdownMenuSeparator />
             <DropdownMenuCheckboxItem checked={false}>
@@ -915,57 +1088,196 @@ const MessageView = ({
         title={pdfTitle}
       />
       
-      {/* Rename Group Dialog */}
-      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+      {/* Group Settings Dialog */}
+      <Dialog open={groupSettingsDialogOpen} onOpenChange={setGroupSettingsDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Ändra gruppnamn</DialogTitle>
+            <DialogTitle>Gruppchatten inställningar</DialogTitle>
             <DialogDescription>
-              Ange nytt namn för gruppchatt
+              Hantera inställningar för gruppchatt
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="group-name" className="text-right">
-                Namn
-              </Label>
-              <Input
-                id="group-name"
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
-                className="col-span-3"
-                autoFocus
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setRenameDialogOpen(false)}
-            >
-              Avbryt
-            </Button>
-            <Button
-              onClick={() => {
-                if (newGroupName.trim() !== '') {
-                  renameGroupMutation.mutate({
-                    conversationId: conversation!.id,
-                    title: newGroupName.trim()
-                  });
-                }
-              }}
-              disabled={newGroupName.trim() === '' || renameGroupMutation.isPending}
-            >
-              {renameGroupMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sparar...
-                </>
-              ) : (
-                "Spara"
-              )}
-            </Button>
-          </DialogFooter>
+          
+          <Tabs defaultValue={showParticipantsTab ? "participants" : "settings"}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="settings">Inställningar</TabsTrigger>
+              <TabsTrigger value="participants">Deltagare</TabsTrigger>
+            </TabsList>
+            
+            {/* Settings Tab */}
+            <TabsContent value="settings" className="space-y-4 py-4">
+              <div className="space-y-4">
+                {/* Group Image Section */}
+                <div className="flex flex-col items-center space-y-3">
+                  <div className="relative">
+                    <Avatar className="h-24 w-24">
+                      {groupImageUrl ? (
+                        <AvatarImage src={groupImageUrl} alt="Group image" />
+                      ) : (
+                        <AvatarFallback className="text-xl bg-primary/10 text-primary">
+                          {conversation?.title?.[0]?.toUpperCase() || "G"}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    
+                    <input
+                      type="file"
+                      ref={groupImageInputRef}
+                      onChange={handleGroupImageSelect}
+                      className="hidden"
+                      accept="image/*"
+                    />
+                    
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="absolute bottom-0 right-0 rounded-full h-8 w-8 bg-background"
+                      onClick={() => groupImageInputRef.current?.click()}
+                      disabled={isUploadingGroupImage}
+                    >
+                      {isUploadingGroupImage ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Camera className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  
+                  <div className="text-center space-y-1">
+                    <p className="text-sm font-medium">Gruppbild</p>
+                    <p className="text-xs text-muted-foreground">
+                      Klicka för att ändra gruppens bild
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Group Name Section */}
+                <div className="space-y-2">
+                  <Label htmlFor="group-name">Gruppnamn</Label>
+                  <Input
+                    id="group-name"
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    placeholder="Ange gruppens namn"
+                  />
+                </div>
+              </div>
+              
+              <DialogFooter className="px-0">
+                <Button
+                  variant="outline"
+                  onClick={() => setGroupSettingsDialogOpen(false)}
+                >
+                  Avbryt
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (newGroupName.trim() !== '') {
+                      updateGroupMutation.mutate({
+                        conversationId: conversation!.id,
+                        updates: {
+                          title: newGroupName.trim()
+                        }
+                      });
+                    }
+                  }}
+                  disabled={newGroupName.trim() === '' || updateGroupMutation.isPending}
+                >
+                  {updateGroupMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Sparar...
+                    </>
+                  ) : (
+                    "Spara"
+                  )}
+                </Button>
+              </DialogFooter>
+            </TabsContent>
+            
+            {/* Participants Tab */}
+            <TabsContent value="participants" className="space-y-4 py-2">
+              <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
+                {conversation?.participants?.map((participant) => (
+                  <div key={participant.id} className="flex items-center justify-between p-2 rounded-md border">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage 
+                          src={`/avatars/${participant.user?.role || 'user'}.svg`} 
+                          alt={participant.user?.username || 'User'} 
+                        />
+                        <AvatarFallback>
+                          {participant.user?.username?.slice(0, 2).toUpperCase() || 'US'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-medium flex items-center gap-2">
+                          {participant.user?.username}
+                          {participant.isAdmin && (
+                            <Badge variant="outline" className="ml-2 text-xs px-1 py-0 h-5">Admin</Badge>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {participant.user?.role}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {isCurrentUserAdmin && (
+                      <div className="flex items-center gap-2">
+                        {/* Only show admin toggle for non-current users */}
+                        {participant.userId !== (window as any).currentUser?.id && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              toggleAdminStatusMutation.mutate({
+                                conversationId: conversation!.id,
+                                userId: participant.userId,
+                                isAdmin: !participant.isAdmin
+                              });
+                            }}
+                            disabled={toggleAdminStatusMutation.isPending}
+                            title={participant.isAdmin ? "Ta bort admin-status" : "Gör till admin"}
+                          >
+                            {toggleAdminStatusMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Shield className={`h-4 w-4 ${participant.isAdmin ? 'text-primary' : 'text-muted-foreground'}`} />
+                            )}
+                          </Button>
+                        )}
+                        
+                        {/* Only show remove button for non-admin users if current user is admin */}
+                        {!participant.isAdmin && participant.userId !== (window as any).currentUser?.id && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              if (window.confirm(`Är du säker på att du vill ta bort ${participant.user?.username} från gruppchatten?`)) {
+                                removeParticipantMutation.mutate({
+                                  conversationId: conversation!.id,
+                                  userId: participant.userId
+                                });
+                              }
+                            }}
+                            disabled={removeParticipantMutation.isPending}
+                            title="Ta bort från grupp"
+                          >
+                            {removeParticipantMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <UserMinus className="h-4 w-4 text-destructive" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </div>
