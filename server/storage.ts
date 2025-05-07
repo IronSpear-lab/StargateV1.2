@@ -94,6 +94,7 @@ export interface IStorage {
   
   // User Projects (Roles)
   assignUserToProject(userProject: Omit<UserProject, "id">): Promise<UserProject>;
+  getProjectMembers(projectId: number): Promise<{ id: number; username: string }[]>;
   
   // Calendar Events
   getCalendarEvents(userId: number, projectId?: number): Promise<CalendarEvent[]>;
@@ -482,6 +483,19 @@ class DatabaseStorage implements IStorage {
     const validatedData = insertUserProjectSchema.parse(userProject);
     const result = await db.insert(userProjects).values(validatedData).returning();
     return result[0];
+  }
+  
+  async getProjectMembers(projectId: number): Promise<{ id: number; username: string }[]> {
+    const result = await db
+      .select({
+        id: users.id,
+        username: users.username
+      })
+      .from(users)
+      .innerJoin(userProjects, eq(users.id, userProjects.userId))
+      .where(eq(userProjects.projectId, projectId));
+    
+    return result;
   }
 
   // Calendar Events methods
