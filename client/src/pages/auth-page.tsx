@@ -60,6 +60,18 @@ export default function AuthPage() {
 
   const onLoginSubmit = (data: LoginFormValues) => {
     loginMutation.mutate(data, {
+      onSuccess: async () => {
+        // Efter lyckad inloggning, gör ett extra API-anrop för att hämta projekt
+        // Detta för att fixa cachningsproblem
+        try {
+          console.log("Manuellt hämtar projekt efter login...");
+          const response = await fetch('/api/user-projects');
+          const projects = await response.json();
+          console.log("Manuell projekthämtning efter login:", projects);
+        } catch (e) {
+          console.error("Error vid manuell projekthämtning:", e);
+        }
+      },
       onError: (error) => {
         toast({
           title: "Login failed",
