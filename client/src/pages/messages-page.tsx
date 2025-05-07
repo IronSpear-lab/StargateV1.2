@@ -260,7 +260,11 @@ const ConversationsList = ({
                   </span>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground truncate">
+              <p className={`text-sm truncate ${
+                unreadCounts[conversation.id] > 0 
+                  ? "font-semibold text-foreground" 
+                  : "text-muted-foreground"
+              }`}>
                 {conversation.latestMessage?.content || "No messages yet"}
               </p>
             </div>
@@ -1112,7 +1116,7 @@ export default function MessagesPage() {
     staleTime: 10000, // 10 seconds
     select: (data) => {
       // Make sure we use the conversation participants to get the correct display name
-      return data.map(conversation => {
+      const conversationsWithDisplay = data.map(conversation => {
         // For conversation list display, we need to show the other participant's name
         // If you're the sender, it should show the recipient's name
         const otherParticipant = conversation.participants?.find(p => 
@@ -1123,6 +1127,32 @@ export default function MessagesPage() {
           ...conversation,
           displayName: otherParticipant?.user?.username || "Unknown"
         };
+      });
+      
+      // Sort conversations: unread first, then by last message date
+      return conversationsWithDisplay.sort((a, b) => {
+        // Get current user ID
+        const currentUserId = (window as any).currentUser?.id;
+        if (!currentUserId) return 0;
+        
+        // Check if conversation A has unread messages
+        const aHasUnread = a.messages?.some(msg => 
+          msg.senderId !== currentUserId && 
+          !msg.readBy?.includes(currentUserId)
+        ) || false;
+        
+        // Check if conversation B has unread messages
+        const bHasUnread = b.messages?.some(msg => 
+          msg.senderId !== currentUserId && 
+          !msg.readBy?.includes(currentUserId)
+        ) || false;
+        
+        // If only one has unread, sort that one first
+        if (aHasUnread && !bHasUnread) return -1;
+        if (!aHasUnread && bHasUnread) return 1;
+        
+        // Otherwise sort by recency (lastMessageAt)
+        return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
       });
     }
   });
