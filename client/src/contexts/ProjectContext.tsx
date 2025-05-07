@@ -147,7 +147,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Ladda valda projekt från localStorage
+  // Ladda valda projekt från localStorage och säkerställ att currentProject är giltigt
   useEffect(() => {
     if (projects.length > 0) {
       const savedProjectId = localStorage.getItem('currentProjectId');
@@ -157,23 +157,38 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         const savedProject = projects.find(p => p.id === parsedId);
         if (savedProject) {
           setCurrentProject(savedProject);
+        } else {
+          // Viktigt: Om det sparade projektet inte finns i listan längre (t.ex. pga behörighetsändringar)
+          // återställ currentProject till null
+          setCurrentProject(null);
+          localStorage.removeItem('currentProjectId');
         }
-        // Annars behåll currentProject som null för att visa ursprungligt innehåll
       }
       // Viktigt: Välj inte automatiskt ett projekt, låt användaren välja när de vill
+    } else {
+      // Om projektlistan är tom, säkerställ att currentProject återställs
+      setCurrentProject(null);
+      localStorage.removeItem('currentProjectId');
     }
-  }, [projects]);
+  }, [projects, user]);
 
   // Funktion för att byta projekt
   const changeProject = (projectId: number) => {
-    // Invalidera projektcachen först så att vi får färsk data
-    queryClient.invalidateQueries({ queryKey: ['/api/user-projects'] });
-    
     // Hämta projektet med färsk data från API:et
     fetch(`/api/projects/${projectId}`)
       .then(response => {
         if (!response.ok) {
-          throw new Error('Failed to fetch project');
+          // Om svaret inte är OK (t.ex. 403 vid behörighetsfel eller 404 för projektet existerar inte),
+          // behöver vi uppdatera projektlistan för att säkerställa att UI:t är i synk
+          queryClient.invalidateQueries({ queryKey: ['/api/user-projects'] });
+          
+          if (response.status === 403) {
+            throw new Error('Du saknar behörighet till detta projekt');
+          } else if (response.status === 404) {
+            throw new Error('Projektet kunde inte hittas');
+          } else {
+            throw new Error('Ett fel uppstod vid hämtning av projekt');
+          }
         }
         return response.json();
       })
@@ -182,8 +197,9 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         setCurrentProject(freshProject);
         localStorage.setItem('currentProjectId', String(projectId));
         
-        // Invalidera även medlemsfrågan för att få färska medlemmar
+        // Invalidera även medlemsfrågan för att få färska medlemmar och projekt
         queryClient.invalidateQueries({ queryKey: ['/api/project-members', projectId] });
+        queryClient.invalidateQueries({ queryKey: ['/api/user-projects'] });
         
         toast({
           title: "Projekt ändrat",
@@ -198,12 +214,12 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
           variant: "destructive",
         });
         
-        // Försök ändå med cachad data
-        const project = projects.find(p => p.id === projectId);
-        if (project) {
-          setCurrentProject(project);
-          localStorage.setItem('currentProjectId', String(projectId));
-        }
+        // Viktigt: Kontrollera igen om projektet finns i den uppdaterade listan efter att vi invaliderat cachen
+        queryClient.invalidateQueries({ queryKey: ['/api/user-projects'] })
+          .then(() => {
+            // Vi uppdaterar inte currentProject här längre - låt useEffect-hooken hantera detta baserat
+            // på om projektet faktiskt existerar i den uppdaterade listan eller inte
+          });
       });
   };
 
