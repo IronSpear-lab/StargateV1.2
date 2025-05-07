@@ -34,187 +34,11 @@ import { UploadDialog } from "@/components/UploadDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useProject } from "@/contexts/ProjectContext";
 
-const mockRitningar = [
-  { 
-    id: 1, 
-    filename: "A-400-1-100.pdf", 
-    version: "1", 
-    description: "HUS PLAN 10", 
-    uploaded: "7 sep 2023, 05:46", 
-    uploadedBy: "Fredrik Helleström", 
-    number: "(Value)", 
-    status: "(Status_Value)", 
-    annat: "(Subject_Text)" 
-  },
-  { 
-    id: 2, 
-    filename: "A-400-1-100.pdf", 
-    version: "2", 
-    description: "HUS PLAN 10", 
-    uploaded: "7 sep 2023, 05:46", 
-    uploadedBy: "Fredrik Helleström", 
-    number: "(Value)", 
-    status: "(Status_Value)", 
-    annat: "(Subject_Text)" 
-  },
-  { 
-    id: 3, 
-    filename: "A-400-1-100.pdf", 
-    version: "3", 
-    description: "HUS PLAN 10", 
-    uploaded: "7 sep 2023, 05:46", 
-    uploadedBy: "Fredrik Helleström", 
-    number: "(Value)", 
-    status: "(Status_Value)", 
-    annat: "(Subject_Text)" 
-  },
-  { 
-    id: 4, 
-    filename: "A-400-1-105.pdf", 
-    version: "1", 
-    description: "HUS PLAN 10", 
-    uploaded: "7 sep 2023, 05:46", 
-    uploadedBy: "Fredrik Helleström", 
-    number: "(Value)", 
-    status: "(Status_Value)", 
-    annat: "(Subject_Text)" 
-  },
-  { 
-    id: 5, 
-    filename: "A-400-1-100.pdf", 
-    version: "1", 
-    description: "HUS PLAN 10", 
-    uploaded: "7 sep 2023, 05:46", 
-    uploadedBy: "Fredrik Helleström", 
-    number: "(Value)", 
-    status: "(Status_Value)", 
-    annat: "(Subject_Text)" 
-  },
-  { 
-    id: 6, 
-    filename: "A-401-1-100.pdf", 
-    version: "1", 
-    description: "HUS PLAN 11", 
-    uploaded: "7 sep 2023, 10:23", 
-    uploadedBy: "Fredrik Helleström", 
-    number: "(Value)", 
-    status: "(Status_Value)", 
-    annat: "(Subject_Text)" 
-  },
-  { 
-    id: 7, 
-    filename: "A-402-1-100.pdf", 
-    version: "1", 
-    description: "HUS PLAN 12", 
-    uploaded: "7 sep 2023, 14:15", 
-    uploadedBy: "Fredrik Helleström", 
-    number: "(Value)", 
-    status: "(Status_Value)", 
-    annat: "(Subject_Text)" 
-  },
-  { 
-    id: 8, 
-    filename: "A-403-1-100.pdf", 
-    version: "2", 
-    description: "HUS PLAN 13", 
-    uploaded: "8 sep 2023, 09:12", 
-    uploadedBy: "Fredrik Helleström", 
-    number: "(Value)", 
-    status: "(Status_Value)", 
-    annat: "(Subject_Text)" 
-  },
-  { 
-    id: 9, 
-    filename: "A-404-1-100.pdf", 
-    version: "1", 
-    description: "HUS PLAN 14", 
-    uploaded: "8 sep 2023, 11:30", 
-    uploadedBy: "Fredrik Helleström", 
-    number: "(Value)", 
-    status: "(Status_Value)", 
-    annat: "(Subject_Text)" 
-  },
-  { 
-    id: 10, 
-    filename: "A-405-1-100.pdf", 
-    version: "3", 
-    description: "HUS PLAN 15", 
-    uploaded: "9 sep 2023, 08:45", 
-    uploadedBy: "Fredrik Helleström", 
-    number: "(Value)", 
-    status: "(Status_Value)", 
-    annat: "(Subject_Text)" 
-  },
-  { 
-    id: 11, 
-    filename: "A-406-1-100.pdf", 
-    version: "2", 
-    description: "HUS SEKTION A-A", 
-    uploaded: "9 sep 2023, 14:22", 
-    uploadedBy: "Fredrik Helleström", 
-    number: "(Value)", 
-    status: "(Status_Value)", 
-    annat: "(Subject_Text)" 
-  },
-  { 
-    id: 12, 
-    filename: "A-407-1-100.pdf", 
-    version: "1", 
-    description: "HUS SEKTION B-B", 
-    uploaded: "10 sep 2023, 10:15", 
-    uploadedBy: "Fredrik Helleström", 
-    number: "(Value)", 
-    status: "(Status_Value)", 
-    annat: "(Subject_Text)" 
-  },
-  { 
-    id: 13, 
-    filename: "A-408-1-100.pdf", 
-    version: "2", 
-    description: "HUS FASAD NORR", 
-    uploaded: "10 sep 2023, 15:40", 
-    uploadedBy: "Fredrik Helleström", 
-    number: "(Value)", 
-    status: "(Status_Value)", 
-    annat: "(Subject_Text)" 
-  },
-  { 
-    id: 14, 
-    filename: "A-409-1-100.pdf", 
-    version: "1", 
-    description: "HUS FASAD SÖDER", 
-    uploaded: "11 sep 2023, 09:05", 
-    uploadedBy: "Fredrik Helleström", 
-    number: "(Value)", 
-    status: "(Status_Value)", 
-    annat: "(Subject_Text)" 
-  },
-  { 
-    id: 15, 
-    filename: "A-410-1-100.pdf", 
-    version: "1", 
-    description: "HUS FASAD ÖSTER", 
-    uploaded: "11 sep 2023, 14:30", 
-    uploadedBy: "Fredrik Helleström", 
-    number: "(Value)", 
-    status: "(Status_Value)", 
-    annat: "(Subject_Text)" 
-  },
-  { 
-    id: 16, 
-    filename: "A-411-1-100.pdf", 
-    version: "2", 
-    description: "HUS FASAD VÄSTER", 
-    uploaded: "12 sep 2023, 11:20", 
-    uploadedBy: "Fredrik Helleström", 
-    number: "(Value)", 
-    status: "(Status_Value)", 
-    annat: "(Subject_Text)" 
-  }
-];
+// Tomma dokument som standard - alla dokument som laddas upp tillhör ett specifikt projekt
+const emptyDocs = [];
 
-// Utöka ritningarna med ett fileId-fält för att hålla reda på uppladdade filer
-interface Ritning {
+// Utöka dokumenten med ett fileId-fält för att hålla reda på uppladdade filer
+interface Dokument {
   id: number;
   filename: string;
   version: string;
@@ -224,7 +48,8 @@ interface Ritning {
   number: string;
   status: string;
   annat: string;
-  fileId?: string; // Används för att hålla reda på PDF-filer för uppladdade ritningar
+  fileId?: string; // Används för att hålla reda på PDF-filer för uppladdade dokument
+  projectId?: number; // ID till det projekt dokumentet tillhör
 }
 
 export default function RitningarPage() {
@@ -242,10 +67,10 @@ export default function RitningarPage() {
     return currentProject ? `project_${currentProject.id}_ritningar` : 'no_project_ritningar';
   };
   
-  // Hämta sparade ritningar från localStorage om de finns, annars använd mockdata
-  const [ritningarData, setRitningarData] = useState<Ritning[]>(() => {
-    const savedRitningar = localStorage.getItem(getStorageKey());
-    return savedRitningar ? JSON.parse(savedRitningar) : [];
+  // Hämta sparade dokument från localStorage om de finns, annars använd tomma dokument
+  const [dokumentData, setDokumentData] = useState<Dokument[]>(() => {
+    const savedDokument = localStorage.getItem(getStorageKey());
+    return savedDokument ? JSON.parse(savedDokument) : [];
   });
   
   const [selectedFile, setSelectedFile] = useState<{
@@ -260,10 +85,10 @@ export default function RitningarPage() {
     };
   } | null>(null);
   
-  // Uppdatera ritningar när projektet ändras
+  // Uppdatera dokument när projektet ändras
   useEffect(() => {
-    const savedRitningar = localStorage.getItem(getStorageKey());
-    setRitningarData(savedRitningar ? JSON.parse(savedRitningar) : []);
+    const savedDokument = localStorage.getItem(getStorageKey());
+    setDokumentData(savedDokument ? JSON.parse(savedDokument) : []);
   }, [currentProject]);
   
   // Hämta eventuella URL-parametrar för att direkt öppna en fil
@@ -472,7 +297,7 @@ export default function RitningarPage() {
       <Sidebar className={isSidebarOpen ? "" : "hidden"} />
       
       <div className="flex-1 overflow-y-auto">
-        <Header title="Ritningar" onToggleSidebar={toggleSidebar} />
+        <Header title="Dokument" onToggleSidebar={toggleSidebar} />
         
         <div className="container px-6 py-6">
           <div className="flex items-center text-sm mb-4 text-blue-600 dark:text-blue-400">
@@ -485,21 +310,21 @@ export default function RitningarPage() {
             <ChevronRight size={14} className="mx-1" />
             <span>01- Arkitekt</span>
             <ChevronRight size={14} className="mx-1" />
-            <span className="font-semibold">Ritningar</span>
+            <span className="font-semibold">Dokument</span>
           </div>
           
           {!currentProject && (
             <div className="bg-amber-50 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 rounded-md p-4 mb-6">
               <h3 className="text-amber-800 dark:text-amber-300 font-medium text-lg mb-2">Inget aktivt projekt</h3>
               <p className="text-amber-700 dark:text-amber-400">
-                Du behöver välja ett projekt för att kunna se och hantera ritningar. 
+                Du behöver välja ett projekt för att kunna se och hantera dokument. 
                 Använd projektväljaren i toppen av sidan för att välja projekt.
               </p>
             </div>
           )}
         
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-semibold">Ritningar</h1>
+            <h1 className="text-2xl font-semibold">Dokument</h1>
             <div className="flex space-x-2">
               <Button 
                 className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white"
@@ -521,7 +346,7 @@ export default function RitningarPage() {
 
           <div className="bg-background rounded-lg shadow border border-border">
             <div className="p-4 border-b border-border">
-              <h2 className="text-sm font-medium text-foreground">Sök efter ritningar</h2>
+              <h2 className="text-sm font-medium text-foreground">Sök efter dokument</h2>
               <div className="mt-2 flex space-x-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -600,7 +425,7 @@ export default function RitningarPage() {
                     </TableRow>
                   ) : filteredRitningar.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-4">Inga ritningar hittades</TableCell>
+                      <TableCell colSpan={8} className="text-center py-4">Inga dokument hittades</TableCell>
                     </TableRow>
                   ) : (
                     filteredRitningar.map((ritning) => (
