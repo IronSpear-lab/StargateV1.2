@@ -6,6 +6,9 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import createMemoryStore from "memorystore";
+
+const MemoryStore = createMemoryStore(session);
 
 declare global {
   namespace Express {
@@ -29,24 +32,27 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  // Förenkla sessionsinställningar för utvecklingsmiljö
-  const isProduction = process.env.NODE_ENV === 'production';
-  // Replit kör med HTTPS så secure måste vara true för att cookies ska fungera korrekt
+  // Generera en fast secret för hela sessionen istället för en ny vid varje start
+  const SESSION_SECRET = "valvx-super-duper-fixed-secret-key-development-only";
+  
+  // Förenkla sessionshanteringen till det absolut minimala
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "valvxlstart-super-secret-key-for-development",
-    resave: true, // Ändrad till true för att vara säker på att sessionen sparas
-    saveUninitialized: true, // Ändrad för att spara nya sessions
-    rolling: true, // Resettar maxAge vid varje response
-    store: storage.sessionStore,
+    secret: SESSION_SECRET,
+    resave: true,
+    saveUninitialized: true,
+    rolling: true,
+    store: new MemoryStore({ // Use MemoryStore directly here
+      checkPeriod: 86400000 // prune expired entries every 24h
+    }),
     cookie: {
-      secure: true, // VIKTIGT: Med HTTPS måste detta vara true 
+      secure: true,
       httpOnly: true,
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 dagar
-      sameSite: 'none', // 'none' krävs för CORS med credentials
+      sameSite: 'none',
       path: '/'
     },
-    name: "valvx.sid", // Använd samma namn som tidigare
-    proxy: true // Replit använder proxy
+    name: "valvx.sid",
+    proxy: true
   };
 
   app.set("trust proxy", 1);
@@ -113,7 +119,24 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    console.log('/api/user - session ID:', req.sessionID);
+    console.log('/api/user - isAuthenticated:', req.isAuthenticated());
+    console.log('/api/user - cookies:', req.headers.cookie);
+    
+    if (!req.isAuthenticated()) {
+      console.log('/api/user - ej autentiserad, returnerar 401');
+      return res.sendStatus(401);
+    }
+    
+    // Sätt cookie igen för att hålla sessionen levande
+    res.cookie(sessionSettings.name!, req.sessionID, {
+      secure: true,
+      httpOnly: true, 
+      sameSite: 'none',
+      maxAge: 30 * 24 * 60 * 60 * 1000
+    });
+    
+    console.log('/api/user - autentiserad, returnerar user:', req.user);
     res.json(req.user);
   });
 }

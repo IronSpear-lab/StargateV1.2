@@ -110,6 +110,7 @@ export interface IStorage {
 class DatabaseStorage implements IStorage {
   sessionStore: any; // Change from session.SessionStore to any to resolve type issues
 
+  // Använd den vanliga MemoryStore från memorystore
   constructor() {
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000 // prune expired entries every 24h
