@@ -38,6 +38,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
+      // När en användare loggar in, invalidera projektlistan för att säkerställa att användaren
+      // bara ser de projekt de har behörighet till
+      queryClient.invalidateQueries({ queryKey: ['/api/user-projects'] });
     },
     onError: (error: Error) => {
       toast({

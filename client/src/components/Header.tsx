@@ -58,7 +58,11 @@ export function Header({
   
   // Kombinera kontext och props med prioritet till kontext
   const currentProject = contextCurrentProject || propCurrentProject;
+  
+  // Använd endast projekt från ProjectContext som är hämtade via storage.getUserProjects som nu
+  // korrekt filtrerar baserat på användarens behörigheter
   const availableProjects = contextProjects.length > 0 ? contextProjects : (propAvailableProjects || []);
+  
   const onProjectChange = contextChangeProject || propOnProjectChange;
   
   const handleCreateProject = async () => {
