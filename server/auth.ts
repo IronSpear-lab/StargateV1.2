@@ -29,17 +29,19 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
+  // För att säkerställa att både samma domän och iframe fungerar
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "valvxlstart-super-secret-key-for-development",
     resave: true,
     saveUninitialized: true,
     store: storage.sessionStore,
     cookie: {
-      secure: false, // Set to true if using HTTPS
+      secure: false, // Set to true if using HTTPS i produktion 
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      sameSite: 'lax'
-    }
+      sameSite: 'none' // Tillåt cookies att skickas vid cross-site requests
+    },
+    name: "connect.valvx" // Namnge cookien tydligt
   };
 
   app.set("trust proxy", 1);
