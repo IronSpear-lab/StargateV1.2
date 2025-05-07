@@ -41,7 +41,14 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
   const { data: files, isLoading } = useQuery({
     queryKey: ['recent-files', projectId],
     queryFn: async () => {
-      // Först hämta alla uppladdade filer från ritningar-sidan via localStorage
+      // Om projektId är 0 eller undefined, vilket motsvarar "No Project" eller när användaren inte har behörighet till något projekt,
+      // returnera en tom lista istället för att visa mockdata
+      if (!projectId || projectId === 0) {
+        console.log("No active project or 'No Project' selected - skipping file loading");
+        return [];
+      }
+      
+      // Först hämta alla uppladdade filer från ritningar-sidan via localStorage, men bara om vi har ett giltigt projekt
       const savedRitningar = localStorage.getItem('saved_ritningar');
       const uploadedFiles: File[] = [];
       
@@ -49,9 +56,10 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
         try {
           const ritningar = JSON.parse(savedRitningar);
           
-          // Konvertera ritningar till filformat som widget förväntar sig
+          // Filtrera bara de ritningar som tillhör det aktuella projektet
+          // Om projektId information saknas i filen, inkludera den inte
           ritningar.forEach((ritning: any) => {
-            if (ritning.filename) {
+            if (ritning.filename && ritning.projectId === projectId) {
               uploadedFiles.push({
                 id: ritning.id.toString(),
                 name: ritning.filename,
@@ -70,65 +78,24 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
         }
       }
       
-      // Sedan försök hämta från API - vi går tillbaka till /api/files/recent som nu är fixad
+      // Sedan försök hämta från API - men endast för aktiva projekt (inte "No Project")
       try {
-        const response = await fetch('/api/files/recent');
+        // Lägg till projektId som query parameter för att filservern ska kunna filtrera
+        const response = await fetch(`/api/files/recent?projectId=${projectId}`);
         if (!response.ok) {
-          // Om API-anropet misslyckas, använd bara uppladdade filer + mockdata
-          return [
-            ...uploadedFiles,
-            {
-              id: "1",
-              name: "Project Requirements.pdf",
-              fileType: "pdf",
-              fileSize: 2450000,
-              lastModified: new Date(new Date().setHours(new Date().getHours() - 2)).toISOString(),
-              folder: "Documentation",
-              uploadedBy: "Alex Johnson",
-              uploadedById: "user1",
-            },
-            {
-              id: "2",
-              name: "Marketing Assets.zip",
-              fileType: "zip",
-              fileSize: 15200000,
-              lastModified: new Date(new Date().setHours(new Date().getHours() - 5)).toISOString(),
-              folder: "Assets",
-              uploadedBy: "Morgan Smith",
-              uploadedById: "user2",
-            },
-            {
-              id: "3",
-              name: "Q2 Financial Report.xlsx",
-              fileType: "xlsx",
-              fileSize: 1800000,
-              lastModified: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
-              folder: "Finance",
-              uploadedBy: "Jamie Watson",
-              uploadedById: "user3",
-            }
-          ] as File[];
+          console.warn(`API call failed for files with status ${response.status}`);
+          // Returnera bara uppladdade filer utan mockdata när API-anropet misslyckas
+          return uploadedFiles;
         }
         
         // Om API-anropet lyckas, kombinera API-resultatet med uppladdade filer
         const apiFiles = await response.json();
+        console.log("Successfully loaded files:", { uploadedFiles, apiFiles });
         return [...uploadedFiles, ...apiFiles];
       } catch (error) {
         console.error("Error fetching recent files:", error);
-        // Returnera bara uppladdade filer + mockdata vid fel
-        return [
-          ...uploadedFiles,
-          {
-            id: "1",
-            name: "Project Requirements.pdf",
-            fileType: "pdf",
-            fileSize: 2450000,
-            lastModified: new Date(new Date().setHours(new Date().getHours() - 2)).toISOString(),
-            folder: "Documentation",
-            uploadedBy: "Alex Johnson",
-            uploadedById: "user1",
-          }
-        ];
+        // Returnera bara uppladdade filer utan mockdata vid fel
+        return uploadedFiles;
       }
     }
   });
