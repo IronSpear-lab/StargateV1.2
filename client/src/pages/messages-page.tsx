@@ -914,6 +914,60 @@ const MessageView = ({
         url={pdfUrl}
         title={pdfTitle}
       />
+      
+      {/* Rename Group Dialog */}
+      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Ändra gruppnamn</DialogTitle>
+            <DialogDescription>
+              Ange nytt namn för gruppchatt
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="group-name" className="text-right">
+                Namn
+              </Label>
+              <Input
+                id="group-name"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                className="col-span-3"
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRenameDialogOpen(false)}
+            >
+              Avbryt
+            </Button>
+            <Button
+              onClick={() => {
+                if (newGroupName.trim() !== '') {
+                  renameGroupMutation.mutate({
+                    conversationId: conversation!.id,
+                    title: newGroupName.trim()
+                  });
+                }
+              }}
+              disabled={newGroupName.trim() === '' || renameGroupMutation.isPending}
+            >
+              {renameGroupMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sparar...
+                </>
+              ) : (
+                "Spara"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
