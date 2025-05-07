@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Dialog, 
@@ -20,7 +21,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Users, UserPlus, Search, X, UserMinus } from 'lucide-react';
+import { Users, UserPlus, Search, X, UserMinus, Shield } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -44,6 +45,7 @@ export default function ProjectTeamWidget({ projectId }: ProjectTeamWidgetProps)
   const [selectedRole, setSelectedRole] = useState('user');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   // Hämta alla projektmedlemmar
@@ -215,14 +217,21 @@ export default function ProjectTeamWidget({ projectId }: ProjectTeamWidgetProps)
                       </Badge>
                     </div>
                   </div>
-                  <Button 
-                    size="icon" 
-                    variant="ghost" 
-                    onClick={() => handleRemoveUser(member.id)}
-                    className="h-8 w-8"
-                  >
-                    <UserMinus className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                  </Button>
+                  {/* Visa inte borttagningsknappen om detta är den inloggade användaren och hen är projektledare */}
+                  {(member.id === user?.id && member.role === 'project_leader') ? (
+                    <span className="h-8 w-8 flex items-center justify-center" title="Du kan inte ta bort dig själv som projektledare">
+                      <Shield className="h-4 w-4 text-muted-foreground" />
+                    </span>
+                  ) : (
+                    <Button 
+                      size="icon" 
+                      variant="ghost" 
+                      onClick={() => handleRemoveUser(member.id)}
+                      className="h-8 w-8"
+                    >
+                      <UserMinus className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
