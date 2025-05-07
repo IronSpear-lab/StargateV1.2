@@ -632,7 +632,7 @@ const MessageView = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {conversation.isGroup && (
+            {(conversation.isGroup || conversation.participants.length > 2) && (
               <DropdownMenuItem
                 onClick={() => {
                   const currentTitle = conversation.title || conversation.participants
