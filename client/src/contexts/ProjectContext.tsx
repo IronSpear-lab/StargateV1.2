@@ -174,7 +174,19 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
   // Funktion för att byta projekt
   const changeProject = (projectId: number) => {
-    // Hämta projektet med färsk data från API:et
+    // Kontrollera först om projektet finns i befintlig lista med behöriga projekt
+    const projectExists = projects.some(p => p.id === projectId);
+    
+    if (!projectExists) {
+      toast({
+        title: "Åtkomst nekad",
+        description: "Du saknar behörighet till detta projekt",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Hämta projektet med färsk data från API:et endast om användaren har behörighet
     fetch(`/api/projects/${projectId}`)
       .then(response => {
         if (!response.ok) {

@@ -58,6 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
+      // När en användare registrerar sig, invalidera projektlistan
+      queryClient.invalidateQueries({ queryKey: ['/api/user-projects'] });
     },
     onError: (error: Error) => {
       toast({
@@ -74,6 +76,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
+      // När en användare loggar ut, rensa projektcachen helt
+      queryClient.invalidateQueries({ queryKey: ['/api/user-projects'] });
+      // Rensa även localStorage för att förhindra att användare försöker komma åt projekt de inte ska ha tillgång till
+      localStorage.removeItem('currentProjectId');
     },
     onError: (error: Error) => {
       toast({
