@@ -82,15 +82,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Skapa nytt projekt
   app.post('/api/projects', async (req, res) => {
+    console.log('POST /api/projects - Request cookies:', req.headers.cookie);
     console.log('POST /api/projects - Auth status:', req.isAuthenticated());
     console.log('User in session:', req.user);
     console.log('Session ID:', req.sessionID);
     console.log('Session data:', req.session);
-
-    if (!req.isAuthenticated()) {
-      console.log('Unauthorized project creation attempt - not authenticated');
-      return res.status(401).send({ error: 'Unauthorized' });
-    }
+    
+    try {
+      if (!req.isAuthenticated()) {
+        console.log('Unauthorized project creation attempt - not authenticated');
+        return res.status(401).send({ error: 'Unauthorized' });
+      }
     
     // Kontrollera om användaren har rätt roll (project_leader eller admin)
     if (req.user.role !== 'project_leader' && req.user.role !== 'admin') {
@@ -144,6 +146,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error details:', JSON.stringify(error));
       res.status(500).json({ error: 'Failed to create project' });
     }
+  } catch (error) {
+    console.error('Critical error in /api/projects route:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
   });
   
   // Hämta medlemmar i ett projekt
