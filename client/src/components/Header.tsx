@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useProject } from "@/contexts/ProjectContext";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +56,10 @@ export function Header({
     createProject,
     isCreatingProject
   } = useProject();
+  
+  // Hämta användarens roll för att avgöra om de kan skapa projekt
+  const { user } = useAuth();
+  const canCreateProject = user?.role === 'project_leader' || user?.role === 'admin';
   
   // Kombinera kontext och props med prioritet till kontext
   const currentProject = contextCurrentProject || propCurrentProject;
@@ -178,7 +183,8 @@ export function Header({
                 </select>
               </div>
               
-              {createProjectDialog}
+              {/* Visa endast skapa projekt-knappen om användaren har behörighet */}
+              {canCreateProject && createProjectDialog}
             </div>
           </div>
         )}
@@ -210,12 +216,13 @@ export function Header({
                 </select>
               </div>
               
-              {createProjectDialog}
+              {/* Visa endast skapa projekt-knappen om användaren har behörighet */}
+              {canCreateProject && createProjectDialog}
             </div>
           </div>
         )}
         
-        {!currentProject && availableProjects.length === 0 && onProjectChange !== undefined && (
+        {!currentProject && availableProjects.length === 0 && onProjectChange !== undefined && canCreateProject && (
           <div className="absolute left-1/2 transform -translate-x-1/2">
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
@@ -267,6 +274,14 @@ export function Header({
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+          </div>
+        )}
+        
+        {!currentProject && availableProjects.length === 0 && onProjectChange !== undefined && !canCreateProject && (
+          <div className="absolute left-1/2 transform -translate-x-1/2">
+            <div className="text-center text-muted-foreground text-sm">
+              Du har inte behörighet till något projekt än
+            </div>
           </div>
         )}
       </div>

@@ -229,6 +229,7 @@ interface Ritning {
 
 export default function RitningarPage() {
   const { currentProject } = useProject();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState("uploaded");
   const [sortDirection, setSortDirection] = useState("desc");
@@ -359,6 +360,16 @@ export default function RitningarPage() {
   };
   
   const handleUpload = (files: File[]) => {
+    // Kontrollera om användaren har ett aktivt projekt
+    if (!currentProject || currentProject.id === 0) {
+      toast({
+        title: "Uppladdning misslyckades",
+        description: "Du måste vara ansluten till ett projekt för att ladda upp filer",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // I en riktig implementering skulle vi skicka filerna till en API-endpoint
     console.log("Uppladdade filer:", files);
     
@@ -379,7 +390,8 @@ export default function RitningarPage() {
       number: `${ritningarData.length + index + 1}`.padStart(3, '0'),
       status: "Active",
       annat: "PDF",
-      fileId: fileIds[index] // Spara ID:t från fillagringen
+      fileId: fileIds[index], // Spara ID:t från fillagringen
+      projectId: currentProject.id // Koppla ritningen till det aktuella projektet
     }));
     
     // Uppdatera listan med ritningar
