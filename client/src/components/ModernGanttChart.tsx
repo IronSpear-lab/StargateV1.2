@@ -45,7 +45,7 @@ const initialTasks: GanttTask[] = [
         id: 2,
         project: "Byggprojekt A",
         type: "TASK",
-        name: "Skapa initiala ritningar",
+        name: "Skapa initiala dokument",
         status: "Completed",
         startDate: "2025-04-01",
         endDate: "2025-04-10",

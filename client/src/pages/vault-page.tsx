@@ -79,7 +79,7 @@ const parentFolders = [
   { id: 3, name: "02- Projektering", path: "files/02-projektering", parentId: 1 },
   { id: 4, name: "00- Gemensam", path: "files/00-gemensam", parentId: 1 },
   { id: 5, name: "01- Arkitekt", path: "files/01-arkitekt", parentId: 1 },
-  { id: 6, name: "1. Ritningar", path: "files/01-arkitekt/ritningar", parentId: 5 },
+  { id: 6, name: "1. Dokument", path: "files/01-arkitekt/dokument", parentId: 5 },
   { id: 7, name: "2. DWG & IFC", path: "files/01-arkitekt/dwg-ifc", parentId: 5 },
   { id: 8, name: "3. Beskrivningar", path: "files/01-arkitekt/beskrivningar", parentId: 5 },
   { id: 9, name: "4. Underlag", path: "files/01-arkitekt/underlag", parentId: 5 },

@@ -972,7 +972,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     
     try {
       // Säkerställ att CSS-stilmallen med våra anpassningar finns
-      addPdfViewerAnimations();
+      addPdfViewerAnimations(document);
       
       // Lägg till ID på container-element för referens
       if (pdfContainerRef.current && !pdfContainerRef.current.id) {
