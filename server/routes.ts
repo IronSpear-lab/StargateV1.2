@@ -1866,7 +1866,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Title is required" });
       }
       
-      // Check if conversation exists and is a group
+      // Check if conversation exists
       const conversation = await db.select()
         .from(conversations)
         .where(eq(conversations.id, conversationId))
@@ -1876,7 +1876,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Conversation not found" });
       }
       
-      if (!conversation.isGroup) {
+      // Get participants to check if it's a real group (>2 participants)
+      const participants = await db.select()
+        .from(conversationParticipants)
+        .where(eq(conversationParticipants.conversationId, conversationId));
+      
+      // Allow rename if isGroup flag is set OR there are more than 2 participants
+      if (!conversation.isGroup && participants.length <= 2) {
         return res.status(400).json({ error: "Only group conversations can be renamed" });
       }
       
