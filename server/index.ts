@@ -1,10 +1,28 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import cookieParser from "cookie-parser";
+import { setupAuth } from "./auth";
 
 const app = express();
+
+// CORS and cookie handling
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Lägg till cookie-parser
+app.use(cookieParser());
+
+// Sätt upp auth FÖRE rutter
+setupAuth(app);
 
 // Middleware to correctly serve WebAssembly files with proper MIME type
 app.use((req, res, next) => {
