@@ -149,28 +149,64 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
   // Ladda valda projekt från localStorage och säkerställ att currentProject är giltigt
   useEffect(() => {
+    console.log("Projects or user changed, checking currentProject validity:", { 
+      projects, 
+      currentProjectId: currentProject?.id,
+      projectsLength: projects.length
+    });
+    
     if (projects.length > 0) {
       const savedProjectId = localStorage.getItem('currentProjectId');
       
-      if (savedProjectId) {
+      // Om currentProject är satt (finns i minnet), kontrollera om det fortfarande är giltigt
+      if (currentProject) {
+        const projectStillValid = projects.some(p => p.id === currentProject.id);
+        
+        if (!projectStillValid) {
+          console.log("Current project no longer valid (user lost access), resetting...");
+          
+          // Om användaren förlorat behörighet, sätt första tillgängliga projekt som aktiv
+          const firstAvailableProject = projects[0];
+          setCurrentProject(firstAvailableProject);
+          localStorage.setItem('currentProjectId', String(firstAvailableProject.id));
+          
+          // Visa toast-meddelande
+          toast({
+            title: "Projekt bytt",
+            description: `Du har inte längre tillgång till det tidigare projektet. Nu arbetar du i "${firstAvailableProject.name}"`,
+          });
+          
+          return;
+        }
+      }
+      
+      // Om inget projekt är valt men det finns ett sparat
+      if (!currentProject && savedProjectId) {
         const parsedId = parseInt(savedProjectId);
         const savedProject = projects.find(p => p.id === parsedId);
+        
         if (savedProject) {
           setCurrentProject(savedProject);
         } else {
-          // Viktigt: Om det sparade projektet inte finns i listan längre (t.ex. pga behörighetsändringar)
-          // återställ currentProject till null
-          setCurrentProject(null);
-          localStorage.removeItem('currentProjectId');
+          // Om det sparade projektet inte finns i listan, välj det första projektet
+          const firstAvailableProject = projects[0];
+          setCurrentProject(firstAvailableProject);
+          localStorage.setItem('currentProjectId', String(firstAvailableProject.id));
         }
       }
-      // Viktigt: Välj inte automatiskt ett projekt, låt användaren välja när de vill
+      
+      // Om inget projekt är valt och inget finns i localStorage, använd första tillgängliga
+      if (!currentProject && !savedProjectId && projects.length > 0) {
+        const firstAvailableProject = projects[0];
+        setCurrentProject(firstAvailableProject);
+        localStorage.setItem('currentProjectId', String(firstAvailableProject.id));
+      }
     } else {
       // Om projektlistan är tom, säkerställ att currentProject återställs
       setCurrentProject(null);
       localStorage.removeItem('currentProjectId');
     }
-  }, [projects, user]);
+  }, [projects, user, currentProject, toast]);
 
   // Funktion för att byta projekt
   const changeProject = (projectId: number) => {
