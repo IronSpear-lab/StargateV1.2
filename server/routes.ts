@@ -1852,6 +1852,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Update conversation (for renaming group chats)
+  app.patch(`${apiPrefix}/conversations/:id`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const conversationId = parseInt(req.params.id);
+      const { title } = req.body;
+      
+      if (title === undefined) {
+        return res.status(400).json({ error: "Title is required" });
+      }
+      
+      // Check if conversation exists and is a group
+      const conversation = await db.select()
+        .from(conversations)
+        .where(eq(conversations.id, conversationId))
+        .then(res => res[0]);
+      
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      
+      if (!conversation.isGroup) {
+        return res.status(400).json({ error: "Only group conversations can be renamed" });
+      }
+      
+      // Check if user is a participant and an admin
+      const participant = await db.select()
+        .from(conversationParticipants)
+        .where(and(
+          eq(conversationParticipants.conversationId, conversationId),
+          eq(conversationParticipants.userId, req.user!.id)
+        ))
+        .then(res => res[0]);
+      
+      if (!participant) {
+        return res.status(403).json({ error: "You are not a participant in this conversation" });
+      }
+      
+      // Only admins can rename groups (optional check, comment out if everyone should be able to rename)
+      // if (!participant.isAdmin) {
+      //   return res.status(403).json({ error: "Only conversation admins can rename the group" });
+      // }
+      
+      // Update the conversation title
+      const updatedConversation = await db.update(conversations)
+        .set({ 
+          title: title,
+          updatedAt: new Date()
+        })
+        .where(eq(conversations.id, conversationId))
+        .returning()
+        .then(res => res[0]);
+      
+      res.json(updatedConversation);
+    } catch (error) {
+      console.error("Error updating conversation:", error);
+      res.status(500).json({ error: "Failed to update conversation" });
+    }
+  });
+  
   // Get unread message count for the current user
   app.get(`${apiPrefix}/messages/unread-count`, async (req, res) => {
     try {

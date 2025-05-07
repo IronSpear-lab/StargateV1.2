@@ -293,6 +293,10 @@ const MessageView = ({
   const hasMarkedAsRead = useRef(false);
   const { toast } = useToast();
   
+  // State for group rename dialog
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  
   // Rename group conversation mutation
   const renameGroupMutation = useMutation({
     mutationFn: async ({ conversationId, title }: { conversationId: number, title: string }) => {
@@ -311,6 +315,9 @@ const MessageView = ({
         title: "Gruppnamn uppdaterat",
         description: "Gruppchattens namn har ändrats",
       });
+      
+      // Stäng dialogen
+      setRenameDialogOpen(false);
     },
     onError: (error) => {
       toast({
@@ -632,15 +639,8 @@ const MessageView = ({
                     .map(p => p.user?.username || "Unknown")
                     .join(", ");
 
-                  const newTitle = window.prompt("Ändra gruppnamn", currentTitle);
-                  
-                  if (newTitle !== null && newTitle.trim() !== '') {
-                    // Anropa API för att uppdatera gruppnamnet
-                    renameGroupMutation.mutate({
-                      conversationId: conversation.id,
-                      title: newTitle.trim()
-                    });
-                  }
+                  setNewGroupName(currentTitle);
+                  setRenameDialogOpen(true);
                 }}
               >
                 <Edit className="h-4 w-4 mr-2" />
