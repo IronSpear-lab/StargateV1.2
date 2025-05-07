@@ -852,6 +852,17 @@ const MessageView = ({
                   <Settings className="h-4 w-4 mr-2" />
                   Gruppchatten inställningar
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (conversation && conversation.id) {
+                      leaveConversationMutation.mutate(conversation.id);
+                    }
+                  }}
+                  className="text-destructive"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Lämna gruppchatten
+                </DropdownMenuItem>
                 
                 {isCurrentUserAdmin && (
                   <DropdownMenuItem
@@ -866,18 +877,6 @@ const MessageView = ({
                 )}
               </>
             )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => {
-                if (window.confirm(`Är du säker på att du vill lämna den här konversationen? Den kommer att tas bort från din lista.`)) {
-                  leaveConversationMutation.mutate(conversation.id);
-                }
-              }}
-              className="text-destructive"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Lämna konversation
-            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuCheckboxItem checked={false}>
               Stäng av aviseringar
@@ -1273,6 +1272,9 @@ const MessageView = ({
                           {participant.isAdmin && (
                             <Badge variant="outline" className="ml-2 text-xs px-1 py-0 h-5">Admin</Badge>
                           )}
+                          {participant.userId === (window as any).currentUser?.id && (
+                            <Badge className="ml-2 text-xs px-1 py-0 h-5 bg-secondary text-secondary-foreground">Du</Badge>
+                          )}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {participant.user?.role}
@@ -1332,6 +1334,31 @@ const MessageView = ({
                     )}
                   </div>
                 ))}
+              </div>
+              
+              <div className="mt-6 pt-6 border-t">
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  onClick={() => {
+                    if (window.confirm("Är du säker på att du vill lämna den här gruppchatten? Den kommer att tas bort från din lista.")) {
+                      leaveConversationMutation.mutate(conversation!.id);
+                    }
+                  }}
+                  disabled={leaveConversationMutation.isPending}
+                >
+                  {leaveConversationMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Lämnar chatten...
+                    </>
+                  ) : (
+                    <>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Lämna gruppchatten
+                    </>
+                  )}
+                </Button>
               </div>
             </TabsContent>
           </Tabs>
