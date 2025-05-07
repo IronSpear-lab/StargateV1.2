@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -15,6 +15,11 @@ export interface ProjectMember {
   username: string;
 }
 
+interface NewProjectData {
+  name: string;
+  description: string;
+}
+
 interface ProjectContextType {
   currentProject: Project | null;
   projects: Project[];
@@ -22,6 +27,8 @@ interface ProjectContextType {
   error: Error | null;
   setCurrentProject: (project: Project) => void;
   changeProject: (projectId: number) => void;
+  createProject: (data: NewProjectData) => Promise<Project>;
+  isCreatingProject: boolean;
   projectMembers: ProjectMember[];
   isLoadingMembers: boolean;
 }
@@ -30,6 +37,7 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   
   // Hämta alla projekt som användaren har tillgång till
@@ -66,6 +74,60 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     },
     enabled: !!currentProject,
   });
+  
+  // Mutation för att skapa nytt projekt
+  const { 
+    mutateAsync: createProjectMutation,
+    isPending: isCreatingProject
+  } = useMutation({
+    mutationFn: async (data: NewProjectData) => {
+      const response = await fetch('/api/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create project');
+      }
+      
+      return await response.json();
+    },
+    onSuccess: () => {
+      // Invalidera projektcachen så att listan uppdateras
+      queryClient.invalidateQueries({ queryKey: ['/api/user-projects'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Fel vid skapande av projekt",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Funktion för att skapa nytt projekt
+  const createProject = async (data: NewProjectData): Promise<Project> => {
+    try {
+      const newProject = await createProjectMutation(data);
+      
+      toast({
+        title: "Projekt skapat",
+        description: `Projektet "${data.name}" har skapats`,
+      });
+      
+      // Byt till det nya projektet automatiskt
+      setCurrentProject(newProject);
+      localStorage.setItem('currentProjectId', String(newProject.id));
+      
+      return newProject;
+    } catch (error) {
+      console.error("Error creating project:", error);
+      throw error;
+    }
+  };
 
   // Ladda valda projekt från localStorage eller använd det första tillgängliga
   useEffect(() => {
@@ -113,6 +175,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         error: projectsError as Error | null,
         setCurrentProject,
         changeProject,
+        createProject,
+        isCreatingProject,
         projectMembers,
         isLoadingMembers,
       }}
