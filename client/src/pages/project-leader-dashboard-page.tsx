@@ -5,7 +5,8 @@ import {
   Header, 
   Widget, 
   WidgetArea, 
-  WidgetGallery
+  WidgetGallery,
+  ProjectTeamWidget
 } from "@/components";
 import { WidthType, HeightType } from "@/components/dashboard/Widget";
 import {
@@ -31,6 +32,8 @@ import {
   DialogDescription, 
   DialogFooter 
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import { 
   Form, 
   FormControl, 
