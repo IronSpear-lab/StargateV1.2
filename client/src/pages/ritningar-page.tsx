@@ -35,7 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useProject } from "@/contexts/ProjectContext";
 
 // Tomma dokument som standard - alla dokument som laddas upp tillhör ett specifikt projekt
-const emptyDocs = [];
+const emptyDocs: Dokument[] = [];
 
 // Utöka dokumenten med ett fileId-fält för att hålla reda på uppladdade filer
 interface Dokument {
@@ -52,7 +52,7 @@ interface Dokument {
   projectId?: number; // ID till det projekt dokumentet tillhör
 }
 
-export default function RitningarPage() {
+export default function DokumentPage() {
   const { currentProject } = useProject();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -64,7 +64,7 @@ export default function RitningarPage() {
   
   // Använd localStorage med projektisolering - separate storage per project
   const getStorageKey = () => {
-    return currentProject ? `project_${currentProject.id}_ritningar` : 'no_project_ritningar';
+    return currentProject ? `project_${currentProject.id}_dokument` : 'no_project_dokument';
   };
   
   // Hämta sparade dokument från localStorage om de finns, annars använd tomma dokument
@@ -108,20 +108,20 @@ export default function RitningarPage() {
           if (storedFileData) {
             console.log(`[${Date.now()}] Successfully loaded file from storage: ${fileIdParam}`);
             
-            // Hitta ritningsdatan för den här filen om den finns
-            const matchingRitning = ritningarData.find(r => r.fileId === fileIdParam);
+            // Hitta dokumentdatan för den här filen om den finns
+            const matchingDokument = dokumentData.find((d: Dokument) => d.fileId === fileIdParam);
             
             setSelectedFile({
               file: storedFileData.file,
               fileUrl: storedFileData.url,
-              fileData: matchingRitning ? {
-                filename: matchingRitning.filename,
-                version: matchingRitning.version,
-                description: matchingRitning.description,
-                uploaded: matchingRitning.uploaded,
-                uploadedBy: matchingRitning.uploadedBy
+              fileData: matchingDokument ? {
+                filename: matchingDokument.filename,
+                version: matchingDokument.version,
+                description: matchingDokument.description,
+                uploaded: matchingDokument.uploaded,
+                uploadedBy: matchingDokument.uploadedBy
               } : {
-                // Standardvärden om vi inte hittar matchande ritningsdata
+                // Standardvärden om vi inte hittar matchande dokumentdata
                 filename: storedFileData.name,
                 version: "1",
                 description: "Uppladdad fil",
@@ -149,11 +149,11 @@ export default function RitningarPage() {
     };
     
     checkUrlParams();
-  }, [ritningarData]);
+  }, [dokumentData]);
   
-  // I framtiden skulle vi hämta ritningar från databasen baserat på projekt-ID
+  // I framtiden skulle vi hämta dokument från databasen baserat på projekt-ID
   // Detta skulle använda ett API-anrop: `/api/files?projectId=${currentProject?.id}`
-  const { data: apiRitningar = [], isLoading: isLoadingApi } = useQuery({
+  const { data: apiDokument = [], isLoading: isLoadingApi } = useQuery({
     queryKey: ['/api/files', currentProject?.id],
     queryFn: async () => {
       if (!currentProject) return [];
@@ -169,15 +169,15 @@ export default function RitningarPage() {
     enabled: !!currentProject,
   });
 
-  // Använd lokalt sparade ritningar + API data
-  const ritningar = ritningarData;
+  // Använd lokalt sparade dokument + API data
+  const dokument = dokumentData;
   const isLoading = isLoadingApi;
 
-  const filteredRitningar = ritningar.filter(ritning => 
-    ritning.filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ritning.description.toLowerCase().includes(searchTerm.toLowerCase())
-  ).filter(ritning => 
-    versionFilter === "all" || ritning.version === versionFilter
+  const filteredDokument = dokument.filter((dok: Dokument) => 
+    dok.filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    dok.description.toLowerCase().includes(searchTerm.toLowerCase())
+  ).filter((dok: Dokument) => 
+    versionFilter === "all" || dok.version === versionFilter
   );
   
   const toggleSidebar = () => {
@@ -205,26 +205,26 @@ export default function RitningarPage() {
     const now = new Date();
     const timeString = `${now.getDate()} ${['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'][now.getMonth()]} ${now.getFullYear()}, ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
     
-    const newRitningar = files.map((file, index) => ({
-      id: ritningarData.length + index + 1,
+    const newDokument = files.map((file, index) => ({
+      id: dokumentData.length + index + 1,
       filename: file.name,
       version: "1", // Ny fil får version 1
       description: "Ny uppladdad fil", 
       uploaded: timeString,
       uploadedBy: "Du",
-      number: `${ritningarData.length + index + 1}`.padStart(3, '0'),
+      number: `${dokumentData.length + index + 1}`.padStart(3, '0'),
       status: "Active",
       annat: "PDF",
       fileId: fileIds[index], // Spara ID:t från fillagringen
-      projectId: currentProject.id // Koppla ritningen till det aktuella projektet
+      projectId: currentProject.id // Koppla dokumentet till det aktuella projektet
     }));
     
-    // Uppdatera listan med ritningar
-    const updatedRitningar = [...newRitningar, ...ritningarData];
-    setRitningarData(updatedRitningar);
+    // Uppdatera listan med dokument
+    const updatedDokument = [...newDokument, ...dokumentData];
+    setDokumentData(updatedDokument);
     
     // Spara till localStorage så att det finns kvar mellan sessioner
-    localStorage.setItem(getStorageKey(), JSON.stringify(updatedRitningar));
+    localStorage.setItem(getStorageKey(), JSON.stringify(updatedDokument));
     
     // Visa bekräftelse
     setTimeout(() => {
@@ -237,29 +237,29 @@ export default function RitningarPage() {
   };
   
   // Öppna PDF-visaren när användaren klickar på en fil
-  const handleFileClick = async (ritning: Ritning) => {
+  const handleFileClick = async (dokument: Dokument) => {
     // För uppladdade filer, använd den lagrade filen
-    if (ritning.fileId && ritning.fileId.startsWith('file_')) {
+    if (dokument.fileId && dokument.fileId.startsWith('file_')) {
       try {
         // Använd asynkron version för att hämta från persistent lagring om det behövs
-        const storedFileData = await getStoredFileAsync(ritning.fileId);
+        const storedFileData = await getStoredFileAsync(dokument.fileId);
         
         if (storedFileData) {
-          console.log(`[${Date.now()}] Successfully loaded file from storage for viewing: ${ritning.fileId}`);
+          console.log(`[${Date.now()}] Successfully loaded file from storage for viewing: ${dokument.fileId}`);
           setSelectedFile({
             file: storedFileData.file,
             fileUrl: storedFileData.url,
             fileData: {
-              filename: ritning.filename,
-              version: ritning.version,
-              description: ritning.description,
-              uploaded: ritning.uploaded,
-              uploadedBy: ritning.uploadedBy
+              filename: dokument.filename,
+              version: dokument.version,
+              description: dokument.description,
+              uploaded: dokument.uploaded,
+              uploadedBy: dokument.uploadedBy
             }
           });
           return;
         } else {
-          console.error(`[${Date.now()}] Could not find stored file with ID: ${ritning.fileId}`);
+          console.error(`[${Date.now()}] Could not find stored file with ID: ${dokument.fileId}`);
           toast({
             title: "Kunde inte hitta filen",
             description: "Den uppladdade filen finns inte längre tillgänglig.",
@@ -267,7 +267,7 @@ export default function RitningarPage() {
           });
         }
       } catch (error) {
-        console.error(`[${Date.now()}] Error loading file with ID ${ritning.fileId}:`, error);
+        console.error(`[${Date.now()}] Error loading file with ID ${dokument.fileId}:`, error);
         toast({
           title: "Fel vid laddning av fil",
           description: "Ett fel uppstod när filen skulle laddas. Försök igen senare.",
@@ -277,17 +277,17 @@ export default function RitningarPage() {
     }
     
     // För befintliga/mock-filer, använd exempelfilen
-    const fileUrl = getUploadedFileUrl(ritning.id);
-    console.log(`[${Date.now()}] Using example file URL for file: ${ritning.filename}`);
+    const fileUrl = getUploadedFileUrl(dokument.id);
+    console.log(`[${Date.now()}] Using example file URL for file: ${dokument.filename}`);
     setSelectedFile({
       file: null,
       fileUrl,
       fileData: {
-        filename: ritning.filename,
-        version: ritning.version,
-        description: ritning.description,
-        uploaded: ritning.uploaded,
-        uploadedBy: ritning.uploadedBy
+        filename: dokument.filename,
+        version: dokument.version,
+        description: dokument.description,
+        uploaded: dokument.uploaded,
+        uploadedBy: dokument.uploadedBy
       }
     });
   };
@@ -423,13 +423,13 @@ export default function RitningarPage() {
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-4">Laddar...</TableCell>
                     </TableRow>
-                  ) : filteredRitningar.length === 0 ? (
+                  ) : filteredDokument.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-4">Inga dokument hittades</TableCell>
                     </TableRow>
                   ) : (
-                    filteredRitningar.map((ritning) => (
-                      <TableRow key={ritning.id}>
+                    filteredDokument.map((dok: Dokument) => (
+                      <TableRow key={dok.id}>
                         <TableCell className="py-2 w-[200px]">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 mr-3 text-red-500 dark:text-red-400">
@@ -437,17 +437,17 @@ export default function RitningarPage() {
                             </div>
                             <div 
                               className="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer whitespace-nowrap"
-                              onClick={() => handleFileClick(ritning)}
+                              onClick={() => handleFileClick(dok)}
                             >
-                              {ritning.filename}
+                              {dok.filename}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="w-[80px]">{ritning.version}</TableCell>
-                        <TableCell className="w-[200px]">{ritning.description}</TableCell>
-                        <TableCell className="w-[140px]">{ritning.uploaded}</TableCell>
-                        <TableCell className="w-[160px]">{ritning.uploadedBy}</TableCell>
-                        <TableCell className="w-[100px]">{ritning.number}</TableCell>
+                        <TableCell className="w-[80px]">{dok.version}</TableCell>
+                        <TableCell className="w-[200px]">{dok.description}</TableCell>
+                        <TableCell className="w-[140px]">{dok.uploaded}</TableCell>
+                        <TableCell className="w-[160px]">{dok.uploadedBy}</TableCell>
+                        <TableCell className="w-[100px]">{dok.number}</TableCell>
                         <TableCell className="w-[120px]">{ritning.status}</TableCell>
                         <TableCell className="w-[120px]">{ritning.annat}</TableCell>
                       </TableRow>
