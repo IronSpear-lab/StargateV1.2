@@ -972,7 +972,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
     
     try {
       // Säkerställ att CSS-stilmallen med våra anpassningar finns
-      addPdfViewerAnimations(document);
+      addPdfViewerAnimations();
       
       // Lägg till ID på container-element för referens
       if (pdfContainerRef.current && !pdfContainerRef.current.id) {
@@ -995,7 +995,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       const zoomScale = 1.5;
       
       // Först sparar vi den aktuella viewporten
-      const containerRect = pdfContainerRef.current?.getBoundingClientRect() || new DOMRect();
+      const containerRect = pdfContainerRef.current.getBoundingClientRect();
       const pageRect = pdfPage.getBoundingClientRect();
       
       // Beräkna positioner FÖRE vi ändrar zoom
@@ -2169,7 +2169,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                     </div>
                     <p className="font-medium text-gray-700 dark:text-gray-300">Inga kommentarer ännu</p>
                     <p className="text-sm mt-2 max-w-[220px] text-gray-500 dark:text-gray-400">
-                      Lägg till kommentarer direkt på dokumentet genom att klicka på 
+                      Lägg till kommentarer direkt på ritningen genom att klicka på 
                       <span className="font-medium"> Ny kommentar</span> ovan
                     </p>
                     <Button 

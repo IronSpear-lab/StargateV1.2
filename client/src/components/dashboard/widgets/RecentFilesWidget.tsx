@@ -48,33 +48,33 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
         return [];
       }
       
-      // Först hämta alla uppladdade filer från dokument-sidan via localStorage, men bara om vi har ett giltigt projekt
-      const savedDokument = localStorage.getItem('saved_dokument');
+      // Först hämta alla uppladdade filer från ritningar-sidan via localStorage, men bara om vi har ett giltigt projekt
+      const savedRitningar = localStorage.getItem('saved_ritningar');
       const uploadedFiles: File[] = [];
       
-      if (savedDokument) {
+      if (savedRitningar) {
         try {
-          const dokument = JSON.parse(savedDokument);
+          const ritningar = JSON.parse(savedRitningar);
           
-          // Filtrera bara de dokument som tillhör det aktuella projektet
+          // Filtrera bara de ritningar som tillhör det aktuella projektet
           // Om projektId information saknas i filen, inkludera den inte
-          dokument.forEach((dok: any) => {
-            if (dok.filename && dok.projectId === projectId) {
+          ritningar.forEach((ritning: any) => {
+            if (ritning.filename && ritning.projectId === projectId) {
               uploadedFiles.push({
-                id: dok.id.toString(),
-                name: dok.filename,
+                id: ritning.id.toString(),
+                name: ritning.filename,
                 fileType: "pdf",
                 fileSize: 2450000, // Kan inte veta exakt storlek utan att lagra det
                 lastModified: new Date().toISOString(),
-                folder: "Dokument",
-                uploadedBy: dok.uploadedBy || "Du",
+                folder: "Ritningar",
+                uploadedBy: ritning.uploadedBy || "Du",
                 uploadedById: "currentUser",
-                fileId: dok.fileId // Inkludera fileId om den finns
+                fileId: ritning.fileId // Inkludera fileId om den finns
               });
             }
           });
         } catch (error) {
-          console.error('Failed to parse saved dokument:', error);
+          console.error('Failed to parse saved ritningar:', error);
         }
       }
       
@@ -215,11 +215,11 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
                   onClick={() => {
                     // Hantera klick på olika typer av filer
                     if (file.fileType.toLowerCase() === "pdf" && file.fileId) {
-                      // Om PDF har filID redan, så skicka med det till dokument-sidan
-                      window.location.href = `/dokument?viewFile=${encodeURIComponent(file.fileId)}`;
-                    } else if (file.folder === "Dokument" && file.fileType.toLowerCase() === "pdf") {
-                      // Utan filID, navigera bara till dokument-sidan
-                      window.location.href = "/dokument";
+                      // Om PDF har filID redan, så skicka med det till ritningar-sidan
+                      window.location.href = `/ritningar?viewFile=${encodeURIComponent(file.fileId)}`;
+                    } else if (file.folder === "Ritningar" && file.fileType.toLowerCase() === "pdf") {
+                      // Utan filID, navigera bara till ritningar-sidan
+                      window.location.href = "/ritningar";
                     } else {
                       // Alla andra filer går till vault
                       window.location.href = "/vault";
@@ -265,7 +265,7 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
               <Button 
                 variant="link" 
                 className="h-auto p-0 text-xs text-blue-600 dark:text-blue-400 ml-1"
-                onClick={() => window.location.href = "/dokument"}
+                onClick={() => window.location.href = "/ritningar"}
               >
                 Upload a file
               </Button>

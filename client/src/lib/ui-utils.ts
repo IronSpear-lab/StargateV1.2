@@ -20,31 +20,11 @@ export function getConsistentFileId(file: File | { name: string, size: number, l
 
 /**
  * Adds smooth animations to the PDF viewer
- * @param element The element to animate or document for global CSS injection
+ * @param element The element to animate
  */
-export function addPdfViewerAnimations(element: HTMLElement | Document): void {
+export function addPdfViewerAnimations(element: HTMLElement): void {
   if (!element) return;
   
-  if (element instanceof Document) {
-    // För document parameter: Lägg till CSS för animationer globalt
-    if (!document.getElementById('pdf-viewer-animations')) {
-      const style = document.createElement('style');
-      style.id = 'pdf-viewer-animations';
-      style.textContent = `
-        .pdfViewerContainer {
-          transition: transform 0.2s ease-out;
-        }
-        @keyframes pulsate {
-          0% { opacity: 0.6; transform: scale(1); }
-          100% { opacity: 1; transform: scale(1.1); }
-        }
-      `;
-      document.head.appendChild(style);
-    }
-    return;
-  }
-  
-  // För element parameter: Lägg till specifika CSS transitions
   // Add transition for smooth zoom
   element.style.transition = 'transform 0.2s ease-out';
   
