@@ -60,12 +60,12 @@ export default function ProjectsPage() {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  // Fetch projects
+  // Fetch projects that the user has access to
   const { data: projects, isLoading } = useQuery({
-    queryKey: ['/api/projects'],
+    queryKey: ['/api/user-projects'],
     queryFn: async () => {
       try {
-        const response = await apiRequest('GET', '/api/projects');
+        const response = await apiRequest('GET', '/api/user-projects');
         return await response.json();
       } catch (error) {
         console.error("Error fetching projects:", error);
@@ -92,7 +92,7 @@ export default function ProjectsPage() {
       return await response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user-projects'] });
       toast({
         title: "Project created",
         description: "Project has been created successfully",
