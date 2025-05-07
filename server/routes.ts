@@ -1058,7 +1058,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // User projects and roles
   app.get(`${apiPrefix}/user-projects`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
     try {
+      // Hämta alla projekt som användaren är medlem i
       const userProjects = await storage.getUserProjects(req.user!.id);
       res.json(userProjects);
     } catch (error) {
