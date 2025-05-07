@@ -12,9 +12,7 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  // Sätt SameSite=None för cookies
-  document.cookie = "SameSite=None; Secure; path=/";
-  
+  // Ta bort manuell cookie-hantering och förlita oss på credentials: "include"
   const res = await fetch(url, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
@@ -32,10 +30,8 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    // Sätt SameSite=None för cookies
-  document.cookie = "SameSite=None; Secure; path=/";
-  
-  const res = await fetch(queryKey[0] as string, {
+    // Ta bort manuell cookie-hantering
+    const res = await fetch(queryKey[0] as string, {
       credentials: "include",
     });
 
