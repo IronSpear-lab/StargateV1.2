@@ -763,9 +763,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const [updatedAnnotation] = await db.update(pdfAnnotations)
           .set({
             rect: req.body.rect,
+            projectId: req.body.projectId, // Lägg till projektkoppling
             color: req.body.color,
             comment: req.body.comment,
-            status: req.body.status
+            status: req.body.status,
+            assignedTo: req.body.assignedTo // Lägg till tilldelning
           })
           .where(eq(pdfAnnotations.id, annotationId))
           .returning();
@@ -789,11 +791,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const [newAnnotation] = await db.insert(pdfAnnotations)
           .values({
             pdfVersionId: versionId,
+            projectId: req.body.projectId, // Lägg till projektkoppling
             rect: req.body.rect,
             color: req.body.color,
             comment: req.body.comment,
             status: req.body.status,
-            createdById: req.user!.id
+            createdById: req.user!.id,
+            assignedTo: req.body.assignedTo // Lägg till tilldelning
           })
           .returning();
         
