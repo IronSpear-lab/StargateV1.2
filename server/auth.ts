@@ -29,19 +29,16 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  const SESSION_SECRET = process.env.SESSION_SECRET || "valvxlstart-super-secret-key-for-development";
   const sessionSettings: session.SessionOptions = {
-    secret: SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || "valvxlstart-super-secret-key-for-development",
     resave: true,
     saveUninitialized: true,
     store: storage.sessionStore,
-    name: 'valvx.sid', // Name the cookie explicitly
     cookie: {
       secure: false, // Set to true if using HTTPS
       httpOnly: true,
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      sameSite: 'lax',
-      path: '/'
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: 'lax'
     }
   };
 

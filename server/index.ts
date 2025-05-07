@@ -6,21 +6,6 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Middleware för CORS och cookie-hantering
-app.use((req, res, next) => {
-  // Tillåt cookies i "credentials"
-  res.header('Access-Control-Allow-Credentials', 'true');
-  // Tillåt alla ursprung i utvecklingsmiljö
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  next();
-});
-
 // Middleware to correctly serve WebAssembly files with proper MIME type
 app.use((req, res, next) => {
   if (req.path.endsWith('.wasm')) {
