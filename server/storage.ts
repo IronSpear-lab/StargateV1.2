@@ -113,7 +113,9 @@ class DatabaseStorage implements IStorage {
   constructor() {
     this.sessionStore = new PostgresSessionStore({ 
       pool, 
-      createTableIfMissing: true 
+      createTableIfMissing: true,
+      tableName: 'session', // Standardnamn för sessioner
+      ssl: false  // Ingen SSL i utvecklingsmiljö
     });
   }
   
