@@ -461,12 +461,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Files API
   app.get(`${apiPrefix}/files`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+
     try {
       const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
       const folderId = req.query.folderId ? parseInt(req.query.folderId as string) : undefined;
       
       if (!projectId) {
         return res.status(400).json({ error: "Project ID is required" });
+      }
+      
+      // Kontrollera att användaren har tillgång till projektet
+      const userProject = await db.select()
+        .from(userProjects)
+        .where(and(
+          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.projectId, projectId)
+        ))
+        .limit(1);
+      
+      if (userProject.length === 0) {
+        return res.status(403).json({ error: 'You do not have access to this project' });
       }
       
       const fileList = await storage.getFiles(projectId, folderId);
@@ -615,11 +632,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Tasks API
   app.get(`${apiPrefix}/tasks`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
     try {
       const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
       
       if (!projectId) {
         return res.status(400).json({ error: "Project ID is required" });
+      }
+      
+      // Kontrollera att användaren har tillgång till projektet
+      const userProject = await db.select()
+        .from(userProjects)
+        .where(and(
+          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.projectId, projectId)
+        ))
+        .limit(1);
+      
+      if (userProject.length === 0) {
+        return res.status(403).json({ error: 'You do not have access to this project' });
       }
       
       const taskList = await storage.getTasks(projectId);
@@ -722,11 +756,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Wiki pages API
   app.get(`${apiPrefix}/wiki-pages`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
     try {
       const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
       
       if (!projectId) {
         return res.status(400).json({ error: "Project ID is required" });
+      }
+      
+      // Kontrollera att användaren har tillgång till projektet
+      const userProject = await db.select()
+        .from(userProjects)
+        .where(and(
+          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.projectId, projectId)
+        ))
+        .limit(1);
+      
+      if (userProject.length === 0) {
+        return res.status(403).json({ error: 'You do not have access to this project' });
       }
       
       const wikiPagesList = await storage.getWikiPages(projectId);
