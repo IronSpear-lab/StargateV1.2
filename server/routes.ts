@@ -113,6 +113,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Skapa nytt projekt
   app.post('/api/projects', async (req, res) => {
+    console.log('POST /api/projects - Auth status:', req.isAuthenticated());
+    console.log('User in session:', req.user);
+    console.log('Session ID:', req.sessionID);
+    console.log('Session data:', req.session);
+
     if (!req.isAuthenticated()) {
       console.log('Unauthorized project creation attempt');
       return res.status(401).send({ error: 'Unauthorized' });

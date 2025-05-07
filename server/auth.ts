@@ -31,9 +31,15 @@ async function comparePasswords(supplied: string, stored: string) {
 export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "valvxlstart-super-secret-key-for-development",
-    resave: false,
-    saveUninitialized: false,
+    resave: true,
+    saveUninitialized: true,
     store: storage.sessionStore,
+    cookie: {
+      secure: false, // Set to true if using HTTPS
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: 'lax'
+    }
   };
 
   app.set("trust proxy", 1);
@@ -76,6 +82,9 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", passport.authenticate("local"), (req, res) => {
+    console.log('User logged in:', req.user);
+    console.log('Session ID:', req.sessionID);
+    console.log('Session:', req.session);
     res.status(200).json(req.user);
   });
 
