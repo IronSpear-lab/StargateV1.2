@@ -211,7 +211,7 @@ export function Header({
           </div>
         )}
         
-        {!currentProject && availableProjects.length === 0 && onProjectChange && (
+        {!currentProject && availableProjects.length === 0 && onProjectChange !== undefined && (
           <div className="absolute left-1/2 transform -translate-x-1/2">
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>

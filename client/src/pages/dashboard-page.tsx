@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { 
   Sidebar, 
   Header, 
@@ -90,11 +89,11 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { projects, currentProject, changeProject } = useProject();
   
-  // Konvertera till det lokala projektformatet som används av dashboarden
+  // Convert to the local project format used by dashboard
   const userProjects = projects.map(p => ({ id: p.id, name: p.name }));
   const currentProjectId = currentProject?.id;
-
-  // Lokalt projekt-objekt för komponenter som behöver detta format
+  
+  // Local project object for components that need this format
   const localCurrentProject = currentProject 
     ? { id: currentProject.id, name: currentProject.name }
     : { id: 0, name: "No Project" };
@@ -129,8 +128,6 @@ export default function DashboardPage() {
       localStorage.setItem('dashboard-widgets', JSON.stringify(widgets));
     }
   }, [widgets]);
-
-
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -227,10 +224,12 @@ export default function DashboardPage() {
         <Header 
           title="Dashboard" 
           onToggleSidebar={toggleSidebar} 
-          currentProject={currentProject}
+          currentProject={localCurrentProject}
           availableProjects={userProjects} 
           onProjectChange={(projectId) => {
-            setCurrentProjectId(projectId);
+            // Use central project change function from ProjectContext
+            changeProject(projectId);
+            
             toast({
               title: "Project changed",
               description: `Switched to ${userProjects.find(p => p.id === projectId)?.name || 'new project'}`,
