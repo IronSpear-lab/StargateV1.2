@@ -81,25 +81,43 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     isPending: isCreatingProject
   } = useMutation({
     mutationFn: async (data: NewProjectData) => {
-      const response = await fetch('/api/projects', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
+      console.log('Creating project with data:', data);
       
-      if (!response.ok) {
-        throw new Error('Failed to create project');
+      try {
+        const response = await fetch('/api/projects', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+          credentials: 'include' // Viktigt för att inkludera sessions-cookies
+        });
+        
+        const responseText = await response.text();
+        console.log('Project creation response:', response.status, responseText);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to create project: ${responseText}`);
+        }
+        
+        try {
+          return JSON.parse(responseText);
+        } catch (e) {
+          console.error('Failed to parse response JSON', e);
+          throw new Error('Invalid response from server');
+        }
+      } catch (error) {
+        console.error('Project creation fetch error:', error);
+        throw error;
       }
-      
-      return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Project created successfully:', data);
       // Invalidera projektcachen så att listan uppdateras
       queryClient.invalidateQueries({ queryKey: ['/api/user-projects'] });
     },
     onError: (error) => {
+      console.error('Project creation mutation error:', error);
       toast({
         title: "Fel vid skapande av projekt",
         description: error.message,

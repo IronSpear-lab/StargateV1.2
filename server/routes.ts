@@ -114,16 +114,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Skapa nytt projekt
   app.post('/api/projects', async (req, res) => {
     if (!req.isAuthenticated()) {
+      console.log('Unauthorized project creation attempt');
       return res.status(401).send({ error: 'Unauthorized' });
     }
     
+    console.log('Project creation request body:', req.body);
     const { name, description } = req.body;
     
     if (!name) {
+      console.log('Project creation failed: No name provided');
       return res.status(400).json({ error: 'Project name is required' });
     }
     
     try {
+      console.log('Creating project with name:', name, 'for user ID:', req.user!.id);
+      
       // 1. Skapa projektet
       const [newProject] = await db.insert(projects)
         .values({
@@ -134,13 +139,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .returning();
       
+      console.log('Project created successfully:', newProject);
+      
       // 2. Tilldela användaren som skapade projektet rollen 'project_leader'
-      await db.insert(userProjects)
+      const userProjectResult = await db.insert(userProjects)
         .values({
           userId: req.user!.id,
           projectId: newProject.id,
           role: 'project_leader',
-        });
+        })
+        .returning();
+        
+      console.log('User assigned to project with role project_leader:', userProjectResult);
       
       // 3. Returnera det skapade projektet med användarens roll
       const projectWithRole = {
@@ -151,6 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(projectWithRole);
     } catch (error) {
       console.error('Error creating project:', error);
+      console.error('Error details:', JSON.stringify(error));
       res.status(500).json({ error: 'Failed to create project' });
     }
   });
