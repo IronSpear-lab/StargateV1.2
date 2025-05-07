@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Home, BarChart4, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useProject } from "@/contexts/ProjectContext";
 import { Link } from "wouter";
 import { 
   Dialog, 

@@ -284,6 +284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     const projectId = parseInt(req.params.projectId);
     const userId = parseInt(req.params.userId);
+    const currentUserId = req.user!.id;
     
     if (isNaN(projectId) || isNaN(userId)) {
       return res.status(400).json({ error: 'Invalid project ID or user ID' });
@@ -294,7 +295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requesterRole = await db.select()
         .from(userProjects)
         .where(and(
-          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.userId, currentUserId),
           eq(userProjects.projectId, projectId)
         ))
         .limit(1);
@@ -303,6 +304,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           (requesterRole[0].role !== 'project_leader' && requesterRole[0].role !== 'admin')) {
         return res.status(403).json({ 
           error: 'You do not have permission to remove members from this project' 
+        });
+      }
+      
+      // Om försöker ta bort sig själv och är projektledare, förhindra detta
+      if (userId === currentUserId && requesterRole[0].role === 'project_leader') {
+        return res.status(403).json({ 
+          error: 'Project leaders cannot remove themselves from their projects' 
         });
       }
       
