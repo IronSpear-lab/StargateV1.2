@@ -364,9 +364,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Projects API
   app.get(`${apiPrefix}/projects`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
     try {
-      const userProjects = await storage.getUserProjects(req.user!.id);
-      res.json(userProjects);
+      // Använd samma restriktiva filter som i /api/user-projects för konsekvens
+      const userProjectsWithRoles = await db
+        .select({
+          id: projects.id,
+          name: projects.name,
+          description: projects.description,
+          role: userProjects.role,
+          createdAt: projects.createdAt
+        })
+        .from(projects)
+        .innerJoin(
+          userProjects, 
+          and(
+            eq(projects.id, userProjects.projectId),
+            eq(userProjects.userId, req.user!.id)
+          )
+        );
+      
+      res.json(userProjectsWithRoles);
     } catch (error) {
       console.error("Error fetching projects:", error);
       res.status(500).json({ error: "Failed to fetch projects" });
