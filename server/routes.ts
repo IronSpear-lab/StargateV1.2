@@ -145,6 +145,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch projects" });
     }
   });
+  
+  // Ändpunkt för ProjectContext - Användarens projekt
+  app.get(`${apiPrefix}/user-projects`, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const userProjects = await storage.getUserProjects(req.user.id);
+      res.json(userProjects);
+    } catch (error) {
+      console.error("Error fetching user projects:", error);
+      res.status(500).json({ error: "Failed to fetch user projects" });
+    }
+  });
+  
+  // Ändpunkt för ProjectContext - Medlemmar i ett projekt
+  app.get(`${apiPrefix}/project-members/:projectId`, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const projectId = parseInt(req.params.projectId);
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project ID" });
+      }
+      
+      const members = await storage.getProjectMembers(projectId);
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching project members:", error);
+      res.status(500).json({ error: "Failed to fetch project members" });
+    }
+  });
 
   app.post(`${apiPrefix}/projects`, async (req, res) => {
     try {
