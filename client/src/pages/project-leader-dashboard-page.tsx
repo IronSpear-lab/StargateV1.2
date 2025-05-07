@@ -231,9 +231,11 @@ export default function ProjectLeaderDashboardPage() {
         });
         
         if (response.ok) {
-          // Uppdatera projektet i context via refetch
+          console.log("Project updated successfully:", response);
+          
+          // Uppdatera projektet i context via changeProject
           if (changeProject) {
-            // Byt till samma projekt för att refresha data
+            // Anropa changeProject för att refresha alla projektdata
             changeProject(currentProject.id);
           }
           

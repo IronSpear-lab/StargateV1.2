@@ -166,16 +166,45 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
   // Funktion för att byta projekt
   const changeProject = (projectId: number) => {
-    const project = projects.find(p => p.id === projectId);
-    if (project) {
-      setCurrentProject(project);
-      localStorage.setItem('currentProjectId', String(projectId));
-      
-      toast({
-        title: "Projekt ändrat",
-        description: `Du arbetar nu i "${project.name}"`,
+    // Invalidera projektcachen först så att vi får färsk data
+    queryClient.invalidateQueries({ queryKey: ['/api/user-projects'] });
+    
+    // Hämta projektet med färsk data från API:et
+    fetch(`/api/projects/${projectId}`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch project');
+        }
+        return response.json();
+      })
+      .then(freshProject => {
+        // Uppdatera currentProject med den färska datan
+        setCurrentProject(freshProject);
+        localStorage.setItem('currentProjectId', String(projectId));
+        
+        // Invalidera även medlemsfrågan för att få färska medlemmar
+        queryClient.invalidateQueries({ queryKey: ['/api/project-members', projectId] });
+        
+        toast({
+          title: "Projekt ändrat",
+          description: `Du arbetar nu i "${freshProject.name}"`,
+        });
+      })
+      .catch(error => {
+        console.error('Error changing project:', error);
+        toast({
+          title: "Fel vid byte av projekt",
+          description: error.message,
+          variant: "destructive",
+        });
+        
+        // Försök ändå med cachad data
+        const project = projects.find(p => p.id === projectId);
+        if (project) {
+          setCurrentProject(project);
+          localStorage.setItem('currentProjectId', String(projectId));
+        }
       });
-    }
   };
 
   return (
