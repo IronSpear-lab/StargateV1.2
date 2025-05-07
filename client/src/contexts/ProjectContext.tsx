@@ -129,7 +129,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Ladda valda projekt från localStorage eller använd det första tillgängliga
+  // Ladda valda projekt från localStorage
   useEffect(() => {
     if (projects.length > 0) {
       const savedProjectId = localStorage.getItem('currentProjectId');
@@ -139,16 +139,10 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         const savedProject = projects.find(p => p.id === parsedId);
         if (savedProject) {
           setCurrentProject(savedProject);
-        } else {
-          // Om det sparade projektet inte finns i användarens projektlista, använd det första
-          setCurrentProject(projects[0]);
-          localStorage.setItem('currentProjectId', String(projects[0].id));
         }
-      } else {
-        // Om inget projekt var sparat, använd det första
-        setCurrentProject(projects[0]);
-        localStorage.setItem('currentProjectId', String(projects[0].id));
+        // Annars behåll currentProject som null för att visa ursprungligt innehåll
       }
+      // Viktigt: Välj inte automatiskt ett projekt, låt användaren välja när de vill
     }
   }, [projects]);
 

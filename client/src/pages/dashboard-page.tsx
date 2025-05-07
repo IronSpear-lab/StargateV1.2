@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Home } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useProject } from "@/contexts/ProjectContext";
 import { Link } from "wouter";
 import type { WidgetType } from "@/components/dashboard/WidgetGallery";
 
@@ -87,32 +88,16 @@ export default function DashboardPage() {
   const [isWidgetGalleryOpen, setIsWidgetGalleryOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { projects, currentProject, changeProject } = useProject();
   
-  // Project state for dropdown 
-  const [userProjects, setUserProjects] = useState<{ id: number; name: string }[]>([]);
-  const [currentProjectId, setCurrentProjectId] = useState<number | undefined>();
-  
-  // Fetch user's projects
-  const { data: fetchedProjects = [] } = useQuery({
-    queryKey: ['/api/user-projects'],
-    queryFn: async () => {
-      const response = await fetch('/api/user-projects');
-      if (!response.ok) {
-        return [];
-      }
-      return response.json();
-    }
-  });
-  
-  // Update projects state when data is fetched
-  useEffect(() => {
-    if (fetchedProjects.length > 0) {
-      setUserProjects(fetchedProjects);
-      if (!currentProjectId) {
-        setCurrentProjectId(fetchedProjects[0].id);
-      }
-    }
-  }, [fetchedProjects, currentProjectId]);
+  // Konvertera till det lokala projektformatet som används av dashboarden
+  const userProjects = projects.map(p => ({ id: p.id, name: p.name }));
+  const currentProjectId = currentProject?.id;
+
+  // Lokalt projekt-objekt för komponenter som behöver detta format
+  const localCurrentProject = currentProject 
+    ? { id: currentProject.id, name: currentProject.name }
+    : { id: 0, name: "No Project" };
 
   // Load saved widgets from localStorage on first render
   // or use default widgets if none exist
@@ -145,12 +130,7 @@ export default function DashboardPage() {
     }
   }, [widgets]);
 
-  // Default project ID (first project in list)
-  const defaultProjectId = userProjects && userProjects.length > 0 ? userProjects[0].id : undefined;
-  
-  // Get current project object
-  const currentProject = userProjects.find((p: { id: number; name: string }) => p.id === currentProjectId) || 
-    (userProjects.length > 0 ? userProjects[0] : { id: 0, name: "No Project" });
+
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
