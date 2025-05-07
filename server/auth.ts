@@ -30,13 +30,14 @@ async function comparePasswords(supplied: string, stored: string) {
 
 export function setupAuth(app: Express) {
   // Förenkla sessionsinställningar för utvecklingsmiljö
+  const isProduction = process.env.NODE_ENV === 'production';
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "valvxlstart-super-secret-key-for-development",
-    resave: false, 
-    saveUninitialized: false,
+    resave: true, // Ändrad till true för att vara säker på att sessionen sparas
+    saveUninitialized: true, // Ändrad för att spara nya sessions
     store: storage.sessionStore,
     cookie: {
-      secure: false,
+      secure: false, // Kan vara true i produktion med HTTPS
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dagar
       sameSite: 'lax',

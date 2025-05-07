@@ -49,7 +49,9 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     queryKey: ['/api/user-projects'],
     queryFn: async () => {
       if (!user) return [];
-      const response = await fetch('/api/user-projects');
+      const response = await fetch('/api/user-projects', {
+        credentials: 'include'  // Lägg till för att säkerställa att cookies skickas med
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch projects');
       }
@@ -66,7 +68,9 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     queryKey: ['/api/project-members', currentProject?.id],
     queryFn: async () => {
       if (!currentProject) return [];
-      const response = await fetch(`/api/project-members/${currentProject.id}`);
+      const response = await fetch(`/api/project-members/${currentProject.id}`, {
+        credentials: 'include'  // Lägg till för att säkerställa att cookies skickas med
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch project members');
       }
@@ -223,7 +227,9 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     }
     
     // Hämta projektet med färsk data från API:et endast om användaren har behörighet
-    fetch(`/api/projects/${projectId}`)
+    fetch(`/api/projects/${projectId}`, {
+      credentials: 'include'  // Lägg till för att säkerställa att cookies skickas med
+    })
       .then(response => {
         if (!response.ok) {
           // Om svaret inte är OK (t.ex. 403 vid behörighetsfel eller 404 för projektet existerar inte),
