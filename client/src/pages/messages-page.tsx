@@ -19,11 +19,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { User, Send, MoreVertical, UserPlus, Search, FileIcon, Paperclip, X, FileText, Image as ImageIcon, Loader2, ExternalLink } from "lucide-react";
+import { User, Send, MoreVertical, UserPlus, Search, FileIcon, Paperclip, X, FileText, Image as ImageIcon, Loader2, ExternalLink, Edit } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Sidebar } from "@/components/Sidebar";
@@ -262,7 +264,7 @@ const ConversationsList = ({
               </div>
               <p className={`text-sm truncate ${
                 unreadCounts[conversation.id] > 0 
-                  ? "font-semibold text-foreground" 
+                  ? "font-bold text-foreground" 
                   : "text-muted-foreground"
               }`}>
                 {conversation.latestMessage?.content || "No messages yet"}
@@ -290,6 +292,35 @@ const MessageView = ({
   const queryClient = useQueryClient();
   const hasMarkedAsRead = useRef(false);
   const { toast } = useToast();
+  
+  // Rename group conversation mutation
+  const renameGroupMutation = useMutation({
+    mutationFn: async ({ conversationId, title }: { conversationId: number, title: string }) => {
+      const response = await apiRequest(
+        "PATCH",
+        `/api/conversations/${conversationId}`,
+        { title }
+      );
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations', variables.conversationId] });
+      
+      toast({
+        title: "Gruppnamn uppdaterat",
+        description: "Gruppchattens namn har ändrats",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Fel vid namnändring",
+        description: "Det gick inte att uppdatera gruppchattens namn",
+        variant: "destructive"
+      });
+      console.error("Failed to rename group:", error);
+    }
+  });
   
   // Helper to scroll to bottom with a specified delay to ensure DOM update
   const scrollToBottom = (delay = 50) => {
@@ -593,8 +624,32 @@ const MessageView = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {conversation.isGroup && (
+              <DropdownMenuItem
+                onClick={() => {
+                  const currentTitle = conversation.title || conversation.participants
+                    .filter(p => p.userId !== (window as any).currentUser?.id)
+                    .map(p => p.user?.username || "Unknown")
+                    .join(", ");
+
+                  const newTitle = window.prompt("Ändra gruppnamn", currentTitle);
+                  
+                  if (newTitle !== null && newTitle.trim() !== '') {
+                    // Anropa API för att uppdatera gruppnamnet
+                    renameGroupMutation.mutate({
+                      conversationId: conversation.id,
+                      title: newTitle.trim()
+                    });
+                  }
+                }}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Ändra gruppnamn
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
             <DropdownMenuCheckboxItem checked={false}>
-              Mute conversation
+              Stäng av aviseringar
             </DropdownMenuCheckboxItem>
           </DropdownMenuContent>
         </DropdownMenu>
