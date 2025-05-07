@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -305,39 +306,12 @@ const MessageView = ({
   const [isUploadingGroupImage, setIsUploadingGroupImage] = useState(false);
   const [showParticipantsTab, setShowParticipantsTab] = useState(false);
   const groupImageInputRef = useRef<HTMLInputElement>(null);
+  const [_, setLocation] = useLocation();
   
   // Determine if current user is an admin in this conversation
   const isCurrentUserAdmin = conversation?.participants?.find(
     p => p.userId === (window as any).currentUser?.id
   )?.isAdmin || false;
-  
-  // Leave conversation mutation
-  const leaveConversationMutation = useMutation({
-    mutationFn: async (conversationId: number) => {
-      const response = await apiRequest(
-        "POST",
-        `/api/conversations/${conversationId}/leave`,
-        {}
-      );
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
-      
-      toast({
-        title: "Konversation lämnad",
-        description: "Du har lämnat konversationen",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Fel vid borttagning",
-        description: "Det gick inte att lämna konversationen",
-        variant: "destructive"
-      });
-      console.error("Failed to leave conversation:", error);
-    }
-  });
   
   // Update group conversation mutation
   const updateGroupMutation = useMutation({
@@ -518,6 +492,43 @@ const MessageView = ({
       setIsUploadingGroupImage(false);
     }
   };
+  
+  // Leave conversation mutation
+  const leaveConversationMutation = useMutation({
+    mutationFn: async (conversationId: number) => {
+      const response = await apiRequest(
+        "POST",
+        `/api/conversations/${conversationId}/leave`,
+        {}
+      );
+      
+      if (response.status === 204) {
+        return {};
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      setGroupSettingsDialogOpen(false);
+      
+      toast({
+        title: "Konversation lämnad",
+        description: "Du har lämnat gruppchatten",
+      });
+      
+      // Redirect to conversations list
+      setLocation('/messages');
+    },
+    onError: (error) => {
+      toast({
+        title: "Fel vid lämnande av chatten",
+        description: "Det gick inte att lämna gruppchatten",
+        variant: "destructive"
+      });
+      console.error("Failed to leave conversation:", error);
+    }
+  });
   
 
   
