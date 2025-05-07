@@ -448,8 +448,8 @@ export default function DokumentPage() {
                         <TableCell className="w-[140px]">{dok.uploaded}</TableCell>
                         <TableCell className="w-[160px]">{dok.uploadedBy}</TableCell>
                         <TableCell className="w-[100px]">{dok.number}</TableCell>
-                        <TableCell className="w-[120px]">{ritning.status}</TableCell>
-                        <TableCell className="w-[120px]">{ritning.annat}</TableCell>
+                        <TableCell className="w-[120px]">{dok.status}</TableCell>
+                        <TableCell className="w-[120px]">{dok.annat}</TableCell>
                       </TableRow>
                     ))
                   )}

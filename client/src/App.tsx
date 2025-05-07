@@ -22,7 +22,7 @@ import NotificationsPage from "@/pages/notifications-page";
 import TeamPage from "@/pages/team-page";
 import HelpPage from "@/pages/help-page";
 import VaultPage from "@/pages/vault-page";
-import RitningarPage from "@/pages/ritningar-page";
+import DokumentPage from "@/pages/dokument-page";
 import DwgIfcViewerPage from "@/pages/dwg-ifc-viewer-page";
 import SimpleViewerPage from "@/pages/simple-viewer-page";
 import MessagesPage from "@/pages/messages-page";
@@ -53,8 +53,8 @@ function Router() {
       <ProtectedRoute path="/help" component={HelpPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
       <ProtectedRoute path="/profile" component={SettingsPage} />
-      <ProtectedRoute path="/ritningar" component={RitningarPage} />
-      <ProtectedRoute path="/vault/files/ritningar" component={RitningarPage} />
+      <ProtectedRoute path="/dokument" component={DokumentPage} />
+      <ProtectedRoute path="/vault/files/dokument" component={DokumentPage} />
       <ProtectedRoute path="/dwg-ifc-viewer" component={DwgIfcViewerPage} />
       <ProtectedRoute path="/3d-viewer" component={DwgIfcViewerPage} />
       <ProtectedRoute path="/simple-viewer" component={SimpleViewerPage} />
