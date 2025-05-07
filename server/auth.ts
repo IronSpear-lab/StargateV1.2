@@ -41,10 +41,11 @@ export function setupAuth(app: Express) {
       secure: false, // Måste vara false för att fungera utan HTTPS
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dagar
-      sameSite: 'lax',
+      sameSite: 'none', // Ändrad till 'none' för att tillåta cross-site requests
       path: '/'
     },
-    name: "valvx.sid"
+    name: "valvx.sid", // Använd samma namn som tidigare
+    proxy: true // Sätt till true om vi går genom proxy
   };
 
   app.set("trust proxy", 1);
