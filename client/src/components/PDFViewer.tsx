@@ -2169,7 +2169,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
                     </div>
                     <p className="font-medium text-gray-700 dark:text-gray-300">Inga kommentarer ännu</p>
                     <p className="text-sm mt-2 max-w-[220px] text-gray-500 dark:text-gray-400">
-                      Lägg till kommentarer direkt på ritningen genom att klicka på 
+                      Lägg till kommentarer direkt på dokumentet genom att klicka på 
                       <span className="font-medium"> Ny kommentar</span> ovan
                     </p>
                     <Button 

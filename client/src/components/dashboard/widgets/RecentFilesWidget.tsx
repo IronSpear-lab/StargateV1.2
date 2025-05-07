@@ -74,7 +74,7 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
             }
           });
         } catch (error) {
-          console.error('Failed to parse saved ritningar:', error);
+          console.error('Failed to parse saved dokument:', error);
         }
       }
       
@@ -215,11 +215,11 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
                   onClick={() => {
                     // Hantera klick på olika typer av filer
                     if (file.fileType.toLowerCase() === "pdf" && file.fileId) {
-                      // Om PDF har filID redan, så skicka med det till ritningar-sidan
-                      window.location.href = `/ritningar?viewFile=${encodeURIComponent(file.fileId)}`;
-                    } else if (file.folder === "Ritningar" && file.fileType.toLowerCase() === "pdf") {
-                      // Utan filID, navigera bara till ritningar-sidan
-                      window.location.href = "/ritningar";
+                      // Om PDF har filID redan, så skicka med det till dokument-sidan
+                      window.location.href = `/dokument?viewFile=${encodeURIComponent(file.fileId)}`;
+                    } else if (file.folder === "Dokument" && file.fileType.toLowerCase() === "pdf") {
+                      // Utan filID, navigera bara till dokument-sidan
+                      window.location.href = "/dokument";
                     } else {
                       // Alla andra filer går till vault
                       window.location.href = "/vault";
@@ -265,7 +265,7 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
               <Button 
                 variant="link" 
                 className="h-auto p-0 text-xs text-blue-600 dark:text-blue-400 ml-1"
-                onClick={() => window.location.href = "/ritningar"}
+                onClick={() => window.location.href = "/dokument"}
               >
                 Upload a file
               </Button>
