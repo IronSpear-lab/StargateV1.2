@@ -241,12 +241,22 @@ const StatusIcon = ({ status }: { status: string }) => {
   }
 };
 
-const ModernGanttChart: React.FC = () => {
+interface ModernGanttChartProps {
+  projectId?: number;
+}
+
+const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
   const { toast } = useToast();
+  
+  // Använd projektspecifik localStorage-nyckel om projektId finns
+  const getStorageKey = () => {
+    return projectId ? `project_${projectId}_gantt_tasks` : 'no_project_gantt_tasks';
+  };
+  
   // Läs uppgifter från localStorage, om de finns, annars använd initialTasks
   const [tasks, setTasks] = useState<GanttTask[]>(() => {
     try {
-      const savedTasks = localStorage.getItem('gantt_tasks');
+      const savedTasks = localStorage.getItem(getStorageKey());
       return savedTasks ? JSON.parse(savedTasks) : initialTasks;
     } catch (error) {
       console.error('Error loading tasks from localStorage:', error);
@@ -298,12 +308,12 @@ const ModernGanttChart: React.FC = () => {
   // Spara uppgifter till localStorage när de ändras
   useEffect(() => {
     try {
-      localStorage.setItem('gantt_tasks', JSON.stringify(tasks));
-      console.log('Gantt tasks saved to localStorage:', tasks.length, 'tasks');
+      localStorage.setItem(getStorageKey(), JSON.stringify(tasks));
+      console.log(`Gantt tasks saved to localStorage (${getStorageKey()}):`, tasks.length, 'tasks');
     } catch (error) {
       console.error('Error saving tasks to localStorage:', error);
     }
-  }, [tasks]);
+  }, [tasks, projectId]);
 
   // Generera dagar för tidslinjen baserat på datumintervall
   const days = useMemo(() => {
