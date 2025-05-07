@@ -31,7 +31,7 @@ import {
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { UploadDialog } from "@/components/UploadDialog";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useProject } from "@/contexts/ProjectContext";
 
 const mockRitningar = [
@@ -487,6 +487,16 @@ export default function RitningarPage() {
             <ChevronRight size={14} className="mx-1" />
             <span className="font-semibold">Ritningar</span>
           </div>
+          
+          {!currentProject && (
+            <div className="bg-amber-50 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 rounded-md p-4 mb-6">
+              <h3 className="text-amber-800 dark:text-amber-300 font-medium text-lg mb-2">Inget aktivt projekt</h3>
+              <p className="text-amber-700 dark:text-amber-400">
+                Du behöver välja ett projekt för att kunna se och hantera ritningar. 
+                Använd projektväljaren i toppen av sidan för att välja projekt.
+              </p>
+            </div>
+          )}
         
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-semibold">Ritningar</h1>
@@ -494,6 +504,7 @@ export default function RitningarPage() {
               <Button 
                 className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white"
                 onClick={() => setShowUploadDialog(true)}
+                disabled={!currentProject}
               >
                 <Upload className="mr-2 h-4 w-4" />
                 Upload
