@@ -20,7 +20,8 @@ import {
   conversationParticipants,
   pdfVersions,
   pdfAnnotations,
-  messages
+  messages,
+  userProjects
 } from "@shared/schema";
 
 // Set up multer for file uploads
@@ -76,6 +77,130 @@ const upload = multer({
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
+  
+  // ------ Project Management Routes ------
+  
+  // Hämta alla projekt som användaren har tillgång till
+  app.get('/api/user-projects', async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    try {
+      // Hämta alla projekt för användaren med deras roll i varje projekt
+      const userProjectsWithRoles = await db
+        .select({
+          id: projects.id,
+          name: projects.name,
+          description: projects.description,
+          role: userProjects.role,
+        })
+        .from(projects)
+        .innerJoin(
+          userProjects, 
+          and(
+            eq(projects.id, userProjects.projectId),
+            eq(userProjects.userId, req.user!.id)
+          )
+        );
+      
+      res.status(200).json(userProjectsWithRoles);
+    } catch (error) {
+      console.error('Error fetching user projects:', error);
+      res.status(500).json({ error: 'Failed to fetch projects' });
+    }
+  });
+  
+  // Skapa nytt projekt
+  app.post('/api/projects', async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    const { name, description } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Project name is required' });
+    }
+    
+    try {
+      // 1. Skapa projektet
+      const [newProject] = await db.insert(projects)
+        .values({
+          name,
+          description: description || null,
+          createdById: req.user!.id,
+          createdAt: new Date(),
+        })
+        .returning();
+      
+      // 2. Tilldela användaren som skapade projektet rollen 'project_leader'
+      await db.insert(userProjects)
+        .values({
+          userId: req.user!.id,
+          projectId: newProject.id,
+          role: 'project_leader',
+        });
+      
+      // 3. Returnera det skapade projektet med användarens roll
+      const projectWithRole = {
+        ...newProject,
+        role: 'project_leader'
+      };
+      
+      res.status(201).json(projectWithRole);
+    } catch (error) {
+      console.error('Error creating project:', error);
+      res.status(500).json({ error: 'Failed to create project' });
+    }
+  });
+  
+  // Hämta medlemmar i ett projekt
+  app.get('/api/project-members/:projectId', async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    const projectId = parseInt(req.params.projectId);
+    
+    if (isNaN(projectId)) {
+      return res.status(400).json({ error: 'Invalid project ID' });
+    }
+    
+    try {
+      // Kontrollera att användaren har tillgång till projektet
+      const userProject = await db.select()
+        .from(userProjects)
+        .where(and(
+          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.projectId, projectId)
+        ))
+        .limit(1);
+      
+      if (userProject.length === 0) {
+        return res.status(403).json({ error: 'You do not have access to this project' });
+      }
+      
+      // Hämta alla medlemmar i projektet
+      const members = await db.select({
+        id: users.id,
+        username: users.username,
+      })
+      .from(users)
+      .innerJoin(
+        userProjects,
+        and(
+          eq(users.id, userProjects.userId),
+          eq(userProjects.projectId, projectId)
+        )
+      );
+      
+      res.status(200).json(members);
+    } catch (error) {
+      console.error('Error fetching project members:', error);
+      res.status(500).json({ error: 'Failed to fetch project members' });
+    }
+  });
   
   // Serve uploaded files statically
   app.use('/uploads', (req, res, next) => {
@@ -146,53 +271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Ändpunkt för ProjectContext - Användarens projekt
-  app.get(`${apiPrefix}/user-projects`, async (req, res) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-      
-      const userProjects = await storage.getUserProjects(req.user.id);
-      res.json(userProjects);
-    } catch (error) {
-      console.error("Error fetching user projects:", error);
-      res.status(500).json({ error: "Failed to fetch user projects" });
-    }
-  });
-  
-  // Ändpunkt för ProjectContext - Medlemmar i ett projekt
-  app.get(`${apiPrefix}/project-members/:projectId`, async (req, res) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-      
-      const projectId = parseInt(req.params.projectId);
-      if (isNaN(projectId)) {
-        return res.status(400).json({ error: "Invalid project ID" });
-      }
-      
-      const members = await storage.getProjectMembers(projectId);
-      res.json(members);
-    } catch (error) {
-      console.error("Error fetching project members:", error);
-      res.status(500).json({ error: "Failed to fetch project members" });
-    }
-  });
-
-  app.post(`${apiPrefix}/projects`, async (req, res) => {
-    try {
-      const project = await storage.createProject({
-        ...req.body,
-        createdById: req.user!.id
-      });
-      res.status(201).json(project);
-    } catch (error) {
-      console.error("Error creating project:", error);
-      res.status(500).json({ error: "Failed to create project" });
-    }
-  });
+  // Project-relaterade rutterna är redan implementerade ovan med direkta Drizzle ORM queries
 
   app.get(`${apiPrefix}/projects/:id`, async (req, res) => {
     try {
