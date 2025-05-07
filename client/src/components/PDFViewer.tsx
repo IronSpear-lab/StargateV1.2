@@ -995,7 +995,7 @@ export function PDFViewer({ isOpen, onClose, file, fileUrl, fileData }: PDFViewe
       const zoomScale = 1.5;
       
       // Först sparar vi den aktuella viewporten
-      const containerRect = pdfContainerRef.current.getBoundingClientRect();
+      const containerRect = pdfContainerRef.current?.getBoundingClientRect() || new DOMRect();
       const pageRect = pdfPage.getBoundingClientRect();
       
       // Beräkna positioner FÖRE vi ändrar zoom
