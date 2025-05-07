@@ -949,13 +949,13 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               onAddClick: () => handleAddFolder("01- Arkitekt"),
               children: [
                 {
-                  href: "/vault/files/ritningar",
-                  label: "1. Ritningar",
-                  active: location === "/vault/files/ritningar",
+                  href: "/vault/files/dokument",
+                  label: "1. Dokument",
+                  active: location === "/vault/files/dokument",
                   indent: 3,
                   icon: <FolderClosed className="w-3 h-3" />,
                   type: "folder",
-                  onAddClick: () => handleAddFolder("1. Ritningar"),
+                  onAddClick: () => handleAddFolder("1. Dokument"),
                   children: []
                 },
                 {

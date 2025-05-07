@@ -48,28 +48,28 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
         return [];
       }
       
-      // Först hämta alla uppladdade filer från ritningar-sidan via localStorage, men bara om vi har ett giltigt projekt
-      const savedRitningar = localStorage.getItem('saved_ritningar');
+      // Först hämta alla uppladdade filer från dokument-sidan via localStorage, men bara om vi har ett giltigt projekt
+      const savedDokument = localStorage.getItem('saved_dokument');
       const uploadedFiles: File[] = [];
       
-      if (savedRitningar) {
+      if (savedDokument) {
         try {
-          const ritningar = JSON.parse(savedRitningar);
+          const dokument = JSON.parse(savedDokument);
           
-          // Filtrera bara de ritningar som tillhör det aktuella projektet
+          // Filtrera bara de dokument som tillhör det aktuella projektet
           // Om projektId information saknas i filen, inkludera den inte
-          ritningar.forEach((ritning: any) => {
-            if (ritning.filename && ritning.projectId === projectId) {
+          dokument.forEach((dok: any) => {
+            if (dok.filename && dok.projectId === projectId) {
               uploadedFiles.push({
-                id: ritning.id.toString(),
-                name: ritning.filename,
+                id: dok.id.toString(),
+                name: dok.filename,
                 fileType: "pdf",
                 fileSize: 2450000, // Kan inte veta exakt storlek utan att lagra det
                 lastModified: new Date().toISOString(),
-                folder: "Ritningar",
-                uploadedBy: ritning.uploadedBy || "Du",
+                folder: "Dokument",
+                uploadedBy: dok.uploadedBy || "Du",
                 uploadedById: "currentUser",
-                fileId: ritning.fileId // Inkludera fileId om den finns
+                fileId: dok.fileId // Inkludera fileId om den finns
               });
             }
           });
