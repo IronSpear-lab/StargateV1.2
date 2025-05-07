@@ -213,16 +213,32 @@ class DatabaseStorage implements IStorage {
   }
 
   async getUserProjects(userId: number): Promise<(Project & { role: string })[]> {
-    const result = await db
-      .select({
-        ...projects,
-        role: userProjects.role
-      })
-      .from(projects)
-      .innerJoin(userProjects, eq(projects.id, userProjects.projectId))
-      .where(eq(userProjects.userId, userId));
+    // Först, kontrollera om användaren är superuser
+    const user = await this.getUser(userId);
     
-    return result;
+    if (user && user.role === "admin") {
+      // Superuser: Hämta alla projekt och sätt rollen till admin för alla
+      const allProjects = await db
+        .select()
+        .from(projects);
+        
+      return allProjects.map(project => ({
+        ...project,
+        role: "admin"
+      }));
+    } else {
+      // Normal användare: Hämta bara projekt där användaren är medlem
+      const result = await db
+        .select({
+          ...projects,
+          role: userProjects.role
+        })
+        .from(projects)
+        .innerJoin(userProjects, eq(projects.id, userProjects.projectId))
+        .where(eq(userProjects.userId, userId));
+      
+      return result;
+    }
   }
 
   async createProject(project: Omit<Project, "id">): Promise<Project> {

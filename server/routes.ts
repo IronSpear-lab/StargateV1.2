@@ -80,37 +80,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // ------ Project Management Routes ------
   
-  // Hämta alla projekt som användaren har tillgång till
-  app.get('/api/user-projects', async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send({ error: 'Unauthorized' });
-    }
-    
-    try {
-      // Hämta alla projekt för användaren med deras roll i varje projekt
-      const userProjectsWithRoles = await db
-        .select({
-          id: projects.id,
-          name: projects.name,
-          description: projects.description,
-          role: userProjects.role,
-        })
-        .from(projects)
-        .innerJoin(
-          userProjects, 
-          and(
-            eq(projects.id, userProjects.projectId),
-            eq(userProjects.userId, req.user!.id)
-          )
-        );
-      
-      res.status(200).json(userProjectsWithRoles);
-    } catch (error) {
-      console.error('Error fetching user projects:', error);
-      res.status(500).json({ error: 'Failed to fetch projects' });
-    }
-  });
-  
   // Skapa nytt projekt
   app.post('/api/projects', async (req, res) => {
     console.log('POST /api/projects - Auth status:', req.isAuthenticated());
@@ -1265,14 +1234,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // User projects and roles
+  // User projects and roles - med förbättrad behörighetskontroll för superusers
   app.get(`${apiPrefix}/user-projects`, async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send({ error: 'Unauthorized' });
     }
     
     try {
-      // Hämta alla projekt som användaren är medlem i
+      // Använder den förbättrade getUserProjects-metoden som hanterar superusers
       const userProjects = await storage.getUserProjects(req.user!.id);
       res.json(userProjects);
     } catch (error) {
