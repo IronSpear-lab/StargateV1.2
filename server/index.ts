@@ -37,8 +37,7 @@ app.use(express.urlencoded({ extended: false }));
 // Lägg till cookie-parser - MÅSTE komma före användandet av express-session
 app.use(cookieParser());
 
-// Obs! Flytta detta EFTER att vi har registrerat rutter
-// setupAuth(app);
+// VIKTIGT: Vi använder setupAuth i registerRoutes.ts istället
 
 // Middleware to correctly serve WebAssembly files with proper MIME type
 app.use((req, res, next) => {

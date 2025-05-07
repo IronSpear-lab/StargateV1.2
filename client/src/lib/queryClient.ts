@@ -12,10 +12,21 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  // Ta bort manuell cookie-hantering och förlita oss på credentials: "include"
+  // Lägg till anti-cache headers även för apiRequest
+  const headers: HeadersInit = data ? 
+    { 
+      "Content-Type": "application/json",
+      "Cache-Control": "no-cache",
+      "Pragma": "no-cache"
+    } : 
+    {
+      "Cache-Control": "no-cache",
+      "Pragma": "no-cache"
+    };
+  
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -30,9 +41,13 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    // Ta bort manuell cookie-hantering
+    // Lägg till anti-cache headers
     const res = await fetch(queryKey[0] as string, {
       credentials: "include",
+      headers: {
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache"
+      }
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

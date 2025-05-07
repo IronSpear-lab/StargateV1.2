@@ -35,9 +35,10 @@ export function setupAuth(app: Express) {
     secret: process.env.SESSION_SECRET || "valvxlstart-super-secret-key-for-development",
     resave: true, // Ändrad till true för att vara säker på att sessionen sparas
     saveUninitialized: true, // Ändrad för att spara nya sessions
+    rolling: true, // Resettar maxAge vid varje response
     store: storage.sessionStore,
     cookie: {
-      secure: false, // Kan vara true i produktion med HTTPS
+      secure: false, // Måste vara false för att fungera utan HTTPS
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dagar
       sameSite: 'lax',
