@@ -253,14 +253,25 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
     return projectId ? `project_${projectId}_gantt_tasks` : 'no_project_gantt_tasks';
   };
   
-  // Läs uppgifter från localStorage, om de finns, annars använd initialTasks
+  // Läs uppgifter från localStorage, om de finns, annars använd tomma uppgifter om projektId finns
+  // eller initialTasks för demo om inget projektId
   const [tasks, setTasks] = useState<GanttTask[]>(() => {
     try {
       const savedTasks = localStorage.getItem(getStorageKey());
-      return savedTasks ? JSON.parse(savedTasks) : initialTasks;
+      if (savedTasks) {
+        return JSON.parse(savedTasks);
+      } 
+      
+      // Om det är ett specifikt projekt och inga sparade uppgifter, returnera tom array
+      if (projectId) {
+        return [];
+      }
+      
+      // Endast använd demodata för "ingen projekt" vyn
+      return initialTasks;
     } catch (error) {
       console.error('Error loading tasks from localStorage:', error);
-      return initialTasks;
+      return projectId ? [] : initialTasks;
     }
   });
   
