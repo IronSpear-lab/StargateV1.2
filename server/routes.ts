@@ -82,6 +82,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Skapa nytt projekt
   app.post('/api/projects', async (req, res) => {
+    // Prövar att sätta cookies manuellt för att fixa sessionsproblemet
+    const cookieName = 'valvx.sid';
+    res.cookie(cookieName, req.sessionID, {
+      secure: true,
+      httpOnly: true,
+      sameSite: 'none',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 dagar
+    });
+    
     console.log('POST /api/projects - Request cookies:', req.headers.cookie);
     console.log('POST /api/projects - Auth status:', req.isAuthenticated());
     console.log('User in session:', req.user);

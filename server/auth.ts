@@ -31,6 +31,7 @@ async function comparePasswords(supplied: string, stored: string) {
 export function setupAuth(app: Express) {
   // Förenkla sessionsinställningar för utvecklingsmiljö
   const isProduction = process.env.NODE_ENV === 'production';
+  // Replit kör med HTTPS så secure måste vara true för att cookies ska fungera korrekt
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "valvxlstart-super-secret-key-for-development",
     resave: true, // Ändrad till true för att vara säker på att sessionen sparas
@@ -38,14 +39,14 @@ export function setupAuth(app: Express) {
     rolling: true, // Resettar maxAge vid varje response
     store: storage.sessionStore,
     cookie: {
-      secure: false, // Måste vara false för att fungera utan HTTPS
+      secure: true, // VIKTIGT: Med HTTPS måste detta vara true 
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dagar
-      sameSite: 'none', // Ändrad till 'none' för att tillåta cross-site requests
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 dagar
+      sameSite: 'none', // 'none' krävs för CORS med credentials
       path: '/'
     },
     name: "valvx.sid", // Använd samma namn som tidigare
-    proxy: true // Sätt till true om vi går genom proxy
+    proxy: true // Replit använder proxy
   };
 
   app.set("trust proxy", 1);
@@ -91,6 +92,16 @@ export function setupAuth(app: Express) {
     console.log('User logged in:', req.user);
     console.log('Session ID:', req.sessionID);
     console.log('Session:', req.session);
+    
+    // Sätt explicit cookie för att säkerställa att sessionen följer med
+    // Detta åsidosätter sessionsinställningarna, men är nödvändigt i vissa miljöer
+    res.cookie(sessionSettings.name!, req.sessionID, {
+      secure: true,
+      httpOnly: true, 
+      sameSite: 'none',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 dagar
+    });
+    
     res.status(200).json(req.user);
   });
 
