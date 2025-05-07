@@ -88,8 +88,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('Session data:', req.session);
 
     if (!req.isAuthenticated()) {
-      console.log('Unauthorized project creation attempt');
+      console.log('Unauthorized project creation attempt - not authenticated');
       return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    // Kontrollera om användaren har rätt roll (project_leader eller admin)
+    if (req.user.role !== 'project_leader' && req.user.role !== 'admin') {
+      console.log('Unauthorized project creation attempt - wrong role:', req.user.role);
+      return res.status(403).send({ error: 'Insufficient permissions. Only project leaders and admins can create projects.' });
     }
     
     console.log('Project creation request body:', req.body);

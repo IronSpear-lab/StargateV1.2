@@ -39,7 +39,7 @@ export function setupAuth(app: Express) {
       secure: false, // Set to true if using HTTPS i produktion 
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      sameSite: 'none' // Tillåt cookies att skickas vid cross-site requests
+      sameSite: 'lax' // Ändrat från 'none' till 'lax' för att fungera bättre i utvecklingsmiljö
     },
     name: "connect.valvx" // Namnge cookien tydligt
   };

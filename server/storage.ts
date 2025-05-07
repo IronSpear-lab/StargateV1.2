@@ -213,11 +213,19 @@ class DatabaseStorage implements IStorage {
   }
 
   async getUserProjects(userId: number): Promise<(Project & { role: string })[]> {
-    // Först, kontrollera om användaren är superuser
+    // Först, kontrollera om användaren finns och vilken roll
     const user = await this.getUser(userId);
     
-    if (user && user.role === "admin") {
-      // Superuser: Hämta alla projekt och sätt rollen till admin för alla
+    if (!user) {
+      console.log(`User with ID ${userId} not found in getUserProjects`);
+      return [];
+    }
+    
+    console.log(`Fetching projects for user ${userId} with role ${user.role}`);
+    
+    if (user.role === "admin") {
+      // Admin: Hämta alla projekt och sätt rollen till admin för alla
+      console.log("User is admin, fetching all projects");
       const allProjects = await db
         .select()
         .from(projects);
@@ -226,8 +234,22 @@ class DatabaseStorage implements IStorage {
         ...project,
         role: "admin"
       }));
+    } else if (user.role === "project_leader") {
+      // Project_leader: Hämta alla projekt där användaren är medlem, men också kolla userProjects för specifika projektroller
+      console.log("User is project_leader, fetching assigned projects");
+      const result = await db
+        .select({
+          ...projects,
+          role: userProjects.role
+        })
+        .from(projects)
+        .innerJoin(userProjects, eq(projects.id, userProjects.projectId))
+        .where(eq(userProjects.userId, userId));
+      
+      return result;
     } else {
       // Normal användare: Hämta bara projekt där användaren är medlem
+      console.log("User is a regular user, fetching assigned projects");
       const result = await db
         .select({
           ...projects,
