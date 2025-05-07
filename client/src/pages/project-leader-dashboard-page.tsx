@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { 
   Sidebar, 
   Header, 
@@ -21,7 +20,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Home, BarChart4, Settings } from "lucide-react";
+import { PlusCircle, Home, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useProject } from "@/contexts/ProjectContext";
 import { Link } from "wouter";
@@ -123,21 +122,25 @@ export default function ProjectLeaderDashboardPage() {
   const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
-  
-  // Track user's projects
-  const [userProjects, setUserProjects] = useState<{id: number; name: string}[]>([]);
-  const [currentProjectId, setCurrentProjectId] = useState<number | undefined>();
-  
-  // Mock project for when there are no projects (for demo purposes)
-  const defaultProject = { id: 1, name: "Demo Project" };
+  const { currentProject, projects, changeProject } = useProject();
 
+  // Form för att hantera projektinställningar
   const form = useForm<ProjectSettingsFormValues>({
     defaultValues: {
-      name: "ValvXlstart Development",
-      description: "A comprehensive project management platform designed to streamline collaboration and document workflows.",
-      deadline: "2023-12-31"
+      name: currentProject?.name || "Namnlöst projekt",
+      description: currentProject?.description || "",
+      deadline: ""
     }
   });
+
+  // Uppdatera formuläret när aktuellt projekt ändras
+  useEffect(() => {
+    if (currentProject) {
+      form.setValue('name', currentProject.name);
+      form.setValue('description', currentProject.description || '');
+      // Deadline can be set if needed
+    }
+  }, [currentProject, form]);
 
   // Load saved widgets from localStorage on first render
   // or use default widgets if none exist
@@ -170,42 +173,6 @@ export default function ProjectLeaderDashboardPage() {
     }
   }, [widgets]);
 
-  // Fetch user's projects
-  const { data: projects = [] } = useQuery({
-    queryKey: ['/api/user-projects'],
-    queryFn: async () => {
-      const response = await fetch('/api/user-projects');
-      if (!response.ok) {
-        return [];
-      }
-      return response.json();
-    }
-  });
-
-  // Update projects when data is loaded
-  useEffect(() => {
-    // Update userProjects from fetched data
-    if (projects && projects.length > 0) {
-      // Use data from server
-      setUserProjects(projects);
-      
-      // Set current project if not already set
-      if (!currentProjectId) {
-        setCurrentProjectId(projects[0].id);
-      }
-    } else if (userProjects.length === 0) {
-      // Create a default project if no projects exist
-      setUserProjects([defaultProject]);
-      if (!currentProjectId) {
-        setCurrentProjectId(defaultProject.id);
-      }
-    }
-  }, [projects, currentProjectId]);
-  
-  // Get current project object
-  const currentProject = userProjects.find(p => p.id === currentProjectId) || 
-    (userProjects.length > 0 ? userProjects[0] : defaultProject);
-
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
@@ -216,7 +183,7 @@ export default function ProjectLeaderDashboardPage() {
       id: uuidv4(),
       type: widgetType.id,
       title: widgetType.name,
-      projectId: currentProjectId || (userProjects.length > 0 ? userProjects[0].id : defaultProject.id),
+      projectId: currentProject?.id,
       width: widgetType.defaultWidth,
       height: widgetType.defaultHeight
     };
@@ -237,49 +204,24 @@ export default function ProjectLeaderDashboardPage() {
 
   // Open project settings modal
   const handleManageProjectClick = () => {
-    // Set form values based on current project
-    form.setValue('name', currentProject.name);
-    form.setValue('description', '');
-    form.setValue('deadline', '');
+    if (currentProject) {
+      form.setValue('name', currentProject.name);
+      form.setValue('description', currentProject.description || '');
+      form.setValue('deadline', ''); // Reset deadline field
+    }
     
     setIsProjectSettingsOpen(true);
   };
 
   // Handle project settings form submission
   const onSubmitProjectSettings = (data: ProjectSettingsFormValues) => {
-    // Update current project name in the list
-    if (data.name.trim()) {
-      // Create a new project object with the updated name
-      if (currentProjectId) {
-        // Update existing project
-        const updatedProjects = userProjects.map(p => 
-          p.id === currentProjectId ? { ...p, name: data.name.trim() } : p
-        );
-        
-        setUserProjects(updatedProjects);
-        
-        toast({
-          title: "Project settings updated",
-          description: "The project settings have been saved successfully",
-        });
-      } else {
-        // Create a new project
-        const newProject = {
-          id: userProjects.length > 0 ? Math.max(...userProjects.map(p => p.id)) + 1 : 1,
-          name: data.name.trim()
-        };
-        
-        const updatedProjects = [...userProjects, newProject];
-        setUserProjects(updatedProjects);
-        setCurrentProjectId(newProject.id);
-        
-        toast({
-          title: "Project created",
-          description: `Project "${data.name}" has been created`,
-        });
-      }
-      
-      // In a real app, this would also save to the backend via API call
+    if (data.name.trim() && currentProject?.id) {
+      // I verkligheten skulle detta anropa ett API för att uppdatera projektet
+      // För nu visar vi bara en toast för att simulera uppdatering
+      toast({
+        title: "Project settings updated",
+        description: "The project settings have been saved successfully",
+      });
     }
     
     setIsProjectSettingsOpen(false);
@@ -313,8 +255,8 @@ export default function ProjectLeaderDashboardPage() {
 
   // Render the appropriate widget component based on type
   const renderWidget = (widget: WidgetInstance) => {
-    // Always use the current selected project ID
-    const projectId = currentProjectId || (userProjects.length > 0 ? userProjects[0].id : defaultProject.id);
+    // Always use the current selected project ID from context
+    const projectId = currentProject?.id;
     
     switch (widget.type) {
       case "budget-cost":
@@ -367,19 +309,10 @@ export default function ProjectLeaderDashboardPage() {
       <Sidebar className={isSidebarOpen ? "" : "hidden"} />
       
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Använd bara ProjectContext för Header-komponenten */}
         <Header 
           title="Project Leader Dashboard" 
           onToggleSidebar={toggleSidebar}
-          currentProject={currentProject}
-          availableProjects={userProjects}
-          onProjectChange={(projectId) => {
-            setCurrentProjectId(projectId);
-            // Load project-specific data when changing projects
-            toast({
-              title: "Project changed",
-              description: `Switched to ${userProjects.find((p) => p.id === projectId)?.name || 'new project'}`,
-            });
-          }}
         />
         
         <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-background">
@@ -391,10 +324,18 @@ export default function ProjectLeaderDashboardPage() {
               </Link>
               <span className="text-muted-foreground">/</span>
               <span className="text-muted-foreground">Project Leader Dashboard</span>
+              {currentProject && (
+                <>
+                  <span className="text-muted-foreground">/</span>
+                  <span className="font-medium">{currentProject.name}</span>
+                </>
+              )}
             </div>
             
             <div className="flex justify-between items-center mb-6">
-              <h1 className="text-xl font-bold text-foreground">Project Leader Dashboard</h1>
+              <h1 className="text-xl font-bold text-foreground">
+                Project Leader Dashboard {currentProject && `- ${currentProject.name}`}
+              </h1>
               
               <div className="flex gap-2">
                 <Button 
@@ -411,14 +352,16 @@ export default function ProjectLeaderDashboardPage() {
                 >
                   Reset dashboard
                 </Button>
-                <Button 
-                  onClick={handleManageProjectClick}
-                  variant="outline"
-                  className="gap-1 text-sm"
-                >
-                  <Settings className="h-4 w-4" />
-                  Manage Project
-                </Button>
+                {currentProject && (
+                  <Button 
+                    onClick={handleManageProjectClick}
+                    variant="outline"
+                    className="gap-1 text-sm"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Manage Project
+                  </Button>
+                )}
                 <Button 
                   onClick={handleAddWidgetClick} 
                   className="gap-1 bg-primary hover:bg-primary/90"
@@ -482,7 +425,7 @@ export default function ProjectLeaderDashboardPage() {
       <Dialog open={isProjectSettingsOpen} onOpenChange={setIsProjectSettingsOpen}>
         <DialogContent className="sm:max-w-[800px]">
           <DialogHeader>
-            <DialogTitle>Manage Project</DialogTitle>
+            <DialogTitle>Manage Project: {currentProject?.name}</DialogTitle>
             <DialogDescription>
               Update project settings and manage participants
             </DialogDescription>
@@ -518,7 +461,7 @@ export default function ProjectLeaderDashboardPage() {
                       <FormItem>
                         <FormLabel>Description</FormLabel>
                         <FormControl>
-                          <Textarea rows={4} {...field} />
+                          <Textarea {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -539,40 +482,40 @@ export default function ProjectLeaderDashboardPage() {
                     )}
                   />
                   
-                  <DialogFooter>
+                  <div className="pt-4 flex justify-end gap-2">
                     <Button variant="outline" type="button" onClick={() => setIsProjectSettingsOpen(false)}>
                       Cancel
                     </Button>
-                    <Button type="submit">Save changes</Button>
-                  </DialogFooter>
+                    <Button type="submit">
+                      Save Changes
+                    </Button>
+                  </div>
                 </form>
               </Form>
             </TabsContent>
             
             <TabsContent value="team" className="pt-4">
-              <div className="space-y-4">
-                <div className="mb-2">
-                  <h3 className="text-lg font-medium">Project Members</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Add or remove members from this project.
-                  </p>
+              <div>
+                <h3 className="text-lg font-medium">Team Members</h3>
+                <p className="text-sm text-muted-foreground">
+                  Add or remove members from this project.
+                </p>
+              </div>
+              
+              <Separator className="my-4" />
+              
+              {currentProject?.id ? (
+                <ProjectTeamWidget projectId={currentProject.id} />
+              ) : (
+                <div className="py-4 text-center text-muted-foreground">
+                  Save the project first before adding team members.
                 </div>
-                
-                <Separator className="my-4" />
-                
-                {currentProjectId ? (
-                  <ProjectTeamWidget projectId={currentProjectId} />
-                ) : (
-                  <div className="py-4 text-center text-muted-foreground">
-                    Save the project first before adding team members.
-                  </div>
-                )}
-                
-                <div className="flex justify-end mt-6">
-                  <Button variant="outline" onClick={() => setIsProjectSettingsOpen(false)}>
-                    Close
-                  </Button>
-                </div>
+              )}
+              
+              <div className="flex justify-end mt-6">
+                <Button variant="outline" onClick={() => setIsProjectSettingsOpen(false)}>
+                  Close
+                </Button>
               </div>
             </TabsContent>
           </Tabs>
