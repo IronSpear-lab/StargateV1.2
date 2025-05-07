@@ -137,6 +137,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   tasks: many(tasks),
   wikiPages: many(wikiPages),
   calendarEvents: many(calendarEvents),
+  pdfAnnotations: many(pdfAnnotations), // Lägg till relation för PDF-annotationer
 }));
 
 export const userProjectsRelations = relations(userProjects, ({ one }) => ({
@@ -281,12 +282,14 @@ export const pdfVersions = pgTable("pdf_versions", {
 export const pdfAnnotations = pgTable("pdf_annotations", {
   id: serial("id").primaryKey(),
   pdfVersionId: integer("pdf_version_id").references(() => pdfVersions.id).notNull(),
+  projectId: integer("project_id").references(() => projects.id), // Koppling till projekt
   rect: jsonb("rect").notNull(), // Spara x, y, width, height och pageNumber
   color: text("color").notNull(),
   comment: text("comment"),
   status: pdfAnnotationStatusEnum("status").default("open").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdById: integer("created_by_id").references(() => users.id).notNull(),
+  assignedTo: text("assigned_to"), // Tilldelad användare (username)
 });
 
 // PDF version relations
@@ -311,6 +314,10 @@ export const pdfAnnotationsRelations = relations(pdfAnnotations, ({ one }) => ({
   createdBy: one(users, {
     fields: [pdfAnnotations.createdById],
     references: [users.id]
+  }),
+  project: one(projects, {
+    fields: [pdfAnnotations.projectId],
+    references: [projects.id]
   })
 }));
 
