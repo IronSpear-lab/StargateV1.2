@@ -214,14 +214,49 @@ export default function ProjectLeaderDashboardPage() {
   };
 
   // Handle project settings form submission
-  const onSubmitProjectSettings = (data: ProjectSettingsFormValues) => {
+  const onSubmitProjectSettings = async (data: ProjectSettingsFormValues) => {
     if (data.name.trim() && currentProject?.id) {
-      // I verkligheten skulle detta anropa ett API för att uppdatera projektet
-      // För nu visar vi bara en toast för att simulera uppdatering
-      toast({
-        title: "Project settings updated",
-        description: "The project settings have been saved successfully",
-      });
+      try {
+        // Anropa API för att uppdatera projektet
+        const response = await fetch(`/api/projects/${currentProject.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: data.name.trim(),
+            description: data.description.trim(),
+            deadline: data.deadline || null
+          })
+        });
+        
+        if (response.ok) {
+          // Uppdatera projektet i context via refetch
+          if (changeProject) {
+            // Byt till samma projekt för att refresha data
+            changeProject(currentProject.id);
+          }
+          
+          toast({
+            title: "Project settings updated",
+            description: "The project settings have been saved successfully",
+          });
+        } else {
+          const errorData = await response.json();
+          toast({
+            title: "Failed to update project",
+            description: errorData.error || "An error occurred while updating the project",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error("Error updating project:", error);
+        toast({
+          title: "Failed to update project",
+          description: "An error occurred while updating the project",
+          variant: "destructive"
+        });
+      }
     }
     
     setIsProjectSettingsOpen(false);

@@ -456,6 +456,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch project" });
     }
   });
+  
+  // Uppdatera projekt
+  app.patch(`${apiPrefix}/projects/:id`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    try {
+      const projectId = parseInt(req.params.id);
+      
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: 'Invalid project ID' });
+      }
+      
+      // Kontrollera att användaren är projektledare
+      const userProject = await db.select()
+        .from(userProjects)
+        .where(and(
+          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.projectId, projectId)
+        ))
+        .limit(1);
+      
+      if (userProject.length === 0) {
+        return res.status(403).json({ error: 'You do not have access to this project' });
+      }
+      
+      if (userProject[0].role !== 'project_leader' && userProject[0].role !== 'admin') {
+        return res.status(403).json({ error: 'Only project leaders can update project settings' });
+      }
+      
+      // Hämta det aktuella projektet
+      const existingProject = await db.select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+        
+      if (existingProject.length === 0) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+      
+      // Validera och förbereda uppdateringsfält
+      const updateData: Partial<typeof projects.$inferInsert> = {};
+      
+      if (req.body.name && typeof req.body.name === 'string' && req.body.name.trim()) {
+        updateData.name = req.body.name.trim();
+      }
+      
+      if (req.body.description !== undefined) {
+        updateData.description = req.body.description ? req.body.description.trim() : null;
+      }
+      
+      if (req.body.deadline !== undefined) {
+        updateData.deadline = req.body.deadline || null;
+      }
+      
+      // Uppdatera projektet
+      const updatedProject = await db.update(projects)
+        .set(updateData)
+        .where(eq(projects.id, projectId))
+        .returning();
+      
+      if (updatedProject.length === 0) {
+        return res.status(500).json({ error: 'Failed to update project' });
+      }
+      
+      res.json(updatedProject[0]);
+    } catch (error) {
+      console.error("Error updating project:", error);
+      res.status(500).json({ error: 'Failed to update project' });
+    }
+  });
 
   // Folders API
   app.get(`${apiPrefix}/folders`, async (req, res) => {
