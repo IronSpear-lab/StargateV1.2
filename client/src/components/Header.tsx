@@ -79,6 +79,59 @@ export function Header({
     }
   };
 
+  // Define the create project dialog to reuse
+  const createProjectDialog = (
+    <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 flex items-center justify-center">
+          <Plus className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Skapa nytt projekt</DialogTitle>
+          <DialogDescription>
+            Fyll i information om det nya projektet. Alla projekt börjar med tomma dashboards, filer och uppgifter.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="name" className="text-right">
+              Namn
+            </Label>
+            <Input
+              id="name"
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
+              className="col-span-3"
+              placeholder="Projektnamn"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="description" className="text-right">
+              Beskrivning
+            </Label>
+            <Textarea
+              id="description"
+              value={newProjectDescription}
+              onChange={(e) => setNewProjectDescription(e.target.value)}
+              className="col-span-3"
+              placeholder="Projektbeskrivning"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+            Avbryt
+          </Button>
+          <Button onClick={handleCreateProject} disabled={isCreatingProject || !newProjectName.trim()}>
+            {isCreatingProject ? "Skapar..." : "Skapa projekt"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   return (
     <header className="bg-background border-b border-border shadow-sm p-4 flex items-center">
       {isMobile && (
@@ -121,55 +174,7 @@ export function Header({
                 </select>
               </div>
               
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 flex items-center justify-center">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Skapa nytt projekt</DialogTitle>
-                    <DialogDescription>
-                      Fyll i information om det nya projektet. Alla projekt börjar med tomma dashboards, filer och uppgifter.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="name" className="text-right">
-                        Namn
-                      </Label>
-                      <Input
-                        id="name"
-                        value={newProjectName}
-                        onChange={(e) => setNewProjectName(e.target.value)}
-                        className="col-span-3"
-                        placeholder="Projektnamn"
-                      />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="description" className="text-right">
-                        Beskrivning
-                      </Label>
-                      <Textarea
-                        id="description"
-                        value={newProjectDescription}
-                        onChange={(e) => setNewProjectDescription(e.target.value)}
-                        className="col-span-3"
-                        placeholder="Projektbeskrivning"
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                      Avbryt
-                    </Button>
-                    <Button onClick={handleCreateProject} disabled={isCreatingProject || !newProjectName.trim()}>
-                      {isCreatingProject ? "Skapar..." : "Skapa projekt"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+              {createProjectDialog}
             </div>
           </div>
         )}
@@ -201,55 +206,7 @@ export function Header({
                 </select>
               </div>
               
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 flex items-center justify-center">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Skapa nytt projekt</DialogTitle>
-                    <DialogDescription>
-                      Fyll i information om det nya projektet. Alla projekt börjar med tomma dashboards, filer och uppgifter.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="name" className="text-right">
-                        Namn
-                      </Label>
-                      <Input
-                        id="name"
-                        value={newProjectName}
-                        onChange={(e) => setNewProjectName(e.target.value)}
-                        className="col-span-3"
-                        placeholder="Projektnamn"
-                      />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="description" className="text-right">
-                        Beskrivning
-                      </Label>
-                      <Textarea
-                        id="description"
-                        value={newProjectDescription}
-                        onChange={(e) => setNewProjectDescription(e.target.value)}
-                        className="col-span-3"
-                        placeholder="Projektbeskrivning"
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                      Avbryt
-                    </Button>
-                    <Button onClick={handleCreateProject} disabled={isCreatingProject || !newProjectName.trim()}>
-                      {isCreatingProject ? "Skapar..." : "Skapa projekt"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+              {createProjectDialog}
             </div>
           </div>
         )}
