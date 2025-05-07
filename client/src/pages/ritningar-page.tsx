@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { FileText, Search, Plus, Upload, ChevronRight, Home } from "lucide-react";
+import { FileText, Search, Plus, Upload, ChevronRight, Home, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -32,6 +32,7 @@ import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { UploadDialog } from "@/components/UploadDialog";
 import { toast } from "@/hooks/use-toast";
+import { useProject } from "@/contexts/ProjectContext";
 
 const mockRitningar = [
   { 
@@ -227,17 +228,25 @@ interface Ritning {
 }
 
 export default function RitningarPage() {
+  const { currentProject } = useProject();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState("uploaded");
   const [sortDirection, setSortDirection] = useState("desc");
   const [versionFilter, setVersionFilter] = useState("all");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  
+  // Använd localStorage med projektisolering - separate storage per project
+  const getStorageKey = () => {
+    return currentProject ? `project_${currentProject.id}_ritningar` : 'no_project_ritningar';
+  };
+  
   // Hämta sparade ritningar från localStorage om de finns, annars använd mockdata
   const [ritningarData, setRitningarData] = useState<Ritning[]>(() => {
-    const savedRitningar = localStorage.getItem('saved_ritningar');
-    return savedRitningar ? JSON.parse(savedRitningar) : mockRitningar;
+    const savedRitningar = localStorage.getItem(getStorageKey());
+    return savedRitningar ? JSON.parse(savedRitningar) : [];
   });
+  
   const [selectedFile, setSelectedFile] = useState<{
     file: File | null;
     fileUrl?: string;
@@ -249,6 +258,12 @@ export default function RitningarPage() {
       uploadedBy: string;
     };
   } | null>(null);
+  
+  // Uppdatera ritningar när projektet ändras
+  useEffect(() => {
+    const savedRitningar = localStorage.getItem(getStorageKey());
+    setRitningarData(savedRitningar ? JSON.parse(savedRitningar) : []);
+  }, [currentProject]);
   
   // Hämta eventuella URL-parametrar för att direkt öppna en fil
   useEffect(() => {
@@ -308,16 +323,29 @@ export default function RitningarPage() {
     };
     
     checkUrlParams();
-  }, []);
+  }, [ritningarData]);
   
-  // I en riktig implementation skulle denna query hämta data från API:et
-  // const { data: ritningar = [], isLoading } = useQuery({
-  //   queryKey: ['/api/ritningar'],
-  // });
+  // I framtiden skulle vi hämta ritningar från databasen baserat på projekt-ID
+  // Detta skulle använda ett API-anrop: `/api/files?projectId=${currentProject?.id}`
+  const { data: apiRitningar = [], isLoading: isLoadingApi } = useQuery({
+    queryKey: ['/api/files', currentProject?.id],
+    queryFn: async () => {
+      if (!currentProject) return [];
+      try {
+        const response = await fetch(`/api/files?projectId=${currentProject.id}`);
+        if (!response.ok) throw new Error('Failed to fetch files');
+        return await response.json();
+      } catch (error) {
+        console.error('Error fetching project files:', error);
+        return [];
+      }
+    },
+    enabled: !!currentProject,
+  });
 
-  // Använder mockdata tills vidare
+  // Använd lokalt sparade ritningar + API data
   const ritningar = ritningarData;
-  const isLoading = false;
+  const isLoading = isLoadingApi;
 
   const filteredRitningar = ritningar.filter(ritning => 
     ritning.filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -359,7 +387,7 @@ export default function RitningarPage() {
     setRitningarData(updatedRitningar);
     
     // Spara till localStorage så att det finns kvar mellan sessioner
-    localStorage.setItem('saved_ritningar', JSON.stringify(updatedRitningar));
+    localStorage.setItem(getStorageKey(), JSON.stringify(updatedRitningar));
     
     // Visa bekräftelse
     setTimeout(() => {

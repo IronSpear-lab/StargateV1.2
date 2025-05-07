@@ -7,33 +7,22 @@ import { apiRequest } from "@/lib/queryClient";
 import { useRoute } from "wouter";
 import { Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useProject } from "@/contexts/ProjectContext";
 
 export default function KanbanPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [, params] = useRoute('/kanban/:projectId?');
-  const projectId = params?.projectId ? parseInt(params.projectId) : 1;
-  const [selectedProjectId, setSelectedProjectId] = useState<number>(projectId);
-
-  // Fetch projects for the selector
-  const { data: projects, isLoading: isProjectsLoading } = useQuery({
-    queryKey: ['/api/projects'],
-    queryFn: async () => {
-      try {
-        const response = await apiRequest('GET', '/api/projects');
-        return await response.json();
-      } catch (error) {
-        console.error("Error fetching projects:", error);
-        return [];
-      }
-    }
-  });
+  const { currentProject, projects, changeProject } = useProject();
+  
+  // Använd projektID från projektkontext om det finns
+  const projectId = currentProject?.id;
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
   const handleProjectChange = (value: string) => {
-    setSelectedProjectId(parseInt(value));
+    const projectId = parseInt(value);
+    changeProject(projectId);
   };
 
   return (
@@ -52,30 +41,25 @@ export default function KanbanPage() {
               </div>
               <div className="flex items-center">
                 <span className="mr-2 text-sm">Project:</span>
-                {isProjectsLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Select 
-                    value={selectedProjectId.toString()} 
-                    onValueChange={handleProjectChange}
-                  >
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Select project" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {projects?.map((project: any) => (
-                        <SelectItem key={project.id} value={project.id.toString()}>
-                          {project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+                <div className="text-sm font-medium">
+                  {currentProject ? currentProject.name : 'No Project Selected'}
+                </div>
               </div>
             </div>
           </div>
           
-          <KanbanBoard projectId={selectedProjectId} />
+          {!currentProject ? (
+            <div className="flex flex-col items-center justify-center h-64">
+              <p className="text-lg text-muted-foreground mb-4">
+                Select a project to view its tasks
+              </p>
+              <p className="text-sm text-muted-foreground">
+                No project is currently selected. Choose a project from the dropdown in the header.
+              </p>
+            </div>
+          ) : (
+            <KanbanBoard projectId={currentProject.id} />
+          )}
         </main>
       </div>
     </div>
