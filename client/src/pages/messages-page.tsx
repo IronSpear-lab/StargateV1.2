@@ -26,11 +26,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { User, Send, MoreVertical, UserPlus, Search, FileIcon, Paperclip, X, FileText, Image as ImageIcon, Loader2, ExternalLink, Edit } from "lucide-react";
+import { User, Send, MoreVertical, UserPlus, Search, FileIcon, Paperclip, X, FileText, Image as ImageIcon, Loader2, ExternalLink, Edit, Settings, Users, Camera, Shield, UserMinus, LogOut } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Sidebar } from "@/components/Sidebar";
 import { PDFViewerDialog } from "@/components/ui/pdf-viewer-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Custom event declaration for TypeScript
 declare global {
@@ -47,6 +48,7 @@ interface UserBasic {
 }
 
 interface Participant {
+  id: number;
   conversationId: number;
   userId: number;
   joinedAt: string;
@@ -82,6 +84,8 @@ interface Conversation {
   displayName?: string;
   // For unread message count
   unreadCount?: number;
+  // Group image URL
+  imageUrl?: string | null;
 }
 
 function formatMessageDate(dateString: string) {
@@ -487,6 +491,39 @@ const MessageView = ({
     }
   };
   
+  // Leave conversation mutation
+  const leaveConversationMutation = useMutation({
+    mutationFn: async (conversationId: number) => {
+      const response = await apiRequest(
+        "POST",
+        `/api/conversations/${conversationId}/leave`,
+        {}
+      );
+      
+      if (response.status === 204) {
+        return {};
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      
+      toast({
+        title: "Konversation lämnad",
+        description: "Du har lämnat gruppchatten",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Fel vid lämnande av chatten",
+        description: "Det gick inte att lämna gruppchatten",
+        variant: "destructive"
+      });
+      console.error("Failed to leave conversation:", error);
+    }
+  });
+  
   // Helper to scroll to bottom with a specified delay to ensure DOM update
   const scrollToBottom = (delay = 50) => {
     setTimeout(() => {
@@ -821,6 +858,18 @@ const MessageView = ({
                 )}
               </>
             )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => {
+                if (window.confirm(`Är du säker på att du vill lämna den här konversationen? Den kommer att tas bort från din lista.`)) {
+                  leaveConversationMutation.mutate(conversation.id);
+                }
+              }}
+              className="text-destructive"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Lämna konversation
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuCheckboxItem checked={false}>
               Stäng av aviseringar
