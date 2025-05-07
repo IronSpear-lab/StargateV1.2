@@ -376,11 +376,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Project-relaterade rutterna är redan implementerade ovan med direkta Drizzle ORM queries
 
   app.get(`${apiPrefix}/projects/:id`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
     try {
-      const project = await storage.getProject(parseInt(req.params.id));
+      const projectId = parseInt(req.params.id);
+      
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: 'Invalid project ID' });
+      }
+
+      // Kontrollera att användaren har tillgång till projektet
+      const userProject = await db.select()
+        .from(userProjects)
+        .where(and(
+          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.projectId, projectId)
+        ))
+        .limit(1);
+      
+      if (userProject.length === 0) {
+        return res.status(403).json({ error: 'You do not have access to this project' });
+      }
+      
+      const project = await storage.getProject(projectId);
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
+      
       res.json(project);
     } catch (error) {
       console.error("Error fetching project:", error);
@@ -390,11 +414,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Folders API
   app.get(`${apiPrefix}/folders`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
     try {
       const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
       
       if (!projectId) {
         return res.status(400).json({ error: "Project ID is required" });
+      }
+
+      // Kontrollera att användaren har tillgång till projektet
+      const userProject = await db.select()
+        .from(userProjects)
+        .where(and(
+          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.projectId, projectId)
+        ))
+        .limit(1);
+      
+      if (userProject.length === 0) {
+        return res.status(403).json({ error: 'You do not have access to this project' });
       }
       
       const folderList = await storage.getFolders(projectId);
