@@ -55,6 +55,7 @@ export interface PDFVersion {
 export interface PDFAnnotation {
   id?: number;
   pdfVersionId: number;
+  projectId?: number; // Lägg till project ID
   rect: {
     x: number;
     y: number;
@@ -68,6 +69,7 @@ export interface PDFAnnotation {
   createdAt?: string;
   createdBy?: string;
   createdById?: number;
+  assignedTo?: string; // Lägg till tilldelad användare
 }
 
 // Hämta alla versioner för en PDF-fil

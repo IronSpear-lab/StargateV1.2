@@ -113,6 +113,7 @@ export default function EnhancedPDFViewer({
   onClose
 }: EnhancedPDFViewerProps) {
   const { user } = useAuth();
+  const { projectMembers, currentProject } = useProject();
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1);
@@ -426,10 +427,11 @@ export default function EnhancedPDFViewer({
       
       try {
         const numericFileId = getConsistentFileId(fileId);
-        if (!isNaN(numericFileId)) {
+        if (!isNaN(numericFileId) && currentProject) {
           // Save to database via API
           const savedAnnotation = await savePDFAnnotation(numericFileId, {
             pdfVersionId: parseInt(activeVersionId || '0'),
+            projectId: currentProject.id, // Add project ID from context
             rect: newAnnotation.rect,
             color: newAnnotation.color,
             comment: newAnnotation.comment,
@@ -492,17 +494,19 @@ export default function EnhancedPDFViewer({
     
     try {
       const numericFileId = getConsistentFileId(fileId);
-      if (!isNaN(numericFileId) && activeAnnotation.taskId) {
+      if (!isNaN(numericFileId) && activeAnnotation.taskId && currentProject) {
         // Update in database
         await savePDFAnnotation(numericFileId, {
           id: parseInt(activeAnnotation.taskId),
           pdfVersionId: parseInt(activeVersionId || '0'),
+          projectId: currentProject.id, // Add project ID from context
           rect: updatedAnnotation.rect,
           color: updatedAnnotation.color,
           comment: updatedAnnotation.comment,
           status: updatedAnnotation.status,
           createdAt: updatedAnnotation.createdAt,
-          createdBy: updatedAnnotation.createdBy
+          createdBy: updatedAnnotation.createdBy,
+          assignedTo: updatedAnnotation.assignedTo
         });
       }
     } catch (error) {
@@ -538,19 +542,21 @@ export default function EnhancedPDFViewer({
     
     try {
       const numericFileId = getConsistentFileId(fileId);
-      if (!isNaN(numericFileId)) {
+      if (!isNaN(numericFileId) && currentProject) {
         const annotation = annotations.find(a => a.id === annotationId);
         if (annotation && annotation.taskId) {
           // Update in database
           await savePDFAnnotation(numericFileId, {
             id: parseInt(annotation.taskId),
             pdfVersionId: parseInt(activeVersionId || '0'),
+            projectId: currentProject.id, // Add project ID from context
             rect: annotation.rect,
             color: statusColors[newStatus],
             comment: annotation.comment,
             status: newStatus,
             createdAt: annotation.createdAt,
-            createdBy: annotation.createdBy
+            createdBy: annotation.createdBy,
+            assignedTo: annotation.assignedTo
           });
         }
       }
@@ -1244,9 +1250,15 @@ export default function EnhancedPDFViewer({
                             <SelectValue placeholder="Välj person" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="simon">Simon Lidskog</SelectItem>
-                            <SelectItem value="benoit">Benoit Nielsen</SelectItem>
-                            <SelectItem value="anna">Anna Andersson</SelectItem>
+                            {projectMembers.length > 0 ? (
+                              projectMembers.map(member => (
+                                <SelectItem key={member.id} value={member.username}>
+                                  {member.username}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="none">Inga projektmedlemmar tillgängliga</SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
