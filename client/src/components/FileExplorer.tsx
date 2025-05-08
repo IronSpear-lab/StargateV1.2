@@ -534,6 +534,8 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       console.log(`FileExplorer: Registrerar mapp "${folder.name}" med ID ${folder.id}`);
     });
     
+    console.log("Alla registrerade mappar i folderMap:", Object.keys(folderMap).join(", "));
+    
     // STEG 3: Organisera mappar i en hierarki baserat på parent-child relationer
     projectFolders.forEach((folder: FolderData) => {
       if (folder.parentId) {
@@ -556,6 +558,10 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         console.log(`FileExplorer: Rotmapp "${folder.name}" (${folder.id}) läggs i trädets rot`);
       }
     });
+    
+    // Kontrollera och logga alla mappar som lagts till i trädet
+    console.log(`FileExplorer: Efter mapporganisering finns ${tree.length} objekt i root:`, 
+      tree.map(node => `${node.type}: ${node.name} (${node.id})`).join(", "));
     
     // STEG 4: Organisera filer i respektive mapp (eller i root om de inte har någon mapp)
     projectFiles.forEach((file: FileData) => {
