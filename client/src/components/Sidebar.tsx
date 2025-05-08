@@ -1298,6 +1298,19 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                     )}
                   >
                     <div className="flex items-center">
+                      {/* Ta bort-knapp för användarskapade mappar */}
+                      {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
+                        <span 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(item.folderId!);
+                          }}
+                          className="h-4 w-4 mr-1 flex items-center justify-center text-destructive hover:text-destructive-foreground hover:bg-destructive rounded-sm cursor-pointer transition-colors"
+                          aria-label="Ta bort mapp"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </span>
+                      )}
                       <span className={cn(
                         "flex items-center justify-center mr-3",
                         item.active ? "text-primary" : "text-muted-foreground"
@@ -1323,18 +1336,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         </Badge>
                       )}
                       
-                      {/* Lägg till ta bort-knapp för mappar - endast för project_leader, admin och superuser */}
-                      {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation(); // Förhindra att mappknappen klickas
-                            handleDeleteClick(item.folderId!);
-                          }}
-                          className="mr-1 p-1 rounded-sm text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      )}
+                      {/* Borttagningsknappen har flyttats till vänster om mappikonen */}
                       
                       {/* Lägg till plustecken för mappar - endast för project_leader, admin och superuser */}
                       {item.type === "folder" && item.onAddClick && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
