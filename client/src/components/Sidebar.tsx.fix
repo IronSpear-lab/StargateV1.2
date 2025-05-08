@@ -1,0 +1,758 @@
+import { useState, useEffect, useRef } from "react";
+import { Link, useLocation } from "wouter";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  LayoutDashboard,
+  MessageSquare,
+  Briefcase,
+  User,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  CircleUser,
+  Mail,
+  Shield,
+  Box,
+  FolderClosed,
+  File,
+  Folder,
+  FolderOpen,
+  FileText,
+  Clock,
+  Users,
+  ChevronRight,
+  Plus,
+  Trash2,
+  BarChart2,
+  Home,
+  CheckSquare,
+  Columns,
+  Eye,
+  Package,
+  Hammer
+} from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { useMobile } from "@/hooks/use-mobile";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { ModeToggle } from "@/components/mode-toggle";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { useProjectContext } from "@/contexts/ProjectContext";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
+import { queryClient } from "@/lib/queryClient";
+
+interface SidebarProps {
+  className?: string;
+}
+
+type NavItemType = {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  badge?: string;
+  active?: boolean;
+  indent?: number;
+  children?: NavItemType[];
+  type?: 'folder' | 'file' | 'link' | 'section' | string; // För att kunna identifiera mappar, sektioner
+  folderId?: string; // ID för mappen (endast för visning)
+  sectionId?: string; // ID för sektioner som ska kunna öppnas/stängas
+  isOpen?: boolean; // Om en sektion är öppen eller stängd
+  onToggle?: () => void; // Funktion för att toggla öppna/stängda sektioner
+};
+
+interface NavGroupProps {
+  item: NavItemType;
+  isOpen: boolean;
+  onToggle: () => void;
+  location: string;
+}
+
+// Folder dialoger har tagits bort eftersom funktionaliteten har flyttats till FolderManagementWidget
+
+// Profile Settings Dialog Component
+function ProfileSettingsDialog({
+  isOpen,
+  onClose,
+  currentUser,
+  onSaveProfile
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  currentUser: any;
+  onSaveProfile: (formData: FormData) => void;
+}) {
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+  
+  // För nya profilfält
+  const [displayName, setDisplayName] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
+  const [phoneNumber, setPhoneNumber] = useState<string>("");
+  const [birthDate, setBirthDate] = useState<string>("");
+  const [jobTitle, setJobTitle] = useState<string>("");
+  const [department, setDepartment] = useState<string>("");
+  const [bio, setBio] = useState<string>("");
+  
+  // Aktiv flik i profilen
+  const [activeTab, setActiveTab] = useState<"personal" | "appearance" | "notifications" | "account">("personal");
+  
+  // Återställ state när dialogrutan öppnas eller användaren ändras
+  useEffect(() => {
+    if (isOpen && currentUser) {
+      // Ställ in förhandsgranskning av avatar
+      if (currentUser?.avatarUrl) {
+        setPreviewUrl(currentUser.avatarUrl);
+      } else if (currentUser?.role) {
+        setPreviewUrl(`/avatars/${currentUser.role}.svg`);
+      } else {
+        setPreviewUrl(null);
+      }
+      setSelectedImage(null);
+      
+      // Hämta sparade profiluppgifter från localStorage
+      const userPrefix = `userProfile_${currentUser.username}_`;
+      
+      setDisplayName(localStorage.getItem(`${userPrefix}displayName`) || currentUser.username || "");
+      setEmail(localStorage.getItem(`${userPrefix}email`) || "");
+      setPhoneNumber(localStorage.getItem(`${userPrefix}phoneNumber`) || "");
+      setBirthDate(localStorage.getItem(`${userPrefix}birthDate`) || "");
+      setJobTitle(localStorage.getItem(`${userPrefix}jobTitle`) || "");
+      setDepartment(localStorage.getItem(`${userPrefix}department`) || "");
+      setBio(localStorage.getItem(`${userPrefix}bio`) || "");
+    }
+  }, [isOpen, currentUser]);
+  
+  // Hantera filinladdning
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB gräns
+        toast({
+          title: "Filen är för stor",
+          description: "Vänligen välj en bild som är mindre än 5MB",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Ogiltigt filformat",
+          description: "Vänligen välj en bildfil",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setSelectedImage(file);
+      
+      // Skapa förhandsgransknings-URL
+      const reader = new FileReader();
+      reader.onload = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  const handleBrowseClick = () => {
+    fileInputRef.current?.click();
+  };
+  
+  const handleSave = () => {
+    // Kontrollera avatar
+    if (activeTab === "appearance" && !selectedImage && !previewUrl) {
+      toast({
+        title: "Ingen bild vald",
+        description: "Vänligen välj en profilbild",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Skapa FormData för att skicka till föräldrakomponenten
+    const formData = new FormData();
+    
+    // Lägg till profilbild om den finns
+    if (selectedImage) {
+      formData.append('avatar', selectedImage);
+    } else if (previewUrl && previewUrl.startsWith('/avatars/')) {
+      // Använd befintlig avatar från fördefinierade
+      formData.append('avatarPath', previewUrl);
+    } else if (previewUrl) {
+      // Använd dataBild 
+      formData.append('avatarDataUrl', previewUrl);
+    }
+    
+    // Lägg till övriga profiluppgifter
+    formData.append('displayName', displayName);
+    formData.append('email', email);
+    formData.append('phoneNumber', phoneNumber);
+    formData.append('birthDate', birthDate);
+    formData.append('jobTitle', jobTitle);
+    formData.append('department', department);
+    formData.append('bio', bio);
+    
+    // Spara all information i localStorage med användarspecifikt prefix
+    if (currentUser?.username) {
+      const userPrefix = `userProfile_${currentUser.username}_`;
+      localStorage.setItem(`${userPrefix}displayName`, displayName);
+      localStorage.setItem(`${userPrefix}email`, email);
+      localStorage.setItem(`${userPrefix}phoneNumber`, phoneNumber);
+      localStorage.setItem(`${userPrefix}birthDate`, birthDate);
+      localStorage.setItem(`${userPrefix}jobTitle`, jobTitle);
+      localStorage.setItem(`${userPrefix}department`, department);
+      localStorage.setItem(`${userPrefix}bio`, bio);
+    }
+    
+    // Skicka till parent
+    onSaveProfile(formData);
+    onClose();
+  };
+  
+  const handleSelectPredefined = (role: string) => {
+    setSelectedImage(null);
+    setPreviewUrl(`/avatars/${role}.svg`);
+  };
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="text-2xl">Profilinställningar</DialogTitle>
+          <DialogDescription>
+            Hantera din profilinformation och inställningar
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="flex flex-1 overflow-hidden gap-6 pt-6">
+          {/* Sidomeny för flikar */}
+          <div className="w-48 border-r pr-4 flex flex-col gap-2">
+            <Button 
+              variant={activeTab === "personal" ? "default" : "ghost"} 
+              className="justify-start" 
+              onClick={() => setActiveTab("personal")}
+            >
+              <CircleUser className="h-4 w-4 mr-2" />
+              Personuppgifter
+            </Button>
+            <Button 
+              variant={activeTab === "appearance" ? "default" : "ghost"} 
+              className="justify-start" 
+              onClick={() => setActiveTab("appearance")}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Utseende
+            </Button>
+            <Button 
+              variant={activeTab === "notifications" ? "default" : "ghost"} 
+              className="justify-start" 
+              onClick={() => setActiveTab("notifications")}
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              Notifikationer
+            </Button>
+            <Button 
+              variant={activeTab === "account" ? "default" : "ghost"} 
+              className="justify-start" 
+              onClick={() => setActiveTab("account")}
+            >
+              <Shield className="h-4 w-4 mr-2" />
+              Konto
+            </Button>
+          </div>
+          
+          {/* Huvudinnehåll */}
+          <div className="flex-1 overflow-y-auto pr-2">
+            {/* Personuppgifter */}
+            {activeTab === "personal" && (
+              <div className="space-y-6">
+                <div className="flex gap-4 items-center">
+                  <Avatar className="h-20 w-20">
+                    {previewUrl ? (
+                      <AvatarImage src={previewUrl} alt="Profilbild" />
+                    ) : null}
+                    <AvatarFallback className={`text-lg ${
+                      currentUser?.role === 'project_leader' ? 'bg-[#727cf5]' :
+                      currentUser?.role === 'admin' ? 'bg-[#fa5c7c]' :
+                      currentUser?.role === 'superuser' ? 'bg-[#ffc35a]' :
+                      'bg-[#0acf97]'
+                    }`}>
+                      {currentUser?.username ? currentUser.username.slice(0, 2).toUpperCase() : "??"}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  <div>
+                    <h3 className="text-lg font-semibold">{displayName || currentUser?.username || "Användare"}</h3>
+                    <p className="text-muted-foreground text-sm capitalize">{currentUser?.role || "användare"}</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="displayName">Visningsnamn</Label>
+                    <Input
+                      id="displayName"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      placeholder="Ditt namn"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="email">E-post</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="din.mail@exempel.se"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="phoneNumber">Telefonnummer</Label>
+                    <Input
+                      id="phoneNumber"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="+46 70 123 45 67"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="birthDate">Födelsedatum</Label>
+                    <Input
+                      id="birthDate"
+                      type="date"
+                      value={birthDate}
+                      onChange={(e) => setBirthDate(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="jobTitle">Jobbtitel</Label>
+                    <Input
+                      id="jobTitle"
+                      value={jobTitle}
+                      onChange={(e) => setJobTitle(e.target.value)}
+                      placeholder="Projektledare"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="department">Avdelning</Label>
+                    <Input
+                      id="department"
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                      placeholder="Teknik"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="bio">Om mig</Label>
+                    <Textarea
+                      id="bio"
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      placeholder="Kort beskrivning av dig..."
+                      className="min-h-[100px]"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Avatar och utseende */}
+            {activeTab === "appearance" && (
+              <div className="space-y-8">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Profilbild</h3>
+                  <div className="flex gap-6 items-center">
+                    <Avatar className="h-24 w-24">
+                      {previewUrl ? (
+                        <AvatarImage src={previewUrl} alt="Profilbild" />
+                      ) : null}
+                      <AvatarFallback className={`text-xl ${
+                        currentUser?.role === 'project_leader' ? 'bg-[#727cf5]' :
+                        currentUser?.role === 'admin' ? 'bg-[#fa5c7c]' :
+                        currentUser?.role === 'superuser' ? 'bg-[#ffc35a]' :
+                        'bg-[#0acf97]'
+                      }`}>
+                        {currentUser?.username ? currentUser.username.slice(0, 2).toUpperCase() : "??"}
+                      </AvatarFallback>
+                    </Avatar>
+                    
+                    <div className="space-y-2">
+                      <Button variant="outline" onClick={handleBrowseClick}>
+                        Bläddra...
+                      </Button>
+                      <input 
+                        type="file" 
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Välj en bildfil som är max 5MB stor.<br />
+                        Rekommenderad storlek: 256x256 pixlar.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6">
+                    <h4 className="text-sm font-medium mb-3">Eller välj en fördefinierad avatar</h4>
+                    <div className="flex gap-3">
+                      <button 
+                        type="button" 
+                        className={`rounded-full border-2 p-1 ${previewUrl === '/avatars/user.svg' ? 'border-primary' : 'border-transparent'}`}
+                        onClick={() => handleSelectPredefined('user')}
+                      >
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src="/avatars/user.svg" alt="Standard användare" />
+                          <AvatarFallback className="bg-[#0acf97]">ST</AvatarFallback>
+                        </Avatar>
+                      </button>
+                      <button 
+                        type="button" 
+                        className={`rounded-full border-2 p-1 ${previewUrl === '/avatars/project_leader.svg' ? 'border-primary' : 'border-transparent'}`}
+                        onClick={() => handleSelectPredefined('project_leader')}
+                      >
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src="/avatars/project_leader.svg" alt="Projektledare" />
+                          <AvatarFallback className="bg-[#727cf5]">PL</AvatarFallback>
+                        </Avatar>
+                      </button>
+                      <button 
+                        type="button" 
+                        className={`rounded-full border-2 p-1 ${previewUrl === '/avatars/admin.svg' ? 'border-primary' : 'border-transparent'}`}
+                        onClick={() => handleSelectPredefined('admin')}
+                      >
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src="/avatars/admin.svg" alt="Admin" />
+                          <AvatarFallback className="bg-[#fa5c7c]">AD</AvatarFallback>
+                        </Avatar>
+                      </button>
+                      <button 
+                        type="button" 
+                        className={`rounded-full border-2 p-1 ${previewUrl === '/avatars/superuser.svg' ? 'border-primary' : 'border-transparent'}`}
+                        onClick={() => handleSelectPredefined('superuser')}
+                      >
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src="/avatars/superuser.svg" alt="Superanvändare" />
+                          <AvatarFallback className="bg-[#ffc35a]">SU</AvatarFallback>
+                        </Avatar>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Gränssnitt</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="theme-mode">Mörkt läge</Label>
+                        <p className="text-sm text-muted-foreground">Ändra mellan ljust och mörkt tema</p>
+                      </div>
+                      <ModeToggle />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="compact-mode">Kompakt läge</Label>
+                        <p className="text-sm text-muted-foreground">Mindre padding och kompaktare gränssnitt</p>
+                      </div>
+                      <Switch 
+                        id="compact-mode" 
+                        // För att visa att det är interaktivt, men vi implementerar inte själva funktionen här
+                        checked={localStorage.getItem('uiCompactMode') === 'true'}
+                        onCheckedChange={(checked) => {
+                          localStorage.setItem('uiCompactMode', String(checked));
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Notiser */}
+            {activeTab === "notifications" && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold">Notifikationsinställningar</h3>
+                <div className="space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <Label htmlFor="email-notifications">E-postnotifikationer</Label>
+                      <p className="text-sm text-muted-foreground">Få e-post när du får viktiga uppdateringar</p>
+                    </div>
+                    <Switch 
+                      id="email-notifications" 
+                      defaultChecked={localStorage.getItem('notificationEmailEnabled') !== 'false'}
+                      onCheckedChange={(checked) => {
+                        localStorage.setItem('notificationEmailEnabled', String(checked));
+                      }}
+                    />
+                  </div>
+                  
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <Label htmlFor="comment-notifications">Kommentarnotiser</Label>
+                      <p className="text-sm text-muted-foreground">Bli notifierad när någon kommenterar på dina dokument</p>
+                    </div>
+                    <Switch 
+                      id="comment-notifications" 
+                      defaultChecked={localStorage.getItem('notificationCommentsEnabled') !== 'false'}
+                      onCheckedChange={(checked) => {
+                        localStorage.setItem('notificationCommentsEnabled', String(checked));
+                      }}
+                    />
+                  </div>
+                  
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <Label htmlFor="message-notifications">Meddelandenotiser</Label>
+                      <p className="text-sm text-muted-foreground">Bli notifierad om nya direktmeddelanden</p>
+                    </div>
+                    <Switch 
+                      id="message-notifications" 
+                      defaultChecked={localStorage.getItem('notificationMessagesEnabled') !== 'false'}
+                      onCheckedChange={(checked) => {
+                        localStorage.setItem('notificationMessagesEnabled', String(checked));
+                      }}
+                    />
+                  </div>
+                  
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <Label htmlFor="task-notifications">Uppgiftsnotiser</Label>
+                      <p className="text-sm text-muted-foreground">Få notiser om uppgiftsändringar och deadlines</p>
+                    </div>
+                    <Switch 
+                      id="task-notifications" 
+                      defaultChecked={localStorage.getItem('notificationTasksEnabled') !== 'false'}
+                      onCheckedChange={(checked) => {
+                        localStorage.setItem('notificationTasksEnabled', String(checked));
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Kontoinställningar */}
+            {activeTab === "account" && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold">Kontoinställningar</h3>
+                <div className="space-y-4">
+                  <div className="p-4 border rounded-md bg-muted/40">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Kontotyp</h4>
+                        <p className="text-sm text-muted-foreground capitalize">
+                          {currentUser?.role || "Användare"}
+                        </p>
+                      </div>
+                      <Badge>{currentUser?.isPremium ? "Premium" : "Standard"}</Badge>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="current-password">Nuvarande lösenord</Label>
+                    <Input
+                      id="current-password"
+                      type="password"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">Nytt lösenord</Label>
+                    <Input
+                      id="new-password"
+                      type="password"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Bekräfta nytt lösenord</Label>
+                    <Input
+                      id="confirm-password"
+                      type="password"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  
+                  <Button variant="outline" className="w-full" disabled>
+                    Byt lösenord
+                  </Button>
+                  
+                  <Separator />
+                  
+                  <Button variant="destructive" className="w-full" disabled>
+                    Avaktivera konto
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className="flex justify-end gap-2 pt-4">
+          <Button variant="outline" onClick={onClose}>Avbryt</Button>
+          <Button onClick={handleSave}>Spara ändringar</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Main Navigation Component
+function NavGroup({ item, isOpen, onToggle, location }: NavGroupProps) {
+  const hasChildren = item.children && item.children.length > 0;
+  
+  if (hasChildren) {
+    return (
+      <div>
+        <button
+          onClick={onToggle}
+          className={cn(
+            "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150",
+            item.active
+              ? "bg-primary/10 text-primary font-medium" 
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+        >
+          <div className="flex items-center">
+            <span className={cn(
+              "flex items-center justify-center mr-3",
+              item.active ? "text-primary" : "text-muted-foreground"
+            )}>
+              {item.icon}
+            </span>
+            <span className={cn(
+              "text-sm",
+              item.active ? "text-primary" : "text-muted-foreground"
+            )}>
+              {item.label}
+            </span>
+          </div>
+          <ChevronRight className={cn(
+            "h-4 w-4 transition-transform duration-200",
+            isOpen ? "rotate-90" : ""
+          )} />
+        </button>
+        {isOpen && (
+          <div className="ml-6 mt-1 space-y-1">
+            {item.children.map((child, index) => (
+              <Link
+                key={index}
+                href={child.href}
+                className={cn(
+                  "flex items-center justify-between px-3 py-2 rounded-md transition-colors duration-150",
+                  child.active
+                    ? "bg-primary/10 text-primary font-medium" 
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <div className="flex items-center">
+                  <span className={cn(
+                    "flex items-center justify-center mr-3",
+                    child.active ? "text-primary" : "text-muted-foreground"
+                  )}>
+                    {child.icon}
+                  </span>
+                  <span className={cn(
+                    "text-sm",
+                    child.active ? "text-primary" : "text-muted-foreground"
+                  )}>
+                    {child.label}
+                  </span>
+                </div>
+                {child.badge && (
+                  <Badge variant="outline" className={cn(
+                    "text-xs py-0.5 px-2 rounded-full",
+                    child.active 
+                      ? "bg-primary/10 text-primary border-primary/20" 
+                      : "bg-muted text-muted-foreground border-border"
+                  )}>
+                    {child.badge}
+                  </Badge>
+                )}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  } else {
+    return (
+      <Link
+        href={item.href}
+        className={cn(
+          "flex items-center justify-between px-3 py-2 rounded-md transition-colors duration-150",
+          item.active
+            ? "bg-primary/10 text-primary font-medium" 
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        )}
+      >
+        <div className="flex items-center">
+          <span className={cn(
+            "flex items-center justify-center mr-3",
+            item.active ? "text-primary" : "text-muted-foreground"
+          )}>
+            {item.icon}
+          </span>
+          <span className={cn(
+            "text-sm",
+            item.active ? "text-primary" : "text-muted-foreground"
+          )}>
+            {item.label}
+          </span>
+        </div>
+        {item.badge && (
+          <Badge variant="outline" className={cn(
+            "text-xs py-0.5 px-2 rounded-full",
+            item.active 
+              ? "bg-primary/10 text-primary border-primary/20" 
+              : "bg-muted text-muted-foreground border-border"
+          )}>
+            {item.badge}
+          </Badge>
+        )}
+      </Link>
+    );
+  }
+}
