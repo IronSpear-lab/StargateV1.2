@@ -23,25 +23,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { 
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogDescription
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+// Removing Dialog and AlertDialog imports to avoid HTML validation issues
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -734,82 +716,102 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
               {/* Endast visa dessa knappar för project_leader och admin/superuser */}
               {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
                 <>
-                  <Dialog open={createFolderDialogOpen} onOpenChange={setCreateFolderDialogOpen}>
-                    <DialogTrigger asChild>
-                      <span className="inline-flex items-center justify-center h-8 px-3 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground gap-1 cursor-pointer text-sm">
-                        <FolderPlus className="h-4 w-4" />
-                        <span className="text-xs">New Folder</span>
-                      </span>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Create New Folder</DialogTitle>
-                        <DialogDescription>
-                          Add a new folder to organize your files
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 py-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="folderName">Folder Name</Label>
-                          <Input
-                            id="folderName"
-                            placeholder="e.g. Project Documentation"
-                            value={newFolderName}
-                            onChange={(e) => setNewFolderName(e.target.value)}
-                          />
+                  {/* Folder trigger button */}
+                  <span 
+                    className="inline-flex items-center justify-center h-8 px-3 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground gap-1 cursor-pointer text-sm"
+                    onClick={() => setCreateFolderDialogOpen(true)}
+                  >
+                    <FolderPlus className="h-4 w-4" />
+                    <span className="text-xs">New Folder</span>
+                  </span>
+                  
+                  {/* Custom dialog for creating folders */}
+                  {createFolderDialogOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={() => setCreateFolderDialogOpen(false)}>
+                      <div className="bg-white rounded-lg max-w-lg w-full m-4 p-6" onClick={(e) => e.stopPropagation()}>
+                        <div className="mb-4">
+                          <h3 className="text-lg font-semibold leading-none tracking-tight">Create New Folder</h3>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Add a new folder to organize your files
+                          </p>
                         </div>
                         
-                        {/* Projektväljaren borttagen - vi använder alltid det aktiva projektet */}
-
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label htmlFor="parentFolder">Parent Folder (Optional)</Label>
+                        <div className="space-y-4 py-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="folderName">Folder Name</Label>
+                            <Input
+                              id="folderName"
+                              placeholder="e.g. Project Documentation"
+                              value={newFolderName}
+                              onChange={(e) => setNewFolderName(e.target.value)}
+                            />
                           </div>
-                          <Select
-                            value={uploadState.selectedFolder || "root"}
-                            onValueChange={(value) => setUploadState(prev => ({ ...prev, selectedFolder: value === "root" ? null : value }))}
+                          
+                          {/* Projektväljaren borttagen - vi använder alltid det aktiva projektet */}
+
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label htmlFor="parentFolder">Parent Folder (Optional)</Label>
+                            </div>
+                            <Select
+                              value={uploadState.selectedFolder || "root"}
+                              onValueChange={(value) => setUploadState(prev => ({ ...prev, selectedFolder: value === "root" ? null : value }))}
+                            >
+                              <SelectTrigger id="parentFolder">
+                                <SelectValue placeholder="Root folder" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {getFolderOptions().map(option => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4">
+                          <span 
+                            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 cursor-pointer"
+                            onClick={() => setCreateFolderDialogOpen(false)}
                           >
-                            <SelectTrigger id="parentFolder">
-                              <SelectValue placeholder="Root folder" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {getFolderOptions().map(option => (
-                                <SelectItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            Cancel
+                          </span>
+                          <span 
+                            className={`inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 cursor-pointer ${!newFolderName || !currentProject?.id ? 'opacity-50 pointer-events-none' : ''}`}
+                            onClick={() => {
+                              if (newFolderName && currentProject?.id) {
+                                handleCreateFolder();
+                              }
+                            }}
+                          >
+                            Create Folder
+                          </span>
                         </div>
                       </div>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => setCreateFolderDialogOpen(false)}>
-                          Cancel
-                        </Button>
-                        <Button 
-                          onClick={handleCreateFolder}
-                          disabled={!newFolderName || !currentProject?.id}
-                        >
-                          Create Folder
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                    </div>
+                  )}
                   
-                  <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
-                    <DialogTrigger asChild>
-                      <span className="inline-flex items-center justify-center h-8 px-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 gap-1 cursor-pointer text-sm">
-                        <Upload className="h-4 w-4" />
-                        <span className="text-xs">Upload</span>
-                      </span>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Upload File</DialogTitle>
-                        <DialogDescription>
-                          Upload a file to your project. Supported formats include PDF, images, and documents.
-                        </DialogDescription>
-                      </DialogHeader>
+                  {/* Custom upload trigger */}
+                  <span 
+                    className="inline-flex items-center justify-center h-8 px-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 gap-1 cursor-pointer text-sm"
+                    onClick={() => setUploadDialogOpen(true)}
+                  >
+                    <Upload className="h-4 w-4" />
+                    <span className="text-xs">Upload</span>
+                  </span>
+                  
+                  {/* Custom upload dialog */}
+                  {uploadDialogOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={() => !uploadState.isUploading && setUploadDialogOpen(false)}>
+                      <div className="bg-white rounded-lg max-w-lg w-full m-4 p-6" onClick={(e) => e.stopPropagation()}>
+                        <div className="mb-4">
+                          <h3 className="text-lg font-semibold leading-none tracking-tight">Upload File</h3>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Upload a file to your project. Supported formats include PDF, images, and documents.
+                          </p>
+                        </div>
                       <div className="space-y-4 py-2">
                         <div 
                           className={cn(
@@ -907,34 +909,37 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                           </div>
                         )}
                       </div>
-                      <DialogFooter>
-                        <Button
-                          variant="outline"
-                          onClick={() => setUploadDialogOpen(false)}
-                          disabled={uploadState.isUploading}
+                      <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4">
+                        <span 
+                          className={`inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 cursor-pointer ${uploadState.isUploading ? 'opacity-50 pointer-events-none' : ''}`}
+                          onClick={() => !uploadState.isUploading && setUploadDialogOpen(false)}
                         >
                           Cancel
-                        </Button>
-                        <Button
-                          onClick={handleFileUpload}
-                          disabled={!uploadState.file || uploadState.isUploading || (uploadState.file && uploadState.file.size > 10 * 1024 * 1024)}
-                          className="gap-1"
+                        </span>
+                        <span 
+                          className={`inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 cursor-pointer ${!uploadState.file || uploadState.isUploading || (uploadState.file && uploadState.file.size > 10 * 1024 * 1024) ? 'opacity-50 pointer-events-none' : ''}`}
+                          onClick={() => {
+                            if (uploadState.file && !uploadState.isUploading && !(uploadState.file.size > 10 * 1024 * 1024)) {
+                              handleFileUpload();
+                            }
+                          }}
                         >
                           {uploadState.isUploading ? (
                             <>
                               <Loader2 className="h-4 w-4 animate-spin" />
-                              Uploading...
+                              <span>Uploading...</span>
                             </>
                           ) : (
                             <>
                               <Upload className="h-4 w-4" />
-                              Upload
+                              <span>Upload</span>
                             </>
                           )}
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  )}
                 </>
               )}
             </div>
@@ -998,10 +1003,15 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         </CardContent>
       </Card>
       
-      {/* Custom dialog implementation utan att använda någon Shadcn UI-komponent */}
+      {/* ULTRA-simplified dialog implementation that doesn't use ANY button elements */}
       {deleteFolderDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-          <div className="bg-white rounded-lg max-w-lg w-full m-4 p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={() => {
+          // Allows clicking outside to close the dialog
+          setDeleteFolderDialogOpen(false);
+          setFolderToDelete(null);
+        }}>
+          {/* stopPropagation prevents the outer div's onClick from triggering when clicking inside */}
+          <div className="bg-white rounded-lg max-w-lg w-full m-4 p-6" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4">
               <h3 className="text-lg font-semibold leading-none tracking-tight">Radera mapp</h3>
               <p className="text-sm text-muted-foreground mt-1">
@@ -1015,7 +1025,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
             </div>
             
             <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
-              <div 
+              <span 
                 className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 cursor-pointer"
                 onClick={() => {
                   console.log("Avbryter borttagning av mapp");
@@ -1024,27 +1034,57 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                 }}
               >
                 Avbryt
-              </div>
-              <div 
+              </span>
+              <span
                 className={`inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2 cursor-pointer ${deleteFolderMutation.isPending ? 'opacity-50 pointer-events-none' : ''}`}
                 onClick={() => {
                   if (folderToDelete && !deleteFolderMutation.isPending) {
                     console.log(`Executing delete for folder ID: ${folderToDelete.id}`);
-                    deleteFolderMutation.mutate(folderToDelete.id);
+                    // Direct fetch call without using mutation to avoid any potential nesting issues
+                    fetch(`/api/folders/${folderToDelete.id}`, {
+                      method: 'DELETE',
+                      credentials: 'include'
+                    }).then(res => {
+                      if (res.ok) {
+                        console.log(`Successfully deleted folder ID: ${folderToDelete.id}`);
+                        toast({
+                          title: "Mapp borttagen",
+                          description: "Mappen och dess innehåll har raderats.",
+                        });
+                        
+                        // Manually refetch data
+                        if (currentProject?.id) {
+                          Promise.all([
+                            fetch(`/api/folders?projectId=${currentProject.id}`, {credentials: 'include'}).then(r => r.json()),
+                            fetch(`/api/files?projectId=${currentProject.id}`, {credentials: 'include'}).then(r => r.json())
+                          ]).then(([folders, files]) => {
+                            queryClient.setQueryData(['/api/folders', currentProject.id], folders);
+                            queryClient.setQueryData(['/api/files', currentProject.id], files);
+                          });
+                        }
+                      } else {
+                        console.error(`Failed to delete folder ID: ${folderToDelete.id}`);
+                        toast({
+                          title: "Kunde inte radera mapp",
+                          description: "Ett fel uppstod vid borttagning av mappen",
+                          variant: "destructive",
+                        });
+                      }
+                    }).catch(error => {
+                      console.error(`Error deleting folder: ${error}`);
+                      toast({
+                        title: "Kunde inte radera mapp",
+                        description: "Ett fel uppstod vid borttagning av mappen",
+                        variant: "destructive",
+                      });
+                    });
                     setDeleteFolderDialogOpen(false);
                     setFolderToDelete(null);
                   }
                 }}
               >
-                {deleteFolderMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    <span>Raderar...</span>
-                  </>
-                ) : (
-                  <span>Radera mapp</span>
-                )}
-              </div>
+                Radera mapp
+              </span>
             </div>
           </div>
         </div>
