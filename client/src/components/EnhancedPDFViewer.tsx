@@ -620,12 +620,16 @@ export default function EnhancedPDFViewer({
       const numericFileId = getConsistentFileId(fileId);
       if (!isNaN(numericFileId) && currentProject) {
         const annotation = annotations.find(a => a.id === annotationId);
-        if (annotation && annotation.taskId) {
+        if (annotation) {
+          // Kontrollera om ID är numeriskt (från databasen) eller temporärt
+          const isNumericId = !isNaN(parseInt(annotation.id));
+          const idToUse = isNumericId ? parseInt(annotation.id) : undefined;
+          
           // Update in database
-          await savePDFAnnotation(numericFileId, {
-            id: parseInt(annotation.taskId),
+          const savedAnnotation = await savePDFAnnotation(numericFileId, {
+            id: idToUse, // Undefined för nya kommentarer, ID för existerande
             pdfVersionId: parseInt(activeVersionId || '0'),
-            projectId: currentProject.id, // Add project ID from context
+            projectId: currentProject.id,
             rect: annotation.rect,
             color: statusColors[newStatus],
             comment: annotation.comment,
@@ -634,6 +638,25 @@ export default function EnhancedPDFViewer({
             createdBy: annotation.createdBy,
             assignedTo: annotation.assignedTo
           });
+          
+          // Om vi fick ett svar från servern med ett ID, uppdatera id i frontend
+          if (savedAnnotation && savedAnnotation.id && !isNumericId) {
+            const newUpdatedAnnotations = [...updatedAnnotations];
+            const index = newUpdatedAnnotations.findIndex(a => a.id === annotationId);
+            if (index !== -1) {
+              newUpdatedAnnotations[index] = {
+                ...newUpdatedAnnotations[index],
+                id: savedAnnotation.id.toString(),
+                taskId: savedAnnotation.id.toString()
+              };
+              setAnnotations(newUpdatedAnnotations);
+              
+              // Uppdatera aktiv annotation om det behövs
+              if (activeAnnotation && activeAnnotation.id === annotationId) {
+                setActiveAnnotation(newUpdatedAnnotations[index]);
+              }
+            }
+          }
         }
       }
     } catch (error) {
