@@ -81,9 +81,8 @@ type NavItemType = {
   active?: boolean;
   indent?: number;
   children?: NavItemType[];
-  type?: 'folder' | 'file' | 'link' | 'section' | string; // För att kunna identifiera mappar, sektioner och visa plustecken
-  onAddClick?: () => void;
-  folderId?: string; // ID för mappen, används för borttagning
+  type?: 'folder' | 'file' | 'link' | 'section' | string; // För att kunna identifiera mappar, sektioner
+  folderId?: string; // ID för mappen (endast för visning)
   sectionId?: string; // ID för sektioner som ska kunna öppnas/stängas
   isOpen?: boolean; // Om en sektion är öppen eller stängd
   onToggle?: () => void; // Funktion för att toggla öppna/stängda sektioner
@@ -96,78 +95,7 @@ interface NavGroupProps {
   location: string;
 }
 
-// Folder creation dialog component
-function AddFolderDialog({ 
-  isOpen, 
-  onClose, 
-  parentFolderName, 
-  onCreateFolder 
-}: { 
-  isOpen: boolean; 
-  onClose: () => void; 
-  parentFolderName: string;
-  onCreateFolder: (folderName: string, parentName: string) => void;
-}) {
-  const [folderName, setFolderName] = useState("");
-  const { toast } = useToast();
-  
-  const handleSubmit = () => {
-    if (!folderName.trim()) {
-      toast({
-        title: "Fel",
-        description: "Mappnamn kan inte vara tomt",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    onCreateFolder(folderName, parentFolderName);
-    setFolderName(""); // Återställ formuläret
-    onClose();
-  };
-  
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Skapa ny mapp</DialogTitle>
-          <DialogDescription>
-            Skapa en ny mapp under "{parentFolderName}"
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="folderName">Mappnamn</Label>
-            <Input
-              id="folderName"
-              value={folderName}
-              onChange={(e) => setFolderName(e.target.value)}
-              placeholder="Ange mappnamn"
-              autoFocus
-            />
-          </div>
-        </div>
-        
-        <DialogFooter className="sm:justify-end">
-          <Button 
-            type="button" 
-            variant="secondary" 
-            onClick={onClose}
-          >
-            Avbryt
-          </Button>
-          <Button 
-            type="submit" 
-            onClick={handleSubmit}
-          >
-            Skapa mapp
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
+// Folder dialoger har tagits bort eftersom funktionaliteten har flyttats till FolderManagementWidget
 
 // Profile Settings Dialog Component
 function ProfileSettingsDialog({
@@ -909,7 +837,6 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               indent: (item.indent || 0) + 1,
               icon: <FolderClosed className={`w-4 h-4`} />,
               type: "folder",
-              onAddClick: () => handleAddFolder(newFolder.name),
               folderId: newFolder.id, // Lägg till ID för identifiering och borttagning
               children: []
             }
