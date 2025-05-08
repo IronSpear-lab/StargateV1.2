@@ -119,14 +119,21 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     isLoading: isLoadingFiles, 
     error: filesError 
   } = useQuery({
-    queryKey: ['/api/files', currentProject?.id, 'all=true'],
+    queryKey: ['/api/files', currentProject?.id, selectedFolderId],
     queryFn: async () => {
       if (!currentProject?.id) {
         // Om inget projekt är valt, returnera en tom array
         return [];
       }
       
-      const res = await fetch(`/api/files?projectId=${currentProject.id}&all=true`, {
+      // Ändrat här: Ta bort all=true och använd selectedFolderId om det finns
+      // Detta gör att vi endast hämtar filer som tillhör den valda mappen
+      // eller rotfiler om ingen mapp är vald
+      const url = `/api/files?projectId=${currentProject.id}${selectedFolderId ? `&folderId=${selectedFolderId}` : ''}`;
+      
+      console.log("Hämtar filer med URL:", url);
+      
+      const res = await fetch(url, {
         credentials: 'include'  // Säkerställ att cookies skickas med för autentisering
       });
       if (!res.ok) {
@@ -277,9 +284,9 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       setUploadDialogOpen(false);
       setUploadState(prev => ({ ...prev, file: null, uploadProgress: 0, isUploading: false }));
       
-      // VIKTIGT: Invalidera frågan med all=true parameter för att säkerställa att alla filer hämtas på nytt
-      console.log("✅ Fil uppladdad - Uppdaterar filträdet med all=true");
-      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id, 'all=true'] });
+      // VIKTIGT: Invalidera frågan med rätt nyckel som matchar den nya implementationen
+      console.log("✅ Fil uppladdad - Uppdaterar filträdet med rätt mappfiltrering");
+      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id, selectedFolderId] });
     },
     onError: (error) => {
       toast({
