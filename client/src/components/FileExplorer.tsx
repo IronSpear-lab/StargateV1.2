@@ -696,17 +696,20 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-[160px]">
                     {node.type === 'file' && isPdf(node.name) && (
-                      <DropdownMenuItem onClick={() => handleFileClick(node)}>
+                      <div 
+                        className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent"
+                        onClick={() => handleFileClick(node)}
+                      >
                         Open
-                      </DropdownMenuItem>
+                      </div>
                     )}
-                    <DropdownMenuItem>
+                    <div className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent">
                       {node.type === 'folder' ? 'Share folder' : 'Share file'}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <MessageSquare className="mr-2 h-4 w-4" />
-                      Add comment
-                    </DropdownMenuItem>
+                    </div>
+                    <div className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent">
+                      <MessageSquare className="h-4 w-4 shrink-0" />
+                      <span>Add comment</span>
+                    </div>
                     <DropdownMenuSeparator />
                     {/* Bara visa radera-knapp för mappar om användaren har rätt behörighet */}
                     {(node.type === 'folder' && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser")) && (
