@@ -177,21 +177,32 @@ export default function EnhancedPDFViewer({
     async function loadData() {
       try {
         const numericFileId = getConsistentFileId(fileId);
+        console.log(`[${new Date().toISOString()}] Laddar PDF-data för fileId: ${fileId} (numeriskt: ${numericFileId})`);
         
         if (!isNaN(numericFileId) && (useDatabase || projectId)) {
           // Load versions
           const versions = await getPDFVersions(numericFileId);
+          console.log(`PDF-versioner från API (innehåller metadata):`, JSON.stringify(versions, null, 2));
+          
           if (versions && versions.length > 0) {
             const uiVersions: FileVersion[] = versions.map(version => ({
               id: version.id.toString(),
               versionNumber: version.versionNumber,
               filename: version.metadata?.fileName || filename,
-              fileUrl: `/api/pdf/versions/${version.id}/content`,
+              // Använd alltid direkta API-länkar istället för blob URLs för bättre stabilitet
+              fileUrl: `/api/pdf/versions/${version.id}/content?t=${Date.now()}`,
               description: version.description,
               uploaded: version.uploadedAt || new Date().toISOString(), // Säkerställ att uploaded alltid har ett värde
               uploadedBy: version.uploadedBy || user?.username || 'Unknown',
               commentCount: 0
             }));
+            
+            console.log(`Bearbetade UI-versioner:`, JSON.stringify(uiVersions.map(v => ({
+              id: v.id,
+              versionNumber: v.versionNumber,
+              filename: v.filename,
+              fileUrl: v.fileUrl
+            })), null, 2));
             
             setFileVersions(uiVersions);
             
@@ -200,12 +211,20 @@ export default function EnhancedPDFViewer({
               (prev.versionNumber > current.versionNumber) ? prev : current
             );
             
+            console.log(`Använder senaste versionen: ${latestVersion.id} (nummer: ${latestVersion.versionNumber})`);
+            
             setActiveVersionId(latestVersion.id);
             setPdfUrl(latestVersion.fileUrl);
+            
+            // Spara versionsinformation i localStorage för om servern skulle starta om
+            localStorage.setItem(`pdf_versions_${fileId.toString()}`, JSON.stringify(uiVersions));
+            console.log(`Sparade ${uiVersions.length} versioner till localStorage (säkerhetskopia)`);
             
             // Load annotations - filter by project if available
             const projectIdToUse = projectId || (currentProject ? currentProject.id : undefined);
             const annots = await getPDFAnnotations(numericFileId, projectIdToUse);
+            console.log(`PDF-annotationer från API:`, JSON.stringify(annots, null, 2));
+            
             if (annots && annots.length > 0) {
               const uiAnnotations: PDFAnnotation[] = annots.map(anno => ({
                 id: anno.id?.toString() || `anno_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -225,17 +244,24 @@ export default function EnhancedPDFViewer({
                     anno.createdAt : new Date().toISOString()) : 
                   new Date().toISOString(),
                 assignedTo: anno.assignedTo,
-                taskId: anno.id?.toString()
+                taskId: anno.id?.toString(),
+                pdfVersionId: anno.pdfVersionId // Viktig för korrekt hantering av PDF-versioner
               }));
               
               setAnnotations(uiAnnotations);
+              
+              // Spara annotationer i localStorage för om servern skulle starta om
+              localStorage.setItem(`pdf_annotations_${fileId.toString()}`, JSON.stringify(uiAnnotations));
+              console.log(`Sparade ${uiAnnotations.length} annotationer till localStorage (säkerhetskopia)`);
             } else {
               loadFromLocalStorage();
             }
           } else {
+            console.log(`Inga versioner hittades för fileId ${numericFileId}, använder localStorage`);
             loadFromLocalStorage();
           }
         } else {
+          console.log(`FileId ${fileId} är inte ett giltigt id eller database/projectId saknas, använder localStorage`);
           loadFromLocalStorage();
         }
       } catch (error) {
@@ -448,19 +474,40 @@ export default function EnhancedPDFViewer({
     if (error.message.includes('signal is aborted') || 
         error.message.includes('aborted') || 
         error.message.includes('network error') ||
-        error.message.includes('failed to fetch')) {
+        error.message.includes('failed to fetch') ||
+        error.message.includes('Unexpected server response')) {
       
       console.log('Avbrutet laddningsförsök, försöker med alternativ metod...');
       
       // Konfigurera om PDF.js med alternativ arbetarprocess
       configureAlternativePdfLoading();
       
-      // Lägg till en query parameter för att undvika cache
-      if (pdfUrl) {
+      // Konvertera från Blob URL till en direkt API-url om vi använder en blob
+      if (pdfUrl && pdfUrl.startsWith('blob:')) {
+        // Försök hämta den aktiva versionen och använda dess direkta filsökväg istället
+        if (activeVersionId) {
+          const directUrl = `/api/pdf/versions/${activeVersionId}/content?nocache=${Date.now()}`;
+          console.log('Byter från blob URL till direkt API-länk:', directUrl);
+          
+          setTimeout(() => {
+            setPdfUrl(directUrl);
+          }, 500);
+        } 
+        // Om vi inte har ett versionId, försök använda fileId istället
+        else if (fileId) {
+          const directUrl = `/api/files/${fileId}/content?nocache=${Date.now()}`;
+          console.log('Byter från blob URL till direkt fil-API-länk:', directUrl);
+          
+          setTimeout(() => {
+            setPdfUrl(directUrl);
+          }, 500);
+        }
+      } 
+      // Annars lägg bara till en cache-busting parameter
+      else if (pdfUrl) {
         const newUrl = `${pdfUrl}${pdfUrl.includes('?') ? '&' : '?'}nocache=${Date.now()}`;
-        console.log('Provar att ladda PDF med ny URL:', newUrl);
+        console.log('Provar att ladda PDF med ny URL med cache-busting:', newUrl);
         
-        // Kort timeout för att säkerställa att arbetarprocessen har hunnit laddats om
         setTimeout(() => {
           setPdfUrl(newUrl);
         }, 500);
