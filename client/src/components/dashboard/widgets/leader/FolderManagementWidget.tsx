@@ -1,0 +1,406 @@
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { 
+  FolderPlus,
+  Folder,
+  FolderInput,
+  Trash,
+  ChevronRight,
+  ChevronDown,
+  RefreshCw
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useProject } from "@/contexts/ProjectContext";
+import { cn } from "@/lib/utils";
+
+interface FolderData {
+  id: number | string;
+  name: string;
+  projectId: number | string;
+  parentId?: number | string | null;
+  children?: FolderData[];
+}
+
+interface FolderNode {
+  id: string;
+  name: string;
+  original: FolderData;
+}
+
+interface FolderFormData {
+  name: string;
+  projectId: number;
+  parentId: number | null;
+}
+
+export function FolderManagementWidget() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { currentProject } = useProject();
+  const [newFolderName, setNewFolderName] = useState("");
+  const [selectedParentFolder, setSelectedParentFolder] = useState<string | null>(null);
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
+
+  // Fetch folders
+  const { 
+    data: foldersData, 
+    isLoading: isLoadingFolders,
+    refetch: refetchFolders
+  } = useQuery({
+    queryKey: ['/api/folders', currentProject?.id],
+    queryFn: async () => {
+      if (!currentProject?.id) {
+        return [];
+      }
+      
+      try {
+        const res = await fetch(`/api/folders?projectId=${currentProject.id}`, {
+          credentials: 'include'
+        });
+        
+        if (!res.ok) {
+          throw new Error(`Failed to fetch folders: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        return data;
+      } catch (error) {
+        console.error("Error fetching folders:", error);
+        return [];
+      }
+    },
+    enabled: !!currentProject?.id
+  });
+
+  // Create folder mutation
+  const createFolderMutation = useMutation({
+    mutationFn: async (folderData: FolderFormData) => {
+      if (!folderData.projectId) {
+        throw new Error("Ogiltigt projekt-ID");
+      }
+      
+      const res = await fetch('/api/folders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(folderData),
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        throw new Error(`Fel vid skapande av mapp: ${res.status}`);
+      }
+      
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Mapp skapad",
+        description: "Mappen har skapats",
+      });
+      setNewFolderName("");
+      setSelectedParentFolder(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/folders', currentProject?.id] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Kunde inte skapa mapp",
+        description: error instanceof Error ? error.message : 'Ett okänt fel inträffade',
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Delete folder mutation
+  const deleteFolderMutation = useMutation({
+    mutationFn: async (folderId: number) => {
+      const res = await fetch(`/api/folders/${folderId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        throw new Error(`Kunde inte radera mappen: ${res.status}`);
+      }
+      
+      return true;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Mapp borttagen",
+        description: "Mappen och dess innehåll har raderats",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/folders', currentProject?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Kunde inte radera mapp",
+        description: error instanceof Error ? error.message : 'Ett okänt fel inträffade',
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Handle folder deletion
+  const handleDeleteFolder = (folder: FolderData) => {
+    if (window.confirm(`Är du säker på att du vill radera mappen "${folder.name}" och allt dess innehåll? Denna åtgärd kan inte ångras.`)) {
+      deleteFolderMutation.mutate(Number(folder.id));
+    }
+  };
+
+  // Handle folder creation
+  const handleCreateFolder = () => {
+    if (!newFolderName) {
+      toast({
+        title: "Felaktigt mappnamn",
+        description: "Du måste ange ett namn för mappen",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!currentProject?.id) {
+      toast({
+        title: "Inget projekt valt",
+        description: "Du måste välja ett projekt först",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const folderData: FolderFormData = {
+      name: newFolderName,
+      projectId: Number(currentProject.id),
+      parentId: selectedParentFolder ? Number(selectedParentFolder) : null
+    };
+    
+    createFolderMutation.mutate(folderData);
+  };
+
+  // Build folder tree with support for unlimited nesting
+  const buildFolderTree = () => {
+    if (!foldersData || !Array.isArray(foldersData)) return [];
+    
+    // Filter folders for current project
+    const filteredFolders = foldersData.filter((folder: FolderData) => 
+      folder.projectId === currentProject?.id
+    );
+    
+    const folderMap: Record<string, FolderNode> = {};
+    const tree: FolderNode[] = [];
+    
+    // First pass: Create all folder nodes without children
+    filteredFolders.forEach((folder: FolderData) => {
+      folderMap[folder.id.toString()] = {
+        id: folder.id.toString(),
+        name: folder.name,
+        original: folder
+      };
+    });
+    
+    // Second pass: Build the tree structure
+    filteredFolders.forEach((folder: FolderData) => {
+      if (folder.parentId) {
+        const parentId = folder.parentId.toString();
+        if (folderMap[parentId]) {
+          // If parent exists in our map, add to parent's children
+          if (!folderMap[parentId].children) {
+            folderMap[parentId].children = [];
+          }
+          folderMap[parentId].children?.push(folderMap[folder.id.toString()]);
+        } else {
+          // If parent doesn't exist, add to the root level
+          tree.push(folderMap[folder.id.toString()]);
+        }
+      } else {
+        // Folder has no parent, add to the root level
+        tree.push(folderMap[folder.id.toString()]);
+      }
+    });
+    
+    return tree;
+  };
+
+  // Get folder options for select field
+  const getFolderOptions = () => {
+    const options: {value: string, label: string}[] = [{ value: "root", label: "Rotkatalog" }];
+    
+    if (!foldersData || !Array.isArray(foldersData)) return options;
+    
+    // Filter folders for current project
+    const filteredFolders = foldersData.filter((folder: FolderData) => 
+      folder.projectId === currentProject?.id
+    );
+    
+    const addFoldersToOptions = (folders: FolderData[], depth = 0) => {
+      folders.forEach((folder: FolderData) => {
+        const prefix = depth > 0 ? "└─ ".padStart(depth * 2 + 2, "  ") : "";
+        options.push({
+          value: folder.id.toString(),
+          label: `${prefix}${folder.name}`
+        });
+        
+        if (folder.children && folder.children.length > 0) {
+          addFoldersToOptions(folder.children, depth + 1);
+        }
+      });
+    };
+    
+    // Use filtered folders without parents to build the tree
+    addFoldersToOptions(filteredFolders.filter((f: FolderData) => !f.parentId));
+    
+    return options;
+  };
+
+  // Handle folder toggle
+  const handleFolderToggle = (folderId: string) => {
+    setExpandedFolders(prev => ({
+      ...prev,
+      [folderId]: !prev[folderId]
+    }));
+  };
+
+  // Render folder tree
+  const renderFolderTree = (nodes: any[], level = 0) => {
+    return (
+      <ul className={cn(
+        "space-y-1",
+        level > 0 ? "ml-4 pl-2 border-l border-neutral-200" : ""
+      )}>
+        {nodes.map(node => (
+          <li key={node.id} className="relative py-0.5">
+            <div className="flex items-center group">
+              <button
+                type="button"
+                onClick={() => handleFolderToggle(node.id)}
+                className="mr-1 p-1 rounded-md hover:bg-neutral-100"
+              >
+                {expandedFolders[node.id] ? (
+                  <ChevronDown className="h-3.5 w-3.5 text-neutral-500" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5 text-neutral-500" />
+                )}
+              </button>
+              
+              <Folder className="h-4 w-4 text-yellow-500 mr-2" />
+              
+              <span className="text-sm font-medium text-neutral-700 flex-1">
+                {node.name}
+              </span>
+              
+              <button
+                type="button"
+                onClick={() => handleDeleteFolder(node.original)}
+                className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-red-100 hover:text-red-600"
+              >
+                <Trash className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            
+            {node.children && expandedFolders[node.id] && (
+              renderFolderTree(node.children, level + 1)
+            )}
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+  const folderTree = buildFolderTree();
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base font-medium">Mapphantering</CardTitle>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => refetchFolders()} 
+            title="Uppdatera mapplistan"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="space-y-4">
+          {/* Create folder form */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium">Skapa ny mapp</h3>
+            <div className="grid gap-2">
+              <div className="grid gap-1">
+                <Label htmlFor="folderName">Mappnamn</Label>
+                <Input
+                  id="folderName"
+                  placeholder="t.ex. Projektdokumentation"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                />
+              </div>
+              
+              <div className="grid gap-1">
+                <Label htmlFor="parentFolder">Föräldermapp (Valfritt)</Label>
+                <Select
+                  value={selectedParentFolder || "root"}
+                  onValueChange={(value) => setSelectedParentFolder(value === "root" ? null : value)}
+                >
+                  <SelectTrigger id="parentFolder">
+                    <SelectValue placeholder="Välj föräldermapp" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getFolderOptions().map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <Button 
+                onClick={handleCreateFolder} 
+                disabled={!newFolderName || !currentProject?.id || createFolderMutation.isPending}
+                className="mt-1"
+              >
+                <FolderPlus className="h-4 w-4 mr-2" />
+                Skapa mapp
+              </Button>
+            </div>
+          </div>
+          
+          <div className="border-t border-neutral-200 pt-4">
+            <h3 className="text-sm font-medium mb-3">Projektmappar</h3>
+            
+            {isLoadingFolders ? (
+              <div className="py-4 text-center text-sm text-neutral-500">
+                Laddar mappstruktur...
+              </div>
+            ) : folderTree.length === 0 ? (
+              <div className="py-4 text-center text-sm text-neutral-500">
+                Inga mappar att visa. Skapa en mapp för att komma igång.
+              </div>
+            ) : (
+              <div className="bg-white border border-neutral-100 rounded-md py-2 px-1">
+                {renderFolderTree(folderTree)}
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
