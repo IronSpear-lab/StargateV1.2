@@ -283,13 +283,37 @@ class DatabaseStorage implements IStorage {
   async getFolders(projectId: number): Promise<Folder[]> {
     console.log(`storage.getFolders: Hämtar mappar för projekt ${projectId}`);
     
-    const folderList = await db
-      .select()
-      .from(folders)
-      .where(eq(folders.projectId, projectId));
+    if (!projectId || isNaN(projectId)) {
+      console.error('storage.getFolders: Ogiltigt projektID:', projectId);
+      return [];
+    }
     
-    console.log(`storage.getFolders: Hittade ${folderList.length} mappar för projekt ${projectId}`);
-    return folderList;
+    try {
+      const folderList = await db
+        .select()
+        .from(folders)
+        .where(eq(folders.projectId, projectId));
+      
+      console.log(`storage.getFolders: Hittade ${folderList.length} mappar för projekt ${projectId}`);
+      
+      // Dubbelkontrollera att alla hämtade mappar faktiskt tillhör detta projekt
+      const filteredList = folderList.filter(folder => {
+        if (folder.projectId !== projectId) {
+          console.error(`storage.getFolders: VARNING - Mapp ${folder.id} tillhör projekt ${folder.projectId}, inte begärt projekt ${projectId}`);
+          return false;
+        }
+        return true;
+      });
+      
+      if (filteredList.length !== folderList.length) {
+        console.error(`storage.getFolders: Filtrerade bort ${folderList.length - filteredList.length} mappar som inte tillhör projekt ${projectId}`);
+      }
+      
+      return filteredList;
+    } catch (error) {
+      console.error('storage.getFolders: Fel vid hämtning av mappar:', error);
+      return [];
+    }
   }
 
   async createFolder(folder: Omit<Folder, "id">): Promise<Folder> {
