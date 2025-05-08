@@ -1286,75 +1286,75 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           {hasChildren ? (
             <Collapsible open={isItemOpen} onOpenChange={() => toggleItem(itemKey)}>
               <CollapsibleTrigger asChild>
-                {/* Om det är en användarskapad mapp med folderId, lägg till ContextMenu */}
+                {/* Om det är en användarskapad mapp med folderId */}
                 {item.type === "folder" && item.folderId ? (
-                  <ContextMenu>
-                    <ContextMenuTrigger asChild>
-                      <button 
-                        className={cn(
-                          "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150",
-                          item.active
-                            ? "bg-primary/10 text-primary font-medium" 
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                          indentClass
-                        )}
-                      >
-                        <div className="flex items-center">
-                          <span className={cn(
-                            "flex items-center justify-center mr-3",
-                            item.active ? "text-primary" : "text-muted-foreground"
-                          )}>
-                            {item.icon}
-                          </span>
-                          <span className={cn(
-                            "text-sm",
-                            item.active ? "text-primary" : "text-muted-foreground"
-                          )}>
-                            {item.label}
-                          </span>
-                        </div>
-                        <div className="flex items-center">
-                          {item.badge && (
-                            <Badge variant="outline" className={cn(
-                              "text-xs py-0.5 px-2 rounded-full mr-2",
-                              item.active 
-                                ? "bg-primary/10 text-primary border-primary/20" 
-                                : "bg-muted text-muted-foreground border-border"
-                            )}>
-                              {item.badge}
-                            </Badge>
-                          )}
-                          
-                          {/* Lägg till plustecken för mappar - endast för project_leader, admin och superuser */}
-                          {item.type === "folder" && item.onAddClick && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation(); // Förhindra att mappknappen klickas
-                                item.onAddClick?.();
-                              }}
-                              className="mr-1 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                            >
-                              <Plus className="h-3 w-3" />
-                            </button>
-                          )}
-                          
-                          <ChevronRight className={cn(
-                            "h-4 w-4 transition-transform duration-200",
-                            isItemOpen ? "rotate-90" : ""
-                          )} />
-                        </div>
-                      </button>
-                    </ContextMenuTrigger>
-                    <ContextMenuContent>
-                      <ContextMenuItem 
-                        onClick={() => deleteFolder(item.folderId!)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Ta bort mapp
-                      </ContextMenuItem>
-                    </ContextMenuContent>
-                  </ContextMenu>
+                  <button 
+                    className={cn(
+                      "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150",
+                      item.active
+                        ? "bg-primary/10 text-primary font-medium" 
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      indentClass
+                    )}
+                  >
+                    <div className="flex items-center">
+                      <span className={cn(
+                        "flex items-center justify-center mr-3",
+                        item.active ? "text-primary" : "text-muted-foreground"
+                      )}>
+                        {item.icon}
+                      </span>
+                      <span className={cn(
+                        "text-sm",
+                        item.active ? "text-primary" : "text-muted-foreground"
+                      )}>
+                        {item.label}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      {item.badge && (
+                        <Badge variant="outline" className={cn(
+                          "text-xs py-0.5 px-2 rounded-full mr-2",
+                          item.active 
+                            ? "bg-primary/10 text-primary border-primary/20" 
+                            : "bg-muted text-muted-foreground border-border"
+                        )}>
+                          {item.badge}
+                        </Badge>
+                      )}
+                      
+                      {/* Lägg till ta bort-knapp för mappar - endast för project_leader, admin och superuser */}
+                      {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation(); // Förhindra att mappknappen klickas
+                            handleDeleteClick(item.folderId!);
+                          }}
+                          className="mr-1 p-1 rounded-sm text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                      
+                      {/* Lägg till plustecken för mappar - endast för project_leader, admin och superuser */}
+                      {item.type === "folder" && item.onAddClick && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation(); // Förhindra att mappknappen klickas
+                            item.onAddClick?.();
+                          }}
+                          className="mr-1 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      )}
+                      
+                      <ChevronRight className={cn(
+                        "h-4 w-4 transition-transform duration-200",
+                        isItemOpen ? "rotate-90" : ""
+                      )} />
+                    </div>
+                  </button>
                 ) : (
                   <button 
                     className={cn(
