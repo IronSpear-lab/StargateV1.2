@@ -182,7 +182,8 @@ export default function FolderPage() {
           
         // Extrahera metadata från olika möjliga källfält
         const metadata = latestVersion?.metadata || file.metadata || {};
-        const number = metadata?.number || latestVersion?.number || file.number || '';
+        // Tilldela ett löpnummer baserat på index + 1 om inget annat finns
+        const number = metadata?.number || latestVersion?.number || file.number || (index + 1).toString();
         const status = metadata?.status || latestVersion?.status || file.status || '';
         const annat = metadata?.annat || latestVersion?.annat || file.annat || '';
         
@@ -198,7 +199,10 @@ export default function FolderPage() {
           version: versionText,
           description: file.description || 'Ingen beskrivning',
           uploaded: formatDate(file.uploadDate || file.createdAt) || 'Inget datum',
-          uploadedBy: file.uploadedBy || file.createdBy || 'Användare',
+          // Hämta användarnamn från olika möjliga källor
+          uploadedBy: file.uploaderUsername || file.uploadedByUsername || file.username || 
+                      (file.uploader ? file.uploader.username : null) || 
+                      (file.uploadedBy ? typeof file.uploadedBy === 'string' ? file.uploadedBy : 'projectleader' : 'projectleader'),
           number: number,
           status: status,
           annat: annat,

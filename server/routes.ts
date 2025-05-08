@@ -657,6 +657,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileSize = req.file.size;
       const filePath = req.file.path;
 
+      // Hämta användarinformation först
+      const user = await storage.getUser(req.user!.id);
+      
       // Create file record in database
       const file = await storage.createFile({
         name: fileName,
@@ -666,6 +669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         projectId: parseInt(projectId),
         folderId: folderId ? parseInt(folderId) : undefined,
         uploadedById: req.user!.id,
+        uploaderUsername: user?.username || "projectleader", // Spara användarnamn med filen
         uploadDate: new Date()
       });
       
