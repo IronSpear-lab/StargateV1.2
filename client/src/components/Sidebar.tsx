@@ -1487,9 +1487,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 <div className="flex items-center">
                   {/* Ta bort-knapp som bara visas vid hover */}
                   {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && item.type === "folder" && (
-                    <Button 
-                      size="sm"
-                      variant="ghost"
+                    <span 
                       onClick={(e) => {
                         e.stopPropagation();
                         // Hantera borttagning endast om mappen har ett folderId (användarskapad)
@@ -1498,7 +1496,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         }
                       }}
                       className={cn(
-                        "h-5 w-5 p-0 mr-1 flex items-center justify-center rounded-sm opacity-0 group-hover:opacity-100 transition-opacity",
+                        "h-5 w-5 p-0 mr-1 flex items-center justify-center rounded-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer",
                         // Avaktivera för inbyggda mappar som saknar folderId
                         item.folderId 
                           ? "text-destructive hover:text-destructive-foreground hover:bg-destructive" 
@@ -1507,7 +1505,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       aria-label="Ta bort mapp"
                     >
                       <X className="h-4 w-4" />
-                    </Button>
+                    </span>
                   )}
                   <span className={cn(
                     "flex items-center justify-center mr-3",
