@@ -161,6 +161,8 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
   // Create folder mutation
   const createFolderMutation = useMutation({
     mutationFn: async (folderData: FolderFormData) => {
+      // Säkerställ att projektId alltid är det aktuella projektets ID
+      folderData.projectId = currentProject?.id || folderData.projectId;
       const res = await apiRequest('POST', '/api/folders', folderData);
       return await res.json();
     },
@@ -276,11 +278,11 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
   
   // Handle folder creation
   const handleCreateFolder = () => {
-    if (!newFolderName) return;
+    if (!newFolderName || !currentProject?.id) return;
     
     const folderData: FolderFormData = {
       name: newFolderName,
-      projectId: parseInt(uploadState.projectId),
+      projectId: currentProject.id,
       parentId: uploadState.selectedFolder ? parseInt(uploadState.selectedFolder) : null
     };
     
@@ -540,26 +542,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                           />
                         </div>
                         
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label htmlFor="projectId">Project</Label>
-                          </div>
-                          <Select 
-                            value={uploadState.projectId}
-                            onValueChange={(value) => setUploadState(prev => ({ ...prev, projectId: value }))}
-                          >
-                            <SelectTrigger id="projectId">
-                              <SelectValue placeholder="Select project" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {projectsData?.map((project: any) => (
-                                <SelectItem key={project.id} value={project.id.toString()}>
-                                  {project.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        {/* Projektväljaren borttagen - vi använder alltid det aktiva projektet */}
 
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
