@@ -128,14 +128,35 @@ export function FolderManagementWidget() {
       
       // Uppdatera lokalt lagrade mappar i localStorage för att de ska visas i sidomenyn
       // Sparar en temporär referens i lokalstorage med speciell struktur
-      // för att säkerställa att nya mappar hamnar under Files
+      // för att respektera mappstrukturen i sidofältet
       try {
         const userFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
+        
+        // Identifiera föräldermappens namn från dess ID
+        let parentFolderName = 'Files'; // Standardvärde om ingen föräldermapp är vald
+        
+        if (data.parentId) {
+          // Hitta föräldermappens namn baserat på ID
+          const parentFromDB = foldersData.find((f: FolderData) => 
+            f.id.toString() === data.parentId.toString()
+          );
+          
+          if (parentFromDB) {
+            parentFolderName = parentFromDB.name;
+            console.log(`Found parent folder name: ${parentFolderName} for ID: ${data.parentId}`);
+          } else {
+            console.log(`Could not find parent folder with ID: ${data.parentId}, using Files as parent`);
+          }
+        }
+        
         const newFolder = {
           name: data.name,
-          parent: 'Files', // Alltid placera nya mappar under Files
-          id: data.id.toString()
+          parent: parentFolderName, // Använd föräldermappens namn för korrekt hierarki
+          id: data.id.toString(),
+          parentId: data.parentId ? data.parentId.toString() : null
         };
+        
+        console.log('Saving new folder to localStorage:', newFolder);
         localStorage.setItem('userCreatedFolders', JSON.stringify([...userFolders, newFolder]));
       } catch (e) {
         console.error("Error updating local storage folders:", e);

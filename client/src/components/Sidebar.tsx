@@ -979,15 +979,21 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   const findParentAndAddFolder = (
     items: NavItemType[], 
     parentName: string, 
-    newFolder: { name: string, parent: string, id: string }
+    newFolder: { name: string, parent: string, id: string, parentId?: string | null }
   ): NavItemType[] => {
     return items.map(item => {
       // Extra loggutskrift för att hjälpa debug
-      console.log(`Checking item ${item.label}, parent=${parentName}, type=${item.type}, comparing to ${newFolder.parent}`);
+      console.log(`Checking item ${item.label}, parent=${parentName}, type=${item.type}, folderId=${item.folderId}`);
       
       // Om denna mapp är föräldern, lägg till den nya mappen som ett barn
-      if (item.label === parentName && (item.type === "folder" || parentName === "Files")) {
-        console.log(`Found parent! Adding folder ${newFolder.name} to ${parentName}`);
+      const isParentMatch = 
+        // Matcha antingen på namn om förälder är Files
+        (item.label === parentName && (parentName === "Files" || item.type === "folder")) ||
+        // Eller matcha på ID om vi har en användarskapad mapp som förälder
+        (item.folderId && newFolder.parentId && item.folderId === newFolder.parentId);
+        
+      if (isParentMatch) {
+        console.log(`Found parent! Adding folder ${newFolder.name} to ${item.label} (ID: ${item.folderId})`);
         
         // Skapa en kopia med den nya mappen
         return {
