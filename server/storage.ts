@@ -361,26 +361,64 @@ class DatabaseStorage implements IStorage {
   }
 
   async getFiles(projectId: number, folderId?: number): Promise<File[]> {
-    if (folderId) {
-      return await db
-        .select()
-        .from(files)
-        .where(
-          and(
-            eq(files.projectId, projectId),
-            eq(files.folderId, folderId)
-          )
-        );
-    } else {
-      return await db
-        .select()
-        .from(files)
-        .where(
-          and(
-            eq(files.projectId, projectId),
-            isNull(files.folderId)
-          )
-        );
+    console.log(`storage.getFiles: Hämtar filer för projekt ${projectId}${folderId ? ` och mapp ${folderId}` : ''}`);
+    
+    if (!projectId || isNaN(projectId)) {
+      console.error('storage.getFiles: Ogiltigt projektID:', projectId);
+      return [];
+    }
+    
+    try {
+      let fileList;
+      
+      if (folderId) {
+        fileList = await db
+          .select()
+          .from(files)
+          .where(
+            and(
+              eq(files.projectId, projectId),
+              eq(files.folderId, folderId)
+            )
+          );
+      } else {
+        fileList = await db
+          .select()
+          .from(files)
+          .where(
+            and(
+              eq(files.projectId, projectId),
+              isNull(files.folderId)
+            )
+          );
+      }
+      
+      console.log(`storage.getFiles: Hittade ${fileList.length} filer för projekt ${projectId}${folderId ? ` och mapp ${folderId}` : ''}`);
+      
+      // Dubbelkontrollera att alla hämtade filer faktiskt tillhör detta projekt
+      const filteredList = fileList.filter(file => {
+        if (file.projectId !== projectId) {
+          console.error(`storage.getFiles: VARNING - Fil ${file.id} tillhör projekt ${file.projectId}, inte begärt projekt ${projectId}`);
+          return false;
+        }
+        
+        // Om en specifik mapp efterfrågas, kontrollera att filen tillhör den mappen
+        if (folderId && file.folderId !== folderId) {
+          console.error(`storage.getFiles: VARNING - Fil ${file.id} tillhör mapp ${file.folderId}, inte begärd mapp ${folderId}`);
+          return false;
+        }
+        
+        return true;
+      });
+      
+      if (filteredList.length !== fileList.length) {
+        console.error(`storage.getFiles: Filtrerade bort ${fileList.length - filteredList.length} filer som inte tillhör rätt projekt/mapp`);
+      }
+      
+      return filteredList;
+    } catch (error) {
+      console.error('storage.getFiles: Fel vid hämtning av filer:', error);
+      return [];
     }
   }
 

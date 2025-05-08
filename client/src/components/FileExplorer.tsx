@@ -161,33 +161,58 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         return [];
       }
       
-      console.log(`Hämtar mappar för projekt ${currentProject.id}`);
+      console.log(`FileExplorer: Hämtar mappar för projekt ${currentProject.id} med projectId=${currentProject.id}`);
       
-      const res = await fetch(`/api/folders?projectId=${currentProject.id}`, {
-        credentials: 'include'  // Säkerställ att cookies skickas med för autentisering
-      });
-      if (!res.ok) {
-        console.warn("API call failed for folders with status", res.status);
-        throw new Error(`Failed to fetch folders: ${res.status}`);
+      // FORCE EMPTY RESPONSE IF NO PROJECT SELECTED
+      if (!currentProject.id) {
+        console.warn("FileExplorer: KRITISKT FEL - Inget projektID valt men query kördes ändå");
+        return [];
       }
       
-      const data = await res.json();
-      console.log(`Hittade ${data.length} mappar för projekt ${currentProject.id}`);
-      
-      // Verifiera att alla mappar tillhör aktuellt projekt
-      if (data.some(folder => folder.projectId !== currentProject.id)) {
-        console.error("VARNING: Vissa mappar tillhör inte aktuellt projekt!", 
-          data.filter(folder => folder.projectId !== currentProject.id));
+      try {
+        const res = await fetch(`/api/folders?projectId=${currentProject.id}`, {
+          credentials: 'include',  // Säkerställ att cookies skickas med för autentisering
+          headers: {
+            'Cache-Control': 'no-cache, no-store',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        if (!res.ok) {
+          console.warn(`FileExplorer: API-anrop för mappar misslyckades med status ${res.status}`);
+          const errorText = await res.text();
+          console.error(`FileExplorer: Felmeddelande: ${errorText}`);
+          throw new Error(`Failed to fetch folders: ${res.status} - ${errorText}`);
+        }
+        
+        const data = await res.json();
+        console.log(`FileExplorer: Hittade ${data.length} mappar för projekt ${currentProject.id}`);
+        console.log("FileExplorer: Rådata från API:", JSON.stringify(data, null, 2));
+        
+        // Verifiera att alla mappar tillhör aktuellt projekt
+        if (data.some(folder => folder.projectId !== currentProject.id)) {
+          console.error("FileExplorer: VARNING: Vissa mappar tillhör inte aktuellt projekt!", 
+            data.filter(folder => folder.projectId !== currentProject.id));
+        }
+        
+        // FORCE FILTER mappar som tillhör aktuellt projekt för att vara extra säker
+        const filteredData = data.filter(folder => folder.projectId === currentProject.id);
+        console.log(`FileExplorer: Efter STRIKT filtrering finns ${filteredData.length} mappar för projekt ${currentProject.id}`);
+        
+        return filteredData;
+      } catch (error) {
+        console.error("FileExplorer: Fel vid hämtning av mappar:", error);
+        toast({
+          title: "Kunde inte hämta mappar",
+          description: "Ett fel uppstod vid hämtning av mapparna. Försök igen senare.",
+          variant: "destructive",
+        });
+        return [];
       }
-      
-      // Filtrera mappar som tillhör aktuellt projekt för att vara extra säker
-      const filteredData = data.filter(folder => folder.projectId === currentProject.id);
-      console.log(`Efter filtrering: ${filteredData.length} mappar för projekt ${currentProject.id}`);
-      
-      return filteredData;
     },
     enabled: !!currentProject?.id, // Kör bara denna query om vi har ett projekt
-    staleTime: 10000 // Förnya data efter 10 sekunder
+    staleTime: 0, // Uppdatera varje gång (deaktivera caching)
+    retry: 0 // Försök inte igen om det misslyckas
   });
 
   // Create folder mutation
@@ -414,10 +439,24 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     
     // Add folders to the tree
     if (foldersData) {
-      foldersData.forEach((folder: any) => {
+      // Ytterligare en sista säkerhetskontroll - filtrera bara mappar för aktuellt projekt
+      const filteredFolders = foldersData.filter(folder => {
+        // Om projektid saknas eller inte matchar aktuellt projekt
+        if (!folder.projectId || folder.projectId !== currentProject?.id) {
+          console.error(`FileExplorer: SÄKERHETSFILTRERING - Ignorerar mapp ${folder.id} som tillhör projekt ${folder.projectId}, inte aktuellt projekt ${currentProject?.id}`);
+          return false;
+        }
+        return true;
+      });
+      
+      console.log(`FileExplorer: byggTree - ${filteredFolders.length} av ${foldersData.length} mappar tillhör aktuellt projekt ${currentProject?.id}`);
+      
+      filteredFolders.forEach((folder: any) => {
+        console.log(`FileExplorer: Lägger till mapp ${folder.id} (projektID: ${folder.projectId}) i trädet`);
+        
         const folderNode: FileNode = {
           id: `folder_${folder.id}`,
-          name: folder.name,
+          name: folder.name, 
           type: 'folder',
           children: []
         };
@@ -438,7 +477,21 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     
     // Add files to the tree
     if (filesData) {
-      filesData.forEach((file: any) => {
+      // Ytterligare filtrering - bara visa filer för aktuellt projekt
+      const filteredFiles = filesData.filter(file => {
+        // Om projektid saknas eller inte matchar aktuellt projekt
+        if (!file.projectId || file.projectId !== currentProject?.id) {
+          console.error(`FileExplorer: SÄKERHETSFILTRERING - Ignorerar fil ${file.id} som tillhör projekt ${file.projectId}, inte aktuellt projekt ${currentProject?.id}`);
+          return false;
+        }
+        return true;
+      });
+      
+      console.log(`FileExplorer: byggTree - ${filteredFiles.length} av ${filesData.length} filer tillhör aktuellt projekt ${currentProject?.id}`);
+      
+      filteredFiles.forEach((file: any) => {
+        console.log(`FileExplorer: Lägger till fil ${file.id} (projektID: ${file.projectId}) i trädet`);
+        
         const fileNode: FileNode = {
           id: `file_${file.id}`,
           name: file.name,
@@ -454,6 +507,9 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
             folderMap[folderId].children = folderMap[folderId].children || [];
             folderMap[folderId].children?.push(fileNode);
           } else {
+            // Om mappen inte finns i trädet (kanske för att den inte tillhör rätt projekt), 
+            // lägg till filen direkt i rotkatalogen
+            console.warn(`FileExplorer: Fil ${file.id} tillhör mapp ${file.folderId} som inte finns i trädet, lägger i roten`);
             tree.push(fileNode);
           }
         } else {
@@ -485,12 +541,24 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     
     if (!foldersData) return options;
     
+    // Filtrera mappar som tillhör det aktuella projektet
+    const filteredFolders = foldersData.filter(folder => {
+      if (folder.projectId !== currentProject?.id) {
+        console.error(`getFolderOptions: Ignorerar mapp ${folder.id} från fel projekt ${folder.projectId}`);
+        return false;
+      }
+      return true;
+    });
+    
+    console.log(`getFolderOptions: ${filteredFolders.length} av ${foldersData.length} mappar tillhör aktuellt projekt ${currentProject?.id}`);
+    
     const addFoldersToOptions = (folders: any[], depth = 0, parent = "") => {
       folders.forEach(folder => {
         const prefix = depth > 0 ? "└─ ".padStart(depth * 2 + 2, "  ") : "";
+        console.log(`getFolderOptions: Lägger till mapp ${folder.id} (projektID: ${folder.projectId}) i options`);
         options.push({
           value: folder.id.toString(),
-          label: `${prefix}${folder.name}`,
+          label: `${prefix}${folder.name} [Projekt: ${folder.projectId}]`,
           parent: parent
         });
         
@@ -500,7 +568,8 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       });
     };
     
-    addFoldersToOptions(foldersData.filter((f: any) => !f.parentId));
+    // Använd filtrerade mappar utan föräldrar för att bygga trädet
+    addFoldersToOptions(filteredFolders.filter((f: any) => !f.parentId));
     
     return options;
   };
