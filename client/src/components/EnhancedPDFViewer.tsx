@@ -241,22 +241,41 @@ export default function EnhancedPDFViewer({
     }
     
     function loadFromLocalStorage() {
-      if (useDatabase) {
-        return; // Skip localStorage if we're using the database
+      // Om vi explicit ska använda databasen kan vi skippa localStorage
+      if (useDatabase && !projectId) {
+        console.log(`Skippar localStorage eftersom useDatabase=${useDatabase}`);
+        return;
       }
       
-      // Convert fileId to string for localStorage key
+      // Konvertera fileId till en string för localStorage-nyckel
       const storageKey = `pdf_annotations_${fileId.toString()}`;
+      console.log(`Försöker läsa annotationer från localStorage med nyckel: ${storageKey}`);
       
-      // Load annotations from localStorage
+      // Ladda annotationer från localStorage
       const savedAnnotations = localStorage.getItem(storageKey);
       if (savedAnnotations) {
         try {
+          // Parsa sparade annotationer och logga dem för felsökning
           const localAnnotations = JSON.parse(savedAnnotations);
-          setAnnotations(localAnnotations);
+          console.log(`Hittade ${localAnnotations.length} annotationer i localStorage:`, 
+            JSON.stringify(localAnnotations).substring(0, 200) + '...');
+          
+          // Filtrera bort ogiltiga värden (t.ex. null eller undefined)
+          const validAnnotations = Array.isArray(localAnnotations) 
+            ? localAnnotations.filter(a => a && typeof a === 'object')
+            : [];
+            
+          if (validAnnotations.length !== localAnnotations.length) {
+            console.warn(`Filtrerade bort ${localAnnotations.length - validAnnotations.length} ogiltiga annotationer`);
+          }
+          
+          // Uppdatera UI
+          setAnnotations(validAnnotations);
         } catch (error) {
           console.error('Error parsing saved annotations:', error);
         }
+      } else {
+        console.log(`Inga sparade annotationer hittades för nyckel: ${storageKey}`);
       }
       
       // Load versions from localStorage
@@ -539,6 +558,12 @@ export default function EnhancedPDFViewer({
       setAnnotations([...annotations, newAnnotation]);
       setActiveAnnotation(newAnnotation);
       setSidebarMode('comment');
+      
+      // Spara till localStorage först för säkerhets skull
+      const storageKey = `pdf_annotations_${fileId.toString()}`;
+      const updatedAnnotations = [...annotations, newAnnotation];
+      localStorage.setItem(storageKey, JSON.stringify(updatedAnnotations));
+      console.log(`Sparade ${updatedAnnotations.length} annotationer till localStorage (säkerhetskopia)`);
       
       try {
         const numericFileId = getConsistentFileId(fileId);

@@ -183,16 +183,54 @@ export async function savePDFAnnotation(
         let existingAnnotations = [];
         const existingData = localStorage.getItem(storageKey);
         if (existingData) {
-          existingAnnotations = JSON.parse(existingData);
+          try {
+            existingAnnotations = JSON.parse(existingData);
+            console.log(`Hittade ${existingAnnotations.length} befintliga annotationer i localStorage för fileId ${fileId}`);
+          } catch (parseError) {
+            console.error('Kunde inte parsa existerande annotationer:', parseError);
+            // Om JSON.parse misslyckas, anta att vi behöver starta om från början
+            existingAnnotations = [];
+          }
+        } else {
+          console.log(`Inga befintliga annotationer i localStorage för fileId ${fileId}`);
         }
         
-        // Lägg till vår nya annotation
+        // Om existingAnnotations inte är en array, skapa en ny
+        if (!Array.isArray(existingAnnotations)) {
+          console.warn('existingAnnotations är inte en array, skapar ny:', existingAnnotations);
+          existingAnnotations = [];
+        }
+        
+        // Kontrollera om annotationen redan finns (baserat på ID eller position/storlek)
+        let existingIndex = -1;
+        if (annotation.id) {
+          existingIndex = existingAnnotations.findIndex(a => a.id === annotation.id);
+        }
+        
+        // Skapa eller uppdatera annotation
         const localAnnotation = {
           ...annotation,
-          id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
         };
         
-        existingAnnotations.push(localAnnotation);
+        // Säkerställ att ID finns
+        if (!localAnnotation.id) {
+          localAnnotation.id = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        }
+        
+        // Uppdatera eller lägg till
+        if (existingIndex >= 0) {
+          console.log(`Uppdaterar befintlig annotation med id ${localAnnotation.id}`);
+          existingAnnotations[existingIndex] = localAnnotation;
+        } else {
+          console.log(`Lägger till ny annotation med id ${localAnnotation.id}`);
+          existingAnnotations.push(localAnnotation);
+        }
+        
+        // Dumpa för felsökning
+        console.log(`Sparar ${existingAnnotations.length} annotationer till localStorage för fileId ${fileId}:`, 
+          JSON.stringify(existingAnnotations).substring(0, 200) + '...');
+        
+        // Spara till localStorage med säkerställd formatering
         localStorage.setItem(storageKey, JSON.stringify(existingAnnotations));
         
         // Returnera ett objekt för att simulera ett lyckat API-anrop
