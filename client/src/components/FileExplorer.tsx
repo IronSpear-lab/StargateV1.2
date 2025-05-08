@@ -134,8 +134,13 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         return [];
       }
       
-      const res = await fetch(`/api/files?projectId=${currentProject.id}`);
-      if (!res.ok) throw new Error('Failed to fetch files');
+      const res = await fetch(`/api/files?projectId=${currentProject.id}`, {
+        credentials: 'include'  // Säkerställ att cookies skickas med för autentisering
+      });
+      if (!res.ok) {
+        console.warn("API call failed for files with status", res.status);
+        throw new Error(`Failed to fetch files: ${res.status}`);
+      }
       return res.json();
     },
     enabled: !!currentProject?.id // Kör bara denna query om vi har ett projekt
@@ -154,8 +159,13 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         return [];
       }
       
-      const res = await fetch(`/api/folders?projectId=${currentProject.id}`);
-      if (!res.ok) throw new Error('Failed to fetch folders');
+      const res = await fetch(`/api/folders?projectId=${currentProject.id}`, {
+        credentials: 'include'  // Säkerställ att cookies skickas med för autentisering
+      });
+      if (!res.ok) {
+        console.warn("API call failed for folders with status", res.status);
+        throw new Error(`Failed to fetch folders: ${res.status}`);
+      }
       return res.json();
     },
     enabled: !!currentProject?.id // Kör bara denna query om vi har ett projekt
@@ -193,6 +203,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       const res = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
+        credentials: 'include' // Säkerställ att cookies skickas med för autentisering
       });
       
       if (!res.ok) {
