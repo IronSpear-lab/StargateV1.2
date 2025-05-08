@@ -1019,12 +1019,16 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       </Card>
       
       {/* Delete Folder Confirmation Dialog */}
-      {deleteFolderDialogOpen && folderToDelete && (
-        <Dialog open={deleteFolderDialogOpen} onOpenChange={(open) => {
+      <Dialog 
+        open={deleteFolderDialogOpen} 
+        onOpenChange={(open) => {
           if (!open) {
             setDeleteFolderDialogOpen(false);
+            setFolderToDelete(null);
           }
-        }}>
+        }}
+      >
+        {folderToDelete && (
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Radera mapp</DialogTitle>
@@ -1035,45 +1039,50 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
             <div className="flex flex-col gap-4 py-4">
               <div className="flex items-center gap-2 text-destructive">
                 <AlertTriangle className="h-5 w-5" />
-                <span className="text-sm">All files and subfolders will be permanently deleted.</span>
+                <span className="text-sm">Alla filer och undermappar kommer att raderas permanent.</span>
               </div>
             </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setDeleteFolderDialogOpen(false);
-                  setFolderToDelete(null);
-                }}
-              >
-                Avbryt
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={() => {
-                  if (folderToDelete) {
-                    deleteFolderMutation.mutate(folderToDelete.id);
+            <DialogFooter className="flex gap-2 flex-row">
+              <div>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                  onClick={() => {
                     setDeleteFolderDialogOpen(false);
                     setFolderToDelete(null);
-                  }
-                }}
-                disabled={deleteFolderMutation.isPending}
-              >
-                {deleteFolderMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Raderar...
-                  </>
-                ) : (
-                  "Radera mapp"
-                )}
-              </Button>
+                  }}
+                >
+                  Avbryt
+                </button>
+              </div>
+              <div>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2"
+                  onClick={() => {
+                    if (folderToDelete) {
+                      console.log(`Executing delete for folder ID: ${folderToDelete.id}`);
+                      deleteFolderMutation.mutate(folderToDelete.id);
+                      setDeleteFolderDialogOpen(false);
+                      setFolderToDelete(null);
+                    }
+                  }}
+                  disabled={deleteFolderMutation.isPending}
+                >
+                  {deleteFolderMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Raderar...
+                    </>
+                  ) : (
+                    "Radera mapp"
+                  )}
+                </button>
+              </div>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
-      )}
+        )}
+      </Dialog>
     </div>
   );
 }
