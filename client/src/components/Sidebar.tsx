@@ -1300,16 +1300,21 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                     <div className="flex items-center">
                       {/* Ta bort-knapp för användarskapade mappar */}
                       {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && item.type === "folder" && item.folderId && (
-                        <span 
+                        <Button 
+                          size="sm"
+                          variant="ghost"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteClick(item.folderId!);
                           }}
-                          className="h-4 w-4 mr-1 flex items-center justify-center text-destructive hover:text-destructive-foreground hover:bg-destructive rounded-sm cursor-pointer transition-colors"
+                          className={cn(
+                            "h-5 w-5 p-0 mr-1 flex items-center justify-center rounded-sm opacity-0 group-hover:opacity-100 transition-opacity",
+                            "text-destructive hover:text-destructive-foreground hover:bg-destructive"
+                          )}
                           aria-label="Ta bort mapp"
                         >
-                          <Trash2 className="h-3 w-3" />
-                        </span>
+                          <X className="h-4 w-4" />
+                        </Button>
                       )}
                       <span className={cn(
                         "flex items-center justify-center mr-3",
@@ -1446,7 +1451,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
             </Collapsible>
           ) : (
             <div className={cn(
-              "flex items-center justify-between px-3 py-2 rounded-md transition-colors duration-150",
+              "flex items-center justify-between px-3 py-2 rounded-md transition-colors duration-150 group",
               item.active
                 ? "bg-primary/10" 
                 : "hover:bg-muted",
@@ -1462,7 +1467,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 )}
               >
                 <div className="flex items-center">
-                  {/* Ta bort-knapp även för mappar i undermenyer */}
+                  {/* Ta bort-knapp som bara visas vid hover */}
                   {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && item.type === "folder" && (
                     <Button 
                       size="sm"
@@ -1475,11 +1480,11 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         }
                       }}
                       className={cn(
-                        "h-5 w-5 p-0 mr-1 flex items-center justify-center rounded-sm",
+                        "h-5 w-5 p-0 mr-1 flex items-center justify-center rounded-sm opacity-0 group-hover:opacity-100 transition-opacity",
                         // Avaktivera för inbyggda mappar som saknar folderId
                         item.folderId 
                           ? "text-destructive hover:text-destructive-foreground hover:bg-destructive" 
-                          : "text-muted pointer-events-none opacity-30"
+                          : "text-muted pointer-events-none opacity-0"
                       )}
                       aria-label="Ta bort mapp"
                     >
@@ -1515,7 +1520,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               {item.type === "folder" && item.onAddClick && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
                 <button
                   onClick={() => item.onAddClick?.()}
-                  className="ml-1 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  className="ml-1 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
                 >
                   <Plus className="h-3 w-3" />
                 </button>
