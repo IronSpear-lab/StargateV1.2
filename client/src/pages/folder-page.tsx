@@ -147,7 +147,7 @@ export default function FolderPage() {
         filename: file.filename || 'Okänt filnamn',
         version: file.version?.toString() || '1',
         description: file.description || 'Ingen beskrivning',
-        uploaded: formatDate(file.uploadedAt) || 'Okänt datum',
+        uploaded: formatDate(file.uploadedAt) || 'Inget datum',
         uploadedBy: file.uploadedBy || 'Användare',
         number: file.number || '',
         status: file.status || '',
@@ -325,14 +325,7 @@ export default function FolderPage() {
   // Hämta PDF-fil från servern när användaren klickar på den
   const fetchFileContentMutation = useMutation({
     mutationFn: async (fileId: number) => {
-      // Först hämta filens metadata för att kunna visa korrekt info i PDF-visaren
-      const metadataResponse = await apiRequest('GET', `/api/files/${fileId}`);
-      if (!metadataResponse.ok) {
-        throw new Error('Kunde inte hämta filmetadata');
-      }
-      const metadata = await metadataResponse.json();
-      
-      // Sedan hämta filens binärdata direkt som blob istället för att försöka tolka det som JSON
+      // Hämta filens binärdata direkt
       const response = await fetch(`/api/files/${fileId}/content`, {
         credentials: 'include' // Se till att cookies skickas med för autentisering
       });
@@ -343,43 +336,50 @@ export default function FolderPage() {
       
       // Hämta direkt som blob
       const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
       
-      // Returna både blob och metadata
-      return {
-        blob,
-        metadata
-      };
+      return url;
     },
-    onSuccess: (data) => {
-      // Skapa URL från blob
-      const fileUrl = URL.createObjectURL(data.blob);
-      
-      // Hämta fildata från metadata
-      const fileData = data.metadata;
-      
+    onSuccess: (fileUrl, variables) => {
       if (!fileUrl) {
         toast({
           title: "Kunde inte öppna filen",
           description: "Filinnehållet är tomt eller kunde inte läsas.",
           variant: "destructive",
         });
-      } else {
-        setSelectedFile({
-          file: null,
-          fileUrl,
-          fileData: {
-            id: fileData.id,
-            filename: fileData.filename || "dokument.pdf",
-            version: fileData.version?.toString() || "1",
-            description: fileData.description || "PDF-dokument",
-            uploaded: fileData.uploadedAt ? new Date(fileData.uploadedAt).toLocaleString() : new Date().toLocaleString(),
-            uploadedBy: fileData.uploadedBy || "System",
-            number: fileData.number || "",
-            status: fileData.status || "",
-            annat: fileData.annat || ""
-          }
-        });
+        return;
       }
+      
+      // Hitta ritningen baserat på filID för att få metadata
+      const ritning = ritningar.find(r => r.id === variables);
+      
+      if (!ritning) {
+        toast({
+          title: "Kunde inte hitta filens metadata",
+          description: "Filen kan visas men metadata saknas.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Använd metadatan direkt från ritningar listan
+      setSelectedFile({
+        file: null,
+        fileUrl,
+        fileData: {
+          id: ritning.id,
+          filename: ritning.filename || "dokument.pdf",
+          version: ritning.version || "1",
+          description: ritning.description || "PDF-dokument",
+          uploaded: ritning.uploaded || new Date().toLocaleString(),
+          uploadedBy: ritning.uploadedBy || "System",
+          // Lägg till extra metadata på fileData-objektet även om datastrukturen inte stödjer dessa fält
+          // Detta kommer att fungera eftersom vi bara använder dessa fält i visningen
+          number: ritning.number || "",
+          status: ritning.status || "",
+          annat: ritning.annat || ""
+        } as any // Använd type assertion för att undvika TypeScript-felmeddelanden
+      });
     },
     onError: (error: Error) => {
       console.error("Fel vid hämtning av fil:", error);
@@ -414,7 +414,7 @@ export default function FolderPage() {
               number: ritning.number || "",
               status: ritning.status || "",
               annat: ritning.annat || ""
-            }
+            } as any // Använd type assertion för att undvika TypeScript-felmeddelanden
           });
           return;
         }
@@ -451,7 +451,7 @@ export default function FolderPage() {
           number: ritning.number || "",
           status: ritning.status || "",
           annat: ritning.annat || ""
-        }
+        } as any // Använd type assertion för att undvika TypeScript-felmeddelanden
       });
     } catch (error) {
       console.error("Kunde inte öppna fallback-filen:", error);
