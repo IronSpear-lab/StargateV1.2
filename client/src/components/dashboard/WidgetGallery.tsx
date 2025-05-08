@@ -65,6 +65,17 @@ export function WidgetGallery({
   // Define all possible widgets
   const widgetTypes: WidgetType[] = [
     {
+      id: "folder-management",
+      name: "Mapphantering",
+      description: "Hantera projektets mappstruktur och skapa nya mappar",
+      icon: <FolderOpen className="h-6 w-6" />,
+      category: "files",
+      defaultWidth: "half",
+      defaultHeight: "medium",
+      roles: ["admin", "project_leader"],
+      available: true,
+    },
+    {
       id: "tasks-overview",
       name: "Tasks Overview",
       description: "Shows task completion status and upcoming deadlines",

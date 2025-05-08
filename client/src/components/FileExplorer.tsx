@@ -182,13 +182,13 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         console.log("FileExplorer: Rådata från API:", JSON.stringify(data, null, 2));
         
         // Verifiera att alla mappar tillhör aktuellt projekt
-        if (data.some(folder => folder.projectId !== currentProject.id)) {
+        if (data.some((folder: FolderData) => folder.projectId !== currentProject.id)) {
           console.error("FileExplorer: VARNING: Vissa mappar tillhör inte aktuellt projekt!", 
-            data.filter(folder => folder.projectId !== currentProject.id));
+            data.filter((folder: FolderData) => folder.projectId !== currentProject.id));
         }
         
         // FORCE FILTER mappar som tillhör aktuellt projekt för att vara extra säker
-        const filteredData = data.filter(folder => folder.projectId === currentProject.id);
+        const filteredData = data.filter((folder: FolderData) => folder.projectId === currentProject.id);
         console.log(`FileExplorer: Efter STRIKT filtrering finns ${filteredData.length} mappar för projekt ${currentProject.id}`);
         
         return filteredData;
@@ -359,7 +359,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     
     if (uploadState.selectedFolder) {
       // Kontrollera att vald mapp faktiskt tillhör det aktuella projektet
-      const folder = foldersData?.find(f => f.id.toString() === uploadState.selectedFolder);
+      const folder = foldersData?.find((f: FolderData) => f.id.toString() === uploadState.selectedFolder);
       
       if (folder && folder.projectId !== currentProject.id) {
         console.error(`VARNING: Vald mapp (ID ${uploadState.selectedFolder}) tillhör projekt ${folder.projectId}, inte aktuellt projekt ${currentProject.id}`);
