@@ -11,15 +11,25 @@ export function formatDate(dateInput: string | Date | null | undefined): string 
   }
   
   try {
-    // Kontrollera giltigt ISO-format om det är en sträng
-    if (typeof dateInput === 'string') {
-      // Om strängen inte är i ISO-format, gör det till giltigt datum
-      if (!dateInput.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(.\d{3})?Z?$/)) {
-        console.log('Fixing invalid date format:', dateInput);
-        // Skapa ett giltigt datum istället
-        const now = new Date();
-        dateInput = now.toISOString();
+    // Om det är ett objekt som PostgreSQL returnerar med en .toISOString metod
+    if (dateInput && typeof dateInput === 'object' && 'toISOString' in dateInput) {
+      try {
+        // @ts-ignore - vi vet att toISOString finns
+        dateInput = dateInput.toISOString();
+      } catch (e) {
+        console.warn('Could not convert object with toISOString to string', dateInput);
       }
+    }
+    
+    // Om det är en PostgreSQL-datumstämpel (2023-01-01 15:30:45.123+00)
+    if (typeof dateInput === 'string' && dateInput.includes('+00') && !dateInput.includes('T')) {
+      // Konvertera PostgreSQL timestamp till ISO-format
+      dateInput = dateInput.replace(' ', 'T').replace('+00', 'Z');
+    }
+    
+    // Om det är ett standarddatum i textformat (YYYY-MM-DD)
+    if (typeof dateInput === 'string' && dateInput.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      dateInput = `${dateInput}T00:00:00Z`;
     }
     
     // Konvertera till Date-objekt om det är en sträng
@@ -28,15 +38,7 @@ export function formatDate(dateInput: string | Date | null | undefined): string 
     // Kontrollera att datumet är giltigt innan formatering
     if (!(date instanceof Date) || isNaN(date.getTime())) {
       console.warn('Invalid date encountered:', dateInput);
-      // Om datumet är ogiltigt, returnera dagens datum istället
-      const fallbackDate = new Date();
-      return fallbackDate.toLocaleString('sv-SE', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+      return "Ogiltigt datum";
     }
     
     // Formatera datumet till en läsbar sträng
@@ -49,15 +51,7 @@ export function formatDate(dateInput: string | Date | null | undefined): string 
     });
   } catch (error) {
     console.error('Error formatting date:', error, dateInput);
-    // Om vi får ett fel, använd dagens datum
-    const fallbackDate = new Date();
-    return fallbackDate.toLocaleString('sv-SE', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return "Fel vid datumformatering";
   }
 }
 
