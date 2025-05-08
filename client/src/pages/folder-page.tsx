@@ -410,7 +410,7 @@ export default function FolderPage() {
             fileData: {
               id: typeof ritning.id === 'number' ? ritning.id : 
                   typeof ritning.id === 'string' && !isNaN(Number(ritning.id)) ? Number(ritning.id) : 
-                  ritning.fileId || `temp_${Date.now()}`,  // Använd ID eller fileId för att identifiera filen
+                  ritning.fileId || Math.floor(Date.now() / 1000),  // Använd ett numeriskt ID baserat på aktuell tid
               filename: ritning.filename,
               version: ritning.version,
               description: ritning.description,
@@ -449,7 +449,7 @@ export default function FolderPage() {
         fileData: {
           id: typeof ritning.id === 'number' ? ritning.id : 
               typeof ritning.id === 'string' && !isNaN(Number(ritning.id)) ? Number(ritning.id) : 
-              `temp_${Date.now()}`,  // Sätt ett temporärt ID om det inte finns något
+              Math.floor(Date.now() / 1000),  // Använd ett numeriskt ID baserat på aktuell tid
           filename: ritning.filename,
           version: ritning.version,
           description: ritning.description,
@@ -632,13 +632,14 @@ export default function FolderPage() {
                 ? selectedFile.fileData.id 
                 : typeof selectedFile.fileData?.id === 'string' && !isNaN(Number(selectedFile.fileData.id))
                   ? Number(selectedFile.fileData.id)
-                  : `file_${Date.now()}`
+                  : Math.floor(Date.now() / 1000) // Använd ett numeriskt ID baserat på aktuell tid
             }
             initialUrl={selectedFile.fileUrl || ""}
             filename={selectedFile.fileData?.filename || "Dokument"}
             onClose={() => setSelectedFile(null)}
             projectId={currentProject?.id || null}
-            useDatabase={true} // Använd databasen istället för localStorage för att spara anmärkningar
+            useDatabase={false} // Använd localStorage för att säkerställa att PDF-visaren fungerar för dynamiska mappar
+            file={selectedFile.file} // Lägg till filreferensen direkt
           />
         </div>
       )}

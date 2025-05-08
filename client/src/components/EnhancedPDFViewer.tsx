@@ -354,10 +354,15 @@ export default function EnhancedPDFViewer({
                 
                 try {
                   // Säkerställ att versionId är ett giltigt nummer
-                  if (!localActiveVersionId || isNaN(parseInt(localActiveVersionId))) {
-                    console.error(`Ogiltigt versionId: ${localActiveVersionId} vid sparande av annotation`);
-                    throw new Error('Ogiltigt versionId');
+                  if (!localActiveVersionId) {
+                    console.error(`Saknat versionId: ${localActiveVersionId} vid sparande av annotation`);
+                    throw new Error('Saknat versionId');
                   }
+                  
+                  // Konvertera versionId till number om det är en sträng
+                  const versionIdToUse = typeof localActiveVersionId === 'string' 
+                    ? parseInt(localActiveVersionId) 
+                    : localActiveVersionId;
                   
                   // Skapa en kopia med korrekt versionId
                   const annotationToSave = {

@@ -214,7 +214,7 @@ export async function savePDFAnnotation(
         
         // Säkerställ att ID finns
         if (!localAnnotation.id) {
-          localAnnotation.id = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          localAnnotation.id = Math.floor(Date.now() / 1000);
         }
         
         // Uppdatera eller lägg till
