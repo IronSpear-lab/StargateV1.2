@@ -228,13 +228,14 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
 
   // Handle file upload
   const handleFileUpload = () => {
-    if (!uploadState.file) return;
+    if (!uploadState.file || !currentProject?.id) return;
     
     setUploadState(prev => ({ ...prev, isUploading: true, uploadProgress: 0 }));
     
     const formData = new FormData();
     formData.append('file', uploadState.file);
-    formData.append('projectId', uploadState.projectId);
+    // Använd alltid aktuellt projektets ID
+    formData.append('projectId', currentProject.id.toString());
     
     if (uploadState.selectedFolder) {
       formData.append('folderId', uploadState.selectedFolder);
@@ -571,7 +572,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                         </Button>
                         <Button 
                           onClick={handleCreateFolder}
-                          disabled={!newFolderName || !uploadState.projectId}
+                          disabled={!newFolderName || !currentProject?.id}
                         >
                           Create Folder
                         </Button>
@@ -662,7 +663,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                           <div className="flex items-center justify-between">
                             <Label htmlFor="uploadFolder">Destination Folder</Label>
                             <span className="text-xs text-neutral-500">
-                              Project: {projectsData?.find((p: any) => p.id.toString() === uploadState.projectId)?.name || 'Loading...'}
+                              Project: {currentProject?.name || 'Loading...'}
                             </span>
                           </div>
                           <Select
