@@ -58,6 +58,8 @@ function Router() {
       <ProtectedRoute path="/vault/files/ritningar" component={RitningarPage} />
       <ProtectedRoute path="/dwg-ifc-viewer" component={DwgIfcViewerPage} />
       <ProtectedRoute path="/3d-viewer" component={DwgIfcViewerPage} />
+      <ProtectedRoute path="/3d-viewer/design" component={DwgIfcViewerPage} />
+      <ProtectedRoute path="/3d-viewer/byggarbetsplats" component={SimpleViewerPage} />
       <ProtectedRoute path="/simple-viewer" component={SimpleViewerPage} />
       <ProtectedRoute path="/vault" component={VaultPage} />
       <ProtectedRoute path="/vault/comments" component={VaultCommentsPage} />

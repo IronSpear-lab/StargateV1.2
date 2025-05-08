@@ -967,10 +967,35 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       ]
     },
     {
-      href: "/3d-viewer",
+      href: "#",
       label: "3D Viewer",
       icon: <Box className="w-5 h-5" />,
-      active: location === "/3d-viewer",
+      active: location === "/3d-viewer" || 
+              location === "/3d-viewer/design" || 
+              location === "/3d-viewer/byggarbetsplats",
+      children: [
+        {
+          href: "/3d-viewer",
+          label: "3D Översikt",
+          icon: <Box className="w-4 h-4" />,
+          active: location === "/3d-viewer",
+          indent: 1
+        },
+        {
+          href: "/3d-viewer/design",
+          label: "Design",
+          icon: <FileText className="w-4 h-4" />,
+          active: location === "/3d-viewer/design",
+          indent: 1
+        },
+        {
+          href: "/3d-viewer/byggarbetsplats",
+          label: "Byggarbetsplats",
+          icon: <Briefcase className="w-4 h-4" />,
+          active: location === "/3d-viewer/byggarbetsplats",
+          indent: 1
+        }
+      ]
     },
     {
       href: "#",
