@@ -722,6 +722,24 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     return [];
   });
   
+  // Uppdatera mappar när användaren ändras eller loggar in
+  useEffect(() => {
+    if (user) {
+      // Uppdatera synkronisering mellan de två localStorage-nycklarna
+      const savedFolders = localStorage.getItem('userCreatedFolders');
+      if (savedFolders) {
+        const parsedFolders = JSON.parse(savedFolders);
+        
+        // Säkerställ att user_created_folders är synkroniserat
+        const simplifiedFolders = parsedFolders.map((folder: any) => ({
+          label: folder.name,
+          parent: folder.parent
+        }));
+        localStorage.setItem('user_created_folders', JSON.stringify(simplifiedFolders));
+      }
+    }
+  }, [user]);
+  
   // State för användarens profilbild med lagring i localStorage
   const [userAvatar, setUserAvatar] = useState<string | null>(() => {
     // Hämta profil från localStorage vid initialisering
