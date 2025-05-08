@@ -227,6 +227,7 @@ export function FolderManagementWidget() {
       parentId: selectedParentFolder ? Number(selectedParentFolder) : null
     };
     
+    console.log("Creating new folder with data:", folderData);
     createFolderMutation.mutate(folderData);
   };
 

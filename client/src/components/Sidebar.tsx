@@ -1289,15 +1289,15 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                   
                   {/* Plus-ikon för mappar i minimerat läge */}
                   {item.type === "folder" && item.onAddClick && (
-                    <button
+                    <span
                       onClick={(e) => {
                         e.stopPropagation();
                         item.onAddClick?.();
                       }}
-                      className="ml-3 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
+                      className="ml-3 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
                     >
                       <Plus className="h-3 w-3" />
-                    </button>
+                    </span>
                   )}
                   
                   {/* Badge (om det finns) */}
