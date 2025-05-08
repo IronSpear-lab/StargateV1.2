@@ -993,7 +993,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         {
           href: "/3d-viewer/byggarbetsplats",
           label: "Byggarbetsplats",
-          icon: <Construction className="w-4 h-4" />,
+          icon: <Hammer className="w-4 h-4" />,
           active: location === "/3d-viewer/byggarbetsplats",
           indent: 1
         }
