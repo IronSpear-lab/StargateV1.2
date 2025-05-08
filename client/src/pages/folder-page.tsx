@@ -182,8 +182,9 @@ export default function FolderPage() {
           
         // Extrahera metadata från olika möjliga källfält
         const metadata = latestVersion?.metadata || file.metadata || {};
-        // Tilldela ett löpnummer baserat på index + 1 om inget annat finns
-        const number = metadata?.number || latestVersion?.number || file.number || (index + 1).toString();
+        // Tilldela ett löpnummer baserat på fil-ID eller generera ett från datum om inget annat finns
+        const number = metadata?.number || latestVersion?.number || file.number || 
+                      (file.id ? `${file.id}` : `${Math.floor(Date.now() / 1000)}`).toString();
         const status = metadata?.status || latestVersion?.status || file.status || '';
         const annat = metadata?.annat || latestVersion?.annat || file.annat || '';
         

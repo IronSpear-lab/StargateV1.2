@@ -682,9 +682,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             filePath: filePath,
             description: 'Ursprunglig version',
             uploadedById: req.user!.id,
+            uploaderUsername: user?.username || "projectleader", // Spara användarnamn med versionen också
             metadata: {
               fileSize: fileSize,
-              fileName: fileName
+              fileName: fileName,
+              number: file.id.toString(), // Använd filens ID som nummer
+              status: 'aktiv', // Standard statustillstånd
+              annat: req.body.description || '' // Använd beskrivning som "annat" fält
             }
           });
           
