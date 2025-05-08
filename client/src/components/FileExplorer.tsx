@@ -83,6 +83,9 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
   const [dropzoneActive, setDropzoneActive] = useState(false);
   const [actionsMenuOpen, setActionsMenuOpen] = useState<Record<string, boolean>>({});
   
+  // Ny state för att spåra vald mapp i filutforskaren
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+
   const [uploadState, setUploadState] = useState<FileUploadState>({
     selectedFolder: null,
     projectId: currentProject?.id?.toString() || "", // Use current project ID
@@ -334,7 +337,13 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       });
       // Invalidate both folders and files queries since deleting a folder affects files too
       queryClient.invalidateQueries({ queryKey: ['/api/folders', currentProject?.id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id, 'all=true'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id, selectedFolderId] });
+      
+      // Återställ vald mapp om vi raderade den aktiva mappen
+      if (selectedFolderId === folderId.toString()) {
+        console.log("Återställer vald mapp eftersom den aktiva mappen raderades");
+        setSelectedFolderId(null);
+      }
     },
     onError: (error, folderId) => {
       console.error(`Failed to delete folder ID: ${folderId}. Error: ${error.message}`);
@@ -584,10 +593,26 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     if (file.type === 'file') {
       onFileSelect(file);
     } else {
+      // Om det är en mapp, expandera/kollapsa den
       setExpandedFolders(prev => ({
         ...prev,
         [file.id]: !prev[file.id]
       }));
+      
+      // Uppdatera selectedFolderId baserat på den klickade mappen
+      // file.id är i formatet "folder_123", så vi behöver extrahera sifferdelen
+      const folderId = file.id.replace('folder_', '');
+      
+      console.log(`Mapp klickad: ${file.name} (ID: ${folderId})`);
+      
+      // Om mappen redan är vald (dvs vi klickar på den igen), återställ till null (visa rotfiler)
+      if (selectedFolderId === folderId) {
+        console.log(`Avmarkerar mapp: ${file.name} (ID: ${folderId})`);
+        setSelectedFolderId(null);
+      } else {
+        console.log(`Väljer mapp: ${file.name} (ID: ${folderId})`);
+        setSelectedFolderId(folderId);
+      }
     }
   };
   
@@ -835,10 +860,17 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                             </span>
                           </div>
                           <Select
-                            value={uploadState.selectedFolder || "root"}
+                            value={selectedFolderId || uploadState.selectedFolder || "root"}
                             onValueChange={(value) => {
                               console.log(`📁 Mappval vid uppladdning: ${value}`);
-                              setUploadState(prev => ({ ...prev, selectedFolder: value === "root" ? null : value }));
+                              // Uppdatera både selectedFolderId för visning och uploadState.selectedFolder för uppladdning
+                              if (value === "root") {
+                                setSelectedFolderId(null);
+                                setUploadState(prev => ({ ...prev, selectedFolder: null }));
+                              } else {
+                                setSelectedFolderId(value);
+                                setUploadState(prev => ({ ...prev, selectedFolder: value }));
+                              }
                             }}
                           >
                             <SelectTrigger id="uploadFolder">
@@ -853,8 +885,8 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                             </SelectContent>
                           </Select>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {uploadState.selectedFolder 
-                              ? `Filen kommer placeras i mappen med ID: ${uploadState.selectedFolder}` 
+                            {(selectedFolderId || uploadState.selectedFolder)
+                              ? `Filen kommer placeras i mappen med ID: ${selectedFolderId || uploadState.selectedFolder}` 
                               : "Filen kommer placeras i projektets rotkatalog"}
                           </p>
                         </div>
