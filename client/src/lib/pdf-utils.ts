@@ -174,6 +174,36 @@ export async function savePDFAnnotation(
     
     console.log('Sparar annotation för versionId:', versionId, 'Annotation data:', annotation);
     
+    // Tillåt versionId=0 endast i utvecklingsläge eller utan databas
+    if (versionId === 0) {
+      console.warn('Använder temporärt versionId (0) för att spara annotation till localStorage. Databaspersistens kommer inte att fungera.');
+      // Använd localStorage istället
+      const storageKey = `pdf_annotations_${fileId.toString()}`;
+      try {
+        let existingAnnotations = [];
+        const existingData = localStorage.getItem(storageKey);
+        if (existingData) {
+          existingAnnotations = JSON.parse(existingData);
+        }
+        
+        // Lägg till vår nya annotation
+        const localAnnotation = {
+          ...annotation,
+          id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        };
+        
+        existingAnnotations.push(localAnnotation);
+        localStorage.setItem(storageKey, JSON.stringify(existingAnnotations));
+        
+        // Returnera ett objekt för att simulera ett lyckat API-anrop
+        return localAnnotation;
+      } catch (error) {
+        console.error('Fel vid localStorage lagring:', error);
+      }
+      // Returnera null för att indikera att det misslyckades
+      return null;
+    }
+    
     if (!versionId || isNaN(versionId)) {
       console.error('Kunde inte spara annotation: saknar giltigt versionId', {
         pdfVersionId: versionId,

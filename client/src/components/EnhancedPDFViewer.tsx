@@ -57,6 +57,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/$
 // PDF Annotation interface
 export interface PDFAnnotation {
   id: string;
+  pdfVersionId?: number; // Lägg till stöd för versionId
+  projectId?: number | null; // Lägg till stöd för projektId
   rect: {
     x: number;
     y: number;
@@ -511,9 +513,14 @@ export default function EnhancedPDFViewer({
     e.preventDefault();
     e.stopPropagation();
     
+    // Hämta giltigt versionId om det finns
+    const versionId = activeVersionId ? parseInt(activeVersionId) : 0;
+    
     // Create a new annotation
     const newAnnotation: PDFAnnotation = {
       id: `annotation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      pdfVersionId: versionId, // Lägg till pdfVersionId här
+      projectId: currentProject?.id, // Lägg till projektID om det finns
       rect: {
         x: Math.min(markingStart.x, markingEnd.x),
         y: Math.min(markingStart.y, markingEnd.y),
@@ -536,9 +543,16 @@ export default function EnhancedPDFViewer({
       try {
         const numericFileId = getConsistentFileId(fileId);
         if (!isNaN(numericFileId) && currentProject) {
-          // Save to database via API
+          console.log(`[${new Date().toISOString()}] Sparar ny annotation till databasen:`, {
+            fileId: numericFileId,
+            versionId: versionId,
+            annotation: newAnnotation
+          });
+          
+          // Save to database via API - använd versionId-variabeln från tidigare
           const savedAnnotation = await savePDFAnnotation(numericFileId, {
-            pdfVersionId: parseInt(activeVersionId || '0'),
+            // Använd versionId vi redan har definierat ovan
+            pdfVersionId: versionId,
             projectId: currentProject.id, // Add project ID from context
             rect: newAnnotation.rect,
             color: newAnnotation.color,
