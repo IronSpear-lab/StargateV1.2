@@ -17,7 +17,8 @@ import {
   MoreVertical,
   X,
   AlertTriangle,
-  Trash
+  Trash,
+  FolderInput
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -443,16 +444,15 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     createFolderMutation.mutate(folderData);
   };
   
-  // Build file tree
+  // Build file tree with support for unlimited nesting
   const buildFileTree = () => {
     const tree: FileNode[] = [];
     const folderMap: Record<string, FileNode> = {};
     
     // Add folders to the tree
     if (foldersData) {
-      // Ytterligare en sista säkerhetskontroll - filtrera bara mappar för aktuellt projekt
-      const filteredFolders = foldersData.filter(folder => {
-        // Om projektid saknas eller inte matchar aktuellt projekt
+      // Säkerhetskontroll - filtrera bara mappar för aktuellt projekt
+      const filteredFolders = foldersData.filter((folder: any) => {
         if (!folder.projectId || folder.projectId !== currentProject?.id) {
           console.error(`FileExplorer: SÄKERHETSFILTRERING - Ignorerar mapp ${folder.id} som tillhör projekt ${folder.projectId}, inte aktuellt projekt ${currentProject?.id}`);
           return false;
@@ -462,8 +462,9 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       
       console.log(`FileExplorer: byggTree - ${filteredFolders.length} av ${foldersData.length} mappar tillhör aktuellt projekt ${currentProject?.id}`);
       
+      // Steg 1: Skapa alla mappnoder först så att alla har en referens i folderMap
       filteredFolders.forEach((folder: any) => {
-        console.log(`FileExplorer: Lägger till mapp ${folder.id} (projektID: ${folder.projectId}) i trädet`);
+        console.log(`FileExplorer: Skapar mappnod ${folder.id} (projektID: ${folder.projectId})`);
         
         const folderNode: FileNode = {
           id: `folder_${folder.id}`,
@@ -473,15 +474,26 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         };
         
         folderMap[folderNode.id] = folderNode;
+      });
+      
+      // Steg 2: Bygg trädstrukturen genom att lägga till mappar på rätt ställe baserat på parent-child relationer
+      filteredFolders.forEach((folder: any) => {
+        console.log(`FileExplorer: Placerar mapp ${folder.id} i trädstrukturen (parentId: ${folder.parentId || 'null'})`);
         
         if (folder.parentId) {
           const parentId = `folder_${folder.parentId}`;
+          // Kontrollera att föräldern existerar i folderMap (som skapades i steg 1)
           if (folderMap[parentId]) {
             folderMap[parentId].children = folderMap[parentId].children || [];
-            folderMap[parentId].children?.push(folderNode);
+            folderMap[parentId].children?.push(folderMap[`folder_${folder.id}`]);
+          } else {
+            // Om föräldern saknas, lägg mappen i rotnivån och logga varning
+            console.warn(`FileExplorer: Föräldermapp ${folder.parentId} hittades inte, lägger till mapp ${folder.id} i rotnivån`);
+            tree.push(folderMap[`folder_${folder.id}`]);
           }
         } else {
-          tree.push(folderNode);
+          // Ingen förälder, detta är en rotmapp
+          tree.push(folderMap[`folder_${folder.id}`]);
         }
       });
     }
@@ -771,18 +783,18 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={() => setCreateFolderDialogOpen(false)}>
                       <div className="bg-white rounded-lg max-w-lg w-full m-4 p-6" onClick={(e) => e.stopPropagation()}>
                         <div className="mb-4">
-                          <h3 className="text-lg font-semibold leading-none tracking-tight">Create New Folder</h3>
+                          <h3 className="text-lg font-semibold leading-none tracking-tight">Skapa ny mapp</h3>
                           <p className="text-sm text-muted-foreground mt-1">
-                            Add a new folder to organize your files
+                            Skapa en ny mapp för att organisera dina filer
                           </p>
                         </div>
                         
                         <div className="space-y-4 py-2">
                           <div className="space-y-2">
-                            <Label htmlFor="folderName">Folder Name</Label>
+                            <Label htmlFor="folderName">Mappnamn</Label>
                             <Input
                               id="folderName"
-                              placeholder="e.g. Project Documentation"
+                              placeholder="t.ex. Projektdokumentation"
                               value={newFolderName}
                               onChange={(e) => setNewFolderName(e.target.value)}
                             />
@@ -792,14 +804,14 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
 
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                              <Label htmlFor="parentFolder">Parent Folder (Optional)</Label>
+                              <Label htmlFor="parentFolder">Föräldermapp (Valfritt)</Label>
                             </div>
                             <Select
                               value={uploadState.selectedFolder || "root"}
                               onValueChange={(value) => setUploadState(prev => ({ ...prev, selectedFolder: value === "root" ? null : value }))}
                             >
                               <SelectTrigger id="parentFolder">
-                                <SelectValue placeholder="Root folder" />
+                                <SelectValue placeholder="Rotkatalog" />
                               </SelectTrigger>
                               <SelectContent>
                                 {getFolderOptions().map(option => (
