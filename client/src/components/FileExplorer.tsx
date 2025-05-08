@@ -681,9 +681,9 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                   setActionsMenuOpen(prev => ({ ...prev, [node.id]: open }));
                 }}>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <span className="inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-neutral-100 cursor-pointer">
                       <MoreVertical className="h-3.5 w-3.5 text-neutral-500" />
-                    </Button>
+                    </span>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-[160px]">
                     {node.type === 'file' && isPdf(node.name) && (
@@ -753,10 +753,10 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                 <>
                   <Dialog open={createFolderDialogOpen} onOpenChange={setCreateFolderDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-8 gap-1">
+                      <span className="inline-flex items-center justify-center h-8 px-3 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground gap-1 cursor-pointer text-sm">
                         <FolderPlus className="h-4 w-4" />
                         <span className="text-xs">New Folder</span>
-                      </Button>
+                      </span>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
@@ -815,10 +815,10 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                   
                   <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button variant="default" size="sm" className="h-8 gap-1">
+                      <span className="inline-flex items-center justify-center h-8 px-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 gap-1 cursor-pointer text-sm">
                         <Upload className="h-4 w-4" />
                         <span className="text-xs">Upload</span>
-                      </Button>
+                      </span>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
@@ -852,10 +852,8 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                               </div>
                               <div className="text-sm font-medium">{uploadState.file.name}</div>
                               <div className="text-xs text-neutral-500">{formatFileSize(uploadState.file.size)}</div>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="mt-2"
+                              <span
+                                className="inline-flex items-center justify-center px-2 py-1 mt-2 text-xs border border-input rounded-md shadow-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setUploadState(prev => ({ ...prev, file: null }));
@@ -863,7 +861,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                               >
                                 <X className="mr-1 h-3 w-3" />
                                 Remove
-                              </Button>
+                              </span>
                             </div>
                           ) : (
                             <>
@@ -980,21 +978,20 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                 <h3 className="text-lg font-medium text-neutral-700 mb-1">No files yet</h3>
                 <p className="text-sm text-neutral-500 mb-4">Upload files or create folders to get started</p>
                 <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <span 
+                    className="inline-flex items-center justify-center px-3 py-1.5 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground gap-1 cursor-pointer text-sm"
                     onClick={() => setCreateFolderDialogOpen(true)}
                   >
                     <FolderPlus className="mr-1 h-4 w-4" />
                     New Folder
-                  </Button>
-                  <Button 
-                    size="sm" 
+                  </span>
+                  <span 
+                    className="inline-flex items-center justify-center px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 gap-1 cursor-pointer text-sm"
                     onClick={() => setUploadDialogOpen(true)}
                   >
                     <Upload className="mr-1 h-4 w-4" />
                     Upload File
-                  </Button>
+                  </span>
                 </div>
               </div>
             ) : (
