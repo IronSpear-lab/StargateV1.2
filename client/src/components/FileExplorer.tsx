@@ -119,7 +119,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     isLoading: isLoadingFiles, 
     error: filesError 
   } = useQuery({
-    queryKey: ['/api/files', currentProject?.id],
+    queryKey: ['/api/files', currentProject?.id, 'all=true'],
     queryFn: async () => {
       if (!currentProject?.id) {
         // Om inget projekt är valt, returnera en tom array
@@ -276,7 +276,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       });
       setUploadDialogOpen(false);
       setUploadState(prev => ({ ...prev, file: null, uploadProgress: 0, isUploading: false }));
-      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id, 'all=true'] });
     },
     onError: (error) => {
       toast({
@@ -324,7 +324,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       });
       // Invalidate both folders and files queries since deleting a folder affects files too
       queryClient.invalidateQueries({ queryKey: ['/api/folders', currentProject?.id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id, 'all=true'] });
     },
     onError: (error, folderId) => {
       console.error(`Failed to delete folder ID: ${folderId}. Error: ${error.message}`);
