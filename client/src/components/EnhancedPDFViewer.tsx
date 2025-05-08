@@ -299,6 +299,79 @@ export default function EnhancedPDFViewer({
     loadData();
   }, [fileId, filename, initialUrl, user, currentProject, projectId, useDatabase]);
 
+  // Lägg till en cleanup-funktion för att spara kommentarer när komponenten avmonteras
+  useEffect(() => {
+    // Rensa/spara vid avmontering
+    return () => {
+      console.log(`[${new Date().toISOString()}] PDF-visare avmonteras, sparar kommentarer...`);
+      if (annotations.length > 0) {
+        if (useDatabase && currentProject) {
+          // Vi kan inte använda await i cleanup-funktioner, så vi använder promise  
+          console.log(`[${new Date().toISOString()}] Sparar ${annotations.length} kommentarer till databasen vid avmontering`);
+          
+          // Vi måste ha en lokal referens till de variabler vi behöver
+          const localAnnotations = [...annotations];
+          const localFileId = fileId;
+          const localActiveVersionId = activeVersionId;
+          const localCurrentProject = currentProject;
+          
+          // Vi kan inte använda async/await här, så istället använder vi promise direkt
+          const savePromise = new Promise<void>(async (resolve, reject) => {
+            try {
+              // För att undvika problem med att saveAllUnsavedAnnotations inte finns i beroendelistan
+              // skapar vi en egen funktion här som gör samma sak
+              const numericFileId = getConsistentFileId(localFileId);
+              if (isNaN(numericFileId) || !localActiveVersionId) {
+                console.error('Kunde inte spara annotationer: ogiltigt fileId eller versionId');
+                resolve();
+                return;
+              }
+              
+              const savePromises = localAnnotations.map(async (annotation) => {
+                const isNumericId = typeof annotation.id === 'string' && !isNaN(parseInt(annotation.id));
+                const idToUse = isNumericId ? parseInt(annotation.id) : undefined;
+                
+                try {
+                  return await savePDFAnnotation(numericFileId, {
+                    id: idToUse,
+                    pdfVersionId: parseInt(localActiveVersionId),
+                    projectId: localCurrentProject.id,
+                    rect: annotation.rect,
+                    color: annotation.color, 
+                    comment: annotation.comment,
+                    status: annotation.status,
+                    createdAt: annotation.createdAt,
+                    createdBy: annotation.createdBy,
+                    assignedTo: annotation.assignedTo
+                  });
+                } catch (err) {
+                  console.error(`Fel vid sparande av annotation ${annotation.id}:`, err);
+                  return null;
+                }
+              });
+              
+              const results = await Promise.all(savePromises);
+              console.log(`[${new Date().toISOString()}] Sparade ${results.filter(Boolean).length} av ${localAnnotations.length} annotationer`);
+              resolve();
+            } catch (err) {
+              console.error('Kunde inte spara alla annotationer:', err);
+              reject(err);
+            }
+          });
+          
+          savePromise.catch(err => {
+            console.error(`[${new Date().toISOString()}] Fel vid sparande av kommentarer vid avmontering:`, err);
+          });
+        } else {
+          console.log(`[${new Date().toISOString()}] Sparar ${annotations.length} kommentarer till localStorage vid avmontering`);
+          // Spara till localStorage
+          const storageKey = `pdf_annotations_${fileId.toString()}`;
+          localStorage.setItem(storageKey, JSON.stringify(annotations));
+        }
+      }
+    };
+  }, [annotations, useDatabase, currentProject, fileId, activeVersionId]);
+  
   // Handle wheel event for zooming with ctrl+mousewheel
   useEffect(() => {
     const container = containerRef.current;
@@ -862,94 +935,83 @@ export default function EnhancedPDFViewer({
 
   // Hämta query client för att invalidera cachen
   const queryClient = useQueryClient();
-
-  // Funktion för att spara alla osparade kommentarer
-  const saveAllUnsavedAnnotations = async () => {
-    if (!currentProject || annotations.length === 0) {
-      console.log('Inget projekt eller inga kommentarer att spara');
-      return; 
-    }
-    
-    const numericFileId = getConsistentFileId(fileId);
-    if (isNaN(numericFileId)) {
-      console.error('Ogiltigt fileId, kan inte spara kommentarer:', fileId);
+  
+  // Funktion för att spara alla osparade annotationer till databasen
+  const saveAllUnsavedAnnotations = async (): Promise<void> => {
+    if (!currentProject || !activeVersionId) {
+      console.warn('Kan inte spara annotationer: saknar projektkontext eller aktiv version');
       return;
     }
     
-    let savedCount = 0;
-    
     try {
-      console.log(`[${new Date().toISOString()}] Sparar ${annotations.length} kommentarer för fil ${numericFileId}, projektId: ${currentProject.id}`);
+      const numericFileId = getConsistentFileId(fileId);
+      if (isNaN(numericFileId)) {
+        console.error('Kunde inte konvertera fileId till ett giltigt numeriskt värde för att spara annotationer');
+        return;
+      }
       
-      // Loopa igenom alla kommentarer och spara dem om de inte redan finns i databasen
+      console.log(`[${new Date().toISOString()}] Sparar ${annotations.length} kommentarer till databasen...`);
+      
+      let savedCount = 0;
+      
+      // Loopa igenom alla annotationer och spara dem
       for (const annotation of annotations) {
+        // Kontrollera om ID är numeriskt (från databasen) eller temporärt
         const isNumericId = typeof annotation.id === 'string' && !isNaN(parseInt(annotation.id));
-        
-        // Kontrollera om ID:t är ett databas-ID (numeriskt) eller ett tillfälligt genererat ID
-        if (isNumericId) {
-          console.log(`[${new Date().toISOString()}] Kommentar med ID ${annotation.id} finns redan i databasen, hoppar över`);
-          continue;
-        }
-        
-        console.log(`[${new Date().toISOString()}] Sparar kommentar: ${annotation.id} för versionId: ${activeVersionId}`);
+        const idToUse = isNumericId ? parseInt(annotation.id) : undefined;
         
         try {
-          // Förbered data för att spara kommentaren
-          const annotationData = {
-            pdfVersionId: parseInt(activeVersionId || '0'),
-            projectId: projectId || (currentProject ? currentProject.id : null),
+          const result = await savePDFAnnotation(numericFileId, {
+            id: idToUse,
+            pdfVersionId: parseInt(activeVersionId),
+            projectId: currentProject.id,
             rect: annotation.rect,
-            color: annotation.color,
-            comment: annotation.comment || '', // Säkerställ att comment alltid har ett värde
+            color: annotation.color, 
+            comment: annotation.comment || '',
             status: annotation.status,
             createdAt: annotation.createdAt,
             createdBy: annotation.createdBy,
             assignedTo: annotation.assignedTo
-          };
+          });
           
-          console.log(`[${new Date().toISOString()}] Sparar annotation för versionId:`, activeVersionId, "Annotation data:", annotationData);
-          
-          // Spara kommentaren till databasen
-          const savedAnnotation = await savePDFAnnotation(numericFileId, annotationData);
-          console.log(`[${new Date().toISOString()}] Sparad annotation, svar från server:`, savedAnnotation);
-          
-          if (savedAnnotation && savedAnnotation.id) {
+          if (result && result.id) {
             savedCount++;
-            
-            // Uppdatera den lokala kommentaren med ID från databasen
-            const updatedAnnotations = [...annotations];
-            const index = updatedAnnotations.findIndex(a => a.id === annotation.id);
-            if (index !== -1) {
-              updatedAnnotations[index] = {
-                ...annotation,
-                id: savedAnnotation.id.toString()
-              };
-              setAnnotations(updatedAnnotations);
+            // Om vi har ett temporärt ID, uppdatera till databasens ID
+            if (!isNumericId) {
+              const updatedAnnotations = [...annotations];
+              const index = updatedAnnotations.findIndex(a => a.id === annotation.id);
+              if (index !== -1) {
+                updatedAnnotations[index] = {
+                  ...annotation,
+                  id: result.id.toString()
+                };
+                setAnnotations(updatedAnnotations);
+              }
             }
-          } else {
-            console.error(`[${new Date().toISOString()}] Servern returnerade inget giltigt ID för sparad annotation`);
           }
-        } catch (annotationError) {
-          console.error(`[${new Date().toISOString()}] Fel vid sparande av kommentar ${annotation.id}:`, annotationError);
+        } catch (err) {
+          console.error(`Fel vid sparande av annotation ${annotation.id}:`, err);
         }
       }
       
-      console.log(`[${new Date().toISOString()}] ${savedCount} av ${annotations.length} kommentarer har sparats`);
+      console.log(`[${new Date().toISOString()}] Sparade ${savedCount} av ${annotations.length} annotationer`);
       
-      // Opdatera cache för annotationer om vi har sparat någon
+      // Invalidera cache för PDF-annotationer
       if (savedCount > 0) {
         try {
-          console.log(`[${new Date().toISOString()}] Invaliderar cache för annotationer`);
           queryClient.invalidateQueries({ queryKey: [`/api/pdf/versions/${activeVersionId}/annotations`] });
           queryClient.invalidateQueries({ queryKey: [`/api/pdf/${numericFileId}/annotations`] });
-        } catch (cacheError) {
-          console.error(`[${new Date().toISOString()}] Fel vid invalidering av cache:`, cacheError);
+        } catch (err) {
+          console.error('Fel vid invalidering av cache:', err);
         }
       }
-    } catch (error) {
-      console.error(`[${new Date().toISOString()}] Fel vid sparande av kommentarer:`, error);
+    } catch (err) {
+      console.error('Kunde inte spara alla annotationer:', err);
+      throw err;
     }
   };
+  
+
   
   // Hantera stängning av PDF-visaren
   const handleClose = async () => {
