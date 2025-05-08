@@ -173,6 +173,58 @@ export default function EnhancedPDFViewer({
   const pdfContainerRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Anväd react-query mutation för att hämta PDF-innehåll
+  const fetchPdfContentMutation = useMutation({
+    mutationFn: async (versionId: number | string) => {
+      try {
+        console.log(`Hämtar PDF-innehåll för version: ${versionId}`);
+        
+        // Omvandla versionId till number om det är en sträng
+        const numericVersionId = typeof versionId === 'string' ? parseInt(versionId) : versionId;
+        
+        // Hämta innehållet
+        const content = await getPDFVersionContent(numericVersionId);
+        if (!content) {
+          throw new Error("Kunde inte ladda PDF-innehåll");
+        }
+        
+        return content;
+      } catch (error) {
+        console.error(`Fel vid hämtning av PDF-innehåll för version ${versionId}:`, error);
+        throw error;
+      }
+    },
+    onSuccess: (content) => {
+      // Konvertera blob till URL
+      const blobUrl = URL.createObjectURL(content);
+      console.log(`Skapade blob URL: ${blobUrl}`);
+      setPdfUrl(blobUrl);
+      
+      // Spara även för lokal lagring
+      if (file || content) {
+        const pdfFile = file || new File([content], filename, { type: "application/pdf" });
+        const uniqueId = `file_${getConsistentFileId(fileId)}`;
+        storeFileForReuse(pdfFile, { uniqueId });
+        console.log(`PDF-fil sparad för återanvändning som: ${uniqueId}`);
+      }
+    },
+    onError: (error) => {
+      console.error('Fel vid hämtning av PDF-innehåll:', error);
+      toast({
+        title: "Fel vid dokumentladdning",
+        description: "Kunde inte ladda PDF-innehållet optimalt. Försöker med alternativ metod.",
+        variant: "destructive",
+      });
+      
+      // Fallback till direkt URL om vi har en aktiv version
+      if (activeVersionId) {
+        setPdfUrl(`/api/pdf/versions/${activeVersionId}/content?t=${Date.now()}`);
+      } else if (initialUrl) {
+        setPdfUrl(initialUrl);
+      }
+    }
+  });
 
   // Load PDF data when component mounts
   useEffect(() => {
@@ -216,7 +268,10 @@ export default function EnhancedPDFViewer({
             console.log(`Använder senaste versionen: ${latestVersion.id} (nummer: ${latestVersion.versionNumber})`);
             
             setActiveVersionId(latestVersion.id);
-            setPdfUrl(latestVersion.fileUrl);
+            
+            // Använd fetchPdfContentMutation för att hämta innehållet
+            console.log(`Hämtar PDF-innehåll för version: ${latestVersion.id}`);
+            fetchPdfContentMutation.mutate(latestVersion.id);
             
             // Spara versionsinformation i localStorage för om servern skulle starta om
             localStorage.setItem(`pdf_versions_${fileId.toString()}`, JSON.stringify(uiVersions));
