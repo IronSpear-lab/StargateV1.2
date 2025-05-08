@@ -77,8 +77,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false);
-  const [deleteFolderDialogOpen, setDeleteFolderDialogOpen] = useState(false);
-  const [folderToDelete, setFolderToDelete] = useState<{id: number, name: string} | null>(null);
+  // Removed dialog state variables since we're using window.confirm now
   const [newFolderName, setNewFolderName] = useState("");
   const [dropzoneActive, setDropzoneActive] = useState(false);
   const [actionsMenuOpen, setActionsMenuOpen] = useState<Record<string, boolean>>({});
@@ -658,16 +657,58 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                 </span>
               )}
               
-              {/* Använder en helt anpassad meny med bara en knapp för mappborttagning (enklaste lösningen) */}
+              {/* DIRECT DELETE BUTTON - Ingen dialog, använder native confirm istället */}
               {node.type === 'folder' && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
                 <div 
                   className="ml-2 opacity-0 group-hover:opacity-100"
                   onClick={(e) => {
                     e.stopPropagation();
                     const folderId = parseInt(node.id.replace('folder_', ''));
-                    console.log(`Preparing to delete folder: ${node.name} with ID: ${folderId}`);
-                    setFolderToDelete({ id: folderId, name: node.name });
-                    setDeleteFolderDialogOpen(true);
+                    console.log(`Direct delete approach for folder: ${node.name} with ID: ${folderId}`);
+                    
+                    // Använd native confirm för att undvika alla problem med dialog-komponenter
+                    if (window.confirm(`Är du säker på att du vill radera mappen "${node.name}" och allt dess innehåll? Denna åtgärd kan inte ångras.`)) {
+                      console.log(`Executing direct delete for folder ID: ${folderId}`);
+                      
+                      // Direct fetch call without using dialog or mutation
+                      fetch(`/api/folders/${folderId}`, {
+                        method: 'DELETE',
+                        credentials: 'include'
+                      }).then(res => {
+                        if (res.ok) {
+                          console.log(`Successfully deleted folder ID: ${folderId}`);
+                          toast({
+                            title: "Mapp borttagen",
+                            description: "Mappen och dess innehåll har raderats.",
+                          });
+                          
+                          // Manually refetch data
+                          if (currentProject?.id) {
+                            Promise.all([
+                              fetch(`/api/folders?projectId=${currentProject.id}`, {credentials: 'include'}).then(r => r.json()),
+                              fetch(`/api/files?projectId=${currentProject.id}`, {credentials: 'include'}).then(r => r.json())
+                            ]).then(([folders, files]) => {
+                              queryClient.setQueryData(['/api/folders', currentProject.id], folders);
+                              queryClient.setQueryData(['/api/files', currentProject.id], files);
+                            });
+                          }
+                        } else {
+                          console.error(`Failed to delete folder ID: ${folderId}`);
+                          toast({
+                            title: "Kunde inte radera mapp",
+                            description: "Ett fel uppstod vid borttagning av mappen",
+                            variant: "destructive",
+                          });
+                        }
+                      }).catch(error => {
+                        console.error(`Error deleting folder: ${error}`);
+                        toast({
+                          title: "Kunde inte radera mapp",
+                          description: "Ett fel uppstod vid borttagning av mappen",
+                          variant: "destructive",
+                        });
+                      });
+                    }
                   }}
                 >
                   <span className="inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-red-100 cursor-pointer text-red-600">
@@ -1003,92 +1044,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         </CardContent>
       </Card>
       
-      {/* ULTRA-simplified dialog implementation that doesn't use ANY button elements */}
-      {deleteFolderDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={() => {
-          // Allows clicking outside to close the dialog
-          setDeleteFolderDialogOpen(false);
-          setFolderToDelete(null);
-        }}>
-          {/* stopPropagation prevents the outer div's onClick from triggering when clicking inside */}
-          <div className="bg-white rounded-lg max-w-lg w-full m-4 p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold leading-none tracking-tight">Radera mapp</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Är du säker på att du vill radera mappen "{folderToDelete?.name}" och allt dess innehåll? Denna åtgärd kan inte ångras.
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded mb-4 mt-2">
-              <AlertTriangle className="h-5 w-5 flex-shrink-0" />
-              <span className="text-sm">Alla filer och undermappar kommer att raderas permanent.</span>
-            </div>
-            
-            <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
-              <span 
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 cursor-pointer"
-                onClick={() => {
-                  console.log("Avbryter borttagning av mapp");
-                  setDeleteFolderDialogOpen(false);
-                  setFolderToDelete(null);
-                }}
-              >
-                Avbryt
-              </span>
-              <span
-                className={`inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2 cursor-pointer ${deleteFolderMutation.isPending ? 'opacity-50 pointer-events-none' : ''}`}
-                onClick={() => {
-                  if (folderToDelete && !deleteFolderMutation.isPending) {
-                    console.log(`Executing delete for folder ID: ${folderToDelete.id}`);
-                    // Direct fetch call without using mutation to avoid any potential nesting issues
-                    fetch(`/api/folders/${folderToDelete.id}`, {
-                      method: 'DELETE',
-                      credentials: 'include'
-                    }).then(res => {
-                      if (res.ok) {
-                        console.log(`Successfully deleted folder ID: ${folderToDelete.id}`);
-                        toast({
-                          title: "Mapp borttagen",
-                          description: "Mappen och dess innehåll har raderats.",
-                        });
-                        
-                        // Manually refetch data
-                        if (currentProject?.id) {
-                          Promise.all([
-                            fetch(`/api/folders?projectId=${currentProject.id}`, {credentials: 'include'}).then(r => r.json()),
-                            fetch(`/api/files?projectId=${currentProject.id}`, {credentials: 'include'}).then(r => r.json())
-                          ]).then(([folders, files]) => {
-                            queryClient.setQueryData(['/api/folders', currentProject.id], folders);
-                            queryClient.setQueryData(['/api/files', currentProject.id], files);
-                          });
-                        }
-                      } else {
-                        console.error(`Failed to delete folder ID: ${folderToDelete.id}`);
-                        toast({
-                          title: "Kunde inte radera mapp",
-                          description: "Ett fel uppstod vid borttagning av mappen",
-                          variant: "destructive",
-                        });
-                      }
-                    }).catch(error => {
-                      console.error(`Error deleting folder: ${error}`);
-                      toast({
-                        title: "Kunde inte radera mapp",
-                        description: "Ett fel uppstod vid borttagning av mappen",
-                        variant: "destructive",
-                      });
-                    });
-                    setDeleteFolderDialogOpen(false);
-                    setFolderToDelete(null);
-                  }
-                }}
-              >
-                Radera mapp
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Dialog har tagits bort och ersatts med direkt delete via window.confirm */}
     </div>
   );
 }
