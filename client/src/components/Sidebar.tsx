@@ -982,11 +982,17 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     newFolder: { name: string, parent: string, id: string }
   ): NavItemType[] => {
     return items.map(item => {
+      // Extra loggutskrift för att hjälpa debug
+      console.log(`Checking item ${item.label}, parent=${parentName}, type=${item.type}, comparing to ${newFolder.parent}`);
+      
       // Om denna mapp är föräldern, lägg till den nya mappen som ett barn
-      if (item.label === parentName && item.type === "folder") {
+      if (item.label === parentName && (item.type === "folder" || parentName === "Files")) {
+        console.log(`Found parent! Adding folder ${newFolder.name} to ${parentName}`);
+        
         // Skapa en kopia med den nya mappen
         return {
           ...item,
+          type: "folder", // Säkerställ att typen är folder för att visa undermappar
           children: [
             ...(item.children || []),
             {
@@ -1157,7 +1163,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           active: location.startsWith("/vault/files"),
           indent: 1,
           icon: <FileText className="w-4 h-4" />,
-          type: "link", // Ändra typen från "folder" till "link" för att undvika plus/kryss knappar
+          type: "folder", // För att kunna visa mappar under Files-sektionen
           children: []
         },
         {
