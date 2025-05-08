@@ -1,6 +1,40 @@
 // PDF Viewer UI Utilities
 
 /**
+ * Format date to a readable string, handling invalid dates gracefully
+ * @param dateInput The date input (string, Date, or null/undefined)
+ * @returns Formatted date string or a fallback string for invalid dates
+ */
+export function formatDate(dateInput: string | Date | null | undefined): string {
+  if (!dateInput) {
+    return "Inget datum";
+  }
+  
+  try {
+    // Convert to Date object if it's a string
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    
+    // Verify that the date is valid before formatting
+    if (!(date instanceof Date) || isNaN(date.getTime())) {
+      console.warn('Invalid date encountered:', dateInput);
+      return "Ogiltigt datum";
+    }
+    
+    // Format the date to a readable string
+    return date.toLocaleString('sv-SE', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (error) {
+    console.error('Error formatting date:', error, dateInput);
+    return "Kunde inte formatera datum";
+  }
+}
+
+/**
  * Generates a consistent file ID from file metadata
  * @param file File object, metadata or filename string
  */

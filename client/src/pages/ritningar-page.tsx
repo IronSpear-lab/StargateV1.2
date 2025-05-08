@@ -35,6 +35,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { UploadDialog } from "@/components/UploadDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useProject } from "@/contexts/ProjectContext";
+import { formatDate } from "@/lib/ui-utils";
 
 const mockRitningar = [
   { 
@@ -345,7 +346,7 @@ export default function RitningarPage() {
           filename: file.fileName || file.name || "dokument.pdf",
           version: file.versionNumber?.toString() || "1",
           description: file.description || "PDF-dokument",
-          uploaded: new Date(file.uploadedAt || file.createdAt).toLocaleString(),
+          uploaded: formatDate(file.uploadedAt || file.createdAt),
           uploadedBy: file.uploadedBy || "System",
           number: file.id.toString().padStart(3, '0'),
           status: file.status || "Active",

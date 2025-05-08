@@ -916,7 +916,9 @@ export default function EnhancedPDFViewer({
       
       // Opdatera cache för annotationer
       if (savedCount > 0) {
-        queryClient.invalidateQueries({ queryKey: [`/api/pdf/versions/${activeVersionId}/annotations`] });
+        // Använd useQueryClient from react-query för att invalidera cachen
+        const tempQueryClient = useQueryClient();
+        tempQueryClient?.invalidateQueries({ queryKey: [`/api/pdf/versions/${activeVersionId}/annotations`] });
       }
     } catch (error) {
       console.error('Fel vid sparande av kommentarer:', error);
