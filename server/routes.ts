@@ -560,15 +560,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Folders API
   app.get(`${apiPrefix}/folders`, async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).send({ error: 'Unauthorized' });
+      console.log("/api/folders - ej autentiserad, returnerar 401");
+      return res.status(401).send({ error: 'Du måste vara inloggad' });
     }
     
     try {
       const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
       
       if (!projectId) {
-        return res.status(400).json({ error: "Project ID is required" });
+        console.log("/api/folders - saknar projektID i förfrågan");
+        return res.status(400).json({ error: "Projekt-ID är obligatoriskt" });
       }
+
+      console.log(`/api/folders - Hämtar mappar för projekt ${projectId} av användare ${req.user!.id}`);
 
       // Kontrollera att användaren har tillgång till projektet
       const userProject = await db.select()
@@ -580,14 +584,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .limit(1);
       
       if (userProject.length === 0) {
-        return res.status(403).json({ error: 'You do not have access to this project' });
+        console.log(`/api/folders - Användare ${req.user!.id} har inte tillgång till projekt ${projectId}`);
+        return res.status(403).json({ error: 'Du har inte tillgång till detta projekt' });
       }
       
+      console.log(`/api/folders - Användare ${req.user!.id} har rollen ${userProject[0].role} i projekt ${projectId}`);
+      
       const folderList = await storage.getFolders(projectId);
+      console.log(`/api/folders - Hittade ${folderList.length} mappar för projekt ${projectId}`);
+      
       res.json(folderList);
     } catch (error) {
       console.error("Error fetching folders:", error);
-      res.status(500).json({ error: "Failed to fetch folders" });
+      res.status(500).json({ error: "Ett fel uppstod vid hämtning av mappar" });
     }
   });
 

@@ -281,10 +281,15 @@ class DatabaseStorage implements IStorage {
 
   // Files & Folders methods
   async getFolders(projectId: number): Promise<Folder[]> {
-    return await db
+    console.log(`storage.getFolders: Hämtar mappar för projekt ${projectId}`);
+    
+    const folderList = await db
       .select()
       .from(folders)
       .where(eq(folders.projectId, projectId));
+    
+    console.log(`storage.getFolders: Hittade ${folderList.length} mappar för projekt ${projectId}`);
+    return folderList;
   }
 
   async createFolder(folder: Omit<Folder, "id">): Promise<Folder> {

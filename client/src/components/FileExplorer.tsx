@@ -173,7 +173,18 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       
       const data = await res.json();
       console.log(`Hittade ${data.length} mappar för projekt ${currentProject.id}`);
-      return data;
+      
+      // Verifiera att alla mappar tillhör aktuellt projekt
+      if (data.some(folder => folder.projectId !== currentProject.id)) {
+        console.error("VARNING: Vissa mappar tillhör inte aktuellt projekt!", 
+          data.filter(folder => folder.projectId !== currentProject.id));
+      }
+      
+      // Filtrera mappar som tillhör aktuellt projekt för att vara extra säker
+      const filteredData = data.filter(folder => folder.projectId === currentProject.id);
+      console.log(`Efter filtrering: ${filteredData.length} mappar för projekt ${currentProject.id}`);
+      
+      return filteredData;
     },
     enabled: !!currentProject?.id, // Kör bara denna query om vi har ett projekt
     staleTime: 10000 // Förnya data efter 10 sekunder
@@ -307,8 +318,25 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     // Använd alltid aktuellt projektets ID
     formData.append('projectId', currentProject.id.toString());
     
+    console.log(`Laddar upp fil till projektID: ${currentProject.id}`);
+    
     if (uploadState.selectedFolder) {
+      // Kontrollera att vald mapp faktiskt tillhör det aktuella projektet
+      const folder = foldersData?.find(f => f.id.toString() === uploadState.selectedFolder);
+      
+      if (folder && folder.projectId !== currentProject.id) {
+        console.error(`VARNING: Vald mapp (ID ${uploadState.selectedFolder}) tillhör projekt ${folder.projectId}, inte aktuellt projekt ${currentProject.id}`);
+        toast({
+          title: "Felaktig mapp",
+          description: "Den valda mappen tillhör ett annat projekt.",
+          variant: "destructive",
+        });
+        setUploadState(prev => ({ ...prev, isUploading: false }));
+        return;
+      }
+      
       formData.append('folderId', uploadState.selectedFolder);
+      console.log(`Laddar upp till mapp: ${uploadState.selectedFolder}`);
     }
     
     // Simulate upload progress (in a real app, you'd use XHR or fetch with progress event)
