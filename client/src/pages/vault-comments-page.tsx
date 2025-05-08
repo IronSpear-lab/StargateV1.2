@@ -35,29 +35,34 @@ interface PDFAnnotation {
   };
   color: string;
   comment: string | null;
-  status: 'open' | 'resolved' | 'action_required' | 'reviewing';
+  status: 'new_comment' | 'action_required' | 'rejected' | 'new_review' | 'other_forum' | 'resolved';
   createdAt: string;
   createdById: number;
   createdBy: string;
   fileName?: string;
   filePath?: string;
   versionNumber?: number;
+  projectId?: number;
 }
 
 // Status color mapping
 const statusColors: Record<string, string> = {
-  'open': 'bg-blue-500',
-  'resolved': 'bg-green-500',
-  'action_required': 'bg-red-500',
-  'reviewing': 'bg-yellow-500'
+  'new_comment': 'bg-pink-500',      // HotPink #FF69B4
+  'action_required': 'bg-red-600',   // Red #FF0000
+  'rejected': 'bg-gray-500',         // Grey #808080
+  'new_review': 'bg-orange-500',     // Orange #FFA500
+  'other_forum': 'bg-blue-600',      // RoyalBlue #4169E1
+  'resolved': 'bg-lime-500'          // GreenYellow #ADFF2F
 };
 
 // Status label mapping
 const statusLabels: Record<string, string> = {
-  'open': 'Öppen',
-  'resolved': 'Löst',
-  'action_required': 'Åtgärd krävs',
-  'reviewing': 'Under granskning'
+  'new_comment': 'Ny kommentar',
+  'action_required': 'Ska åtgärdas',
+  'rejected': 'Avvisas',
+  'new_review': 'Ny granskning',
+  'other_forum': 'Annat forum eller skede',
+  'resolved': 'Har åtgärdats'
 };
 
 export default function VaultCommentsPage() {
@@ -166,12 +171,14 @@ export default function VaultCommentsPage() {
             </CardHeader>
             <CardContent>
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="mb-4 grid grid-cols-5 max-w-xl">
+                <TabsList className="mb-4 grid grid-cols-7 max-w-5xl">
                   <TabsTrigger value="all">Alla</TabsTrigger>
-                  <TabsTrigger value="open">Öppna</TabsTrigger>
-                  <TabsTrigger value="action_required">Åtgärd krävs</TabsTrigger>
-                  <TabsTrigger value="reviewing">Granskning</TabsTrigger>
-                  <TabsTrigger value="resolved">Lösta</TabsTrigger>
+                  <TabsTrigger value="new_comment">Nya</TabsTrigger>
+                  <TabsTrigger value="action_required">Åtgärdas</TabsTrigger>
+                  <TabsTrigger value="rejected">Avvisade</TabsTrigger>
+                  <TabsTrigger value="new_review">Granskning</TabsTrigger>
+                  <TabsTrigger value="other_forum">Annat forum</TabsTrigger>
+                  <TabsTrigger value="resolved">Åtgärdade</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value={activeTab} className="mt-0">

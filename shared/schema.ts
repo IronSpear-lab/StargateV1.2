@@ -4,7 +4,7 @@ import { z } from "zod";
 import { relations } from "drizzle-orm";
 
 // PDF annotation status enum
-export const pdfAnnotationStatusEnum = pgEnum('pdf_annotation_status', ['open', 'resolved', 'action_required', 'reviewing']);
+export const pdfAnnotationStatusEnum = pgEnum('pdf_annotation_status', ['new_comment', 'action_required', 'rejected', 'new_review', 'other_forum', 'resolved']);
 
 // Define role enum for users
 export const userRoleEnum = pgEnum('user_role', ['admin', 'project_leader', 'user']);
@@ -286,7 +286,7 @@ export const pdfAnnotations = pgTable("pdf_annotations", {
   rect: jsonb("rect").notNull(), // Spara x, y, width, height och pageNumber
   color: text("color").notNull(),
   comment: text("comment"),
-  status: pdfAnnotationStatusEnum("status").default("open").notNull(),
+  status: pdfAnnotationStatusEnum("status").default("new_comment").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdById: integer("created_by_id").references(() => users.id).notNull(),
   assignedTo: text("assigned_to"), // Tilldelad användare (username)
