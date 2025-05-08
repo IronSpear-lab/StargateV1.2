@@ -92,6 +92,9 @@ export default function FolderPage() {
       description: string;
       uploaded: string;
       uploadedBy: string;
+      number?: string;
+      status?: string;
+      annat?: string;
     };
   } | null>(null);
   
@@ -375,12 +378,10 @@ export default function FolderPage() {
           description: ritning.description || "PDF-dokument",
           uploaded: ritning.uploaded || new Date().toLocaleString(),
           uploadedBy: ritning.uploadedBy || "System",
-          // Lägg till extra metadata på fileData-objektet även om datastrukturen inte stödjer dessa fält
-          // Detta kommer att fungera eftersom vi bara använder dessa fält i visningen
           number: ritning.number || "",
           status: ritning.status || "",
           annat: ritning.annat || ""
-        } as any // Använd type assertion för att undvika TypeScript-felmeddelanden
+        }
       });
     },
     onError: (error: Error) => {
@@ -589,9 +590,9 @@ export default function FolderPage() {
                         <TableCell className="w-[200px]">{ritning.description}</TableCell>
                         <TableCell className="w-[140px]">{ritning.uploaded}</TableCell>
                         <TableCell className="w-[160px]">{ritning.uploadedBy}</TableCell>
-                        <TableCell className="w-[100px]">{ritning.number}</TableCell>
-                        <TableCell className="w-[120px]">{ritning.status}</TableCell>
-                        <TableCell className="w-[120px]">{ritning.annat}</TableCell>
+                        <TableCell className="w-[100px]">{ritning.number || '-'}</TableCell>
+                        <TableCell className="w-[120px]">{ritning.status || '-'}</TableCell>
+                        <TableCell className="w-[120px]">{ritning.annat || '-'}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end space-x-1">
                             <Button
