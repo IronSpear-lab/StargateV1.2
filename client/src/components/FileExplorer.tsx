@@ -16,7 +16,8 @@ import {
   MessageSquare,
   MoreVertical,
   X,
-  AlertTriangle
+  AlertTriangle,
+  Trash
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
