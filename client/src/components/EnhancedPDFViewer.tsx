@@ -5,9 +5,11 @@ import { Document, Page, pdfjs } from "react-pdf";
 import { useQueryClient } from "@tanstack/react-query";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
+import { configurePdfWorker, configureAlternativePdfLoading } from '@/lib/pdf-worker-config';
 
 // Konfigurerar PDF.js för att hantera avbrutna förfrågningar bättre
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+// Använd vår förbättrade konfiguration istället för direkt tilldelning
+configurePdfWorker();
 import { 
   Loader2, 
   ChevronLeft, 
@@ -436,6 +438,23 @@ export default function EnhancedPDFViewer({
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
     setLoading(false);
+  };
+  
+  // Hantera fel vid laddning av PDF
+  const onDocumentLoadError = (error: Error) => {
+    console.error('Fel vid laddning av PDF:', error);
+    setLoading(false);
+    
+    // Om felet är "signal is aborted without reason", försök med en annan URL för arbetarprocessen
+    if (error.message.includes('signal is aborted') || error.message.includes('aborted')) {
+      console.log('Avbrutet laddningsförsök, försöker med alternativ metod...');
+      // Lägg till en query parameter för att undvika cache
+      if (pdfUrl) {
+        const newUrl = `${pdfUrl}${pdfUrl.includes('?') ? '&' : '?'}nocache=${Date.now()}`;
+        console.log('Provar att ladda PDF med ny URL:', newUrl);
+        setPdfUrl(newUrl);
+      }
+    }
   };
 
   // Navigation handlers
@@ -1375,8 +1394,9 @@ export default function EnhancedPDFViewer({
               <Document
                 file={pdfUrl}
                 onLoadSuccess={onDocumentLoadSuccess}
+                onLoadError={onDocumentLoadError}
                 loading={<div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin h-8 w-8" /></div>}
-                error={<div className="p-8 text-center text-red-500">Failed to load PDF document.</div>}
+                error={<div className="p-8 text-center text-red-500">Dokumentet kunde inte laddas. Försöker igen automatiskt...</div>}
               >
                 <Page
                   pageNumber={pageNumber}
