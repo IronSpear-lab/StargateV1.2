@@ -85,6 +85,8 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false);
+  const [deleteFolderDialogOpen, setDeleteFolderDialogOpen] = useState(false);
+  const [folderToDelete, setFolderToDelete] = useState<{id: number, name: string} | null>(null);
   const [newFolderName, setNewFolderName] = useState("");
   const [dropzoneActive, setDropzoneActive] = useState(false);
   const [actionsMenuOpen, setActionsMenuOpen] = useState<Record<string, boolean>>({});
@@ -522,9 +524,8 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                         onClick={(e) => {
                           e.stopPropagation();
                           const folderId = parseInt(node.id.replace('folder_', ''));
-                          if (confirm(`Är du säker på att du vill radera mappen "${node.name}" och allt dess innehåll? Denna åtgärd kan inte ångras.`)) {
-                            deleteFolderMutation.mutate(folderId);
-                          }
+                          setFolderToDelete({ id: folderId, name: node.name });
+                          setDeleteFolderDialogOpen(true);
                         }}
                       >
                         <Trash className="mr-2 h-4 w-4" />
