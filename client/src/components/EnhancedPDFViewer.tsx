@@ -63,7 +63,7 @@ export interface PDFAnnotation {
   };
   color: string;
   comment: string;
-  status: 'open' | 'resolved' | 'action_required' | 'reviewing';
+  status: 'new_comment' | 'action_required' | 'rejected' | 'new_review' | 'other_forum' | 'resolved';
   createdBy: string;
   createdAt: string;
   assignedTo?: string;
@@ -91,10 +91,16 @@ export interface FileVersion {
 
 // Status color mapping
 const statusColors = {
-  open: '#727cf5',        // Blå
-  resolved: '#0acf97',    // Grön
-  action_required: '#fa5c7c',  // Röd
-  reviewing: '#ffc35a',   // Gul
+  new_comment: '#FF69B4',      // HotPink (Rosa)
+  action_required: '#FF0000',  // Röd
+  rejected: '#808080',         // Grå
+  new_review: '#FFA500',       // Orange
+  other_forum: '#4169E1',      // RoyalBlue (Blå)
+  resolved: '#ADFF2F',         // GreenYellow (Grön)
+  
+  // Backward compatibility for old status values
+  open: '#FF69B4',             // Mappa till new_comment (Rosa)
+  reviewing: '#FFA500'         // Mappa till new_review (Orange)
 };
 
 interface EnhancedPDFViewerProps {
@@ -416,9 +422,9 @@ export default function EnhancedPDFViewer({
         height: Math.abs(markingEnd.y - markingStart.y),
         pageNumber: pageNumber,
       },
-      color: statusColors.open,
+      color: statusColors.new_comment,
       comment: '',
-      status: 'open',
+      status: 'new_comment',
       createdBy: user.username,
       createdAt: new Date().toISOString(),
     };
@@ -524,7 +530,7 @@ export default function EnhancedPDFViewer({
   };
   
   // Update annotation status
-  const updateAnnotationStatus = async (annotationId: string, newStatus: 'open' | 'resolved' | 'action_required' | 'reviewing') => {
+  const updateAnnotationStatus = async (annotationId: string, newStatus: 'new_comment' | 'action_required' | 'rejected' | 'new_review' | 'other_forum' | 'resolved') => {
     const updatedAnnotations = annotations.map(a => {
       if (a.id === annotationId) {
         return { ...a, status: newStatus, color: statusColors[newStatus] };
@@ -1159,30 +1165,46 @@ export default function EnhancedPDFViewer({
                     </div>
                   </div>
                   
-                  <div className="flex gap-2 mb-3">
+                  <div className="flex gap-2 mb-3 flex-wrap">
                     <Button
                       size="sm"
-                      variant={activeAnnotation.status === 'open' ? 'default' : 'outline'}
-                      className={activeAnnotation.status === 'open' ? 'bg-blue-500 hover:bg-blue-600' : ''}
-                      onClick={() => updateAnnotationStatus(activeAnnotation.id, 'open')}
+                      variant={activeAnnotation.status === 'new_comment' ? 'default' : 'outline'}
+                      className={activeAnnotation.status === 'new_comment' ? 'bg-pink-500 hover:bg-pink-600' : ''}
+                      onClick={() => updateAnnotationStatus(activeAnnotation.id, 'new_comment')}
                     >
-                      Öppen
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={activeAnnotation.status === 'reviewing' ? 'default' : 'outline'}
-                      className={activeAnnotation.status === 'reviewing' ? 'bg-yellow-500 hover:bg-yellow-600' : ''}
-                      onClick={() => updateAnnotationStatus(activeAnnotation.id, 'reviewing')}
-                    >
-                      Granskar
+                      Ny kommentar
                     </Button>
                     <Button
                       size="sm"
                       variant={activeAnnotation.status === 'action_required' ? 'default' : 'outline'}
-                      className={activeAnnotation.status === 'action_required' ? 'bg-red-500 hover:bg-red-600' : ''}
+                      className={activeAnnotation.status === 'action_required' ? 'bg-red-600 hover:bg-red-700' : ''}
                       onClick={() => updateAnnotationStatus(activeAnnotation.id, 'action_required')}
                     >
-                      Åtgärd krävs
+                      Ska åtgärdas
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={activeAnnotation.status === 'rejected' ? 'default' : 'outline'}
+                      className={activeAnnotation.status === 'rejected' ? 'bg-gray-500 hover:bg-gray-600' : ''}
+                      onClick={() => updateAnnotationStatus(activeAnnotation.id, 'rejected')}
+                    >
+                      Avvisas
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={activeAnnotation.status === 'new_review' ? 'default' : 'outline'}
+                      className={activeAnnotation.status === 'new_review' ? 'bg-orange-500 hover:bg-orange-600' : ''}
+                      onClick={() => updateAnnotationStatus(activeAnnotation.id, 'new_review')}
+                    >
+                      Ny granskning
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={activeAnnotation.status === 'other_forum' ? 'default' : 'outline'}
+                      className={activeAnnotation.status === 'other_forum' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                      onClick={() => updateAnnotationStatus(activeAnnotation.id, 'other_forum')}
+                    >
+                      Annat forum
                     </Button>
                     <Button
                       size="sm"
@@ -1190,8 +1212,9 @@ export default function EnhancedPDFViewer({
                       className={activeAnnotation.status === 'resolved' ? 'bg-green-500 hover:bg-green-600' : ''}
                       onClick={() => updateAnnotationStatus(activeAnnotation.id, 'resolved')}
                     >
-                      Löst
+                      Har åtgärdats
                     </Button>
+
                   </div>
                   
                   {activeAnnotation.comment ? (
