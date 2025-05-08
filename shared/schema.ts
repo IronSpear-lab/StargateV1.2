@@ -290,6 +290,7 @@ export const pdfAnnotations = pgTable("pdf_annotations", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdById: integer("created_by_id").references(() => users.id).notNull(),
   assignedTo: text("assigned_to"), // Tilldelad användare (username)
+  taskId: integer("task_id").references(() => tasks.id), // Relaterad uppgift (om konverterad)
 });
 
 // PDF version relations
@@ -318,6 +319,10 @@ export const pdfAnnotationsRelations = relations(pdfAnnotations, ({ one }) => ({
   project: one(projects, {
     fields: [pdfAnnotations.projectId],
     references: [projects.id]
+  }),
+  task: one(tasks, {
+    fields: [pdfAnnotations.taskId],
+    references: [tasks.id]
   })
 }));
 

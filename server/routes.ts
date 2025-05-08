@@ -1307,6 +1307,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to delete PDF annotation" });
     }
   });
+  
+  // Konvertera PDF-annotation till en uppgift
+  app.post(`${apiPrefix}/pdf/annotations/:annotationId/convert-to-task`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Du måste vara inloggad för att utföra denna åtgärd" });
+      }
+      
+      const annotationId = parseInt(req.params.annotationId);
+      if (isNaN(annotationId)) {
+        return res.status(400).json({ error: "Ogiltigt annotations-ID" });
+      }
+      
+      // Hämta annotationen med relaterad information
+      const annotation = await db.query.pdfAnnotations.findFirst({
+        where: eq(pdfAnnotations.id, annotationId),
+        with: {
+          pdfVersion: {
+            with: {
+              file: true
+            }
+          },
+          createdBy: true
+        }
+      });
+      
+      if (!annotation) {
+        return res.status(404).json({ error: "Annotationen kunde inte hittas" });
+      }
+      
+      // Om projektId inte är specificerat, returnera ett fel
+      if (!annotation.projectId) {
+        return res.status(400).json({ error: "Annotationen är inte kopplad till ett projekt" });
+      }
+      
+      // Om uppgiften redan existerar, returnera den
+      if (annotation.taskId) {
+        const existingTask = await db.query.tasks.findFirst({
+          where: eq(tasks.id, annotation.taskId)
+        });
+        
+        if (existingTask) {
+          return res.status(200).json({ 
+            message: "Denna kommentar är redan konverterad till en uppgift", 
+            task: existingTask 
+          });
+        }
+      }
+      
+      // Skapa ny uppgift med data från annotationen
+      const fileName = annotation.pdfVersion?.file?.name || "Okänd fil";
+      const pageNumber = annotation.rect?.pageNumber || 1;
+      const comment = annotation.comment || "Uppgift skapad från PDF-kommentar";
+      
+      // Nuvarande datum för att sätta som skapelsedatum
+      const today = new Date();
+      
+      // Ange standard deadlineDate om två veckor fram
+      const deadlineDate = new Date();
+      deadlineDate.setDate(today.getDate() + 14); // 2 veckor framåt
+      
+      // Status baserat på kommentarstatus
+      let taskStatus = 'todo'; // default
+      if (annotation.status === 'action_required') {
+        taskStatus = 'todo';
+      } else if (annotation.status === 'resolved') {
+        taskStatus = 'done';
+      } else if (annotation.status === 'new_review') {
+        taskStatus = 'review';
+      }
+      
+      // Skapa uppgiften
+      const [task] = await db.insert(tasks)
+        .values({
+          title: `PDF-kommentar: ${fileName} (sid ${pageNumber})`,
+          description: comment,
+          status: taskStatus,
+          priority: 'medium',
+          type: 'pdf_comment',
+          projectId: annotation.projectId,
+          assigneeId: req.body.assigneeId || null, // Använd angiven tilldelning eller null
+          createdById: req.user.id,
+          createdAt: today,
+          dueDate: deadlineDate,
+          startDate: today
+        })
+        .returning();
+      
+      // Uppdatera annotationen med taskId
+      await db.update(pdfAnnotations)
+        .set({ taskId: task.id })
+        .where(eq(pdfAnnotations.id, annotationId));
+      
+      // Returnera den skapade uppgiften
+      res.status(201).json({
+        message: "Kommentaren har konverterats till en uppgift",
+        task
+      });
+      
+    } catch (error) {
+      console.error("Fel vid konvertering av annotation till uppgift:", error);
+      res.status(500).json({ error: "Det gick inte att konvertera kommentaren till en uppgift" });
+    }
+  });
 
   app.get(`${apiPrefix}/wiki-pages/:id`, async (req, res) => {
     try {
