@@ -680,7 +680,14 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   const { toast } = useToast();
   
   // State för att lagra mappar som användaren har skapat
-  const [userCreatedFolders, setUserCreatedFolders] = useState<{name: string; parent: string}[]>([]);
+  const [userCreatedFolders, setUserCreatedFolders] = useState<{name: string; parent: string; id: string}[]>(() => {
+    // Försök att hämta sparade mappar från localStorage vid initialisering
+    if (typeof window !== 'undefined') {
+      const savedFolders = localStorage.getItem('userCreatedFolders');
+      return savedFolders ? JSON.parse(savedFolders) : [];
+    }
+    return [];
+  });
   
   // State för användarens profilbild med lagring i localStorage
   const [userAvatar, setUserAvatar] = useState<string | null>(() => {
@@ -766,16 +773,24 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   
   // Funktion för att skapa en ny mapp
   const createFolder = (folderName: string, parentName: string) => {
-    // Spara den nya mappen i state så att den visas i sidofältet
-    setUserCreatedFolders(prev => [...prev, { name: folderName, parent: parentName }]);
+    // Skapa ett unikt ID för mappen
+    const folderId = `folder_${Date.now()}`;
+    
+    // Skapa den nya mappen med unik ID
+    const newFolder = { name: folderName, parent: parentName, id: folderId };
+    
+    // Uppdatera state
+    const updatedFolders = [...userCreatedFolders, newFolder];
+    setUserCreatedFolders(updatedFolders);
+    
+    // Spara i localStorage
+    localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
     
     // Visa meddelande om att mappen har skapats
     toast({
       title: "Mapp skapad",
       description: `Mappen "${folderName}" har skapats under "${parentName}"`,
     });
-    
-    // I en riktig implementation skulle vi också göra en API-anrop för att spara mappen i databasen
   };
   
   // Funktion för att hitta den rätta föräldern för en nyskapad mapp och uppdatera den
