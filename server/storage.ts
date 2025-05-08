@@ -360,6 +360,85 @@ class DatabaseStorage implements IStorage {
     }
   }
 
+  // Ny funktion för att hämta rotfiler (filer utan mapp)
+  async getRootFiles(projectId: number): Promise<File[]> {
+    console.log(`storage.getRootFiles: Hämtar rotfiler för projekt ${projectId}`);
+    
+    if (!projectId || isNaN(projectId)) {
+      console.error('storage.getRootFiles: Ogiltigt projektID:', projectId);
+      return [];
+    }
+    
+    try {
+      const fileList = await db
+        .select()
+        .from(files)
+        .where(
+          and(
+            eq(files.projectId, projectId),
+            isNull(files.folderId)
+          )
+        );
+      
+      console.log(`storage.getRootFiles: Hittade ${fileList.length} rotfiler för projekt ${projectId}`);
+      return fileList;
+    } catch (error) {
+      console.error("Error fetching root files:", error);
+      return [];
+    }
+  }
+
+  // Funktion för att hämta filer för en specifik mapp
+  async getFilesByFolder(projectId: number, folderId: number): Promise<File[]> {
+    console.log(`storage.getFilesByFolder: Hämtar filer för projekt ${projectId} och mapp ${folderId}`);
+    
+    if (!projectId || isNaN(projectId) || !folderId || isNaN(folderId)) {
+      console.error('storage.getFilesByFolder: Ogiltigt projekt-ID eller mapp-ID');
+      return [];
+    }
+    
+    try {
+      const fileList = await db
+        .select()
+        .from(files)
+        .where(
+          and(
+            eq(files.projectId, projectId),
+            eq(files.folderId, folderId)
+          )
+        );
+      
+      console.log(`storage.getFilesByFolder: Hittade ${fileList.length} filer i mapp ${folderId} för projekt ${projectId}`);
+      return fileList;
+    } catch (error) {
+      console.error("Error fetching files by folder:", error);
+      return [];
+    }
+  }
+
+  // Funktion för att hämta alla filer i ett projekt
+  async getFilesByProject(projectId: number): Promise<File[]> {
+    console.log(`storage.getFilesByProject: Hämtar alla filer för projekt ${projectId}`);
+    
+    if (!projectId || isNaN(projectId)) {
+      console.error('storage.getFilesByProject: Ogiltigt projektID:', projectId);
+      return [];
+    }
+    
+    try {
+      const fileList = await db
+        .select()
+        .from(files)
+        .where(eq(files.projectId, projectId));
+      
+      console.log(`storage.getFilesByProject: Hittade ${fileList.length} filer för projekt ${projectId}`);
+      return fileList;
+    } catch (error) {
+      console.error("Error fetching all project files:", error);
+      return [];
+    }
+  }
+
   async getFiles(projectId: number, folderId?: number, allProjectFiles: boolean = false): Promise<File[]> {
     console.log(`storage.getFiles: Hämtar filer för projekt ${projectId}${folderId ? ` och mapp ${folderId}` : ''}${allProjectFiles ? ' (alla projektfiler)' : ''}`);
     
@@ -369,62 +448,16 @@ class DatabaseStorage implements IStorage {
     }
     
     try {
-      let fileList;
-      
       if (allProjectFiles) {
         // Om allProjectFiles är true, hämta alla filer för projektet oavsett mapp
-        fileList = await db
-          .select()
-          .from(files)
-          .where(eq(files.projectId, projectId));
-        console.log(`storage.getFiles: Hämtar ALLA filer för projekt ${projectId}`);
+        return this.getFilesByProject(projectId);
       } else if (folderId) {
         // Om folderId är angivet, hämta bara filer för den specifika mappen
-        fileList = await db
-          .select()
-          .from(files)
-          .where(
-            and(
-              eq(files.projectId, projectId),
-              eq(files.folderId, folderId)
-            )
-          );
+        return this.getFilesByFolder(projectId, folderId);
       } else {
         // Om ingen folderId och inte allProjectFiles, hämta bara rotfiler (utan mapp)
-        fileList = await db
-          .select()
-          .from(files)
-          .where(
-            and(
-              eq(files.projectId, projectId),
-              isNull(files.folderId)
-            )
-          );
+        return this.getRootFiles(projectId);
       }
-      
-      console.log(`storage.getFiles: Hittade ${fileList.length} filer för projekt ${projectId}${folderId ? ` och mapp ${folderId}` : ''}`);
-      
-      // Dubbelkontrollera att alla hämtade filer faktiskt tillhör detta projekt
-      const filteredList = fileList.filter(file => {
-        if (file.projectId !== projectId) {
-          console.error(`storage.getFiles: VARNING - Fil ${file.id} tillhör projekt ${file.projectId}, inte begärt projekt ${projectId}`);
-          return false;
-        }
-        
-        // Om en specifik mapp efterfrågas och vi inte hämtar alla filer, kontrollera att filen tillhör den mappen
-        if (folderId && !allProjectFiles && file.folderId !== folderId) {
-          console.error(`storage.getFiles: VARNING - Fil ${file.id} tillhör mapp ${file.folderId}, inte begärd mapp ${folderId}`);
-          return false;
-        }
-        
-        return true;
-      });
-      
-      if (filteredList.length !== fileList.length) {
-        console.error(`storage.getFiles: Filtrerade bort ${fileList.length - filteredList.length} filer som inte tillhör rätt projekt/mapp`);
-      }
-      
-      return filteredList;
     } catch (error) {
       console.error('storage.getFiles: Fel vid hämtning av filer:', error);
       return [];
