@@ -1112,6 +1112,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           active: location.startsWith("/vault/review"),
           indent: 1,
           icon: <CheckSquare className="w-4 h-4" />,
+          type: "link", // Ändra till link för att dölja plus/kryss
           children: []
         },
         {
@@ -1120,8 +1121,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           active: location.startsWith("/vault/files"),
           indent: 1,
           icon: <FileText className="w-4 h-4" />,
-          type: "folder",
-          onAddClick: () => handleAddFolder("Files"),
+          type: "link", // Ändra typen från "folder" till "link" för att undvika plus/kryss knappar
           children: []
         },
         {
@@ -1130,6 +1130,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           active: location.startsWith("/vault/versions"),
           indent: 1,
           icon: <Clock className="w-4 h-4" />,
+          type: "link", // Ändra till link för att dölja plus/kryss
           children: []
         },
         {
@@ -1138,6 +1139,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           active: location.startsWith("/vault/meetings"),
           indent: 1,
           icon: <Users className="w-4 h-4" />,
+          type: "link", // Ändra till link för att dölja plus/kryss
           children: []
         }
       ]
