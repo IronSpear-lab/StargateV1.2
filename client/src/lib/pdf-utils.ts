@@ -65,7 +65,7 @@ export interface PDFAnnotation {
   };
   color: string;
   comment: string;
-  status: 'open' | 'resolved' | 'action_required' | 'reviewing';
+  status: 'new_comment' | 'action_required' | 'rejected' | 'new_review' | 'other_forum' | 'resolved';
   createdAt?: string;
   createdBy?: string;
   createdById?: number;
