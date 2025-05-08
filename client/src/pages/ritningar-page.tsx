@@ -721,9 +721,13 @@ export default function RitningarPage() {
               
               {/* Upload Dialog */}
               <UploadDialog 
-                isOpen={showUploadDialog} 
-                onClose={() => setShowUploadDialog(false)}
+                open={showUploadDialog} 
+                onOpenChange={setShowUploadDialog}
                 onUpload={handleUpload}
+                acceptedFileTypes=".pdf"
+                title="Ladda upp ritningar"
+                description="Välj eller dra PDF-filer här"
+                currentProject={currentProject}
               />
             </div>
           </div>
