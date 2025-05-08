@@ -12,8 +12,11 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  // Hantera FormData särskilt för filuppladdningar
+  const isFormData = data instanceof FormData;
+  
   // Lägg till anti-cache headers även för apiRequest
-  const headers: HeadersInit = data ? 
+  const headers: HeadersInit = data && !isFormData ? 
     { 
       "Content-Type": "application/json",
       "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -37,7 +40,7 @@ export async function apiRequest(
     const res = await fetch(noCacheUrl, {
       method,
       headers,
-      body: data ? JSON.stringify(data) : undefined,
+      body: data ? (isFormData ? data : JSON.stringify(data)) : undefined,
       credentials: "include",
       // Tvinga fetch att respektera cookies även över CORS
       mode: "cors",
@@ -49,7 +52,7 @@ export async function apiRequest(
   const res = await fetch(url, {
     method,
     headers,
-    body: data ? JSON.stringify(data) : undefined,
+    body: data ? (isFormData ? data : JSON.stringify(data)) : undefined,
     credentials: "include",
     // Tvinga fetch att respektera cookies även över CORS
     mode: "cors",
