@@ -417,7 +417,7 @@ export default function FolderPage() {
               number: ritning.number || "",
               status: ritning.status || "",
               annat: ritning.annat || ""
-            } as any // Använd type assertion för att undvika TypeScript-felmeddelanden
+            }
           });
           return;
         }
@@ -445,7 +445,9 @@ export default function FolderPage() {
         file: null,
         fileUrl,
         fileData: {
-          id: ritning.id || `temp_${Date.now()}`,  // Sätt ett temporärt ID om det inte finns något
+          id: typeof ritning.id === 'number' ? ritning.id : 
+              typeof ritning.id === 'string' && !isNaN(Number(ritning.id)) ? Number(ritning.id) : 
+              `temp_${Date.now()}`,  // Sätt ett temporärt ID om det inte finns något
           filename: ritning.filename,
           version: ritning.version,
           description: ritning.description,
@@ -454,7 +456,7 @@ export default function FolderPage() {
           number: ritning.number || "",
           status: ritning.status || "",
           annat: ritning.annat || ""
-        } as any // Använd type assertion för att undvika TypeScript-felmeddelanden
+        }
       });
     } catch (error) {
       console.error("Kunde inte öppna fallback-filen:", error);
@@ -623,7 +625,13 @@ export default function FolderPage() {
       {selectedFile && (
         <div className="fixed inset-0 z-50 bg-background/80">
           <EnhancedPDFViewer
-            fileId={Number(selectedFile.fileData?.id) || (selectedFile.fileData as any)?.fileId || `file_${Date.now()}`}
+            fileId={
+              typeof selectedFile.fileData?.id === 'number' 
+                ? selectedFile.fileData.id 
+                : typeof selectedFile.fileData?.id === 'string' && !isNaN(Number(selectedFile.fileData.id))
+                  ? Number(selectedFile.fileData.id)
+                  : `file_${Date.now()}`
+            }
             initialUrl={selectedFile.fileUrl || ""}
             filename={selectedFile.fileData?.filename || "Dokument"}
             onClose={() => setSelectedFile(null)}
