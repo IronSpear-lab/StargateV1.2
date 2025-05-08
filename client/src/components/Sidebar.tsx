@@ -825,7 +825,13 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     const folderId = `folder_${Date.now()}`;
     
     // Skapa den nya mappen med unik ID
-    const newFolder = { name: folderName, parent: parentName, id: folderId };
+    const newFolder = { 
+      name: folderName, 
+      parent: parentName, 
+      id: folderId,
+      label: folderName, // Samma som name, men enklare att använda i andra delar av koden
+      href: `/vault/files/${encodeURIComponent(folderName)}` // Länk till den dynamiska sidan
+    };
     
     // Uppdatera state
     const updatedFolders = [...userCreatedFolders, newFolder];
@@ -833,6 +839,16 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     
     // Spara i localStorage
     localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
+    
+    // Spara även i user_created_folders för App.tsx som behöver känna till mappnamnen
+    // Detta behövs för den dynamiska routern
+    const existingFoldersForApp = localStorage.getItem('user_created_folders');
+    const foldersForApp = existingFoldersForApp ? JSON.parse(existingFoldersForApp) : [];
+    const updatedFoldersForApp = [...foldersForApp, { 
+      label: folderName,
+      parent: parentName
+    }];
+    localStorage.setItem('user_created_folders', JSON.stringify(updatedFoldersForApp));
     
     // Visa meddelande om att mappen har skapats
     toast({
@@ -883,6 +899,16 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     // Spara i localStorage
     localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
     
+    // Ta även bort från user_created_folders listan som App.tsx använder
+    const existingFoldersForApp = localStorage.getItem('user_created_folders');
+    if (existingFoldersForApp) {
+      const foldersForApp = JSON.parse(existingFoldersForApp);
+      const updatedFoldersForApp = foldersForApp.filter((folder: any) => 
+        folder.label !== folderToDelete.name
+      );
+      localStorage.setItem('user_created_folders', JSON.stringify(updatedFoldersForApp));
+    }
+    
     // Visa meddelande om att mappen har tagits bort
     toast({
       title: "Mapp borttagen",
@@ -909,9 +935,9 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           children: [
             ...(item.children || []),
             {
-              href: "#",
+              href: `/vault/files/${encodeURIComponent(newFolder.name)}`,
               label: newFolder.name,
-              active: false,
+              active: location === `/vault/files/${encodeURIComponent(newFolder.name)}`,
               indent: (item.indent || 0) + 1,
               icon: <FolderClosed className={`w-4 h-4`} />,
               type: "folder",
