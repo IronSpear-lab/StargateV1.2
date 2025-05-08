@@ -53,10 +53,89 @@ export function UploadDialog({
     }
   };
 
-  const handleSubmit = () => {
+  // Kontrollera om en fil är en giltig PDF
+  const verifyPDFFile = (file: File): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (file.type !== 'application/pdf') {
+        resolve(false);
+        return;
+      }
+      
+      // Läs de första bytes av filen för att verifiera PDF-signaturen
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result;
+        if (!result) {
+          resolve(false);
+          return;
+        }
+        
+        try {
+          // PDF-filer börjar med "%PDF-"
+          const arr = new Uint8Array(result as ArrayBuffer);
+          const header = new TextDecoder().decode(arr.slice(0, 5));
+          const isPDF = header === '%PDF-';
+          
+          // Kontrollera även slutet av filen efter EOF-markören
+          // Läs hela filen för att göra en mer grundlig kontroll
+          const fullReader = new FileReader();
+          fullReader.onload = (fullEvent) => {
+            try {
+              const fullResult = fullEvent.target?.result;
+              if (!fullResult) {
+                resolve(isPDF); // Basundan på bara header-kontrollen
+                return;
+              }
+              
+              const fullArr = new Uint8Array(fullResult as ArrayBuffer);
+              if (fullArr.length < 30) {
+                resolve(false); // För liten för att vara en giltig PDF
+                return;
+              }
+              
+              // Sök efter EOF-markör i de sista 1000 bytes av filen
+              const searchSize = Math.min(1000, fullArr.length);
+              const tail = new TextDecoder().decode(fullArr.slice(fullArr.length - searchSize));
+              const hasEOF = tail.includes('%%EOF');
+              
+              // Kontrollera också efter xref-tabell
+              const hasXref = tail.includes('xref');
+              
+              resolve(isPDF && (hasEOF || hasXref));
+            } catch (error) {
+              console.error('Fel vid fullständig PDF-verifiering:', error);
+              resolve(isPDF); // Fall tillbaka på header-kontrollen
+            }
+          };
+          
+          fullReader.onerror = () => resolve(isPDF); // Fall tillbaka på header-kontrollen
+          fullReader.readAsArrayBuffer(file);
+          
+        } catch (error) {
+          console.error('Fel vid PDF-verifiering:', error);
+          resolve(false);
+        }
+      };
+      
+      reader.onerror = () => resolve(false);
+      reader.readAsArrayBuffer(file.slice(0, 5));
+    });
+  };
+
+  const handleSubmit = async () => {
     if (files.length > 0) {
       // Visa namnet på filen som laddas upp i konsolen
       console.log("Laddar upp filer:", files.map(f => f.name));
+      
+      if (acceptedFileTypes.includes('pdf')) {
+        // Kontrollera om filen är en giltig PDF om det är en PDF-uppladdning
+        const pdfValidations = await Promise.all(files.map(verifyPDFFile));
+        
+        if (pdfValidations.some(isValid => !isValid)) {
+          alert('En eller flera filer är inte giltiga PDF-dokument. Kontrollera filerna och försök igen.');
+          return;
+        }
+      }
       
       // Skicka filerna till föräldrakomponenten för uppladdning
       onUpload(files);

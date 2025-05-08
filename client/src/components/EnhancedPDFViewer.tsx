@@ -6,6 +6,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 import { configurePdfWorker, configureAlternativePdfLoading } from '@/lib/pdf-worker-config';
+import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 
 // Konfigurerar PDF.js för att hantera avbrutna förfrågningar bättre
 // Använd vår förbättrade konfiguration istället för direkt tilldelning
