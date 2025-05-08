@@ -723,23 +723,59 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     return [];
   });
   
-  // Uppdatera mappar när användaren ändras eller loggar in
+  // Uppdatera mappar när användaren ändras eller loggar in, eller när komponenten renderas
   useEffect(() => {
     if (user) {
-      // Uppdatera synkronisering mellan de två localStorage-nycklarna
+      // Hämta och uppdatera mappar från localStorage varje gång komponenten renderas
       const savedFolders = localStorage.getItem('userCreatedFolders');
       if (savedFolders) {
-        const parsedFolders = JSON.parse(savedFolders);
-        
-        // Säkerställ att user_created_folders är synkroniserat
-        const simplifiedFolders = parsedFolders.map((folder: any) => ({
-          label: folder.name,
-          parent: folder.parent
-        }));
-        localStorage.setItem('user_created_folders', JSON.stringify(simplifiedFolders));
+        try {
+          const parsedFolders = JSON.parse(savedFolders);
+          setUserCreatedFolders(parsedFolders);
+          
+          // Säkerställ att user_created_folders också är synkroniserat för App.tsx
+          const simplifiedFolders = parsedFolders.map((folder: any) => ({
+            label: folder.name,
+            parent: folder.parent
+          }));
+          localStorage.setItem('user_created_folders', JSON.stringify(simplifiedFolders));
+        } catch (e) {
+          console.error("Fel vid parsning av mappar från localStorage:", e);
+        }
       }
     }
   }, [user]);
+  
+  // Lägg till en periodisk kontroll för uppdateringar av localStorage
+  useEffect(() => {
+    // Funktionen som kontrollerar localStorage för förändringar
+    const checkForFolderUpdates = () => {
+      if (typeof window !== 'undefined') {
+        const savedFolders = localStorage.getItem('userCreatedFolders');
+        if (savedFolders) {
+          try {
+            const parsedFolders = JSON.parse(savedFolders);
+            
+            // Jämför med aktuell state för att undvika onödiga renderingar
+            if (JSON.stringify(parsedFolders) !== JSON.stringify(userCreatedFolders)) {
+              setUserCreatedFolders(parsedFolders);
+            }
+          } catch (e) {
+            console.error("Fel vid periodisk kontroll av mappar i localStorage:", e);
+          }
+        }
+      }
+    };
+    
+    // Kör direkt och sätt sedan intervall
+    checkForFolderUpdates();
+    
+    // Sätt ett intervall för att kontrollera var 3:e sekund
+    const intervalId = setInterval(checkForFolderUpdates, 3000);
+    
+    // Städa upp intervall vid unmount
+    return () => clearInterval(intervalId);
+  }, [userCreatedFolders]);
   
   // State för användarens profilbild med lagring i localStorage
   const [userAvatar, setUserAvatar] = useState<string | null>(() => {
