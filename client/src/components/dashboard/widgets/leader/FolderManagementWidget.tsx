@@ -125,6 +125,7 @@ export function FolderManagementWidget() {
       
       // Uppdatera queries för att återspegla ändringar
       queryClient.invalidateQueries({ queryKey: ['/api/folders', currentProject?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id, 'all=true'] });
       
       // Uppdatera lokalt lagrade mappar i localStorage för att de ska visas i sidomenyn
       // Sparar en temporär referens i lokalstorage med speciell struktur
@@ -193,7 +194,7 @@ export function FolderManagementWidget() {
       
       // Invalidate queries to update UI
       queryClient.invalidateQueries({ queryKey: ['/api/folders', currentProject?.id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id, 'all=true'] });
       
       // Also remove folder from localStorage for sidebar
       try {
