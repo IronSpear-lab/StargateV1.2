@@ -78,9 +78,12 @@ type NavItemType = {
   active?: boolean;
   indent?: number;
   children?: NavItemType[];
-  type?: 'folder' | 'file' | 'link' | string; // För att kunna identifiera mappar och visa plustecken
+  type?: 'folder' | 'file' | 'link' | 'section' | string; // För att kunna identifiera mappar, sektioner och visa plustecken
   onAddClick?: () => void;
   folderId?: string; // ID för mappen, används för borttagning
+  sectionId?: string; // ID för sektioner som ska kunna öppnas/stängas
+  isOpen?: boolean; // Om en sektion är öppen eller stängd
+  onToggle?: () => void; // Funktion för att toggla öppna/stängda sektioner
 };
 
 interface NavGroupProps {
@@ -689,7 +692,14 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   const [location] = useLocation();
   const isMobile = useMobile();
   const [isOpen, setIsOpen] = useState(!isMobile);
-  const [openSections, setOpenSections] = useState<string[]>([]);
+  const [openSections, setOpenSections] = useState<string[]>(() => {
+    // Retrieve open sections from localStorage if available
+    if (typeof window !== 'undefined') {
+      const savedSections = localStorage.getItem('openSections');
+      return savedSections ? JSON.parse(savedSections) : [];
+    }
+    return [];
+  });
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({
     "-Planning": false,
     "-Vault": true,
@@ -765,11 +775,16 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   
   const toggleSection = (sectionId: string) => {
     setOpenSections(prev => {
-      if (prev.includes(sectionId)) {
-        return prev.filter(id => id !== sectionId);
-      } else {
-        return [...prev, sectionId];
+      const newOpenSections = prev.includes(sectionId)
+        ? prev.filter(id => id !== sectionId)
+        : [...prev, sectionId];
+        
+      // Save to localStorage whenever the open sections change
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('openSections', JSON.stringify(newOpenSections));
       }
+      
+      return newOpenSections;
     });
   };
 
@@ -941,10 +956,14 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     }] : []),
     {
       href: "#", // No direct planning page
-      label: "Planning",
+      label: "Projektplanering",
       icon: <Briefcase className="w-5 h-5" />,
       active: location === "/kanban" || location === "/gantt" || 
               location === "/planning/kanban" || location === "/planning/gantt-chart",
+      type: "section",
+      sectionId: "project-planning",
+      isOpen: openSections.includes("project-planning"),
+      onToggle: () => toggleSection("project-planning"),
       children: [
         {
           href: "/kanban", // Match the route in App.tsx
@@ -964,14 +983,18 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     },
     {
       href: "#",
-      label: "Communication",
+      label: "Kommunikation",
       icon: <MessageSquare className="w-5 h-5" />,
       active: location === "/communication" || location === "/messages" || location.startsWith("/communication/"),
       badge: unreadData?.count && unreadData.count > 0 ? String(unreadData.count) : undefined,
+      type: "section",
+      sectionId: "communication",
+      isOpen: openSections.includes("communication"),
+      onToggle: () => toggleSection("communication"),
       children: [
         {
           href: "/messages",
-          label: "Messages",
+          label: "Meddelanden",
           icon: <Mail className="w-4 h-4" />,
           active: location === "/messages" || location === "/communication/messages",
           indent: 1,
@@ -986,6 +1009,10 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       active: location === "/3d-viewer" || 
               location === "/3d-viewer/design" || 
               location === "/3d-viewer/byggarbetsplats",
+      type: "section",
+      sectionId: "3d-viewer",
+      isOpen: openSections.includes("3d-viewer"),
+      onToggle: () => toggleSection("3d-viewer"),
       children: [
         {
           href: "/3d-viewer",
@@ -1015,6 +1042,10 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       label: "Vault",
       icon: <FolderClosed className="w-5 h-5" />,
       active: location.startsWith("/vault"),
+      type: "section",
+      sectionId: "vault",
+      isOpen: openSections.includes("vault"),
+      onToggle: () => toggleSection("vault"),
       children: [
         {
           href: "/vault",
@@ -1212,7 +1243,14 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     return items.map((item, index) => {
       const itemKey = `${parentKey}-${item.label}`;
       const hasChildren = item.children && item.children.length > 0;
-      const isItemOpen = openItems[itemKey] !== undefined ? openItems[itemKey] : false;
+      
+      // Handle section-specific open state if item is a section
+      let isItemOpen = false;
+      if (item.type === 'section' && item.sectionId) {
+        isItemOpen = item.isOpen ?? false;
+      } else {
+        isItemOpen = openItems[itemKey] !== undefined ? openItems[itemKey] : false;
+      }
       
       // Calculate indentation based on level
       let indentClass = '';
@@ -1322,7 +1360,16 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       return (
         <div key={itemKey}>
           {hasChildren ? (
-            <Collapsible open={isItemOpen} onOpenChange={() => toggleItem(itemKey)}>
+            <Collapsible 
+              open={isItemOpen} 
+              onOpenChange={() => {
+                if (item.type === 'section' && item.sectionId && item.onToggle) {
+                  item.onToggle();
+                } else {
+                  toggleItem(itemKey);
+                }
+              }}
+            >
               <CollapsibleTrigger asChild>
                 {/* Om det är en användarskapad mapp med folderId */}
                 {item.type === "folder" && item.folderId ? (
