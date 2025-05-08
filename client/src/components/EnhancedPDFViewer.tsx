@@ -21,7 +21,8 @@ import {
   Pencil,
   Link as LinkIcon,
   Eye,
-  Clock
+  Clock,
+  ClipboardList
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
