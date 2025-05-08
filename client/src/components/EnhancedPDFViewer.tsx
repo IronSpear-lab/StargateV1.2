@@ -152,7 +152,7 @@ export default function EnhancedPDFViewer({
   
   // Version management
   const [fileVersions, setFileVersions] = useState<FileVersion[]>([]);
-  const [activeVersionId, setActiveVersionId] = useState<string | undefined>(undefined);
+  const [activeVersionId, setActiveVersionId] = useState<string | number | undefined>(undefined);
   const [pdfUrl, setPdfUrl] = useState<string | undefined>(initialUrl);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [uploadingVersion, setUploadingVersion] = useState(false);

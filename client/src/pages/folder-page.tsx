@@ -408,7 +408,9 @@ export default function FolderPage() {
             file: storedFileData.file,
             fileUrl: storedFileData.url,
             fileData: {
-              id: ritning.id || ritning.fileId,  // Använd ID eller fileId för att identifiera filen
+              id: typeof ritning.id === 'number' ? ritning.id : 
+                  typeof ritning.id === 'string' && !isNaN(Number(ritning.id)) ? Number(ritning.id) : 
+                  ritning.fileId || `temp_${Date.now()}`,  // Använd ID eller fileId för att identifiera filen
               filename: ritning.filename,
               version: ritning.version,
               description: ritning.description,

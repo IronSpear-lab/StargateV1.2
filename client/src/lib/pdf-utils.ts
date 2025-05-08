@@ -34,9 +34,9 @@ export function getConsistentFileId(fileId: string | number): number {
     return parseInt(matches[1], 10);
   }
 
-  // Om inget matchas, försök att tolka hela strängen som ett nummer
-  // (detta kommer att returnera NaN om det inte är möjligt)
-  return parseInt(fileId, 10);
+  // Om inget matchas, returnera ett genererat numeriskt ID baserat på nuvarande tid
+  // istället för att returnera NaN som kan orsaka fel
+  return Math.floor(Date.now() / 1000);
 }
 
 // Interface för PDF Version
