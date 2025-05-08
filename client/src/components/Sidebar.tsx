@@ -1194,7 +1194,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               {hasChildren ? (
                 <button 
                   className={cn(
-                    "flex items-center justify-center w-full py-2 rounded-md transition-colors duration-150 sidebar-nav-item",
+                    "flex items-center justify-center w-full py-2 rounded-md transition-colors duration-150 sidebar-nav-item group",
                     item.active
                       ? "bg-primary/10 text-primary font-medium" 
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -1213,7 +1213,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 <Link 
                   href={item.href}
                   className={cn(
-                    "flex items-center justify-center py-2 rounded-md transition-colors duration-150 w-full sidebar-nav-item",
+                    "flex items-center justify-center py-2 rounded-md transition-colors duration-150 w-full sidebar-nav-item group",
                     item.active
                       ? "bg-primary/10 text-primary font-medium" 
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -1241,7 +1241,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         e.stopPropagation();
                         item.onAddClick?.();
                       }}
-                      className="ml-3 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      className="ml-3 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
                     >
                       <Plus className="h-3 w-3" />
                     </button>
@@ -1386,11 +1386,11 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                             }
                           }}
                           className={cn(
-                            "h-5 w-5 p-0 mr-1 flex items-center justify-center rounded-sm",
+                            "h-5 w-5 p-0 mr-1 flex items-center justify-center rounded-sm opacity-0 group-hover:opacity-100 transition-opacity",
                             // Avaktivera för inbyggda mappar som saknar folderId
                             item.folderId 
                               ? "text-destructive hover:text-destructive-foreground hover:bg-destructive" 
-                              : "text-muted pointer-events-none opacity-30"
+                              : "text-muted pointer-events-none opacity-0"
                           )}
                           aria-label="Ta bort mapp"
                         >
