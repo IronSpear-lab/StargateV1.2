@@ -174,9 +174,29 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
   // Create folder mutation
   const createFolderMutation = useMutation({
     mutationFn: async (folderData: FolderFormData) => {
-      // Säkerställ att projektId alltid är det aktuella projektets ID
-      folderData.projectId = currentProject?.id || folderData.projectId;
-      const res = await apiRequest('POST', '/api/folders', folderData);
+      // Explicit validering av projektID
+      if (!folderData.projectId || isNaN(folderData.projectId)) {
+        throw new Error("Ogiltigt projekt-ID");
+      }
+      
+      console.log("Använder följande data för att skapa mapp:", folderData);
+      
+      // Anropa API med full credentials för autentisering
+      const res = await fetch('/api/folders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(folderData),
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Fel vid skapande av mapp:", res.status, errorText);
+        throw new Error(errorText || `Fel vid skapande av mapp: ${res.status}`);
+      }
+      
       return await res.json();
     },
     onSuccess: () => {
@@ -321,7 +341,25 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
   
   // Handle folder creation
   const handleCreateFolder = () => {
-    if (!newFolderName || !currentProject?.id) return;
+    if (!newFolderName) {
+      toast({
+        title: "Felaktigt mappnamn",
+        description: "Du måste ange ett namn för mappen",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!currentProject?.id) {
+      toast({
+        title: "Inget projekt valt",
+        description: "Du måste välja ett projekt först",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    console.log("Skapar mapp i projekt:", currentProject.id);
     
     const folderData: FolderFormData = {
       name: newFolderName,
@@ -329,6 +367,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       parentId: uploadState.selectedFolder ? parseInt(uploadState.selectedFolder) : null
     };
     
+    console.log("Skickar mappdata:", folderData);
     createFolderMutation.mutate(folderData);
   };
   
