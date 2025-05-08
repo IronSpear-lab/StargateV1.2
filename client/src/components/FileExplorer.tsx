@@ -299,14 +299,33 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
   // Delete folder mutation
   const deleteFolderMutation = useMutation({
     mutationFn: async (folderId: number) => {
-      const res = await apiRequest('DELETE', `/api/folders/${folderId}`);
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to delete folder');
+      console.log(`Executing delete request for folder ID: ${folderId} in project: ${currentProject?.id}`);
+      
+      if (!currentProject?.id) {
+        console.error("No active project when attempting to delete folder");
+        throw new Error("Inget aktivt projekt valt");
       }
+      
+      const res = await apiRequest('DELETE', `/api/folders/${folderId}`);
+      console.log(`Delete folder response status: ${res.status}`);
+      
+      if (!res.ok) {
+        let errorMessage = 'Kunde inte radera mappen';
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.error || errorMessage;
+          console.error(`Server error when deleting folder: ${errorMessage}`);
+        } catch (e) {
+          console.error(`Could not parse error response: ${e}`);
+        }
+        throw new Error(errorMessage);
+      }
+      
+      console.log(`Successfully deleted folder ID: ${folderId}`);
       return true;
     },
-    onSuccess: () => {
+    onSuccess: (_, folderId) => {
+      console.log(`Folder deletion success callback triggered for folder ID: ${folderId}`);
       toast({
         title: "Mapp borttagen",
         description: "Mappen och dess innehåll har raderats.",
@@ -315,7 +334,8 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       queryClient.invalidateQueries({ queryKey: ['/api/folders', currentProject?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id] });
     },
-    onError: (error) => {
+    onError: (error, folderId) => {
+      console.error(`Failed to delete folder ID: ${folderId}. Error: ${error.message}`);
       toast({
         title: "Kunde inte radera mapp",
         description: error instanceof Error ? error.message : 'Ett okänt fel inträffade',
@@ -682,10 +702,11 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                     {/* Bara visa radera-knapp för mappar om användaren har rätt behörighet */}
                     {(node.type === 'folder' && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser")) && (
                       <DropdownMenuItem 
-                        className="text-red-600"
+                        className="text-red-600 font-medium"
                         onClick={(e) => {
                           e.stopPropagation();
                           const folderId = parseInt(node.id.replace('folder_', ''));
+                          console.log(`Preparing to delete folder: ${node.name} with ID: ${folderId}`);
                           setFolderToDelete({ id: folderId, name: node.name });
                           setDeleteFolderDialogOpen(true);
                         }}
@@ -998,35 +1019,61 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       </Card>
       
       {/* Delete Folder Confirmation Dialog */}
-      <Dialog open={deleteFolderDialogOpen} onOpenChange={setDeleteFolderDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Radera mapp</DialogTitle>
-            <DialogDescription>
-              Är du säker på att du vill radera mappen "{folderToDelete?.name}" och allt dess innehåll? Denna åtgärd kan inte ångras.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteFolderDialogOpen(false)}
-            >
-              Avbryt
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (folderToDelete) {
-                  deleteFolderMutation.mutate(folderToDelete.id);
+      {deleteFolderDialogOpen && folderToDelete && (
+        <Dialog open={deleteFolderDialogOpen} onOpenChange={(open) => {
+          if (!open) {
+            setDeleteFolderDialogOpen(false);
+          }
+        }}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Radera mapp</DialogTitle>
+              <DialogDescription>
+                Är du säker på att du vill radera mappen "{folderToDelete.name}" och allt dess innehåll? Denna åtgärd kan inte ångras.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-4 py-4">
+              <div className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="h-5 w-5" />
+                <span className="text-sm">All files and subfolders will be permanently deleted.</span>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
                   setDeleteFolderDialogOpen(false);
-                }
-              }}
-            >
-              Radera mapp
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                  setFolderToDelete(null);
+                }}
+              >
+                Avbryt
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  if (folderToDelete) {
+                    deleteFolderMutation.mutate(folderToDelete.id);
+                    setDeleteFolderDialogOpen(false);
+                    setFolderToDelete(null);
+                  }
+                }}
+                disabled={deleteFolderMutation.isPending}
+              >
+                {deleteFolderMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Raderar...
+                  </>
+                ) : (
+                  "Radera mapp"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
