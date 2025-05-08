@@ -328,6 +328,25 @@ class DatabaseStorage implements IStorage {
     const result = await db.insert(files).values(validatedData).returning();
     return result[0];
   }
+  
+  async deleteFile(id: number): Promise<{ success: boolean, filePath: string | null }> {
+    try {
+      // Get the file to retrieve the file path before deletion
+      const fileToDelete = await this.getFile(id);
+      
+      if (!fileToDelete) {
+        return { success: false, filePath: null };
+      }
+      
+      // Delete the file record
+      await db.delete(files).where(eq(files.id, id));
+      
+      return { success: true, filePath: fileToDelete.filePath };
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      return { success: false, filePath: null };
+    }
+  }
 
   // Tasks methods
   async getTasks(projectId: number): Promise<Task[]> {

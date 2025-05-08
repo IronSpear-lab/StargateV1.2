@@ -800,16 +800,17 @@ export default function RitningarPage() {
                     <TableHead className="w-[100px]">Nummer</TableHead>
                     <TableHead className="w-[120px]">Status</TableHead>
                     <TableHead className="w-[120px]">Annat</TableHead>
+                    <TableHead className="w-[60px] text-right">Åtgärder</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-4">Laddar...</TableCell>
+                      <TableCell colSpan={9} className="text-center py-4">Laddar...</TableCell>
                     </TableRow>
                   ) : filteredRitningar.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-4">Inga ritningar hittades</TableCell>
+                      <TableCell colSpan={9} className="text-center py-4">Inga ritningar hittades</TableCell>
                     </TableRow>
                   ) : (
                     filteredRitningar.map((ritning) => (
@@ -834,6 +835,22 @@ export default function RitningarPage() {
                         <TableCell className="w-[100px]">{ritning.number}</TableCell>
                         <TableCell className="w-[120px]">{ritning.status}</TableCell>
                         <TableCell className="w-[120px]">{ritning.annat}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClick(ritning);
+                              }}
+                              title="Ta bort fil"
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
@@ -857,6 +874,29 @@ export default function RitningarPage() {
           />
         </div>
       )}
+      
+      {/* Bekräftelsedialog för borttagning */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ta bort ritning</AlertDialogTitle>
+            <AlertDialogDescription>
+              Är du säker på att du vill ta bort ritningen "{fileToDelete?.filename}"? 
+              <br />
+              <br />
+              <span className="font-semibold text-red-600 dark:text-red-400">
+                Denna åtgärd kan inte ångras.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700 text-white">
+              Ta bort
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
