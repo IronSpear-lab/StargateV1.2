@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { FileText, Search, Plus, Upload, ChevronRight, Home, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,8 @@ import {
   getStoredFileAsync, 
   getStoredFileUrlAsync 
 } from "@/lib/file-utils";
+import { getPDFVersions, getPDFVersionContent, getLatestPDFVersion } from "@/lib/pdf-utils";
+import { apiRequest } from "@/lib/queryClient";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { UploadDialog } from "@/components/UploadDialog";
@@ -326,8 +328,7 @@ export default function RitningarPage() {
     checkUrlParams();
   }, [ritningarData]);
   
-  // I framtiden skulle vi hämta ritningar från databasen baserat på projekt-ID
-  // Detta skulle använda ett API-anrop: `/api/files?projectId=${currentProject?.id}`
+  // Hämta ritningar från databasen baserat på projekt-ID
   const { data: apiRitningar = [], isLoading: isLoadingApi } = useQuery({
     queryKey: ['/api/files', currentProject?.id],
     queryFn: async () => {
@@ -335,7 +336,21 @@ export default function RitningarPage() {
       try {
         const response = await fetch(`/api/files?projectId=${currentProject.id}`);
         if (!response.ok) throw new Error('Failed to fetch files');
-        return await response.json();
+        const files = await response.json();
+        
+        // Transformera API-svaret till Ritning-format
+        return files.map((file: any) => ({
+          id: file.id,
+          filename: file.fileName || file.name || "dokument.pdf",
+          version: file.versionNumber?.toString() || "1",
+          description: file.description || "PDF-dokument",
+          uploaded: new Date(file.uploadedAt || file.createdAt).toLocaleString(),
+          uploadedBy: file.uploadedBy || "System",
+          number: file.id.toString().padStart(3, '0'),
+          status: file.status || "Active",
+          annat: "PDF",
+          projectId: file.projectId
+        }));
       } catch (error) {
         console.error('Error fetching project files:', error);
         return [];
@@ -344,8 +359,26 @@ export default function RitningarPage() {
     enabled: !!currentProject,
   });
 
-  // Använd lokalt sparade ritningar + API data
-  const ritningar = ritningarData;
+  // Slå ihop lokalt sparade ritningar och API-data
+  // Vi prioriterar API-data om samma fil finns i båda källorna (baserat på ID)
+  const ritningar = React.useMemo(() => {
+    if (apiRitningar.length > 0) {
+      // Om vi har data från API, använd främst den
+      const apiRitningsMap = new Map(apiRitningar.map(r => [r.id, r]));
+      
+      // Filtrera lokala ritningar som inte redan finns i API-data
+      const uniqueLocalRitningar = ritningarData.filter(
+        local => !apiRitningsMap.has(local.id) && 
+                 local.projectId === currentProject?.id
+      );
+      
+      return [...apiRitningar, ...uniqueLocalRitningar];
+    } else {
+      // Om vi inte har någon API-data, använd bara lokala ritningar
+      return ritningarData.filter(r => r.projectId === currentProject?.id);
+    }
+  }, [apiRitningar, ritningarData, currentProject]);
+  
   const isLoading = isLoadingApi;
 
   const filteredRitningar = ritningar.filter(ritning => 
@@ -359,6 +392,50 @@ export default function RitningarPage() {
     setIsSidebarOpen(!isSidebarOpen);
   };
   
+  const queryClient = useQueryClient();
+  
+  // Uppladdningsmutationen som använder API:et istället för lokal lagring
+  const uploadFileMutation = useMutation({
+    mutationFn: async (fileData: { file: File, description: string }) => {
+      if (!currentProject) {
+        throw new Error("Inget projekt valt");
+      }
+      
+      const formData = new FormData();
+      formData.append('file', fileData.file);
+      formData.append('projectId', currentProject.id.toString());
+      formData.append('description', fileData.description);
+      
+      // Använd apiRequest för att ladda upp filen till servern
+      const response = await apiRequest('POST', '/api/files', formData);
+      if (!response.ok) {
+        throw new Error('Kunde inte ladda upp filen');
+      }
+      
+      // Returnera den uppladdade filens data
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      // Invalidera queryn för att uppdatera listan med filer
+      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id] });
+      
+      // Visa bekräftelse
+      toast({
+        title: "Fil uppladdad",
+        description: "Filen har laddats upp och lagrats permanent i databasen.",
+        variant: "default",
+      });
+    },
+    onError: (error: Error) => {
+      console.error("Fel vid uppladdning:", error);
+      toast({
+        title: "Uppladdning misslyckades",
+        description: error.message || "Ett fel uppstod vid uppladdning av fil.",
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleUpload = (files: File[]) => {
     // Kontrollera om användaren har ett aktivt projekt
     if (!currentProject || currentProject.id === 0) {
@@ -370,57 +447,103 @@ export default function RitningarPage() {
       return;
     }
     
-    // I en riktig implementering skulle vi skicka filerna till en API-endpoint
-    console.log("Uppladdade filer:", files);
+    // Visa att uppladdningen har startats
+    toast({
+      title: "Laddar upp filer",
+      description: `Laddar upp ${files.length} fil(er)...`,
+      variant: "default",
+    });
     
-    // Lagra filerna och spara deras ID:n för senare användning
-    const fileIds = storeFiles(files);
-    
-    // Lägg till de uppladdade filerna i listan
-    const now = new Date();
-    const timeString = `${now.getDate()} ${['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'][now.getMonth()]} ${now.getFullYear()}, ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-    
-    const newRitningar = files.map((file, index) => ({
-      id: ritningarData.length + index + 1,
-      filename: file.name,
-      version: "1", // Ny fil får version 1
-      description: "Ny uppladdad fil", 
-      uploaded: timeString,
-      uploadedBy: "Du",
-      number: `${ritningarData.length + index + 1}`.padStart(3, '0'),
-      status: "Active",
-      annat: "PDF",
-      fileId: fileIds[index], // Spara ID:t från fillagringen
-      projectId: currentProject.id // Koppla ritningen till det aktuella projektet
-    }));
-    
-    // Uppdatera listan med ritningar
-    const updatedRitningar = [...newRitningar, ...ritningarData];
-    setRitningarData(updatedRitningar);
-    
-    // Spara till localStorage så att det finns kvar mellan sessioner
-    localStorage.setItem(getStorageKey(), JSON.stringify(updatedRitningar));
-    
-    // Visa bekräftelse
-    setTimeout(() => {
-      toast({
-        title: "Filer uppladdade",
-        description: `${files.length} fil(er) har laddats upp framgångsrikt.`,
-        variant: "default",
+    // Ladda upp varje fil genom mutation
+    files.forEach(file => {
+      uploadFileMutation.mutate({ 
+        file,
+        description: "Uppladdad via Ritningar-sidan" 
       });
-    }, 300);
+    });
+    
+    // Stäng uppladdningsdialogen efter att ha startat uppladdningar
+    setShowUploadDialog(false);
   };
   
+  // Hämta PDF-filen från databasen
+  const fetchFileContentMutation = useMutation({
+    mutationFn: async (fileId: number) => {
+      try {
+        // Först måste vi hämta den senaste versionen av filen
+        const latestVersion = await getLatestPDFVersion(fileId);
+        if (!latestVersion) {
+          throw new Error("Ingen version hittades för filen");
+        }
+        
+        // Sedan hämtar vi innehållet i den versionen
+        const content = await getPDFVersionContent(latestVersion.id);
+        if (!content) {
+          throw new Error("Kunde inte ladda filinnehåll");
+        }
+        
+        return {
+          content,
+          version: latestVersion
+        };
+      } catch (error) {
+        console.error(`Fel vid hämtning av fil med ID ${fileId}:`, error);
+        throw error;
+      }
+    },
+    onSuccess: (data, fileId) => {
+      // Konvertera blob till url för att visa i PDF-läsaren
+      const fileUrl = URL.createObjectURL(data.content);
+      
+      // Hitta matchande ritningsinformation
+      const ritning = ritningarData.find(r => Number(r.id) === fileId);
+      
+      if (ritning) {
+        setSelectedFile({
+          file: null,
+          fileUrl,
+          fileData: {
+            filename: ritning.filename,
+            version: data.version.versionNumber.toString(),
+            description: data.version.description || ritning.description,
+            uploaded: new Date(data.version.uploadedAt).toLocaleString(),
+            uploadedBy: data.version.uploadedBy || ritning.uploadedBy
+          }
+        });
+      } else {
+        setSelectedFile({
+          file: null,
+          fileUrl,
+          fileData: {
+            filename: data.version.metadata?.fileName || "dokument.pdf",
+            version: data.version.versionNumber.toString(),
+            description: data.version.description || "PDF-dokument",
+            uploaded: new Date(data.version.uploadedAt).toLocaleString(),
+            uploadedBy: data.version.uploadedBy || "System"
+          }
+        });
+      }
+    },
+    onError: (error: Error) => {
+      console.error("Fel vid hämtning av fil:", error);
+      toast({
+        title: "Kunde inte öppna filen",
+        description: error.message || "Ett fel uppstod när filen skulle öppnas.",
+        variant: "destructive",
+      });
+    }
+  });
+
   // Öppna PDF-visaren när användaren klickar på en fil
   const handleFileClick = async (ritning: Ritning) => {
-    // För uppladdade filer, använd den lagrade filen
+    // För lokalt sparade filer, försök först att använda den lokala kopian
     if (ritning.fileId && ritning.fileId.startsWith('file_')) {
       try {
         // Använd asynkron version för att hämta från persistent lagring om det behövs
         const storedFileData = await getStoredFileAsync(ritning.fileId);
         
         if (storedFileData) {
-          console.log(`[${Date.now()}] Successfully loaded file from storage for viewing: ${ritning.fileId}`);
+          console.log(`[${Date.now()}] Successfully loaded file from local storage for viewing: ${ritning.fileId}`);
           setSelectedFile({
             file: storedFileData.file,
             fileUrl: storedFileData.url,
@@ -433,25 +556,24 @@ export default function RitningarPage() {
             }
           });
           return;
-        } else {
-          console.error(`[${Date.now()}] Could not find stored file with ID: ${ritning.fileId}`);
-          toast({
-            title: "Kunde inte hitta filen",
-            description: "Den uppladdade filen finns inte längre tillgänglig.",
-            variant: "destructive",
-          });
         }
       } catch (error) {
-        console.error(`[${Date.now()}] Error loading file with ID ${ritning.fileId}:`, error);
-        toast({
-          title: "Fel vid laddning av fil",
-          description: "Ett fel uppstod när filen skulle laddas. Försök igen senare.",
-          variant: "destructive",
-        });
+        console.warn(`[${Date.now()}] Error loading file with ID ${ritning.fileId} from local storage, will try server:`, error);
       }
     }
     
-    // För befintliga/mock-filer, använd exempelfilen
+    // För filens numeriska ID, försök att hämta från servern
+    if (ritning.id && !isNaN(Number(ritning.id))) {
+      try {
+        // Starta hämtning av filinnehåll från servern via mutation
+        fetchFileContentMutation.mutate(Number(ritning.id));
+        return;
+      } catch (error) {
+        console.error(`[${Date.now()}] Error loading file with ID ${ritning.id} from server:`, error);
+      }
+    }
+    
+    // Fallback: För befintliga/mock-filer, använd exempelfilen om inget annat fungerar
     const fileUrl = getUploadedFileUrl(ritning.id);
     console.log(`[${Date.now()}] Using example file URL for file: ${ritning.filename}`);
     setSelectedFile({
