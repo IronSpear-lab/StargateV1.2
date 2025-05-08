@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { FileText, Search, Plus, Upload, ChevronRight, Home, Loader2 } from "lucide-react";
+import { FileText, Search, Plus, Upload, ChevronRight, Home, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -19,6 +19,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { PDFViewerDialog } from "@/components/ui/pdf-viewer-dialog";
 import EnhancedPDFViewer from "@/components/EnhancedPDFViewer";
 import { 
@@ -234,12 +245,15 @@ interface Ritning {
 export default function RitningarPage() {
   const { currentProject } = useProject();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState("uploaded");
   const [sortDirection, setSortDirection] = useState("desc");
   const [versionFilter, setVersionFilter] = useState("all");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<Ritning | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Använd localStorage med projektisolering - separate storage per project
   const getStorageKey = () => {
@@ -408,8 +422,6 @@ export default function RitningarPage() {
     setIsSidebarOpen(!isSidebarOpen);
   };
   
-  const queryClient = useQueryClient();
-  
   // Uppladdningsmutationen som använder API:et istället för lokal lagring
   const uploadFileMutation = useMutation({
     mutationFn: async (fileData: { file: File, description: string }) => {
@@ -483,6 +495,65 @@ export default function RitningarPage() {
   };
   
   // Hämta PDF-filen från databasen
+  // Ta bort PDF-fil mutation
+  const deleteFileMutation = useMutation({
+    mutationFn: async (fileId: number) => {
+      if (!currentProject) {
+        throw new Error("Inget projekt valt");
+      }
+      
+      const response = await apiRequest('DELETE', `/api/files/${fileId}`);
+      if (!response.ok) {
+        throw new Error('Kunde inte ta bort filen');
+      }
+      
+      return { fileId };
+    },
+    onSuccess: (data) => {
+      // Invalidera queryn för att uppdatera listan med filer
+      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id] });
+      
+      // Ta bort fil från lokal lagring om den finns där
+      // OBS: Vi använder ingen kod för att göra detta här, eftersom det är API som hanterar allt
+      
+      // Visa bekräftelse
+      toast({
+        title: "Fil borttagen",
+        description: "Filen har tagits bort permanent.",
+        variant: "default",
+      });
+      
+      // Återställ state för delete-dialogrutan
+      setFileToDelete(null);
+      setShowDeleteConfirm(false);
+    },
+    onError: (error: Error) => {
+      console.error("Fel vid borttagning:", error);
+      toast({
+        title: "Borttagning misslyckades",
+        description: error.message || "Ett fel uppstod vid borttagning av fil.",
+        variant: "destructive",
+      });
+      
+      // Återställ state för delete-dialogrutan även vid fel
+      setFileToDelete(null);
+      setShowDeleteConfirm(false);
+    }
+  });
+  
+  // Hantera bekräftelse på borttagning
+  const handleDeleteConfirm = () => {
+    if (fileToDelete && fileToDelete.id) {
+      deleteFileMutation.mutate(Number(fileToDelete.id));
+    }
+  };
+  
+  // Öppna delete-dialogrutan
+  const handleDeleteClick = (ritning: Ritning) => {
+    setFileToDelete(ritning);
+    setShowDeleteConfirm(true);
+  };
+  
   const fetchFileContentMutation = useMutation({
     mutationFn: async (fileId: number) => {
       try {
