@@ -91,12 +91,21 @@ export function FolderManagementWidget() {
         throw new Error("Ogiltigt projekt-ID");
       }
       
+      // Modifierar föräldrarmappen (parent) för att säkerställa att nya mappar hamnar under Files-sektionen
+      // Om ingen föräldermapp valts, sätt parent_folder='Files' för att mappar ska visas under Files-sektionen
+      const requestData = {
+        ...folderData,
+        // Vi använder ett särskilt fält 'sidebarParent' som backend ignorerar
+        // men som frontend använder för att placera mappar i rätt sektion
+        sidebarParent: 'Files'
+      };
+      
       const res = await fetch('/api/folders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(folderData),
+        body: JSON.stringify(requestData),
         credentials: 'include'
       });
       
@@ -106,14 +115,31 @@ export function FolderManagementWidget() {
       
       return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: "Mapp skapad",
-        description: "Mappen har skapats",
+        description: "Mappen har skapats under Files-sektionen",
       });
       setNewFolderName("");
       setSelectedParentFolder(null);
+      
+      // Uppdatera queries för att återspegla ändringar
       queryClient.invalidateQueries({ queryKey: ['/api/folders', currentProject?.id] });
+      
+      // Uppdatera lokalt lagrade mappar i localStorage för att de ska visas i sidomenyn
+      // Sparar en temporär referens i lokalstorage med speciell struktur
+      // för att säkerställa att nya mappar hamnar under Files
+      try {
+        const userFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
+        const newFolder = {
+          name: data.name,
+          parent: 'Files', // Alltid placera nya mappar under Files
+          id: data.id.toString()
+        };
+        localStorage.setItem('userCreatedFolders', JSON.stringify([...userFolders, newFolder]));
+      } catch (e) {
+        console.error("Error updating local storage folders:", e);
+      }
     },
     onError: (error) => {
       toast({
@@ -136,15 +162,28 @@ export function FolderManagementWidget() {
         throw new Error(`Kunde inte radera mappen: ${res.status}`);
       }
       
-      return true;
+      return folderId;
     },
-    onSuccess: () => {
+    onSuccess: (deletedFolderId) => {
       toast({
         title: "Mapp borttagen",
         description: "Mappen och dess innehåll har raderats",
       });
+      
+      // Invalidate queries to update UI
       queryClient.invalidateQueries({ queryKey: ['/api/folders', currentProject?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id] });
+      
+      // Also remove folder from localStorage for sidebar
+      try {
+        const userFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
+        const updatedFolders = userFolders.filter(
+          (folder: { id: string }) => folder.id !== deletedFolderId.toString()
+        );
+        localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
+      } catch (e) {
+        console.error("Error updating local storage folders after deletion:", e);
+      }
     },
     onError: (error) => {
       toast({
