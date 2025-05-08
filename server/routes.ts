@@ -592,42 +592,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post(`${apiPrefix}/folders`, async (req, res) => {
-    if (!req.isAuthenticated()) {
+    // Förbättrad autentiseringskontroll
+    if (!req.isAuthenticated() || !req.user) {
       console.log("Unauthorized folder creation attempt - not authenticated");
-      return res.status(401).send({ error: 'Unauthorized' });
+      return res.status(401).send({ error: 'Du måste vara inloggad' });
     }
     
-    // Säkerställ att projektId finns med i begäran
-    if (!req.body.projectId) {
-      return res.status(400).json({ error: "Project ID is required" });
-    }
-    
-    // Kontrollera att användaren har tillgång till projektet
+    // Validera begäran
     try {
-      const projectId = parseInt(req.body.projectId);
+      console.log("Received folder creation request:", req.body);
+    
+      // Säkerställ att projektId finns med i begäran och är ett giltigt nummer
+      if (!req.body.projectId || isNaN(parseInt(req.body.projectId))) {
+        console.log("Invalid project ID in folder creation:", req.body.projectId);
+        return res.status(400).json({ error: "Ett giltigt projekt-ID krävs" });
+      }
       
+      // Säkerställ att mappnamn finns
+      if (!req.body.name || req.body.name.trim() === '') {
+        return res.status(400).json({ error: "Mappnamn krävs" });
+      }
+      
+      const projectId = parseInt(req.body.projectId);
+      console.log(`Processing folder creation for project ${projectId} by user ${req.user.id}`);
+      
+      // Kontrollera att användaren har tillgång till projektet
       const userProject = await db.select()
         .from(userProjects)
         .where(and(
-          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.userId, req.user.id),
           eq(userProjects.projectId, projectId)
         ))
         .limit(1);
       
       if (userProject.length === 0) {
-        console.log(`User ${req.user!.id} tried to create folder in project ${projectId} without access`);
-        return res.status(403).json({ error: 'You do not have access to this project' });
+        console.log(`User ${req.user.id} tried to create folder in project ${projectId} without access`);
+        return res.status(403).json({ error: 'Du har inte tillgång till detta projekt' });
       }
       
       // Kontrollera att bara projektledare/admin/superusers kan skapa mappar
       if (userProject[0].role !== 'project_leader' && 
           userProject[0].role !== 'admin' && 
           userProject[0].role !== 'superuser') {
-        console.log(`User ${req.user!.id} with role ${userProject[0].role} tried to create folder without permission`);
+        console.log(`User ${req.user.id} with role ${userProject[0].role} tried to create folder without permission`);
         return res.status(403).json({ 
-          error: 'Only project leaders, administrators, or superusers can create folders' 
+          error: 'Endast projektledare, administratörer eller superanvändare kan skapa mappar' 
         });
       }
+      
+      console.log(`User ${req.user.id} (${userProject[0].role}) allowed to create folder in project ${projectId}`);
       
       const folder = await storage.createFolder({
         ...req.body,
@@ -645,12 +658,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // DELETE endpoint för att ta bort mappar 
   app.delete(`${apiPrefix}/folders/:id`, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send({ error: 'Unauthorized' });
+    // Förbättrad autentiseringskontroll
+    if (!req.isAuthenticated() || !req.user) {
+      console.log("Unauthorized folder deletion attempt - not authenticated");
+      return res.status(401).send({ error: 'Du måste vara inloggad' });
     }
     
     try {
       const folderId = parseInt(req.params.id);
+      if (isNaN(folderId)) {
+        return res.status(400).json({ error: "Ogiltigt mapp-ID" });
+      }
+      
+      console.log(`Processing folder deletion for folder ID: ${folderId} by user ${req.user.id}`);
       
       // Hämta mappen för att säkerställa att användaren har behörighet att ta bort den
       const folder = await db.select()
@@ -659,30 +679,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .limit(1);
       
       if (folder.length === 0) {
-        return res.status(404).json({ error: "Folder not found" });
+        console.log(`Folder with ID ${folderId} not found`);
+        return res.status(404).json({ error: "Mappen hittades inte" });
       }
+      
+      console.log(`Folder found, belongs to project: ${folder[0].projectId}`);
       
       // Kontrollera att användaren har tillgång till projektet som mappen tillhör
       const userProject = await db.select()
         .from(userProjects)
         .where(and(
-          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.userId, req.user.id),
           eq(userProjects.projectId, folder[0].projectId)
         ))
         .limit(1);
       
       if (userProject.length === 0) {
-        return res.status(403).json({ error: 'You do not have access to this project' });
+        console.log(`User ${req.user.id} attempted to delete folder without project access`);
+        return res.status(403).json({ error: 'Du har inte tillgång till detta projekt' });
       }
       
       // Kontrollera att användaren har rätt behörighet (project_leader, admin, superuser)
       if (userProject[0].role !== 'project_leader' && 
           userProject[0].role !== 'admin' && 
           userProject[0].role !== 'superuser') {
+        console.log(`User ${req.user.id} with role ${userProject[0].role} attempted to delete folder without permission`);
         return res.status(403).json({ 
-          error: 'Only project leaders, administrators, or superusers can delete folders' 
+          error: 'Endast projektledare, administratörer eller superanvändare kan radera mappar' 
         });
       }
+      
+      console.log(`User ${req.user.id} (${userProject[0].role}) allowed to delete folder ${folderId} in project ${folder[0].projectId}`);
       
       const result = await storage.deleteFolder(folderId);
       
