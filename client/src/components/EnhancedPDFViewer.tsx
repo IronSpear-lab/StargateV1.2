@@ -532,8 +532,24 @@ export default function EnhancedPDFViewer({
     e.preventDefault();
     e.stopPropagation();
     
-    // Hämta giltigt versionId om det finns
-    const versionId = activeVersionId ? parseInt(activeVersionId) : 0;
+    // Hämta giltigt versionId om det finns, eller skapa ett numeriskt versionId baserat på fileId
+    let versionId = 0;
+    
+    if (activeVersionId && !isNaN(parseInt(activeVersionId))) {
+      versionId = parseInt(activeVersionId);
+    } else if (fileId) {
+      // Om vi inte har någon version, använd fileId som temporärt versionId
+      // Detta förhindrar null-värden som kan orsaka fel i databasen
+      try {
+        const numericId = typeof fileId === 'string' ? parseInt(fileId.replace(/\D/g, '')) : fileId;
+        if (!isNaN(numericId) && numericId > 0) {
+          versionId = numericId;
+          console.log(`Använder temporärt versionId baserat på fileId: ${versionId}`);
+        }
+      } catch (e) {
+        console.error("Kunde inte konvertera fileId till versionId:", e);
+      }
+    }
     
     // Create a new annotation
     const newAnnotation: PDFAnnotation = {
@@ -648,8 +664,23 @@ export default function EnhancedPDFViewer({
         const idToUse = isNumericId ? parseInt(activeAnnotation.id) : undefined;
         
         // Säkerställ att versionId är ett giltigt nummer
-        const versionId = parseInt(activeVersionId || '0');
-        if (isNaN(versionId)) {
+        let versionId = 0;
+        
+        if (activeVersionId && !isNaN(parseInt(activeVersionId))) {
+          versionId = parseInt(activeVersionId);
+        } else if (fileId) {
+          // Om vi inte har någon version, använd fileId som temporärt versionId
+          try {
+            const numericId = typeof fileId === 'string' ? parseInt(fileId.replace(/\D/g, '')) : fileId;
+            if (!isNaN(numericId) && numericId > 0) {
+              versionId = numericId;
+              console.log(`Använder temporärt versionId baserat på fileId: ${versionId}`);
+            }
+          } catch (e) {
+            console.error("Kunde inte konvertera fileId till versionId:", e);
+            throw new Error(`Ogiltigt versionId: ${activeVersionId}`);
+          }
+        } else {
           throw new Error(`Ogiltigt versionId: ${activeVersionId}`);
         }
         
@@ -783,8 +814,23 @@ export default function EnhancedPDFViewer({
           const idToUse = isNumericId ? parseInt(annotation.id) : undefined;
           
           // Säkerställ att versionId är ett giltigt nummer
-          const versionId = parseInt(activeVersionId || '0');
-          if (isNaN(versionId)) {
+          let versionId = 0;
+        
+          if (activeVersionId && !isNaN(parseInt(activeVersionId))) {
+            versionId = parseInt(activeVersionId);
+          } else if (fileId) {
+            // Om vi inte har någon version, använd fileId som temporärt versionId
+            try {
+              const numericId = typeof fileId === 'string' ? parseInt(fileId.replace(/\D/g, '')) : fileId;
+              if (!isNaN(numericId) && numericId > 0) {
+                versionId = numericId;
+                console.log(`Använder temporärt versionId baserat på fileId: ${versionId}`);
+              }
+            } catch (e) {
+              console.error("Kunde inte konvertera fileId till versionId:", e);
+              throw new Error(`Ogiltigt versionId: ${activeVersionId}`);
+            }
+          } else {
             throw new Error(`Ogiltigt versionId: ${activeVersionId}`);
           }
           

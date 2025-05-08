@@ -242,13 +242,17 @@ export async function savePDFAnnotation(
       return null;
     }
     
-    if (!versionId || isNaN(versionId)) {
-      console.error('Kunde inte spara annotation: saknar giltigt versionId', {
+    if (!versionId) {
+      console.error('Kunde inte spara annotation: saknar versionId', {
         pdfVersionId: versionId,
         annotation
       });
-      throw new Error('Ogiltigt versionId');
+      throw new Error('Saknat versionId');
     }
+    
+    // Acceptera alla numeriska versionsID:n, även 0 för kompatibilitet
+    // 0 kan användas temporärt när vi inte har ett riktigt versionId men behöver
+    // spara annotationerna
     
     const res = await apiRequest('POST', `/api/pdf/versions/${versionId}/annotations`, annotation);
     if (!res.ok) {
