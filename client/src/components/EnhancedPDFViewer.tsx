@@ -182,8 +182,8 @@ export default function EnhancedPDFViewer({
               filename: version.metadata?.fileName || filename,
               fileUrl: `/api/pdf/versions/${version.id}/content`,
               description: version.description,
-              uploaded: version.uploadedAt,
-              uploadedBy: version.uploadedBy,
+              uploaded: version.uploadedAt || new Date().toISOString(), // Säkerställ att uploaded alltid har ett värde
+              uploadedBy: version.uploadedBy || user?.username || 'Unknown',
               commentCount: 0
             }));
             
@@ -211,10 +211,13 @@ export default function EnhancedPDFViewer({
                   pageNumber: anno.rect.pageNumber
                 },
                 color: anno.color || statusColors[anno.status],
-                comment: anno.comment,
+                comment: anno.comment || '',
                 status: anno.status,
-                createdBy: anno.createdBy || 'Unknown',
-                createdAt: anno.createdAt || new Date().toISOString(),
+                createdBy: anno.createdBy || user?.username || 'Unknown',
+                createdAt: anno.createdAt ? 
+                  (typeof anno.createdAt === 'string' && anno.createdAt.match(/^\d{4}-\d{2}-\d{2}/) ? 
+                    anno.createdAt : new Date().toISOString()) : 
+                  new Date().toISOString(),
                 assignedTo: anno.assignedTo,
                 taskId: anno.id?.toString()
               }));
@@ -951,12 +954,24 @@ export default function EnhancedPDFViewer({
   // Hantera stängning av PDF-visaren
   const handleClose = async () => {
     try {
-      // Spara alla osparade kommentarer innan stängning
-      if (useDatabase && annotations.length > 0) {
-        console.log(`[${new Date().toISOString()}] Sparar kommentarer innan stängning av PDF-visare`);
-        await saveAllUnsavedAnnotations();
+      // Försök alltid spara kommentarer även om useDatabase är false - vi använder lokal lagring istället
+      // Detta säkerställer att kommentarer sparas oavsett läge
+      if (annotations.length > 0) {
+        console.log(`[${new Date().toISOString()}] Sparar ${annotations.length} kommentarer innan stängning av PDF-visare`);
+
+        if (useDatabase && currentProject) {
+          // Spara till databasen
+          await saveAllUnsavedAnnotations();
+        } else {
+          // Spara till localStorage
+          const storageKey = `pdf_annotations_${fileId.toString()}`;
+          console.log(`[${new Date().toISOString()}] Sparar kommentarer till localStorage med nyckel: ${storageKey}`);
+          localStorage.setItem(storageKey, JSON.stringify(annotations));
+        }
+
+        console.log(`[${new Date().toISOString()}] Kommentarer sparade innan stängning`);
       } else {
-        console.log(`[${new Date().toISOString()}] Ingen sparning behövs vid stängning: useDatabase=${useDatabase}, antal kommentarer=${annotations.length}`);
+        console.log(`[${new Date().toISOString()}] Inga kommentarer att spara vid stängning`);
       }
     } catch (error) {
       console.error(`[${new Date().toISOString()}] Fel vid sparande av kommentarer vid stängning:`, error);
