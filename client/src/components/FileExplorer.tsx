@@ -103,6 +103,23 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       }));
     }
   }, [currentProject?.id]);
+  
+  // Auto-expandera alla mappar när de laddas för att visa dem direkt
+  useEffect(() => {
+    if (foldersData && foldersData.length > 0) {
+      console.log("Auto-expanderar alla mappar för bättre synlighet");
+      const newExpandedState: Record<string, boolean> = {};
+      
+      foldersData.forEach((folder: any) => {
+        newExpandedState[`folder_${folder.id}`] = true;
+      });
+      
+      setExpandedFolders(prev => ({
+        ...prev,
+        ...newExpandedState
+      }));
+    }
+  }, [foldersData]);
 
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
   
@@ -692,82 +709,89 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     }
   };
   
-  // Render file tree
+  // Render file tree - FÖRBÄTTRAD VERSION
   const renderFileTree = (nodes: FileNode[], level = 0) => {
+    console.log(`Rendering ${nodes.length} nodes at level ${level}:`, 
+      nodes.map(n => `${n.type}: ${n.name}`).join(', '));
+    
     return (
       <ul className={cn(
         "space-y-1",
         level > 0 ? "pl-4 pt-1" : ""
       )}>
-        {nodes.map(node => (
-          <li key={node.id} className="relative">
-            <div 
-              className={cn(
-                "flex items-center py-1 px-2 rounded-md cursor-pointer text-sm group transition-colors",
-                node.selected ? "bg-primary-50 text-primary-800" : "hover:bg-neutral-100",
-                node.type === 'folder' && expandedFolders[node.id] ? "font-medium" : ""
-              )}
-              onClick={() => handleFileClick(node)}
-            >
-              {node.type === 'folder' ? (
-                <div className="flex-shrink-0 mr-1.5 w-4">
-                  {expandedFolders[node.id] ? (
-                    <ChevronDown className="h-4 w-4 text-neutral-500" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-neutral-500" />
-                  )}
+        {nodes.map(node => {
+          console.log(`Rendering node: ${node.type} - ${node.name} (${node.id})`);
+          
+          return (
+            <li key={node.id} className="relative">
+              <div 
+                className={cn(
+                  "flex items-center py-1 px-2 rounded-md cursor-pointer text-sm group transition-colors",
+                  node.selected ? "bg-primary-50 text-primary-800" : "hover:bg-neutral-100",
+                  node.type === 'folder' && expandedFolders[node.id] ? "font-medium" : ""
+                )}
+                onClick={() => handleFileClick(node)}
+              >
+                {node.type === 'folder' ? (
+                  <div className="flex-shrink-0 mr-1.5 w-4">
+                    {expandedFolders[node.id] ? (
+                      <ChevronDown className="h-4 w-4 text-neutral-500" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-neutral-500" />
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex-shrink-0 mr-1.5 w-4" />
+                )}
+                
+                <div className="flex-shrink-0 mr-2">
+                  {getFileIcon(node)}
                 </div>
-              ) : (
-                <div className="flex-shrink-0 mr-1.5 w-4" />
-              )}
-              
-              <div className="flex-shrink-0 mr-2">
-                {getFileIcon(node)}
-              </div>
-              
-              <span className="truncate flex-1">
-                {node.name}
-                {node.type === 'folder' && 
-                  <span className="text-xs text-neutral-400 ml-1">
-                    (ID: {node.id.replace('folder_', '')})
-                  </span>
-                }
-              </span>
-              
-              {node.type === 'file' && node.fileSize && (
-                <span className="text-xs text-neutral-500 ml-2 opacity-0 group-hover:opacity-100">
-                  {formatFileSize(node.fileSize)}
+                
+                <span className="truncate flex-1">
+                  {node.name}
+                  {node.type === 'folder' && 
+                    <span className="text-xs text-neutral-400 ml-1">
+                      (ID: {node.id.replace('folder_', '')})
+                    </span>
+                  }
                 </span>
-              )}
-              
-              {/* Ta bort radera-knappen helt eftersom vi skapar en widget för detta istället */}
-              
-              {/* För filer visar vi bara en actions-knapp utan meny (för att undvika HTML-validering) */}
-              {node.type === 'file' && (
-                <div 
-                  className="ml-2 opacity-0 group-hover:opacity-100"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Här skulle vi kunna lägga till filspecifika åtgärder
-                  }}
-                >
-                  <span className="inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-neutral-100 cursor-pointer">
-                    <MoreVertical className="h-3.5 w-3.5 text-neutral-500" />
+                
+                {node.type === 'file' && node.fileSize && (
+                  <span className="text-xs text-neutral-500 ml-2 opacity-0 group-hover:opacity-100">
+                    {formatFileSize(node.fileSize)}
                   </span>
+                )}
+                
+                {/* Ta bort radera-knappen helt eftersom vi skapar en widget för detta istället */}
+                
+                {/* För filer visar vi bara en actions-knapp utan meny (för att undvika HTML-validering) */}
+                {node.type === 'file' && (
+                  <div 
+                    className="ml-2 opacity-0 group-hover:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Här skulle vi kunna lägga till filspecifika åtgärder
+                    }}
+                  >
+                    <span className="inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-neutral-100 cursor-pointer">
+                      <MoreVertical className="h-3.5 w-3.5 text-neutral-500" />
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              {node.type === 'folder' && expandedFolders[node.id] && node.children && node.children.length > 0 && 
+                renderFileTree(node.children, level + 1)}
+              
+              {node.type === 'folder' && expandedFolders[node.id] && (!node.children || node.children.length === 0) && (
+                <div className="pl-8 py-2 text-sm text-neutral-500 italic">
+                  Empty folder
                 </div>
               )}
-            </div>
-            
-            {node.type === 'folder' && expandedFolders[node.id] && node.children && node.children.length > 0 && 
-              renderFileTree(node.children, level + 1)}
-            
-            {node.type === 'folder' && expandedFolders[node.id] && (!node.children || node.children.length === 0) && (
-              <div className="pl-8 py-2 text-sm text-neutral-500 italic">
-                Empty folder
-              </div>
-            )}
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
     );
   };
