@@ -256,15 +256,55 @@ export default function RitningarPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Använd localStorage med projektisolering - separate storage per project
+  // API-funktioner för att hämta ritningar från server
+  const fetchRitningarFromServer = async (projectId: number): Promise<Ritning[]> => {
+    try {
+      console.log(`Hämtar ritningar för projekt ${projectId} från server...`);
+      // Hämta filerna från API
+      const response = await fetch(`/api/projects/${projectId}/files?type=drawing`);
+      
+      if (!response.ok) {
+        throw new Error(`API-anrop misslyckades: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log(`Hämtade ${data.length} ritningar från server:`, data);
+      
+      // Konvertera API-data till Ritning-format
+      const mappedRitningar: Ritning[] = data.map((file: any) => ({
+        id: file.id.toString(),
+        filename: file.name,
+        fileType: file.fileType,
+        fileUrl: `/api/files/${file.id}/content`,
+        version: file.version || "1.0",
+        description: file.description || "",
+        uploaded: file.uploadDate || new Date().toISOString(),
+        uploadedBy: file.uploaderUsername || "Okänd",
+        number: file.metadata?.number || file.id.toString(),
+        status: file.metadata?.status || "aktiv",
+        annat: file.metadata?.annat || ""
+      }));
+      
+      // Spara även i localStorage som backup
+      const storageKey = `project_${projectId}_ritningar`;
+      localStorage.setItem(storageKey, JSON.stringify(mappedRitningar));
+      
+      return mappedRitningar;
+    } catch (error) {
+      console.error("Fel vid hämtning av ritningar från server:", error);
+      // Om server-anropet misslyckas, försök med localStorage
+      const storageKey = `project_${projectId}_ritningar`;
+      const savedRitningar = localStorage.getItem(storageKey);
+      return savedRitningar ? JSON.parse(savedRitningar) : [];
+    }
+  };
+  
   const getStorageKey = () => {
     return currentProject ? `project_${currentProject.id}_ritningar` : 'no_project_ritningar';
   };
   
-  // Hämta sparade ritningar från localStorage om de finns, annars använd mockdata
-  const [ritningarData, setRitningarData] = useState<Ritning[]>(() => {
-    const savedRitningar = localStorage.getItem(getStorageKey());
-    return savedRitningar ? JSON.parse(savedRitningar) : [];
-  });
+  // Initiera med tom array och hämta data från server när komponenten laddas
+  const [ritningarData, setRitningarData] = useState<Ritning[]>([]);
   
   const [selectedFile, setSelectedFile] = useState<{
     file: File | null;
@@ -278,10 +318,21 @@ export default function RitningarPage() {
     };
   } | null>(null);
   
-  // Uppdatera ritningar när projektet ändras
+  // Hämta ritningar när projektet ändras
   useEffect(() => {
-    const savedRitningar = localStorage.getItem(getStorageKey());
-    setRitningarData(savedRitningar ? JSON.parse(savedRitningar) : []);
+    if (currentProject) {
+      // Hämta från server om vi har ett projekt
+      fetchRitningarFromServer(currentProject.id)
+        .then(ritningar => {
+          console.log(`Uppdaterar UI med ${ritningar.length} ritningar från server`);
+          setRitningarData(ritningar);
+        });
+    } else {
+      // Om inget projekt är valt, använd localStorage
+      const savedRitningar = localStorage.getItem(getStorageKey());
+      console.log("Inget projekt valt, använder lokaldata");
+      setRitningarData(savedRitningar ? JSON.parse(savedRitningar) : []);
+    }
   }, [currentProject]);
   
   // Hämta eventuella URL-parametrar för att direkt öppna en fil
