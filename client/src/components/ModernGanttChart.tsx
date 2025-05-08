@@ -297,7 +297,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
   const [newTask, setNewTask] = useState<Partial<GanttTask>>({
     type: 'TASK',
     status: 'New',
-    project: 'Byggprojekt A', // Sätt standardvärde till första projekt från demoprojekten
+    project: '', // Projektnamnet sätts automatiskt baserat på aktuellt projekt
     name: '',
     startDate: '',
     endDate: '',
@@ -1282,26 +1282,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
               </Select>
             </div>
             
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="task-project" className="text-right text-sm">Project</label>
-              <Select
-                value={newTask.project}
-                onValueChange={(value) => setNewTask({ ...newTask, project: value })}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select project" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.length > 0 ? (
-                    projects.map(project => (
-                      <SelectItem key={project} value={project}>{project}</SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="Byggprojekt A">Byggprojekt A</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Projektfältet borttaget eftersom det används automatiskt från aktuellt projekt */}
             
             <div className="grid grid-cols-4 items-center gap-4">
               <label htmlFor="task-name" className="text-right text-sm">Name</label>
