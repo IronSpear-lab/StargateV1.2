@@ -673,7 +673,9 @@ export default function EnhancedPDFViewer({
         // Säkerställ att versionId är ett giltigt nummer
         let versionId = 0;
         
-        if (activeVersionId && !isNaN(parseInt(activeVersionId))) {
+        if (activeVersionId && typeof activeVersionId === 'number') {
+          versionId = activeVersionId;
+        } else if (activeVersionId && typeof activeVersionId === 'string' && !isNaN(parseInt(activeVersionId))) {
           versionId = parseInt(activeVersionId);
         } else if (fileId) {
           // Om vi inte har någon version, använd fileId som temporärt versionId
@@ -823,7 +825,9 @@ export default function EnhancedPDFViewer({
           // Säkerställ att versionId är ett giltigt nummer
           let versionId = 0;
         
-          if (activeVersionId && !isNaN(parseInt(activeVersionId))) {
+          if (activeVersionId && typeof activeVersionId === 'number') {
+            versionId = activeVersionId;
+          } else if (activeVersionId && typeof activeVersionId === 'string' && !isNaN(parseInt(activeVersionId))) {
             versionId = parseInt(activeVersionId);
           } else if (fileId) {
             // Om vi inte har någon version, använd fileId som temporärt versionId
@@ -1099,7 +1103,14 @@ export default function EnhancedPDFViewer({
       }
       
       // Säkerställ giltigt versions-ID
-      const numericVersionId = parseInt(activeVersionId);
+      let numericVersionId = 0;
+      if (typeof activeVersionId === 'number') {
+        numericVersionId = activeVersionId;
+      } else if (typeof activeVersionId === 'string' && !isNaN(parseInt(activeVersionId))) {
+        numericVersionId = parseInt(activeVersionId);
+      } else {
+        console.error(`[${new Date().toISOString()}] Kunde inte konvertera versionId till nummer:`, activeVersionId);
+      }
       if (isNaN(numericVersionId)) {
         console.error(`[${new Date().toISOString()}] Ogiltigt versionId: ${activeVersionId}, använder localStorage istället`);
         await saveAllUnsavedAnnotations(true);
