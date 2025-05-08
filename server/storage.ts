@@ -2,6 +2,7 @@ import { db } from "@db";
 import session from "express-session";
 import { pool } from "@db";
 import createMemoryStore from "memorystore";
+import fs from "fs";
 import { 
   users, 
   files, 
@@ -338,6 +339,31 @@ class DatabaseStorage implements IStorage {
       if (!fileToDelete) {
         return { success: false, filePath: null };
       }
+      
+      // Hämta alla versioner av filen
+      const versions = await db.select()
+        .from(pdfVersions)
+        .where(eq(pdfVersions.fileId, id));
+      
+      // Ta bort alla annotationer för varje version
+      for (const version of versions) {
+        await db.delete(pdfAnnotations)
+          .where(eq(pdfAnnotations.pdfVersionId, version.id));
+          
+        // Ta bort fysiska filen om den finns
+        if (version.filePath && fs.existsSync(version.filePath)) {
+          try {
+            fs.unlinkSync(version.filePath);
+          } catch (err) {
+            console.error(`Kunde inte ta bort filen: ${version.filePath}`, err);
+            // Fortsätt oavsett om filen inte kunde tas bort
+          }
+        }
+      }
+      
+      // Ta bort alla versioner
+      await db.delete(pdfVersions)
+        .where(eq(pdfVersions.fileId, id));
       
       // Delete the file record
       await db.delete(files).where(eq(files.id, id));
