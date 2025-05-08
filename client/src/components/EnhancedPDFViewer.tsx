@@ -43,6 +43,7 @@ import {
   getPDFAnnotations,
   savePDFAnnotation,
   deletePDFAnnotation,
+  convertAnnotationToTask,
   getConsistentFileId,
   PDFVersion as ApiPDFVersion,
   PDFAnnotation as ApiPDFAnnotation
@@ -529,6 +530,52 @@ export default function EnhancedPDFViewer({
     setSidebarMode('details');
   };
   
+  // Konvertera kommentar till uppgift
+  const handleConvertToTask = async (annotationId: string) => {
+    if (!currentProject) {
+      return;
+    }
+    
+    try {
+      // Hämta numeriska ID:t från vår string ID
+      const numericId = parseInt(annotationId);
+      if (isNaN(numericId)) {
+        console.error('Kunde inte konvertera annotations-ID till ett numeriskt värde:', annotationId);
+        return;
+      }
+      
+      const result = await convertAnnotationToTask(numericId);
+      
+      if (result && result.task) {
+        // Uppdatera annotationen med task-ID
+        const updatedAnnotations = annotations.map(a => {
+          if (a.id === annotationId) {
+            return { 
+              ...a, 
+              taskId: result.task.id.toString() 
+            };
+          }
+          return a;
+        });
+        
+        setAnnotations(updatedAnnotations);
+        
+        // Uppdatera aktiv annotation om det är den som konverterades
+        if (activeAnnotation && activeAnnotation.id === annotationId) {
+          setActiveAnnotation({
+            ...activeAnnotation,
+            taskId: result.task.id.toString()
+          });
+        }
+        
+        // Visa bekräftelse
+        setSidebarMode('details');
+      }
+    } catch (error) {
+      console.error('Fel vid konvertering till uppgift:', error);
+    }
+  };
+
   // Update annotation status
   const updateAnnotationStatus = async (annotationId: string, newStatus: 'new_comment' | 'action_required' | 'rejected' | 'new_review' | 'other_forum' | 'resolved') => {
     const updatedAnnotations = annotations.map(a => {
@@ -1243,7 +1290,7 @@ export default function EnhancedPDFViewer({
                         </div>
                       )}
                       
-                      <div className="mt-3 flex justify-end">
+                      <div className="mt-3 flex justify-end gap-2">
                         <Button 
                           size="sm" 
                           variant="outline"
@@ -1255,6 +1302,16 @@ export default function EnhancedPDFViewer({
                         >
                           <Pencil className="h-3 w-3 mr-1" /> Redigera
                         </Button>
+                        
+                        {!activeAnnotation.taskId && currentProject && (
+                          <Button 
+                            size="sm" 
+                            variant="default"
+                            onClick={() => handleConvertToTask(activeAnnotation.id)}
+                          >
+                            <ClipboardList className="h-3 w-3 mr-1" /> Konvertera till uppgift
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ) : (

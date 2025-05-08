@@ -198,3 +198,42 @@ export async function deletePDFAnnotation(annotationId: number): Promise<boolean
     return false;
   }
 }
+
+// Konvertera en PDF-kommentar till en uppgift
+export interface TaskConversionResult {
+  message: string;
+  task: {
+    id: number;
+    title: string;
+    description: string;
+    status: string;
+    projectId: number;
+    [key: string]: any; // Andra task-fält
+  }
+}
+
+export async function convertAnnotationToTask(
+  annotationId: number, 
+  assigneeId?: number
+): Promise<TaskConversionResult | null> {
+  try {
+    const payload = assigneeId ? { assigneeId } : {};
+    const res = await apiRequest(
+      'POST', 
+      `/api/pdf/annotations/${annotationId}/convert-to-task`, 
+      payload
+    );
+    
+    if (!res.ok) {
+      throw new Error(`Kunde inte konvertera kommentaren till en uppgift: ${res.statusText}`);
+    }
+    
+    // Invalidera annotation cache för att uppdatera status
+    queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+    
+    return await res.json();
+  } catch (error) {
+    console.error('Fel vid konvertering av PDF-kommentar till uppgift:', error);
+    return null;
+  }
+}
