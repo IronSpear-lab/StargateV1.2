@@ -325,28 +325,37 @@ export default function FolderPage() {
   // Hämta PDF-fil från servern när användaren klickar på den
   const fetchFileContentMutation = useMutation({
     mutationFn: async (fileId: number) => {
-      const response = await apiRequest('GET', `/api/files/${fileId}/content`);
+      // Först hämta filens metadata för att kunna visa korrekt info i PDF-visaren
+      const metadataResponse = await apiRequest('GET', `/api/files/${fileId}`);
+      if (!metadataResponse.ok) {
+        throw new Error('Kunde inte hämta filmetadata');
+      }
+      const metadata = await metadataResponse.json();
+      
+      // Sedan hämta filens binärdata direkt som blob istället för att försöka tolka det som JSON
+      const response = await fetch(`/api/files/${fileId}/content`, {
+        credentials: 'include' // Se till att cookies skickas med för autentisering
+      });
+      
       if (!response.ok) {
         throw new Error('Kunde inte hämta filinnehåll');
       }
-      return await response.json();
+      
+      // Hämta direkt som blob
+      const blob = await response.blob();
+      
+      // Returna både blob och metadata
+      return {
+        blob,
+        metadata
+      };
     },
     onSuccess: (data) => {
       // Skapa URL från blob
-      let fileUrl = '';
+      const fileUrl = URL.createObjectURL(data.blob);
       
-      if (data.fileContent) {
-        const base64Content = data.fileContent;
-        const binaryContent = atob(base64Content);
-        const bytes = new Uint8Array(binaryContent.length);
-        for (let i = 0; i < binaryContent.length; i++) {
-          bytes[i] = binaryContent.charCodeAt(i);
-        }
-        const blob = new Blob([bytes], { type: 'application/pdf' });
-        fileUrl = URL.createObjectURL(blob);
-      } else {
-        fileUrl = data.url;
-      }
+      // Hämta fildata från metadata
+      const fileData = data.metadata;
       
       if (!fileUrl) {
         toast({
@@ -359,11 +368,15 @@ export default function FolderPage() {
           file: null,
           fileUrl,
           fileData: {
-            filename: data.version.metadata?.fileName || "dokument.pdf",
-            version: data.version.versionNumber.toString(),
-            description: data.version.description || "PDF-dokument",
-            uploaded: new Date(data.version.uploadedAt).toLocaleString(),
-            uploadedBy: data.version.uploadedBy || "System"
+            id: fileData.id,
+            filename: fileData.filename || "dokument.pdf",
+            version: fileData.version?.toString() || "1",
+            description: fileData.description || "PDF-dokument",
+            uploaded: fileData.uploadedAt ? new Date(fileData.uploadedAt).toLocaleString() : new Date().toLocaleString(),
+            uploadedBy: fileData.uploadedBy || "System",
+            number: fileData.number || "",
+            status: fileData.status || "",
+            annat: fileData.annat || ""
           }
         });
       }
@@ -392,11 +405,15 @@ export default function FolderPage() {
             file: storedFileData.file,
             fileUrl: storedFileData.url,
             fileData: {
+              id: ritning.id || ritning.fileId,  // Använd ID eller fileId för att identifiera filen
               filename: ritning.filename,
               version: ritning.version,
               description: ritning.description,
               uploaded: ritning.uploaded,
-              uploadedBy: ritning.uploadedBy
+              uploadedBy: ritning.uploadedBy,
+              number: ritning.number || "",
+              status: ritning.status || "",
+              annat: ritning.annat || ""
             }
           });
           return;
@@ -418,19 +435,32 @@ export default function FolderPage() {
     }
     
     // Fallback: För befintliga/mock-filer, använd exempelfilen om inget annat fungerar
-    const fileUrl = getUploadedFileUrl(ritning.id);
-    console.log(`[${Date.now()}] Using example file URL for file: ${ritning.filename}`);
-    setSelectedFile({
-      file: null,
-      fileUrl,
-      fileData: {
-        filename: ritning.filename,
-        version: ritning.version,
-        description: ritning.description,
-        uploaded: ritning.uploaded,
-        uploadedBy: ritning.uploadedBy
-      }
-    });
+    try {
+      const fileUrl = getUploadedFileUrl(ritning.id);
+      console.log(`[${Date.now()}] Using example file URL for file: ${ritning.filename}`);
+      setSelectedFile({
+        file: null,
+        fileUrl,
+        fileData: {
+          id: ritning.id || `temp_${Date.now()}`,  // Sätt ett temporärt ID om det inte finns något
+          filename: ritning.filename,
+          version: ritning.version,
+          description: ritning.description,
+          uploaded: ritning.uploaded,
+          uploadedBy: ritning.uploadedBy,
+          number: ritning.number || "",
+          status: ritning.status || "",
+          annat: ritning.annat || ""
+        }
+      });
+    } catch (error) {
+      console.error("Kunde inte öppna fallback-filen:", error);
+      toast({
+        title: "Kunde inte öppna filen",
+        description: "Ett fel uppstod när filen skulle öppnas. Försök igen eller kontakta support.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
