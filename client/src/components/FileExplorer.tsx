@@ -530,36 +530,59 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       
       console.log(`FileExplorer: byggTree - ${filteredFiles.length} av ${filesData.length} filer tillhör aktuellt projekt ${currentProject?.id}`);
       
+      // Gruppera filer baserat på folderId för att undvika dubletter
+      const filesByFolder: Record<string, FileData[]> = {};
+      
+      // Skapa en tom array för rotfiler (filer utan mapp)
+      filesByFolder['root'] = [];
+      
+      // Gruppera filer efter mappID
       filteredFiles.forEach((file: FileData) => {
-        console.log(`FileExplorer: Lägger till fil ${file.id} (projektID: ${file.projectId}, mappID: ${file.folderId || 'ingen'}) i trädet`);
+        const folderKey = file.folderId ? `folder_${file.folderId}` : 'root';
         
-        const fileNode: FileNode = {
-          id: `file_${file.id}`,
-          name: file.name,
-          type: 'file',
-          fileType: getFileExtension(file.name),
-          fileSize: file.size,
-          selected: `file_${file.id}` === selectedFileId
-        };
+        if (!filesByFolder[folderKey]) {
+          filesByFolder[folderKey] = [];
+        }
         
-        // Kontrollera att filen har en mappID och endast lägg till i den specifika mappen
-        if (file.folderId) {
-          const folderId = `folder_${file.folderId}`;
-          if (folderMap[folderId]) {
-            // Endast lägg till i den specifika mappen som anges av folderId
-            folderMap[folderId].children = folderMap[folderId].children || [];
-            folderMap[folderId].children?.push(fileNode);
-            console.log(`FileExplorer: Fil ${file.id} tillhör mapp ${file.folderId} och har lagts till i den mappen`);
+        filesByFolder[folderKey].push(file);
+        console.log(`FileExplorer DEBUG: Fil ${file.id} (${file.name}) tilldelad gruppnyckel ${folderKey}`);
+      });
+
+      console.log(`FileExplorer DEBUG: Mappar efter gruppering:`, Object.keys(filesByFolder));
+      
+      // Lägg till filer i respektive mapp baserat på grupperingen
+      Object.keys(filesByFolder).forEach(folderKey => {
+        const filesForFolder = filesByFolder[folderKey];
+        
+        console.log(`FileExplorer DEBUG: Behandlar ${filesForFolder.length} filer för mapp-nyckel ${folderKey}`);
+        
+        filesForFolder.forEach(file => {
+          console.log(`FileExplorer DEBUG: Fil ${file.id} (${file.name}) i mapp ${folderKey}`);
+          
+          const fileNode: FileNode = {
+            id: `file_${file.id}`,
+            name: file.name,
+            type: 'file',
+            fileType: getFileExtension(file.name),
+            fileSize: file.size,
+            selected: `file_${file.id}` === selectedFileId
+          };
+          
+          if (folderKey === 'root') {
+            // Detta är rotfiler utan mapp
+            console.log(`FileExplorer DEBUG: Lägger till rotfil ${file.id} (${file.name}) i ROOT trädet`);
+            tree.push(fileNode);
+          } else if (folderMap[folderKey]) {
+            // Detta är filer som tillhör en specifik mapp
+            console.log(`FileExplorer DEBUG: Lägger till fil ${file.id} (${file.name}) i specifik mapp ${folderKey}`);
+            folderMap[folderKey].children = folderMap[folderKey].children || [];
+            folderMap[folderKey].children?.push(fileNode);
           } else {
-            // Mappen som anges i folderId finns inte i trädet, lägg filen i rotnivån
-            console.warn(`FileExplorer: Fil ${file.id} tillhör mapp ${file.folderId} som inte finns i trädet, lägger i roten`);
+            // Denna fil tillhör en mapp som inte finns i trädet, lägg till i roten
+            console.warn(`FileExplorer DEBUG: Fil ${file.id} (${file.name}) tillhör mapp ${folderKey} som inte finns i trädet, lägger i ROOT`);
             tree.push(fileNode);
           }
-        } else {
-          // Filer utan mappID läggs direkt i rotnivån
-          console.log(`FileExplorer: Fil ${file.id} har ingen mappID, lägger i rotnivån`);
-          tree.push(fileNode);
-        }
+        });
       });
     }
     
