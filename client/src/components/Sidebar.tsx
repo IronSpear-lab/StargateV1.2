@@ -68,6 +68,7 @@ type NavItemType = {
   children?: NavItemType[];
   type?: 'folder' | 'file' | 'link' | string; // För att kunna identifiera mappar och visa plustecken
   onAddClick?: () => void;
+  folderId?: string; // ID för mappen, används för borttagning
 };
 
 interface NavGroupProps {
@@ -844,7 +845,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   const findParentAndAddFolder = (
     items: NavItemType[], 
     parentName: string, 
-    newFolder: { name: string, parent: string }
+    newFolder: { name: string, parent: string, id: string }
   ): NavItemType[] => {
     return items.map(item => {
       // Om denna mapp är föräldern, lägg till den nya mappen som ett barn
@@ -862,6 +863,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               icon: <FolderClosed className={`w-4 h-4`} />,
               type: "folder",
               onAddClick: () => handleAddFolder(newFolder.name),
+              folderId: newFolder.id, // Lägg till ID för identifiering och borttagning
               children: []
             }
           ]
@@ -1259,60 +1261,131 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           {hasChildren ? (
             <Collapsible open={isItemOpen} onOpenChange={() => toggleItem(itemKey)}>
               <CollapsibleTrigger asChild>
-                <button 
-                  className={cn(
-                    "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150",
-                    item.active
-                      ? "bg-primary/10 text-primary font-medium" 
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                    indentClass
-                  )}
-                >
-                  <div className="flex items-center">
-                    <span className={cn(
-                      "flex items-center justify-center mr-3",
-                      item.active ? "text-primary" : "text-muted-foreground"
-                    )}>
-                      {item.icon}
-                    </span>
-                    <span className={cn(
-                      "text-sm",
-                      item.active ? "text-primary" : "text-muted-foreground"
-                    )}>
-                      {item.label}
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    {item.badge && (
-                      <Badge variant="outline" className={cn(
-                        "text-xs py-0.5 px-2 rounded-full mr-2",
-                        item.active 
-                          ? "bg-primary/10 text-primary border-primary/20" 
-                          : "bg-muted text-muted-foreground border-border"
-                      )}>
-                        {item.badge}
-                      </Badge>
-                    )}
-                    
-                    {/* Lägg till plustecken för mappar - endast för project_leader, admin och superuser */}
-                    {item.type === "folder" && item.onAddClick && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
+                {/* Om det är en användarskapad mapp med folderId, lägg till ContextMenu */}
+                {item.type === "folder" && item.folderId ? (
+                  <ContextMenu>
+                    <ContextMenuTrigger asChild>
                       <button 
-                        onClick={(e) => {
-                          e.stopPropagation(); // Förhindra att mappknappen klickas
-                          item.onAddClick?.();
-                        }}
-                        className="mr-1 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        className={cn(
+                          "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150",
+                          item.active
+                            ? "bg-primary/10 text-primary font-medium" 
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                          indentClass
+                        )}
                       >
-                        <Plus className="h-3 w-3" />
+                        <div className="flex items-center">
+                          <span className={cn(
+                            "flex items-center justify-center mr-3",
+                            item.active ? "text-primary" : "text-muted-foreground"
+                          )}>
+                            {item.icon}
+                          </span>
+                          <span className={cn(
+                            "text-sm",
+                            item.active ? "text-primary" : "text-muted-foreground"
+                          )}>
+                            {item.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center">
+                          {item.badge && (
+                            <Badge variant="outline" className={cn(
+                              "text-xs py-0.5 px-2 rounded-full mr-2",
+                              item.active 
+                                ? "bg-primary/10 text-primary border-primary/20" 
+                                : "bg-muted text-muted-foreground border-border"
+                            )}>
+                              {item.badge}
+                            </Badge>
+                          )}
+                          
+                          {/* Lägg till plustecken för mappar - endast för project_leader, admin och superuser */}
+                          {item.type === "folder" && item.onAddClick && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation(); // Förhindra att mappknappen klickas
+                                item.onAddClick?.();
+                              }}
+                              className="mr-1 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                            >
+                              <Plus className="h-3 w-3" />
+                            </button>
+                          )}
+                          
+                          <ChevronRight className={cn(
+                            "h-4 w-4 transition-transform duration-200",
+                            isItemOpen ? "rotate-90" : ""
+                          )} />
+                        </div>
                       </button>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent>
+                      <ContextMenuItem 
+                        onClick={() => deleteFolder(item.folderId!)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Ta bort mapp
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
+                ) : (
+                  <button 
+                    className={cn(
+                      "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150",
+                      item.active
+                        ? "bg-primary/10 text-primary font-medium" 
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      indentClass
                     )}
-                    
-                    <ChevronRight className={cn(
-                      "h-4 w-4 transition-transform duration-200",
-                      isItemOpen ? "rotate-90" : ""
-                    )} />
-                  </div>
-                </button>
+                  >
+                    <div className="flex items-center">
+                      <span className={cn(
+                        "flex items-center justify-center mr-3",
+                        item.active ? "text-primary" : "text-muted-foreground"
+                      )}>
+                        {item.icon}
+                      </span>
+                      <span className={cn(
+                        "text-sm",
+                        item.active ? "text-primary" : "text-muted-foreground"
+                      )}>
+                        {item.label}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      {item.badge && (
+                        <Badge variant="outline" className={cn(
+                          "text-xs py-0.5 px-2 rounded-full mr-2",
+                          item.active 
+                            ? "bg-primary/10 text-primary border-primary/20" 
+                            : "bg-muted text-muted-foreground border-border"
+                        )}>
+                          {item.badge}
+                        </Badge>
+                      )}
+                      
+                      {/* Lägg till plustecken för mappar - endast för project_leader, admin och superuser */}
+                      {item.type === "folder" && item.onAddClick && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation(); // Förhindra att mappknappen klickas
+                            item.onAddClick?.();
+                          }}
+                          className="mr-1 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      )}
+                      
+                      <ChevronRight className={cn(
+                        "h-4 w-4 transition-transform duration-200",
+                        isItemOpen ? "rotate-90" : ""
+                      )} />
+                    </div>
+                  </button>
+                )}
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="mt-1 mb-1">
