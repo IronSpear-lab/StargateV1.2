@@ -248,6 +248,12 @@ interface ModernGanttChartProps {
 const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
   const { toast } = useToast();
   
+  // Generera ett projektnamn baserat på projektid
+  const currentProjectName = useMemo(() => {
+    if (!projectId) return "Default Project";
+    return `Projekt ${projectId}`; // Detta kan ersättas med en faktisk API-anrop för att hämta projektnamn
+  }, [projectId]);
+  
   // Använd projektspecifik localStorage-nyckel om projektId finns
   const getStorageKey = () => {
     return projectId ? `project_${projectId}_gantt_tasks` : 'no_project_gantt_tasks';
@@ -770,7 +776,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
             type: newTask.type as "TASK" | "MILESTONE" | "PHASE",
             name: newTask.name!,
             status: newTask.status as "New" | "Ongoing" | "Completed" | "Delayed",
-            project: newTask.project!,
+            project: task.project, // Behåll befintligt projektnamn vid redigering
             startDate: newTask.startDate!,
             endDate: endDate!,
             duration
@@ -796,7 +802,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
       
       const newTaskItem: GanttTask = {
         id: taskId,
-        project: newTask.project!,
+        project: currentProjectName, // Använd det aktuella projektnamnet automatiskt
         type: newTask.type as "TASK" | "MILESTONE" | "PHASE",
         name: newTask.name!,
         status: newTask.status as "New" | "Ongoing" | "Completed" | "Delayed",
@@ -823,7 +829,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
     setNewTask({
       type: 'TASK',
       status: 'New',
-      project: 'Byggprojekt A', // Använd ett giltigt projekt som standardvärde
+      project: '', // Lämna projektfältet tomt eftersom vi använder currentProjectName automatiskt
       name: '',
       startDate: '',
       endDate: '',
