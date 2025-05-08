@@ -33,6 +33,10 @@ import { AuthProvider } from "./hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ProjectProvider } from "./contexts/ProjectContext";
 import { useEffect, useState } from "react";
+import { configurePdfWorker } from "@/lib/pdf-worker-config";
+
+// Ensure PDF.js worker is configured at application start
+configurePdfWorker();
 
 function Router() {
   // Läs användarskapade mappar från localStorage

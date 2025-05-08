@@ -56,8 +56,7 @@ import {
   PDFAnnotation as ApiPDFAnnotation
 } from "@/lib/pdf-utils";
 
-// Configure react-pdf worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Configure react-pdf worker is handled by pdf-worker-config.ts
 
 // PDF Annotation interface
 export interface PDFAnnotation {
@@ -445,14 +444,26 @@ export default function EnhancedPDFViewer({
     console.error('Fel vid laddning av PDF:', error);
     setLoading(false);
     
-    // Om felet är "signal is aborted without reason", försök med en annan URL för arbetarprocessen
-    if (error.message.includes('signal is aborted') || error.message.includes('aborted')) {
+    // Om felet är "signal is aborted without reason" eller annat nätverksfel, försök med en annan metod
+    if (error.message.includes('signal is aborted') || 
+        error.message.includes('aborted') || 
+        error.message.includes('network error') ||
+        error.message.includes('failed to fetch')) {
+      
       console.log('Avbrutet laddningsförsök, försöker med alternativ metod...');
+      
+      // Konfigurera om PDF.js med alternativ arbetarprocess
+      configureAlternativePdfLoading();
+      
       // Lägg till en query parameter för att undvika cache
       if (pdfUrl) {
         const newUrl = `${pdfUrl}${pdfUrl.includes('?') ? '&' : '?'}nocache=${Date.now()}`;
         console.log('Provar att ladda PDF med ny URL:', newUrl);
-        setPdfUrl(newUrl);
+        
+        // Kort timeout för att säkerställa att arbetarprocessen har hunnit laddats om
+        setTimeout(() => {
+          setPdfUrl(newUrl);
+        }, 500);
       }
     }
   };

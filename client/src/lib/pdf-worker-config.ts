@@ -1,4 +1,4 @@
-import * as pdfjs from 'pdfjs-dist';
+import { pdfjs } from 'react-pdf';
 
 /**
  * Konfigurerar PDF.js arbetarprocessen med en korrekt väg till worker.js filen.
@@ -6,30 +6,25 @@ import * as pdfjs from 'pdfjs-dist';
  */
 export function configurePdfWorker() {
   // Kontrollera om det redan är konfigurerat
-  if (GlobalWorkerOptions.workerSrc) {
-    console.log('PDF.js worker redan konfigurerad:', GlobalWorkerOptions.workerSrc);
+  if (pdfjs.GlobalWorkerOptions.workerSrc) {
+    console.log('PDF.js worker redan konfigurerad:', pdfjs.GlobalWorkerOptions.workerSrc);
     return;
   }
 
   // Försök hitta en arbetarprocess URL
   try {
-    // Det här är standardpaketet som används i Vite/Webpack projekt
-    const workerUrl = new URL(
-      'pdfjs-dist/build/pdf.worker.min.js', 
-      import.meta.url
-    ).toString();
-    
-    // Ange arbetarprocessen
-    GlobalWorkerOptions.workerSrc = workerUrl;
-    console.log('PDF.js worker konfigurerad:', workerUrl);
+    // Använd CDN-länk med korrekt version
+    const cdnWorkerUrl = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+    pdfjs.GlobalWorkerOptions.workerSrc = cdnWorkerUrl;
+    console.log('PDF.js worker konfigurerad:', cdnWorkerUrl);
   } catch (error) {
     console.error('Kunde inte konfigurera PDF.js worker:', error);
     
-    // Fallback till CDN om import.meta.url inte fungerar
+    // Fallback till en annan CDN om cdnjs inte fungerar
     try {
-      const cdnWorkerUrl = 'https://unpkg.com/pdfjs-dist@latest/build/pdf.worker.min.js';
-      GlobalWorkerOptions.workerSrc = cdnWorkerUrl;
-      console.log('PDF.js worker konfigurerad med CDN fallback:', cdnWorkerUrl);
+      const unpkgWorkerUrl = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+      pdfjs.GlobalWorkerOptions.workerSrc = unpkgWorkerUrl;
+      console.log('PDF.js worker konfigurerad med alternativ CDN:', unpkgWorkerUrl);
     } catch (fallbackError) {
       console.error('Kunde inte konfigurera PDF.js worker med fallback:', fallbackError);
     }
@@ -41,11 +36,11 @@ export function configurePdfWorker() {
  * Detta kan köras om standardmetoden misslyckas.
  */
 export function configureAlternativePdfLoading() {
-  // Stäng av arbetarprocessen om den inte fungerar korrekt
+  // Byt till en alternativ CDN om den första inte fungerar
   try {
-    const cdnWorkerUrl = 'https://unpkg.com/pdfjs-dist@latest/build/pdf.worker.min.js';
-    GlobalWorkerOptions.workerSrc = cdnWorkerUrl;
-    console.log('PDF.js alternativ worker konfigurerad:', cdnWorkerUrl);
+    const altCdnWorkerUrl = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+    pdfjs.GlobalWorkerOptions.workerSrc = altCdnWorkerUrl;
+    console.log('PDF.js alternativ worker konfigurerad:', altCdnWorkerUrl);
   } catch (error) {
     console.error('Kunde inte konfigurera alternativ PDF.js worker:', error);
   }
