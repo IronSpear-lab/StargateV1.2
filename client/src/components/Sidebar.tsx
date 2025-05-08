@@ -808,9 +808,6 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     newFolder: { name: string, parent: string, id: string, parentId?: string | null }
   ): NavItemType[] => {
     return items.map(item => {
-      // Extra loggutskrift för att hjälpa debug
-      console.log(`Checking item ${item.label}, parent=${parentName}, type=${item.type}, folderId=${item.folderId}`);
-      
       // Om denna mapp är föräldern, lägg till den nya mappen som ett barn
       const isParentMatch = 
         // Matcha antingen på namn om förälder är Files
@@ -819,7 +816,6 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         (item.folderId && newFolder.parentId && item.folderId === newFolder.parentId);
         
       if (isParentMatch) {
-        console.log(`Found parent! Adding folder ${newFolder.name} to ${item.label} (ID: ${item.folderId})`);
         
         // Skapa en kopia med den nya mappen
         return {
