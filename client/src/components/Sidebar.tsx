@@ -1,6 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { useProject } from "@/contexts/ProjectContext";
+import { Folder } from "@shared/schema";
 import { 
   Home, 
   LayoutDashboard, 
@@ -49,7 +51,7 @@ import { ModeToggle } from "@/components/mode-toggle";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   ContextMenu,
   ContextMenuContent,
@@ -747,35 +749,49 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   }, [user]);
   
   // Lägg till en periodisk kontroll för uppdateringar av localStorage
-  useEffect(() => {
-    // Funktionen som kontrollerar localStorage för förändringar
-    const checkForFolderUpdates = () => {
-      if (typeof window !== 'undefined') {
-        const savedFolders = localStorage.getItem('userCreatedFolders');
-        if (savedFolders) {
-          try {
-            const parsedFolders = JSON.parse(savedFolders);
-            
-            // Jämför med aktuell state för att undvika onödiga renderingar
-            if (JSON.stringify(parsedFolders) !== JSON.stringify(userCreatedFolders)) {
-              setUserCreatedFolders(parsedFolders);
-            }
-          } catch (e) {
-            console.error("Fel vid periodisk kontroll av mappar i localStorage:", e);
-          }
+  // Hämta aktuellt projekt från ProjectContext
+  const { currentProject } = useProject();
+  
+  // Hämta mappar från API när aktuellt projekt ändras
+  const { data: folderData } = useQuery<Folder[]>({
+    queryKey: ['/api/folders', currentProject?.id],
+    queryFn: async () => {
+      if (!currentProject?.id) return [];
+      
+      try {
+        const res = await fetch(`/api/folders?projectId=${currentProject.id}`, {
+          credentials: 'include'
+        });
+        
+        if (!res.ok) {
+          throw new Error(`Failed to fetch folders: ${res.status}`);
         }
+        
+        return await res.json();
+      } catch (error) {
+        console.error("Error fetching folders:", error);
+        return [];
       }
-    };
-    
-    // Kör direkt och sätt sedan intervall
-    checkForFolderUpdates();
-    
-    // Sätt ett intervall för att kontrollera var 3:e sekund
-    const intervalId = setInterval(checkForFolderUpdates, 3000);
-    
-    // Städa upp intervall vid unmount
-    return () => clearInterval(intervalId);
-  }, [userCreatedFolders]);
+    },
+    enabled: !!currentProject?.id
+  });
+  
+  // Uppdatera state när vi får data från API
+  useEffect(() => {
+    if (folderData && Array.isArray(folderData)) {
+      // Konvertera API-data till det format som Sidebar förväntar sig
+      const formattedFolders = folderData.map(folder => ({
+        name: folder.name,
+        label: folder.name,
+        parent: folder.parentId ? `folder_${folder.parentId}` : 'Files', // Använd parentId för att bygga hierarki
+        id: `folder_${folder.id}`,
+        href: `/vault/files/${encodeURIComponent(folder.name)}`,
+        dbId: folder.id // Spara faktiskt databas-ID för att kunna ta bort
+      }));
+      
+      setUserCreatedFolders(formattedFolders);
+    }
+  }, [folderData]);
   
   // State för användarens profilbild med lagring i localStorage
   const [userAvatar, setUserAvatar] = useState<string | null>(() => {
@@ -857,123 +873,8 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     }
   };
 
-  // Funktion för att hantera "Lägg till mapp" i olika mappar
-  // Kontrollera behörighet för att endast tillåta project_leader, admin och superuser
-  const handleAddFolder = (parentName: string) => {
-    // Om användaren inte har rätt roll, visa en toast med felmeddelande
-    if (!user || !(user.role === "project_leader" || user.role === "admin" || user.role === "superuser")) {
-      toast({
-        title: "Behörighet saknas",
-        description: "Du har inte behörighet att skapa mappar",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setSelectedParentFolder(parentName);
-    setFolderDialogOpen(true);
-  };
-  
-  // Funktion för att skapa en ny mapp
-  const createFolder = (folderName: string, parentName: string) => {
-    // Skapa ett unikt ID för mappen
-    const folderId = `folder_${Date.now()}`;
-    
-    // Skapa den nya mappen med unik ID
-    const newFolder = { 
-      name: folderName, 
-      parent: parentName, 
-      id: folderId,
-      label: folderName, // Samma som name, men enklare att använda i andra delar av koden
-      href: `/vault/files/${encodeURIComponent(folderName)}` // Länk till den dynamiska sidan
-    };
-    
-    // Uppdatera state
-    const updatedFolders = [...userCreatedFolders, newFolder];
-    setUserCreatedFolders(updatedFolders);
-    
-    // Spara i localStorage
-    localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
-    
-    // Spara även i user_created_folders för App.tsx som behöver känna till mappnamnen
-    // Detta behövs för den dynamiska routern
-    const existingFoldersForApp = localStorage.getItem('user_created_folders');
-    const foldersForApp = existingFoldersForApp ? JSON.parse(existingFoldersForApp) : [];
-    const updatedFoldersForApp = [...foldersForApp, { 
-      label: folderName,
-      parent: parentName
-    }];
-    localStorage.setItem('user_created_folders', JSON.stringify(updatedFoldersForApp));
-    
-    // Visa meddelande om att mappen har skapats
-    toast({
-      title: "Mapp skapad",
-      description: `Mappen "${folderName}" har skapats under "${parentName}"`,
-    });
-  };
-  
-  // Funktion för att hantera klick på "Ta bort" ikonen
-  const handleDeleteClick = (folderId: string) => {
-    // Kontrollera behörighet för att endast tillåta project_leader, admin och superuser
-    if (!user || !(user.role === "project_leader" || user.role === "admin" || user.role === "superuser")) {
-      toast({
-        title: "Behörighet saknas",
-        description: "Du har inte behörighet att ta bort mappar",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setFolderToDeleteId(folderId);
-    setDeleteDialogOpen(true);
-  };
-  
-  // Funktion för att ta bort en mapp
-  const deleteFolder = () => {
-    // Om ingen mapp är markerad för borttagning, avbryt
-    if (!folderToDeleteId) return;
-    
-    // Hitta mappen som ska tas bort
-    const folderToDelete = userCreatedFolders.find(folder => folder.id === folderToDeleteId);
-    if (!folderToDelete) return;
-    
-    // Filtrera bort mappen och eventuella undermappar
-    const updatedFolders = userCreatedFolders.filter(folder => {
-      // Ta bort den specifika mappen
-      if (folder.id === folderToDeleteId) return false;
-      
-      // Ta bort alla undermappar till den här mappen
-      if (folder.parent === folderToDelete.name) return false;
-      
-      return true;
-    });
-    
-    // Uppdatera state
-    setUserCreatedFolders(updatedFolders);
-    
-    // Spara i localStorage
-    localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
-    
-    // Ta även bort från user_created_folders listan som App.tsx använder
-    const existingFoldersForApp = localStorage.getItem('user_created_folders');
-    if (existingFoldersForApp) {
-      const foldersForApp = JSON.parse(existingFoldersForApp);
-      const updatedFoldersForApp = foldersForApp.filter((folder: any) => 
-        folder.label !== folderToDelete.name
-      );
-      localStorage.setItem('user_created_folders', JSON.stringify(updatedFoldersForApp));
-    }
-    
-    // Visa meddelande om att mappen har tagits bort
-    toast({
-      title: "Mapp borttagen",
-      description: `Mappen "${folderToDelete.name}" har tagits bort`,
-    });
-    
-    // Återställ mapp-ID och stäng dialogen
-    setFolderToDeleteId(null);
-    setDeleteDialogOpen(false);
-  };
+  // Vi behåller API-anropen för att hämta mappar, men tar bort funktionaliteten för att lägga till och ta bort mappar från Sidebar
+  // Skapa och ta bort mappar hanteras istället i FolderManagementWidget
   
   // Funktion för att hitta den rätta föräldern för en nyskapad mapp och uppdatera den
   const findParentAndAddFolder = (
