@@ -150,14 +150,18 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
   const { 
     data: foldersData, 
     isLoading: isLoadingFolders,
-    error: foldersError
+    error: foldersError,
+    refetch: refetchFolders
   } = useQuery({
     queryKey: ['/api/folders', currentProject?.id],
     queryFn: async () => {
       if (!currentProject?.id) {
         // Om inget projekt är valt, returnera en tom array
+        console.log("Inget projekt valt, returnerar tom mapplista");
         return [];
       }
+      
+      console.log(`Hämtar mappar för projekt ${currentProject.id}`);
       
       const res = await fetch(`/api/folders?projectId=${currentProject.id}`, {
         credentials: 'include'  // Säkerställ att cookies skickas med för autentisering
@@ -166,9 +170,13 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         console.warn("API call failed for folders with status", res.status);
         throw new Error(`Failed to fetch folders: ${res.status}`);
       }
-      return res.json();
+      
+      const data = await res.json();
+      console.log(`Hittade ${data.length} mappar för projekt ${currentProject.id}`);
+      return data;
     },
-    enabled: !!currentProject?.id // Kör bara denna query om vi har ett projekt
+    enabled: !!currentProject?.id, // Kör bara denna query om vi har ett projekt
+    staleTime: 10000 // Förnya data efter 10 sekunder
   });
 
   // Create folder mutation
