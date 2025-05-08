@@ -60,7 +60,7 @@ export interface PDFVersion {
 export interface PDFAnnotation {
   id?: number;
   pdfVersionId: number;
-  projectId?: number; // Lägg till project ID
+  projectId?: number | null; // Tillåt null värde för projektID för att matcha component implementation
   rect: {
     x: number;
     y: number;
@@ -75,6 +75,7 @@ export interface PDFAnnotation {
   createdBy?: string;
   createdById?: number;
   assignedTo?: string; // Lägg till tilldelad användare
+  taskId?: string; // Task ID referens
 }
 
 // Hämta alla versioner för en PDF-fil
