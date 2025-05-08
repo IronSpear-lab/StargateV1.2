@@ -689,6 +689,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   const [location] = useLocation();
   const isMobile = useMobile();
   const [isOpen, setIsOpen] = useState(!isMobile);
+  const [openSections, setOpenSections] = useState<string[]>([]);
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({
     "-Planning": false,
     "-Vault": true,
@@ -760,6 +761,16 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       ...prev,
       [itemName]: !prev[itemName]
     }));
+  };
+  
+  const toggleSection = (sectionId: string) => {
+    setOpenSections(prev => {
+      if (prev.includes(sectionId)) {
+        return prev.filter(id => id !== sectionId);
+      } else {
+        return [...prev, sectionId];
+      }
+    });
   };
 
   const getInitials = (username: string) => {
