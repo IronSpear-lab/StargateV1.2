@@ -62,6 +62,7 @@ export interface IStorage {
   getFiles(projectId: number, folderId?: number): Promise<File[]>;
   getFile(id: number): Promise<File | undefined>;
   createFile(file: Omit<File, "id" | "uploadDate">): Promise<File>;
+  deleteFile(id: number): Promise<{ success: boolean, filePath: string | null }>;
   
   // PDF Handling
   getPDFVersions(fileId: number): Promise<PdfVersion[]>;

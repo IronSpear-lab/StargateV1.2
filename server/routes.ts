@@ -743,6 +743,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to stream file" });
     }
   });
+  
+  // Delete a file
+  app.delete(`${apiPrefix}/files/:id`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      // Validate id is a number
+      const fileId = parseInt(req.params.id);
+      if (isNaN(fileId)) {
+        return res.status(400).json({ error: "Invalid file ID" });
+      }
+      
+      // Get the file to check if it exists
+      const file = await storage.getFile(fileId);
+      if (!file) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      
+      // Check if the user has access to the project this file belongs to
+      const userProject = await db.select()
+        .from(userProjects)
+        .where(and(
+          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.projectId, file.projectId)
+        ))
+        .limit(1);
+      
+      if (userProject.length === 0) {
+        return res.status(403).json({ error: "You do not have access to delete this file" });
+      }
+      
+      // Delete the file from the database
+      const result = await storage.deleteFile(fileId);
+      
+      if (!result.success) {
+        return res.status(500).json({ error: "Failed to delete file from database" });
+      }
+      
+      // Delete the file from the filesystem if filePath exists
+      if (result.filePath && fs.existsSync(result.filePath)) {
+        try {
+          fs.unlinkSync(result.filePath);
+        } catch (err) {
+          console.error("Error deleting file from filesystem:", err);
+          // We still return success since the database record was deleted
+          // but log the error for debugging
+        }
+      }
+      
+      return res.status(200).json({ success: true, message: "File deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      res.status(500).json({ error: "Failed to delete file" });
+    }
+  });
 
   // Comments API
   app.get(`${apiPrefix}/comments`, async (req, res) => {

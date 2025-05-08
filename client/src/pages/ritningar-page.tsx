@@ -541,17 +541,17 @@ export default function RitningarPage() {
     }
   });
   
+  // Hantera klick på ta bort-knappen
+  const handleDeleteClick = (ritning: Ritning) => {
+    setFileToDelete(ritning);
+    setShowDeleteConfirm(true);
+  };
+  
   // Hantera bekräftelse på borttagning
   const handleDeleteConfirm = () => {
     if (fileToDelete && fileToDelete.id) {
       deleteFileMutation.mutate(Number(fileToDelete.id));
     }
-  };
-  
-  // Öppna delete-dialogrutan
-  const handleDeleteClick = (ritning: Ritning) => {
-    setFileToDelete(ritning);
-    setShowDeleteConfirm(true);
   };
   
   const fetchFileContentMutation = useMutation({
