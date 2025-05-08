@@ -465,136 +465,108 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     size?: number;
   }
 
-  // Build file tree with support for unlimited nesting
+  // FULLSTÄNDIGT OMSKRIVEN buildFileTree funktion för att åtgärda problemet med filer som visas i flera mappar
   const buildFileTree = () => {
+    // STEG 0: Förbered data
     const tree: FileNode[] = [];
     const folderMap: Record<string, FileNode> = {};
     
-    // Add folders to the tree
-    if (foldersData) {
-      // Säkerhetskontroll - filtrera bara mappar för aktuellt projekt
-      const filteredFolders = foldersData.filter((folder: FolderData) => {
-        if (!folder.projectId || folder.projectId !== currentProject?.id) {
-          console.error(`FileExplorer: SÄKERHETSFILTRERING - Ignorerar mapp ${folder.id} som tillhör projekt ${folder.projectId}, inte aktuellt projekt ${currentProject?.id}`);
-          return false;
-        }
-        return true;
-      });
+    // Om vi saknar projektdata, returnera ett tomt träd
+    if (!currentProject?.id) {
+      console.warn("FileExplorer: Inget aktivt projekt, kan inte bygga filträd");
+      return [];
+    }
+    
+    // STEG 1: Filtrera mappar för aktuellt projekt
+    if (!foldersData || !filesData) {
+      console.warn("FileExplorer: Saknar data för mappar eller filer");
+      return [];
+    }
+    
+    console.log(`FileExplorer: ⚠️ HELT NY TRÄDBYGGNAD - byggTree start ⚠️`);
+    
+    // Filtrera och se till att vi bara använder mappar från aktuellt projekt
+    const projectFolders = foldersData.filter((folder: FolderData) => 
+      folder.projectId && folder.projectId.toString() === currentProject.id.toString()
+    );
+    console.log(`FileExplorer: ${projectFolders.length} mappar tillhör projekt ${currentProject.id}`);
+    
+    // Filtrera och se till att vi bara använder filer från aktuellt projekt
+    const projectFiles = filesData.filter((file: FileData) => 
+      file.projectId && file.projectId.toString() === currentProject.id.toString()
+    );
+    console.log(`FileExplorer: ${projectFiles.length} filer tillhör projekt ${currentProject.id}`);
+    
+    // STEG 2: Skapa alla mappnoder och spara dem i folderMap för enkel åtkomst via ID
+    projectFolders.forEach((folder: FolderData) => {
+      const folderNode: FileNode = {
+        id: `folder_${folder.id}`,
+        name: folder.name,
+        type: 'folder',
+        children: [] // Tom array från början
+      };
       
-      console.log(`FileExplorer: byggTree - ${filteredFolders.length} av ${foldersData.length} mappar tillhör aktuellt projekt ${currentProject?.id}`);
-      
-      // Steg 1: Skapa alla mappnoder först så att alla har en referens i folderMap
-      filteredFolders.forEach((folder: FolderData) => {
-        console.log(`FileExplorer: Skapar mappnod ${folder.id} (projektID: ${folder.projectId})`);
+      // Spara i mappningsobjektet för enkel åtkomst senare
+      folderMap[`folder_${folder.id}`] = folderNode;
+      console.log(`FileExplorer: Registrerar mapp "${folder.name}" med ID ${folder.id}`);
+    });
+    
+    // STEG 3: Organisera mappar i en hierarki baserat på parent-child relationer
+    projectFolders.forEach((folder: FolderData) => {
+      if (folder.parentId) {
+        // Denna mapp har en förälder
+        const parentKey = `folder_${folder.parentId}`;
         
-        const folderNode: FileNode = {
-          id: `folder_${folder.id}`,
-          name: folder.name, 
-          type: 'folder',
-          children: []
-        };
-        
-        folderMap[folderNode.id] = folderNode;
-      });
-      
-      // Steg 2: Bygg trädstrukturen genom att lägga till mappar på rätt ställe baserat på parent-child relationer
-      filteredFolders.forEach((folder: FolderData) => {
-        console.log(`FileExplorer: Placerar mapp ${folder.id} i trädstrukturen (parentId: ${folder.parentId || 'null'})`);
-        
-        if (folder.parentId) {
-          const parentId = `folder_${folder.parentId}`;
-          // Kontrollera att föräldern existerar i folderMap (som skapades i steg 1)
-          if (folderMap[parentId]) {
-            folderMap[parentId].children = folderMap[parentId].children || [];
-            folderMap[parentId].children?.push(folderMap[`folder_${folder.id}`]);
-          } else {
-            // Om föräldern saknas, lägg mappen i rotnivån och logga varning
-            console.warn(`FileExplorer: Föräldermapp ${folder.parentId} hittades inte, lägger till mapp ${folder.id} i rotnivån`);
-            tree.push(folderMap[`folder_${folder.id}`]);
-          }
+        if (folderMap[parentKey]) {
+          // Föräldern finns, lägg till denna mapp som ett barn till föräldern
+          folderMap[parentKey].children = folderMap[parentKey].children || [];
+          folderMap[parentKey].children.push(folderMap[`folder_${folder.id}`]);
+          console.log(`FileExplorer: Mapp "${folder.name}" (${folder.id}) placeras under förälder ${folder.parentId}`);
         } else {
-          // Ingen förälder, detta är en rotmapp
+          // Föräldern saknas, placera i root
+          console.warn(`FileExplorer: Kan inte hitta föräldermapp ${folder.parentId} för mapp ${folder.id}, placerar i root`);
           tree.push(folderMap[`folder_${folder.id}`]);
         }
-      });
-    }
+      } else {
+        // Denna mapp har ingen förälder, placera i root
+        tree.push(folderMap[`folder_${folder.id}`]);
+        console.log(`FileExplorer: Rotmapp "${folder.name}" (${folder.id}) läggs i trädets rot`);
+      }
+    });
     
-    // Add files to the tree
-    if (filesData) {
-      // Ytterligare filtrering - bara visa filer för aktuellt projekt
-      const filteredFiles = filesData.filter((file: FileData) => {
-        // Om projektid saknas eller inte matchar aktuellt projekt
-        if (!file.projectId || file.projectId !== currentProject?.id) {
-          console.error(`FileExplorer: SÄKERHETSFILTRERING - Ignorerar fil ${file.id} som tillhör projekt ${file.projectId}, inte aktuellt projekt ${currentProject?.id}`);
-          return false;
+    // STEG 4: Organisera filer i respektive mapp (eller i root om de inte har någon mapp)
+    projectFiles.forEach((file: FileData) => {
+      const fileNode: FileNode = {
+        id: `file_${file.id}`,
+        name: file.name,
+        type: 'file',
+        fileType: getFileExtension(file.name),
+        fileSize: file.size,
+        selected: `file_${file.id}` === selectedFileId
+      };
+      
+      if (file.folderId) {
+        // Denna fil tillhör en specifik mapp
+        const folderKey = `folder_${file.folderId}`;
+        
+        if (folderMap[folderKey]) {
+          // Mappen finns, lägg till filen som ett barn
+          folderMap[folderKey].children = folderMap[folderKey].children || [];
+          folderMap[folderKey].children.push(fileNode);
+          console.log(`FileExplorer: ✅ Fil "${file.name}" (${file.id}) läggs i mapp ${file.folderId}`);
+        } else {
+          // Mappen finns inte, lägg filen i root
+          console.warn(`FileExplorer: ⚠️ Kan inte hitta mapp ${file.folderId} för fil ${file.id}, placerar i root`);
+          tree.push(fileNode);
         }
-        return true;
-      });
-      
-      console.log(`FileExplorer: byggTree - ${filteredFiles.length} av ${filesData.length} filer tillhör aktuellt projekt ${currentProject?.id}`);
-      
-      // HELT NY IMPLEMENTATION: Gruppera filer strikt per mapp för att undvika dubbla visningar
-      // Skapa mappning av filer till respektive mapp-ID
-      const filesByFolder: Record<string, FileData[]> = {};
-      
-      // Skapa en tom array för rotfiler (filer utan mapp)
-      filesByFolder['root'] = [];
-      
-      // FILTRERA FILER STRIKT BASERAT PÅ FOLDER ID 
-      filteredFiles.forEach((file: FileData) => {
-        // VIKTIGT: En fil tillhör ENDAST en specifik mapp, ALDRIG flera
-        // Om fil.folderId är null -> rotmapp, annars folder_ID
-        const folderKey = file.folderId ? `folder_${file.folderId}` : 'root';
-        
-        if (!filesByFolder[folderKey]) {
-          filesByFolder[folderKey] = [];
-        }
-        
-        filesByFolder[folderKey].push(file);
-        
-        console.log(`🗃️ Fil ${file.id} (${file.name}) tillhör ENDAST: ${folderKey}, folderId=${file.folderId}`);
-      });
-
-      console.log(`📁 FileExplorer: mappar efter gruppering:`, Object.keys(filesByFolder));
-      
-      // Lägg till filer i ENDAST respektive mapp
-      Object.keys(filesByFolder).forEach(folderKey => {
-        const filesForFolder = filesByFolder[folderKey];
-        
-        console.log(`📂 Behandlar ${filesForFolder.length} filer för mapp: ${folderKey}`);
-        
-        filesForFolder.forEach(file => {
-          // Skapa filnod
-          const fileNode: FileNode = {
-            id: `file_${file.id}`,
-            name: file.name,
-            type: 'file',
-            fileType: getFileExtension(file.name),
-            fileSize: file.size,
-            selected: `file_${file.id}` === selectedFileId
-          };
-          
-          // Placera filen på rätt ställe i trädet
-          if (folderKey === 'root') {
-            // Detta är en rotfil (ingen mapp)
-            console.log(`📄 Rotfil: ${file.name} läggs i ROOT`);
-            tree.push(fileNode);
-          } else if (folderMap[folderKey]) {
-            // Detta är en fil i en specifik mapp
-            console.log(`📄 Fil: ${file.name} läggs i mapp ${folderKey}`);
-            // Skapa children-array om den inte finns
-            folderMap[folderKey].children = folderMap[folderKey].children || [];
-            // Lägg till filen i mappens children
-            folderMap[folderKey].children?.push(fileNode);
-          } else {
-            // Mappen finns inte i trädet, lägg till i roten istället
-            console.warn(`⚠️ Fil ${file.name} tillhör mapp ${folderKey} som saknas, läggs i ROOT`);
-            tree.push(fileNode);
-          }
-        });
-      });
-    }
+      } else {
+        // Denna fil har ingen mapp, placera i root
+        tree.push(fileNode);
+        console.log(`FileExplorer: Rotfil "${file.name}" (${file.id}) läggs i trädets rot`);
+      }
+    });
     
+    console.log(`FileExplorer: Trädbyggnad slutförd, totalt ${tree.length} objekt i root`);
     return tree;
   };
   
