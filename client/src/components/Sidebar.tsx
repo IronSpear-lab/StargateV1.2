@@ -1335,15 +1335,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 )}
               </Link>
               
-              {/* Plus-ikon för mappar - endast för project_leader, admin och superuser */}
-              {item.type === "folder" && item.onAddClick && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
-                <button
-                  onClick={() => item.onAddClick?.()}
-                  className="ml-1 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
-                >
-                  <Plus className="h-3 w-3" />
-                </button>
-              )}
+              {/* Plus-ikonen för mappar har tagits bort eftersom funktionaliteten har flyttats till FolderManagementWidget */}
             </div>
           )}
         </div>
@@ -1351,8 +1343,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     });
   };
 
-  // Bekräftelsedialog för borttagning av mapp
-  const folderToDelete = folderToDeleteId ? userCreatedFolders.find(f => f.id === folderToDeleteId) : null;
+  // Mapp-borttagningsfunktionalitet har tagits bort - flyttats till FolderManagementWidget
   
   return (
     <>
