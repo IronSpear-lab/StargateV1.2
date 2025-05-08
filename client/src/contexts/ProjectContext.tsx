@@ -251,9 +251,11 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         setCurrentProject(freshProject);
         localStorage.setItem('currentProjectId', String(projectId));
         
-        // Invalidera även medlemsfrågan för att få färska medlemmar och projekt
+        // Invalidera alla relevanta queries när projektet byts
         queryClient.invalidateQueries({ queryKey: ['/api/project-members', projectId] });
         queryClient.invalidateQueries({ queryKey: ['/api/user-projects'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/files', projectId] });
+        queryClient.invalidateQueries({ queryKey: ['/api/folders', projectId] });
         
         toast({
           title: "Projekt ändrat",
