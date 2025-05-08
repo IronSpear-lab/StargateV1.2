@@ -951,7 +951,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all versions for a PDF file
   app.get(`${apiPrefix}/pdf/:fileId/versions`, async (req, res) => {
     try {
-      const fileId = parseInt(req.params.fileId);
+      // Kontrollera om fileId är en numerisk sträng eller en timestamp/fileid
+      const fileIdStr = req.params.fileId;
+      
+      // Om fileId är en timestamp eller uuid-liknande, omdirigera till temporärt lager
+      if (fileIdStr.length > 10 || fileIdStr.includes('_')) {
+        // För temporära filer utan databasuppslag, returnera en tom lista
+        // Detta låter frontend-fallback aktiveras
+        return res.json([]);
+      }
+      
+      const fileId = parseInt(fileIdStr);
       if (isNaN(fileId)) {
         return res.status(400).json({ error: "Invalid file ID" });
       }
@@ -1097,7 +1107,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all annotations for a PDF version
   app.get(`${apiPrefix}/pdf/versions/:versionId/annotations`, async (req, res) => {
     try {
-      const versionId = parseInt(req.params.versionId);
+      const versionIdStr = req.params.versionId;
+      
+      // Om versionId är en timestamp eller uuid-liknande, hantera som temporär
+      if (versionIdStr.length > 10 || versionIdStr.includes('_')) {
+        // För temporära versioner utan databasuppslag, returnera tom lista
+        return res.json([]);
+      }
+      
+      const versionId = parseInt(versionIdStr);
       if (isNaN(versionId)) {
         return res.status(400).json({ error: "Invalid version ID" });
       }
@@ -1147,7 +1165,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create or update an annotation
   app.post(`${apiPrefix}/pdf/versions/:versionId/annotations`, async (req, res) => {
     try {
-      const versionId = parseInt(req.params.versionId);
+      const versionIdStr = req.params.versionId;
+      
+      // Om versionId är en timestamp eller uuid-liknande, spara i temporärt lager
+      if (versionIdStr.length > 10 || versionIdStr.includes('_')) {
+        // För temporära versioner utan databasuppslag, returnera ett temporärt svar
+        // Detta tillåter klientsidan att fungera med localStorage-sparande
+        const tempAnnotation = {
+          id: Date.now().toString(), // Temporärt ID
+          pdfVersionId: versionIdStr,
+          rect: req.body.rect,
+          color: req.body.color,
+          comment: req.body.comment,
+          status: req.body.status,
+          createdAt: new Date().toISOString(),
+          createdById: req.user ? req.user.id : 0,
+          createdBy: req.user ? req.user.username : 'Unknown'
+        };
+        
+        return res.status(201).json(tempAnnotation);
+      }
+      
+      const versionId = parseInt(versionIdStr);
       if (isNaN(versionId)) {
         return res.status(400).json({ error: "Invalid version ID" });
       }
