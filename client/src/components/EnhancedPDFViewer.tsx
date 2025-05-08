@@ -2,12 +2,26 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useProject } from "@/contexts/ProjectContext";
 import { Document, Page, pdfjs } from "react-pdf";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 import { configurePdfWorker, configureAlternativePdfLoading } from '@/lib/pdf-worker-config';
 import { useToast } from "@/hooks/use-toast";
 import { toast } from "@/hooks/use-toast";
+import { 
+  getPDFVersionContent, 
+  getLatestPDFVersion, 
+  getConsistentFileId,
+  getPDFVersions,
+  uploadPDFVersion,
+  getPDFAnnotations,
+  savePDFAnnotation,
+  deletePDFAnnotation,
+  convertAnnotationToTask,
+  PDFVersion as ApiPDFVersion,
+  PDFAnnotation as ApiPDFAnnotation 
+} from "@/lib/pdf-utils";
+import { storeFileForReuse } from "@/lib/file-utils";
 
 // Konfigurerar PDF.js för att hantera avbrutna förfrågningar bättre
 // Använd vår förbättrade konfiguration istället för direkt tilldelning
@@ -45,18 +59,6 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { addPdfViewerAnimations, centerElementInView } from "@/lib/ui-utils";
-import { storeFileForReuse } from "@/lib/file-utils";
-import {
-  getPDFVersions,
-  uploadPDFVersion,
-  getPDFAnnotations,
-  savePDFAnnotation,
-  deletePDFAnnotation,
-  convertAnnotationToTask,
-  getConsistentFileId,
-  PDFVersion as ApiPDFVersion,
-  PDFAnnotation as ApiPDFAnnotation
-} from "@/lib/pdf-utils";
 
 // Configure react-pdf worker is handled by pdf-worker-config.ts
 
