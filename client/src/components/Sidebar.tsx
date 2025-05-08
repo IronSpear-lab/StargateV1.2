@@ -32,7 +32,8 @@ import {
   Shield,
   Trash2,
   Package,
-  Hammer
+  Hammer,
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
@@ -1844,6 +1845,51 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           });
         }}
       />
+      
+      {/* Confirmation dialog for folder deletion - using Dialog instead of AlertDialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={(open) => !open && setDeleteDialogOpen(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Bekräfta borttagning</DialogTitle>
+            <DialogDescription>
+              {folderToDeleteId && (
+                <span>
+                  Är du säker på att du vill ta bort denna mapp och allt dess innehåll? Denna åtgärd kan inte ångras.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex items-center gap-2 text-destructive bg-destructive/10 p-3 rounded mb-4 mt-2">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+            <span className="text-sm">
+              Alla filer och undermappar kommer att raderas permanent.
+            </span>
+          </div>
+          
+          <DialogFooter className="flex space-x-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                console.log("Avbryter borttagning av mapp");
+                setDeleteDialogOpen(false);
+                setFolderToDeleteId(null);
+              }}
+            >
+              Avbryt
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => {
+                console.log("Bekräftar borttagning av mapp", folderToDeleteId);
+                deleteFolder();
+              }}
+            >
+              Ta bort
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
