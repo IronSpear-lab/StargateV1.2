@@ -31,7 +31,8 @@ import {
   Plus,
   Shield,
   Trash2,
-  Package
+  Package,
+  Hammer
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
@@ -992,7 +993,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         {
           href: "/3d-viewer/byggarbetsplats",
           label: "Byggarbetsplats",
-          icon: <Briefcase className="w-4 h-4" />,
+          icon: <Construction className="w-4 h-4" />,
           active: location === "/3d-viewer/byggarbetsplats",
           indent: 1
         }
