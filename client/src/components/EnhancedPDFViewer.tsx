@@ -826,22 +826,33 @@ export default function EnhancedPDFViewer({
   };
   
   // Format date nicely
-  const formatDate = (dateString: string): string => {
+  const formatDate = (dateString: string | Date | undefined | null): string => {
     try {
       if (!dateString) return 'Okänt datum';
       
-      const date = new Date(dateString);
+      // Konvertera till Date-objekt om det är en sträng
+      const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
       
       // Kontrollera om datumet är giltigt
-      if (isNaN(date.getTime())) {
+      if (!(date instanceof Date) || isNaN(date.getTime())) {
         console.warn('Ogiltigt datum:', dateString);
-        return 'Ogiltigt datum';
+        return 'Okänt datum';
       }
       
-      return date.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' });
+      // Formatera datumet med toLocaleDateString för svensk format
+      try {
+        return date.toLocaleDateString('sv-SE', { 
+          day: 'numeric', 
+          month: 'short', 
+          year: 'numeric' 
+        });
+      } catch (formatError) {
+        // Fallback om toLocaleDateString inte fungerar
+        return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+      }
     } catch (error) {
       console.error('Fel vid formatering av datum:', error);
-      return 'Ogiltigt datum';
+      return 'Okänt datum';
     }
   };
 
@@ -850,30 +861,63 @@ export default function EnhancedPDFViewer({
     if (!currentProject || annotations.length === 0) return;
     
     const numericFileId = getConsistentFileId(fileId);
-    if (isNaN(numericFileId)) return;
+    if (isNaN(numericFileId)) {
+      console.error('Ogiltigt fileId, kan inte spara kommentarer:', fileId);
+      return;
+    }
+    
+    let savedCount = 0;
     
     try {
+      console.log(`Sparar ${annotations.length} kommentarer för fil ${numericFileId}, projektId: ${currentProject.id}`);
+      
       // Loopa igenom alla kommentarer och spara dem om de inte redan finns i databasen
       for (const annotation of annotations) {
         const isNumericId = typeof annotation.id === 'string' && !isNaN(parseInt(annotation.id));
-        // Om det är ett numeriskt ID, anta att den redan finns i databasen
-        if (isNumericId) continue;
+        
+        // Spara bara kommentarer som inte redan har ett databasens ID
+        if (isNumericId) {
+          console.log(`Kommentar med ID ${annotation.id} finns redan i databasen, hoppar över`);
+          continue;
+        }
+        
+        console.log(`Sparar kommentar: ${annotation.id} för versionId: ${activeVersionId}`);
         
         // Spara kommentaren till databasen
-        await savePDFAnnotation(numericFileId, {
+        const savedAnnotation = await savePDFAnnotation(numericFileId, {
           pdfVersionId: parseInt(activeVersionId || '0'),
           projectId: projectId || (currentProject ? currentProject.id : null),
           rect: annotation.rect,
           color: annotation.color,
-          comment: annotation.comment,
+          comment: annotation.comment || '', // Säkerställ att comment alltid har ett värde
           status: annotation.status,
           createdAt: annotation.createdAt,
           createdBy: annotation.createdBy,
           assignedTo: annotation.assignedTo
         });
+        
+        if (savedAnnotation) {
+          savedCount++;
+          
+          // Uppdatera den lokala kommentaren med ID från databasen
+          const updatedAnnotations = [...annotations];
+          const index = updatedAnnotations.findIndex(a => a.id === annotation.id);
+          if (index !== -1) {
+            updatedAnnotations[index] = {
+              ...annotation,
+              id: savedAnnotation.id.toString()
+            };
+            setAnnotations(updatedAnnotations);
+          }
+        }
       }
       
-      console.log('Alla osparade kommentarer har sparats');
+      console.log(`${savedCount} av ${annotations.length} kommentarer har sparats`);
+      
+      // Opdatera cache för annotationer
+      if (savedCount > 0) {
+        queryClient.invalidateQueries({ queryKey: [`/api/pdf/versions/${activeVersionId}/annotations`] });
+      }
     } catch (error) {
       console.error('Fel vid sparande av kommentarer:', error);
     }

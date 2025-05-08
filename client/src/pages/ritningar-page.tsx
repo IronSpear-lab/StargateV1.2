@@ -363,6 +363,8 @@ export default function RitningarPage() {
   // Slå ihop lokalt sparade ritningar och API-data
   // Vi prioriterar API-data om samma fil finns i båda källorna (baserat på ID)
   const ritningar = React.useMemo(() => {
+    let result = [];
+    
     if (apiRitningar.length > 0) {
       // Om vi har data från API, använd främst den
       const apiRitningsMap = new Map(apiRitningar.map(r => [r.id, r]));
@@ -373,11 +375,23 @@ export default function RitningarPage() {
                  local.projectId === currentProject?.id
       );
       
-      return [...apiRitningar, ...uniqueLocalRitningar];
+      result = [...apiRitningar, ...uniqueLocalRitningar];
     } else {
       // Om vi inte har någon API-data, använd bara lokala ritningar
-      return ritningarData.filter(r => r.projectId === currentProject?.id);
+      result = ritningarData.filter(r => r.projectId === currentProject?.id);
     }
+    
+    // Sortera ritningar efter datum, med nyast först
+    return result.sort((a, b) => {
+      try {
+        const dateA = a.uploaded ? new Date(a.uploaded).getTime() : 0;
+        const dateB = b.uploaded ? new Date(b.uploaded).getTime() : 0;
+        return dateB - dateA; // Sortera med nyast först (fallande ordning)
+      } catch (error) {
+        console.error('Fel vid sortering av datum:', error);
+        return 0;
+      }
+    });
   }, [apiRitningar, ritningarData, currentProject]);
   
   const isLoading = isLoadingApi;
