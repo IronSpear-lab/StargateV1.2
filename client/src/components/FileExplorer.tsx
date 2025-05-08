@@ -253,10 +253,10 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     }
   });
 
-  // File upload mutation
+  // File upload mutation - UPPDATERAD
   const uploadFileMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const res = await fetch('/api/upload', {
+      const res = await fetch('/api/files', {  // Korrekt endpoint för filuppladdning
         method: 'POST',
         body: formData,
         credentials: 'include' // Säkerställ att cookies skickas med för autentisering
@@ -264,24 +264,27 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || 'Failed to upload file');
+        throw new Error(errorData.message || 'Kunde inte ladda upp filen');
       }
       
       return await res.json();
     },
     onSuccess: () => {
       toast({
-        title: "File uploaded",
-        description: "Your file has been uploaded successfully.",
+        title: "Fil uppladdad",
+        description: "Din fil har laddats upp framgångsrikt.",
       });
       setUploadDialogOpen(false);
       setUploadState(prev => ({ ...prev, file: null, uploadProgress: 0, isUploading: false }));
+      
+      // VIKTIGT: Invalidera frågan med all=true parameter för att säkerställa att alla filer hämtas på nytt
+      console.log("✅ Fil uppladdad - Uppdaterar filträdet med all=true");
       queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id, 'all=true'] });
     },
     onError: (error) => {
       toast({
-        title: "Upload failed",
-        description: error instanceof Error ? error.message : 'An unknown error occurred',
+        title: "Uppladdningen misslyckades",
+        description: error instanceof Error ? error.message : 'Ett okänt fel inträffade',
         variant: "destructive",
       });
       setUploadState(prev => ({ ...prev, isUploading: false }));
@@ -530,37 +533,38 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       
       console.log(`FileExplorer: byggTree - ${filteredFiles.length} av ${filesData.length} filer tillhör aktuellt projekt ${currentProject?.id}`);
       
-      // Gruppera filer baserat på folderId för att undvika dubletter
+      // HELT NY IMPLEMENTATION: Gruppera filer strikt per mapp för att undvika dubbla visningar
+      // Skapa mappning av filer till respektive mapp-ID
       const filesByFolder: Record<string, FileData[]> = {};
       
       // Skapa en tom array för rotfiler (filer utan mapp)
       filesByFolder['root'] = [];
       
-      // Gruppera filer efter mappID - placera filer ENDAST i deras specifika mapp
+      // FILTRERA FILER STRIKT BASERAT PÅ FOLDER ID 
       filteredFiles.forEach((file: FileData) => {
-        // En fil tillhör antingen en specifik mapp eller roten, aldrig båda
+        // VIKTIGT: En fil tillhör ENDAST en specifik mapp, ALDRIG flera
+        // Om fil.folderId är null -> rotmapp, annars folder_ID
         const folderKey = file.folderId ? `folder_${file.folderId}` : 'root';
         
         if (!filesByFolder[folderKey]) {
           filesByFolder[folderKey] = [];
         }
         
-        // Lägg bara till filen i sin korrekta mapp, inte i alla mappar
         filesByFolder[folderKey].push(file);
-        console.log(`FileExplorer DEBUG: Fil ${file.id} (${file.name}) tilldelad ENDAST till mapp med nyckel ${folderKey}`);
+        
+        console.log(`🗃️ Fil ${file.id} (${file.name}) tillhör ENDAST: ${folderKey}, folderId=${file.folderId}`);
       });
 
-      console.log(`FileExplorer DEBUG: Mappar efter gruppering:`, Object.keys(filesByFolder));
+      console.log(`📁 FileExplorer: mappar efter gruppering:`, Object.keys(filesByFolder));
       
-      // Lägg till filer i respektive mapp baserat på grupperingen
+      // Lägg till filer i ENDAST respektive mapp
       Object.keys(filesByFolder).forEach(folderKey => {
         const filesForFolder = filesByFolder[folderKey];
         
-        console.log(`FileExplorer DEBUG: Behandlar ${filesForFolder.length} filer för mapp-nyckel ${folderKey}`);
+        console.log(`📂 Behandlar ${filesForFolder.length} filer för mapp: ${folderKey}`);
         
         filesForFolder.forEach(file => {
-          console.log(`FileExplorer DEBUG: Fil ${file.id} (${file.name}) i mapp ${folderKey}`);
-          
+          // Skapa filnod
           const fileNode: FileNode = {
             id: `file_${file.id}`,
             name: file.name,
@@ -570,18 +574,21 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
             selected: `file_${file.id}` === selectedFileId
           };
           
+          // Placera filen på rätt ställe i trädet
           if (folderKey === 'root') {
-            // Detta är rotfiler utan mapp
-            console.log(`FileExplorer DEBUG: Lägger till rotfil ${file.id} (${file.name}) i ROOT trädet`);
+            // Detta är en rotfil (ingen mapp)
+            console.log(`📄 Rotfil: ${file.name} läggs i ROOT`);
             tree.push(fileNode);
           } else if (folderMap[folderKey]) {
-            // Detta är filer som tillhör en specifik mapp
-            console.log(`FileExplorer DEBUG: Lägger till fil ${file.id} (${file.name}) i specifik mapp ${folderKey}`);
+            // Detta är en fil i en specifik mapp
+            console.log(`📄 Fil: ${file.name} läggs i mapp ${folderKey}`);
+            // Skapa children-array om den inte finns
             folderMap[folderKey].children = folderMap[folderKey].children || [];
+            // Lägg till filen i mappens children
             folderMap[folderKey].children?.push(fileNode);
           } else {
-            // Denna fil tillhör en mapp som inte finns i trädet, lägg till i roten
-            console.warn(`FileExplorer DEBUG: Fil ${file.id} (${file.name}) tillhör mapp ${folderKey} som inte finns i trädet, lägger i ROOT`);
+            // Mappen finns inte i trädet, lägg till i roten istället
+            console.warn(`⚠️ Fil ${file.name} tillhör mapp ${folderKey} som saknas, läggs i ROOT`);
             tree.push(fileNode);
           }
         });
@@ -843,14 +850,17 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                         
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <Label htmlFor="uploadFolder">Målmapp</Label>
+                            <Label htmlFor="uploadFolder">Målmapp för filen</Label>
                             <span className="text-xs text-neutral-500">
                               Projekt: {currentProject?.name || 'Laddar...'}
                             </span>
                           </div>
                           <Select
                             value={uploadState.selectedFolder || "root"}
-                            onValueChange={(value) => setUploadState(prev => ({ ...prev, selectedFolder: value === "root" ? null : value }))}
+                            onValueChange={(value) => {
+                              console.log(`📁 Mappval vid uppladdning: ${value}`);
+                              setUploadState(prev => ({ ...prev, selectedFolder: value === "root" ? null : value }));
+                            }}
                           >
                             <SelectTrigger id="uploadFolder">
                               <SelectValue placeholder="Välj en mapp" />
@@ -863,6 +873,11 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                               ))}
                             </SelectContent>
                           </Select>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {uploadState.selectedFolder 
+                              ? `Filen kommer placeras i mappen med ID: ${uploadState.selectedFolder}` 
+                              : "Filen kommer placeras i projektets rotkatalog"}
+                          </p>
                         </div>
                         
                         {uploadState.isUploading && (
