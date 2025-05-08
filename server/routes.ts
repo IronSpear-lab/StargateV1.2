@@ -2679,6 +2679,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // API för att hämta alla PDF-anteckningar (oavsett version)
+  app.get(`${apiPrefix}/pdf/annotations`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      // Hämta alla annotationer oavsett version via joins för att få relaterad information
+      const annotations = await db.query.pdfAnnotations.findMany({
+        with: {
+          pdfVersion: {
+            with: {
+              file: true,
+              uploadedBy: true
+            }
+          },
+          createdBy: true,
+        },
+        orderBy: desc(pdfAnnotations.createdAt)
+      });
+      
+      // Formatera annotationer för frontend
+      const formattedAnnotations = annotations.map(annotation => ({
+        id: annotation.id,
+        pdfVersionId: annotation.pdfVersionId,
+        rect: annotation.rect,
+        color: annotation.color,
+        comment: annotation.comment,
+        status: annotation.status,
+        createdAt: annotation.createdAt,
+        createdById: annotation.createdById,
+        createdBy: annotation.createdBy.username,
+        fileName: annotation.pdfVersion?.file?.name,
+        filePath: annotation.pdfVersion?.filePath,
+        versionNumber: annotation.pdfVersion?.versionNumber,
+        projectId: annotation.projectId
+      }));
+      
+      res.json(formattedAnnotations);
+    } catch (error) {
+      console.error("Error fetching all PDF annotations:", error);
+      res.status(500).json({ error: "Failed to fetch PDF annotations" });
+    }
+  });
+
   // Ta bort en annotation
   app.delete(`${apiPrefix}/pdf/annotations/:annotationId`, async (req, res) => {
     try {
