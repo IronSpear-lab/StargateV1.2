@@ -14,8 +14,8 @@ interface UploadDialogProps {
 }
 
 export function UploadDialog({ 
-  open: isOpen, 
-  onOpenChange: onClose, 
+  open, 
+  onOpenChange, 
   onUpload,
   acceptedFileTypes,
   title,
@@ -63,7 +63,7 @@ export function UploadDialog({
       
       // Återställ filer och stäng dialogen
       setFiles([]);
-      onClose();
+      handleClose();
     }
   };
 
@@ -73,19 +73,26 @@ export function UploadDialog({
     }
   };
 
-  if (!isOpen) return null;
+  // Hantera stängning av dialogrutan
+  const handleClose = () => {
+    if (onOpenChange) {
+      onOpenChange(false);
+    }
+  };
+  
+  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div 
         className="absolute inset-0 bg-black bg-opacity-40" 
-        onClick={onClose}
+        onClick={handleClose}
       />
       
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+      <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6">
         <div className="absolute top-3 right-3">
           <button 
-            onClick={onClose} 
+            onClick={handleClose} 
             className="rounded-full p-1 hover:bg-gray-200 transition-colors"
           >
             <X size={20} />
@@ -115,17 +122,17 @@ export function UploadDialog({
             className={`${dragActive ? "text-blue-500" : "text-gray-400"}`}
           />
           
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white mt-4 w-full">
-            Choose files to upload
+          <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white mt-4 w-full">
+            Välj filer att ladda upp
           </Button>
           
           <p className="text-sm text-gray-500 mt-4">
-            or drag and drop them here
+            eller dra och släpp filer här
           </p>
           
           {files.length > 0 && (
             <div className="mt-2 text-sm text-blue-600">
-              {files.length} file{files.length !== 1 ? "s" : ""} selected
+              {files.length} fil{files.length !== 1 ? "er" : ""} valda
             </div>
           )}
         </div>
@@ -145,15 +152,15 @@ export function UploadDialog({
         )}
         
         <div className="flex justify-end space-x-2">
-          <Button variant="outline" onClick={onClose}>
-            Cancel
+          <Button variant="outline" onClick={handleClose}>
+            Avbryt
           </Button>
           <Button 
             disabled={files.length === 0} 
             className="bg-blue-600 hover:bg-blue-700 text-white"
             onClick={handleSubmit}
           >
-            Upload
+            Ladda upp
           </Button>
         </div>
       </div>
