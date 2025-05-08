@@ -531,7 +531,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       console.log(`FileExplorer: byggTree - ${filteredFiles.length} av ${filesData.length} filer tillhör aktuellt projekt ${currentProject?.id}`);
       
       filteredFiles.forEach((file: FileData) => {
-        console.log(`FileExplorer: Lägger till fil ${file.id} (projektID: ${file.projectId}) i trädet`);
+        console.log(`FileExplorer: Lägger till fil ${file.id} (projektID: ${file.projectId}, mappID: ${file.folderId || 'ingen'}) i trädet`);
         
         const fileNode: FileNode = {
           id: `file_${file.id}`,
@@ -542,18 +542,22 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
           selected: `file_${file.id}` === selectedFileId
         };
         
+        // Kontrollera att filen har en mappID och endast lägg till i den specifika mappen
         if (file.folderId) {
           const folderId = `folder_${file.folderId}`;
           if (folderMap[folderId]) {
+            // Endast lägg till i den specifika mappen som anges av folderId
             folderMap[folderId].children = folderMap[folderId].children || [];
             folderMap[folderId].children?.push(fileNode);
+            console.log(`FileExplorer: Fil ${file.id} tillhör mapp ${file.folderId} och har lagts till i den mappen`);
           } else {
-            // Om mappen inte finns i trädet (kanske för att den inte tillhör rätt projekt), 
-            // lägg till filen direkt i rotkatalogen
+            // Mappen som anges i folderId finns inte i trädet, lägg filen i rotnivån
             console.warn(`FileExplorer: Fil ${file.id} tillhör mapp ${file.folderId} som inte finns i trädet, lägger i roten`);
             tree.push(fileNode);
           }
         } else {
+          // Filer utan mappID läggs direkt i rotnivån
+          console.log(`FileExplorer: Fil ${file.id} har ingen mappID, lägger i rotnivån`);
           tree.push(fileNode);
         }
       });
