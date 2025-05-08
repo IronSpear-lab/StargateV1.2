@@ -217,6 +217,34 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       setUploadState(prev => ({ ...prev, isUploading: false }));
     }
   });
+  
+  // Delete folder mutation
+  const deleteFolderMutation = useMutation({
+    mutationFn: async (folderId: number) => {
+      const res = await apiRequest('DELETE', `/api/folders/${folderId}`);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to delete folder');
+      }
+      return true;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Mapp borttagen",
+        description: "Mappen och dess innehåll har raderats.",
+      });
+      // Invalidate both folders and files queries since deleting a folder affects files too
+      queryClient.invalidateQueries({ queryKey: ['/api/folders', currentProject?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Kunde inte radera mapp",
+        description: error instanceof Error ? error.message : 'Ett okänt fel inträffade',
+        variant: "destructive",
+      });
+    }
+  });
 
   // Handle file selection
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -486,9 +514,29 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                       Add comment
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-red-600">
-                      Delete
-                    </DropdownMenuItem>
+                    {/* Bara visa radera-knapp för mappar om användaren har rätt behörighet */}
+                    {(node.type === 'folder' && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser")) && (
+                      <DropdownMenuItem 
+                        className="text-red-600"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const folderId = parseInt(node.id.replace('folder_', ''));
+                          if (confirm(`Är du säker på att du vill radera mappen "${node.name}" och allt dess innehåll? Denna åtgärd kan inte ångras.`)) {
+                            deleteFolderMutation.mutate(folderId);
+                          }
+                        }}
+                      >
+                        <Trash className="mr-2 h-4 w-4" />
+                        Radera mapp
+                      </DropdownMenuItem>
+                    )}
+                    {/* Visa standard radera-knapp för filer */}
+                    {node.type === 'file' && (
+                      <DropdownMenuItem className="text-red-600">
+                        <Trash className="mr-2 h-4 w-4" />
+                        Radera
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>

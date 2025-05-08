@@ -603,6 +603,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to create folder" });
     }
   });
+  
+  // DELETE endpoint för att ta bort mappar 
+  app.delete(`${apiPrefix}/folders/:id`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    try {
+      const folderId = parseInt(req.params.id);
+      
+      // Hämta mappen för att säkerställa att användaren har behörighet att ta bort den
+      const folder = await db.select()
+        .from(folders)
+        .where(eq(folders.id, folderId))
+        .limit(1);
+      
+      if (folder.length === 0) {
+        return res.status(404).json({ error: "Folder not found" });
+      }
+      
+      // Kontrollera att användaren har tillgång till projektet som mappen tillhör
+      const userProject = await db.select()
+        .from(userProjects)
+        .where(and(
+          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.projectId, folder[0].projectId)
+        ))
+        .limit(1);
+      
+      if (userProject.length === 0) {
+        return res.status(403).json({ error: 'You do not have access to this project' });
+      }
+      
+      // Kontrollera att användaren har rätt behörighet (project_leader, admin, superuser)
+      if (userProject[0].role !== 'project_leader' && 
+          userProject[0].role !== 'admin' && 
+          userProject[0].role !== 'superuser') {
+        return res.status(403).json({ 
+          error: 'Only project leaders, administrators, or superusers can delete folders' 
+        });
+      }
+      
+      const result = await storage.deleteFolder(folderId);
+      
+      if (result.success) {
+        res.sendStatus(204); // No content, successful deletion
+      } else {
+        res.status(500).json({ error: "Failed to delete folder" });
+      }
+    } catch (error) {
+      console.error("Error deleting folder:", error);
+      res.status(500).json({ error: "Failed to delete folder" });
+    }
+  });
 
   // Files API
   app.get(`${apiPrefix}/files`, async (req, res) => {
