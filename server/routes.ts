@@ -592,11 +592,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post(`${apiPrefix}/folders`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      console.log("Unauthorized folder creation attempt - not authenticated");
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    // Säkerställ att projektId finns med i begäran
+    if (!req.body.projectId) {
+      return res.status(400).json({ error: "Project ID is required" });
+    }
+    
+    // Kontrollera att användaren har tillgång till projektet
     try {
+      const projectId = parseInt(req.body.projectId);
+      
+      const userProject = await db.select()
+        .from(userProjects)
+        .where(and(
+          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.projectId, projectId)
+        ))
+        .limit(1);
+      
+      if (userProject.length === 0) {
+        console.log(`User ${req.user!.id} tried to create folder in project ${projectId} without access`);
+        return res.status(403).json({ error: 'You do not have access to this project' });
+      }
+      
+      // Kontrollera att bara projektledare/admin/superusers kan skapa mappar
+      if (userProject[0].role !== 'project_leader' && 
+          userProject[0].role !== 'admin' && 
+          userProject[0].role !== 'superuser') {
+        console.log(`User ${req.user!.id} with role ${userProject[0].role} tried to create folder without permission`);
+        return res.status(403).json({ 
+          error: 'Only project leaders, administrators, or superusers can create folders' 
+        });
+      }
+      
       const folder = await storage.createFolder({
         ...req.body,
+        projectId: projectId, // Använd det validerade projektId:t
         createdById: req.user!.id
       });
+      
+      console.log(`Folder created successfully: ID=${folder.id}, projectId=${folder.projectId}`);
       res.status(201).json(folder);
     } catch (error) {
       console.error("Error creating folder:", error);
