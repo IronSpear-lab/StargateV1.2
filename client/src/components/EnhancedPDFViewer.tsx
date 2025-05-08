@@ -555,6 +555,11 @@ export default function EnhancedPDFViewer({
         
         console.log('Försöker med URL:', url);
         
+        // Kontrollera att URL är definierad innan vi försöker med fetch
+        if (!url) {
+          throw new Error("Ingen giltig URL tillgänglig för att hämta PDF-filen");
+        }
+        
         // Försök med fetch direkt för att se om vi kan få filen
         const response = await fetch(url);
         
