@@ -332,7 +332,14 @@ export default function EnhancedPDFViewer({
                 const idToUse = isNumericId ? parseInt(annotation.id) : undefined;
                 
                 try {
-                  return await savePDFAnnotation(numericFileId, {
+                  // Säkerställ att versionId är ett giltigt nummer
+                  if (!localActiveVersionId || isNaN(parseInt(localActiveVersionId))) {
+                    console.error(`Ogiltigt versionId: ${localActiveVersionId} vid sparande av annotation`);
+                    throw new Error('Ogiltigt versionId');
+                  }
+                  
+                  // Skapa en kopia med korrekt versionId
+                  const annotationToSave = {
                     id: idToUse,
                     pdfVersionId: parseInt(localActiveVersionId),
                     projectId: localCurrentProject.id,
@@ -343,7 +350,9 @@ export default function EnhancedPDFViewer({
                     createdAt: annotation.createdAt,
                     createdBy: annotation.createdBy,
                     assignedTo: annotation.assignedTo
-                  });
+                  };
+                  
+                  return await savePDFAnnotation(numericFileId, annotationToSave);
                 } catch (err) {
                   console.error(`Fel vid sparande av annotation ${annotation.id}:`, err);
                   return null;
@@ -599,19 +608,33 @@ export default function EnhancedPDFViewer({
         const isNumericId = typeof activeAnnotation.id === 'string' && !isNaN(parseInt(activeAnnotation.id));
         const idToUse = isNumericId ? parseInt(activeAnnotation.id) : undefined;
         
-        // Update in database
-        const savedAnnotation = await savePDFAnnotation(numericFileId, {
+        // Säkerställ att versionId är ett giltigt nummer
+        const versionId = parseInt(activeVersionId || '0');
+        if (isNaN(versionId)) {
+          throw new Error(`Ogiltigt versionId: ${activeVersionId}`);
+        }
+        
+        // Skapa en kopia av annotationen med korrekt formatering
+        const annotationToSave = {
           id: idToUse, // Undefined för nya kommentarer, ID för existerande
-          pdfVersionId: parseInt(activeVersionId || '0'),
+          pdfVersionId: versionId,
           projectId: projectId || (currentProject ? currentProject.id : null),
           rect: updatedAnnotation.rect,
           color: updatedAnnotation.color,
-          comment: updatedAnnotation.comment,
+          comment: updatedAnnotation.comment || '',
           status: updatedAnnotation.status,
           createdAt: updatedAnnotation.createdAt,
           createdBy: updatedAnnotation.createdBy,
           assignedTo: updatedAnnotation.assignedTo
+        };
+        
+        console.log(`[${new Date().toISOString()}] Sparar annotation till databasen:`, {
+          fileId: numericFileId,
+          versionId: versionId
         });
+
+        // Update in database
+        const savedAnnotation = await savePDFAnnotation(numericFileId, annotationToSave);
         
         // Om vi fick ett svar från servern med ett ID, uppdatera id i frontend
         if (savedAnnotation && savedAnnotation.id && !isNumericId) {
@@ -720,19 +743,34 @@ export default function EnhancedPDFViewer({
           const isNumericId = typeof annotation.id === 'string' && !isNaN(parseInt(annotation.id));
           const idToUse = isNumericId ? parseInt(annotation.id) : undefined;
           
-          // Update in database
-          const savedAnnotation = await savePDFAnnotation(numericFileId, {
+          // Säkerställ att versionId är ett giltigt nummer
+          const versionId = parseInt(activeVersionId || '0');
+          if (isNaN(versionId)) {
+            throw new Error(`Ogiltigt versionId: ${activeVersionId}`);
+          }
+          
+          // Skapa en kopia av annotationen med korrekt formatering
+          const annotationToSave = {
             id: idToUse, // Undefined för nya kommentarer, ID för existerande
-            pdfVersionId: parseInt(activeVersionId || '0'),
+            pdfVersionId: versionId,
             projectId: projectId || (currentProject ? currentProject.id : null),
             rect: annotation.rect,
             color: statusColors[newStatus],
-            comment: annotation.comment,
+            comment: annotation.comment || '',
             status: newStatus,
             createdAt: annotation.createdAt,
             createdBy: annotation.createdBy,
             assignedTo: annotation.assignedTo
+          };
+          
+          console.log(`[${new Date().toISOString()}] Sparar statusförändring till databasen:`, {
+            fileId: numericFileId,
+            versionId: versionId,
+            status: newStatus
           });
+
+          // Update in database
+          const savedAnnotation = await savePDFAnnotation(numericFileId, annotationToSave);
           
           // Om vi fick ett svar från servern med ett ID, uppdatera id i frontend
           if (savedAnnotation && savedAnnotation.id && !isNumericId) {
@@ -959,6 +997,7 @@ export default function EnhancedPDFViewer({
     }
     
     try {
+      // Säkerställ giltigt fil-ID
       const numericFileId = getConsistentFileId(fileId);
       if (isNaN(numericFileId)) {
         console.error(`[${new Date().toISOString()}] Kunde inte konvertera fileId till ett giltigt numeriskt värde, använder localStorage istället`);
@@ -967,7 +1006,15 @@ export default function EnhancedPDFViewer({
         return;
       }
       
-      console.log(`[${new Date().toISOString()}] Sparar ${annotations.length} kommentarer till databasen med versionId: ${activeVersionId}, projectId: ${currentProject.id}...`);
+      // Säkerställ giltigt versions-ID
+      const numericVersionId = parseInt(activeVersionId);
+      if (isNaN(numericVersionId)) {
+        console.error(`[${new Date().toISOString()}] Ogiltigt versionId: ${activeVersionId}, använder localStorage istället`);
+        await saveAllUnsavedAnnotations(true);
+        return;
+      }
+      
+      console.log(`[${new Date().toISOString()}] Sparar ${annotations.length} kommentarer till databasen med versionId: ${numericVersionId}, projectId: ${currentProject.id}...`);
       
       let savedCount = 0;
       
@@ -980,14 +1027,15 @@ export default function EnhancedPDFViewer({
         try {
           console.log(`[${new Date().toISOString()}] Sparar annotation:`, {
             fileId: numericFileId,
-            versionId: activeVersionId,
+            versionId: numericVersionId,
             projectId: currentProject.id,
             annotationId: annotation.id
           });
           
-          const result = await savePDFAnnotation(numericFileId, {
+          // Skapa en kopia av annotationen med rätt versionId
+          const annotationToSave = {
             id: idToUse,
-            pdfVersionId: parseInt(activeVersionId),
+            pdfVersionId: numericVersionId,
             projectId: currentProject.id,
             rect: annotation.rect,
             color: annotation.color, 
@@ -996,7 +1044,9 @@ export default function EnhancedPDFViewer({
             createdAt: annotation.createdAt,
             createdBy: annotation.createdBy,
             assignedTo: annotation.assignedTo
-          });
+          };
+          
+          const result = await savePDFAnnotation(numericFileId, annotationToSave);
           
           if (result && result.id) {
             savedCount++;
@@ -1023,7 +1073,7 @@ export default function EnhancedPDFViewer({
       // Invalidera cache för PDF-annotationer om några sparades
       if (savedCount > 0) {
         try {
-          queryClient.invalidateQueries({ queryKey: [`/api/pdf/versions/${activeVersionId}/annotations`] });
+          queryClient.invalidateQueries({ queryKey: [`/api/pdf/versions/${numericVersionId}/annotations`] });
           queryClient.invalidateQueries({ queryKey: [`/api/pdf/${numericFileId}/annotations`] });
         } catch (err) {
           console.error(`[${new Date().toISOString()}] Fel vid invalidering av cache:`, err);

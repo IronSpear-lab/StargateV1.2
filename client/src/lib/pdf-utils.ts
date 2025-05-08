@@ -164,11 +164,23 @@ export async function getPDFAnnotations(versionId: number, projectId?: number): 
 
 // Skapa eller uppdatera en annotation
 export async function savePDFAnnotation(
-  versionId: number, 
+  fileId: number, 
   annotation: PDFAnnotation
 ): Promise<PDFAnnotation | null> {
   try {
+    // Se till att vi använder versionId, inte fileId i API-anropet
+    const versionId = annotation.pdfVersionId;
+    
     console.log('Sparar annotation för versionId:', versionId, 'Annotation data:', annotation);
+    
+    if (!versionId || isNaN(versionId)) {
+      console.error('Kunde inte spara annotation: saknar giltigt versionId', {
+        pdfVersionId: versionId,
+        annotation
+      });
+      throw new Error('Ogiltigt versionId');
+    }
+    
     const res = await apiRequest('POST', `/api/pdf/versions/${versionId}/annotations`, annotation);
     if (!res.ok) {
       throw new Error(`Failed to save PDF annotation: ${res.statusText}`);
