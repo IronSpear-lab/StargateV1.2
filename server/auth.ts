@@ -45,10 +45,10 @@ export function setupAuth(app: Express) {
       checkPeriod: 86400000 // prune expired entries every 24h
     }),
     cookie: {
-      secure: true,
+      secure: process.env.NODE_ENV === 'production', // Endast secure i produktion
       httpOnly: true,
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 dagar
-      sameSite: 'none',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Mindre strikt för utveckling
       path: '/'
     },
     name: "valvx.sid",
@@ -108,9 +108,9 @@ export function setupAuth(app: Express) {
     // Sätt explicit cookie för att säkerställa att sessionen följer med
     // Detta åsidosätter sessionsinställningarna, men är nödvändigt i vissa miljöer
     res.cookie(sessionSettings.name!, req.sessionID, {
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       httpOnly: true, 
-      sameSite: 'none',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 dagar
     });
     
@@ -136,9 +136,9 @@ export function setupAuth(app: Express) {
     
     // Sätt cookie igen för att hålla sessionen levande
     res.cookie(sessionSettings.name!, req.sessionID, {
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       httpOnly: true, 
-      sameSite: 'none',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000
     });
     

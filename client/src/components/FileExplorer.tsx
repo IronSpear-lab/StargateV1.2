@@ -488,7 +488,14 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                 {getFileIcon(node)}
               </div>
               
-              <span className="truncate flex-1">{node.name}</span>
+              <span className="truncate flex-1">
+                {node.name}
+                {node.type === 'folder' && 
+                  <span className="text-xs text-neutral-400 ml-1">
+                    (ID: {node.id.replace('folder_', '')})
+                  </span>
+                }
+              </span>
               
               {node.type === 'file' && node.fileSize && (
                 <span className="text-xs text-neutral-500 ml-2 opacity-0 group-hover:opacity-100">
