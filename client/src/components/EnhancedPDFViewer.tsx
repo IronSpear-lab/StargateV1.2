@@ -482,14 +482,14 @@ export default function EnhancedPDFViewer({
   
   // Save comment and task
   const handleSaveComment = async () => {
-    if (!activeAnnotation) return;
+    if (!activeAnnotation || !currentProject) return;
     
     // Create updated annotation with comment and task
     const updatedAnnotation: PDFAnnotation = {
       ...activeAnnotation,
       comment: newComment,
       assignedTo: assignTo,
-      taskId: newTask ? `TASK-${Math.floor(Math.random() * 10000)}` : undefined
+      taskId: newTask ? `TASK-${Math.floor(Math.random() * 10000)}` : activeAnnotation.taskId
     };
     
     // Update annotations array
@@ -505,12 +505,16 @@ export default function EnhancedPDFViewer({
     
     try {
       const numericFileId = getConsistentFileId(fileId);
-      if (!isNaN(numericFileId) && activeAnnotation.taskId && currentProject) {
+      if (!isNaN(numericFileId)) {
+        // Kontrollera om ID är numeriskt (från databasen) eller temporärt
+        const isNumericId = !isNaN(parseInt(activeAnnotation.id));
+        const idToUse = isNumericId ? parseInt(activeAnnotation.id) : undefined;
+        
         // Update in database
-        await savePDFAnnotation(numericFileId, {
-          id: parseInt(activeAnnotation.taskId),
+        const savedAnnotation = await savePDFAnnotation(numericFileId, {
+          id: idToUse, // Undefined för nya kommentarer, ID för existerande
           pdfVersionId: parseInt(activeVersionId || '0'),
-          projectId: currentProject.id, // Add project ID from context
+          projectId: currentProject.id,
           rect: updatedAnnotation.rect,
           color: updatedAnnotation.color,
           comment: updatedAnnotation.comment,
@@ -519,6 +523,21 @@ export default function EnhancedPDFViewer({
           createdBy: updatedAnnotation.createdBy,
           assignedTo: updatedAnnotation.assignedTo
         });
+        
+        // Om vi fick ett svar från servern med ett ID, uppdatera id i frontend
+        if (savedAnnotation && savedAnnotation.id && !isNumericId) {
+          const newUpdatedAnnotations = [...updatedAnnotations];
+          const index = newUpdatedAnnotations.findIndex(a => a.id === activeAnnotation.id);
+          if (index !== -1) {
+            newUpdatedAnnotations[index] = {
+              ...updatedAnnotation,
+              id: savedAnnotation.id.toString(),
+              taskId: savedAnnotation.id.toString()
+            };
+            setAnnotations(newUpdatedAnnotations);
+            setActiveAnnotation(newUpdatedAnnotations[index]);
+          }
+        }
       }
     } catch (error) {
       console.error('Error updating annotation:', error);
