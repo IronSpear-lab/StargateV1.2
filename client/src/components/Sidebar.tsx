@@ -53,6 +53,16 @@ import {
   ContextMenuItem,
   ContextMenuTrigger
 } from "@/components/ui/context-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface SidebarProps {
   className?: string;
@@ -685,6 +695,8 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [selectedParentFolder, setSelectedParentFolder] = useState("");
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [folderToDeleteId, setFolderToDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
   
   // State för att lagra mappar som användaren har skapat
@@ -801,8 +813,8 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     });
   };
   
-  // Funktion för att ta bort en mapp
-  const deleteFolder = (folderId: string) => {
+  // Funktion för att hantera klick på "Ta bort" ikonen
+  const handleDeleteClick = (folderId: string) => {
     // Kontrollera behörighet för att endast tillåta project_leader, admin och superuser
     if (!user || !(user.role === "project_leader" || user.role === "admin" || user.role === "superuser")) {
       toast({
@@ -813,14 +825,23 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       return;
     }
     
+    setFolderToDeleteId(folderId);
+    setDeleteDialogOpen(true);
+  };
+  
+  // Funktion för att ta bort en mapp
+  const deleteFolder = () => {
+    // Om ingen mapp är markerad för borttagning, avbryt
+    if (!folderToDeleteId) return;
+    
     // Hitta mappen som ska tas bort
-    const folderToDelete = userCreatedFolders.find(folder => folder.id === folderId);
+    const folderToDelete = userCreatedFolders.find(folder => folder.id === folderToDeleteId);
     if (!folderToDelete) return;
     
     // Filtrera bort mappen och eventuella undermappar
     const updatedFolders = userCreatedFolders.filter(folder => {
       // Ta bort den specifika mappen
-      if (folder.id === folderId) return false;
+      if (folder.id === folderToDeleteId) return false;
       
       // Ta bort alla undermappar till den här mappen
       if (folder.parent === folderToDelete.name) return false;
@@ -839,6 +860,10 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       title: "Mapp borttagen",
       description: `Mappen "${folderToDelete.name}" har tagits bort`,
     });
+    
+    // Återställ mapp-ID och stäng dialogen
+    setFolderToDeleteId(null);
+    setDeleteDialogOpen(false);
   };
   
   // Funktion för att hitta den rätta föräldern för en nyskapad mapp och uppdatera den
@@ -1452,8 +1477,32 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     });
   };
 
+  // Bekräftelsedialog för borttagning av mapp
+  const folderToDelete = folderToDeleteId ? userCreatedFolders.find(f => f.id === folderToDeleteId) : null;
+  
   return (
     <>
+      {/* Bekräftelsedialog för borttagning av mapp */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Är du säker?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Är du säker på att du vill ta bort {folderToDelete?.name ? `"${folderToDelete.name}"` : "denna mapp"}? 
+              Alla undermappar till mappen tas också bort. Denna åtgärd kan inte ångras.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setFolderToDeleteId(null)}>
+              Avbryt
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={deleteFolder} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Ta bort
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
       {isMobile && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-40 dark:bg-black dark:bg-opacity-70"
