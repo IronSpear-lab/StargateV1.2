@@ -50,7 +50,8 @@ import {
   BudgetCostWidget,
   RevenueOverviewWidget,
   KpiMetricsWidget,
-  AiForecastWidget
+  AiForecastWidget,
+  FolderManagementWidget
 } from "@/components/dashboard/widgets/leader";
 
 // Define a widget instance type for state management
@@ -90,6 +91,13 @@ const defaultProjectLeaderWidgets: WidgetInstance[] = [
     id: uuidv4(),
     type: "ai-forecast",
     title: "AI FORECAST",
+    width: "half",
+    height: "medium"
+  },
+  {
+    id: uuidv4(),
+    type: "folder-management",
+    title: "MAPPHANTERING",
     width: "half",
     height: "medium"
   },
@@ -304,6 +312,8 @@ export default function ProjectLeaderDashboardPage() {
         return <KpiMetricsWidget projectId={projectId} />;
       case "ai-forecast":
         return <AiForecastWidget projectId={projectId} />;
+      case "folder-management":
+        return <FolderManagementWidget />;
       case "custom-text":
         return <CustomTextWidget id={widget.id} />;
       case "calendar":

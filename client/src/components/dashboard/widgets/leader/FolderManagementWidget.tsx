@@ -36,6 +36,7 @@ interface FolderNode {
   id: string;
   name: string;
   original: FolderData;
+  children?: FolderNode[];
 }
 
 interface FolderFormData {
@@ -274,7 +275,7 @@ export function FolderManagementWidget() {
   };
 
   // Render folder tree
-  const renderFolderTree = (nodes: any[], level = 0) => {
+  const renderFolderTree = (nodes: FolderNode[], level = 0) => {
     return (
       <ul className={cn(
         "space-y-1",
