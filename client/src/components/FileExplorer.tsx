@@ -90,11 +90,21 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
   
   const [uploadState, setUploadState] = useState<FileUploadState>({
     selectedFolder: null,
-    projectId: currentProject?.id?.toString() || "1", // Use current project ID
+    projectId: currentProject?.id?.toString() || "", // Use current project ID
     isUploading: false,
     file: null,
     uploadProgress: 0
   });
+  
+  // Uppdatera projektID när current project ändras
+  useEffect(() => {
+    if (currentProject?.id) {
+      setUploadState(prev => ({
+        ...prev,
+        projectId: currentProject.id.toString()
+      }));
+    }
+  }, [currentProject?.id]);
 
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
   
@@ -114,12 +124,18 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     isLoading: isLoadingFiles, 
     error: filesError 
   } = useQuery({
-    queryKey: ['/api/files'],
+    queryKey: ['/api/files', currentProject?.id],
     queryFn: async () => {
-      const res = await fetch('/api/files');
+      if (!currentProject?.id) {
+        // Om inget projekt är valt, returnera en tom array
+        return [];
+      }
+      
+      const res = await fetch(`/api/files?projectId=${currentProject.id}`);
       if (!res.ok) throw new Error('Failed to fetch files');
       return res.json();
-    }
+    },
+    enabled: !!currentProject?.id // Kör bara denna query om vi har ett projekt
   });
   
   // Fetch folders
