@@ -536,16 +536,18 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       // Skapa en tom array för rotfiler (filer utan mapp)
       filesByFolder['root'] = [];
       
-      // Gruppera filer efter mappID
+      // Gruppera filer efter mappID - placera filer ENDAST i deras specifika mapp
       filteredFiles.forEach((file: FileData) => {
+        // En fil tillhör antingen en specifik mapp eller roten, aldrig båda
         const folderKey = file.folderId ? `folder_${file.folderId}` : 'root';
         
         if (!filesByFolder[folderKey]) {
           filesByFolder[folderKey] = [];
         }
         
+        // Lägg bara till filen i sin korrekta mapp, inte i alla mappar
         filesByFolder[folderKey].push(file);
-        console.log(`FileExplorer DEBUG: Fil ${file.id} (${file.name}) tilldelad gruppnyckel ${folderKey}`);
+        console.log(`FileExplorer DEBUG: Fil ${file.id} (${file.name}) tilldelad ENDAST till mapp med nyckel ${folderKey}`);
       });
 
       console.log(`FileExplorer DEBUG: Mappar efter gruppering:`, Object.keys(filesByFolder));
