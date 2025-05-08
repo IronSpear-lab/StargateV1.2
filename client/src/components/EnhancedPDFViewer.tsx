@@ -171,7 +171,7 @@ export default function EnhancedPDFViewer({
       try {
         const numericFileId = getConsistentFileId(fileId);
         
-        if (!isNaN(numericFileId)) {
+        if (!isNaN(numericFileId) && (useDatabase || projectId)) {
           // Load versions
           const versions = await getPDFVersions(numericFileId);
           if (versions && versions.length > 0) {
@@ -196,11 +196,9 @@ export default function EnhancedPDFViewer({
             setActiveVersionId(latestVersion.id);
             setPdfUrl(latestVersion.fileUrl);
             
-            // Load annotations - filtrera per projekt om tillgängligt
-            const annots = await getPDFAnnotations(
-              numericFileId, 
-              currentProject ? currentProject.id : undefined
-            );
+            // Load annotations - filter by project if available
+            const projectIdToUse = projectId || (currentProject ? currentProject.id : undefined);
+            const annots = await getPDFAnnotations(numericFileId, projectIdToUse);
             if (annots && annots.length > 0) {
               const uiAnnotations: PDFAnnotation[] = annots.map(anno => ({
                 id: anno.id?.toString() || `anno_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -237,8 +235,15 @@ export default function EnhancedPDFViewer({
     }
     
     function loadFromLocalStorage() {
+      if (useDatabase) {
+        return; // Skip localStorage if we're using the database
+      }
+      
+      // Convert fileId to string for localStorage key
+      const storageKey = `pdf_annotations_${fileId.toString()}`;
+      
       // Load annotations from localStorage
-      const savedAnnotations = localStorage.getItem(`pdf_annotations_${fileId}`);
+      const savedAnnotations = localStorage.getItem(storageKey);
       if (savedAnnotations) {
         try {
           const localAnnotations = JSON.parse(savedAnnotations);
@@ -249,7 +254,7 @@ export default function EnhancedPDFViewer({
       }
       
       // Load versions from localStorage
-      const savedVersions = localStorage.getItem(`pdf_versions_${fileId}`);
+      const savedVersions = localStorage.getItem(`pdf_versions_${fileId.toString()}`);
       if (savedVersions) {
         try {
           const versions = JSON.parse(savedVersions);
@@ -269,7 +274,7 @@ export default function EnhancedPDFViewer({
       } else {
         // Create initial version if no saved versions exist
         const initialVersion: FileVersion = {
-          id: fileId,
+          id: fileId.toString(),
           versionNumber: 1, 
           filename: filename,
           fileUrl: initialUrl,
@@ -283,12 +288,12 @@ export default function EnhancedPDFViewer({
         setActiveVersionId(initialVersion.id);
         setPdfUrl(initialVersion.fileUrl);
         
-        localStorage.setItem(`pdf_versions_${fileId}`, JSON.stringify([initialVersion]));
+        localStorage.setItem(`pdf_versions_${fileId.toString()}`, JSON.stringify([initialVersion]));
       }
     }
     
     loadData();
-  }, [fileId, filename, initialUrl, user]);
+  }, [fileId, filename, initialUrl, user, currentProject, projectId, useDatabase]);
 
   // Handle wheel event for zooming with ctrl+mousewheel
   useEffect(() => {
@@ -511,16 +516,17 @@ export default function EnhancedPDFViewer({
     
     try {
       const numericFileId = getConsistentFileId(fileId);
-      if (!isNaN(numericFileId)) {
+      // If we're using the database or have a valid project context
+      if ((useDatabase || projectId || currentProject) && !isNaN(numericFileId)) {
         // Kontrollera om ID är numeriskt (från databasen) eller temporärt
-        const isNumericId = !isNaN(parseInt(activeAnnotation.id));
+        const isNumericId = typeof activeAnnotation.id === 'string' && !isNaN(parseInt(activeAnnotation.id));
         const idToUse = isNumericId ? parseInt(activeAnnotation.id) : undefined;
         
         // Update in database
         const savedAnnotation = await savePDFAnnotation(numericFileId, {
           id: idToUse, // Undefined för nya kommentarer, ID för existerande
           pdfVersionId: parseInt(activeVersionId || '0'),
-          projectId: currentProject.id,
+          projectId: projectId || (currentProject ? currentProject.id : null),
           rect: updatedAnnotation.rect,
           color: updatedAnnotation.color,
           comment: updatedAnnotation.comment,
@@ -544,13 +550,18 @@ export default function EnhancedPDFViewer({
             setActiveAnnotation(newUpdatedAnnotations[index]);
           }
         }
+      } else if (!useDatabase) {
+        // Only use localStorage if not explicitly using database
+        localStorage.setItem(`pdf_annotations_${fileId.toString()}`, JSON.stringify(updatedAnnotations));
       }
     } catch (error) {
       console.error('Error updating annotation:', error);
+      
+      // Save to localStorage as fallback, but only if not explicitly using database
+      if (!useDatabase) {
+        localStorage.setItem(`pdf_annotations_${fileId.toString()}`, JSON.stringify(updatedAnnotations));
+      }
     }
-    
-    // Save to localStorage as fallback
-    localStorage.setItem(`pdf_annotations_${fileId}`, JSON.stringify(updatedAnnotations));
     
     // Go back to details view
     setSidebarMode('details');
@@ -624,18 +635,19 @@ export default function EnhancedPDFViewer({
     
     try {
       const numericFileId = getConsistentFileId(fileId);
-      if (!isNaN(numericFileId) && currentProject) {
+      // If we're using the database or have a valid project context
+      if ((useDatabase || projectId || currentProject) && !isNaN(numericFileId)) {
         const annotation = annotations.find(a => a.id === annotationId);
         if (annotation) {
           // Kontrollera om ID är numeriskt (från databasen) eller temporärt
-          const isNumericId = !isNaN(parseInt(annotation.id));
+          const isNumericId = typeof annotation.id === 'string' && !isNaN(parseInt(annotation.id));
           const idToUse = isNumericId ? parseInt(annotation.id) : undefined;
           
           // Update in database
           const savedAnnotation = await savePDFAnnotation(numericFileId, {
             id: idToUse, // Undefined för nya kommentarer, ID för existerande
             pdfVersionId: parseInt(activeVersionId || '0'),
-            projectId: currentProject.id,
+            projectId: projectId || (currentProject ? currentProject.id : null),
             rect: annotation.rect,
             color: statusColors[newStatus],
             comment: annotation.comment,
@@ -664,13 +676,18 @@ export default function EnhancedPDFViewer({
             }
           }
         }
+      } else if (!useDatabase) {
+        // Only use localStorage if not explicitly using database
+        localStorage.setItem(`pdf_annotations_${fileId.toString()}`, JSON.stringify(updatedAnnotations));
       }
     } catch (error) {
       console.error('Error updating annotation status:', error);
+      
+      // Save to localStorage as fallback, but only if not explicitly using database
+      if (!useDatabase) {
+        localStorage.setItem(`pdf_annotations_${fileId.toString()}`, JSON.stringify(updatedAnnotations));
+      }
     }
-    
-    // Save to localStorage as fallback
-    localStorage.setItem(`pdf_annotations_${fileId}`, JSON.stringify(updatedAnnotations));
   };
   
   // Find and zoom to an annotation
@@ -713,7 +730,8 @@ export default function EnhancedPDFViewer({
     
     try {
       const numericFileId = getConsistentFileId(fileId);
-      if (!isNaN(numericFileId)) {
+      // If we're using the database or have a valid project context
+      if ((useDatabase || projectId || currentProject) && !isNaN(numericFileId)) {
         // Upload to API
         const uploadedVersion = await uploadPDFVersion(
           numericFileId,
@@ -740,18 +758,24 @@ export default function EnhancedPDFViewer({
           setActiveVersionId(newVersion.id);
           setPdfUrl(newVersion.fileUrl);
           
-          // Also save to localStorage as backup
-          localStorage.setItem(`pdf_versions_${fileId}`, JSON.stringify(updatedVersions));
-        } else {
-          // Fallback to localStorage
+          // Also save to localStorage as backup if not explicitly using database
+          if (!useDatabase) {
+            localStorage.setItem(`pdf_versions_${fileId.toString()}`, JSON.stringify(updatedVersions));
+          }
+        } else if (!useDatabase) {
+          // Fallback to localStorage only if not using database
           fallbackToLocalStorage();
         }
-      } else {
+      } else if (!useDatabase) {
+        // Use localStorage if not using database
         fallbackToLocalStorage();
       }
     } catch (error) {
       console.error('Error uploading version:', error);
-      fallbackToLocalStorage();
+      // Fallback to localStorage only if not using database
+      if (!useDatabase) {
+        fallbackToLocalStorage();
+      }
     } finally {
       setUploadingVersion(false);
       setNewVersionFile(null);
@@ -787,7 +811,7 @@ export default function EnhancedPDFViewer({
       setPdfUrl(tempFileUrl);
       
       // Save to localStorage
-      localStorage.setItem(`pdf_versions_${fileId}`, JSON.stringify(updatedVersions));
+      localStorage.setItem(`pdf_versions_${fileId.toString()}`, JSON.stringify(updatedVersions));
     }
   };
   

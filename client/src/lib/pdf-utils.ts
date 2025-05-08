@@ -10,14 +10,19 @@ export function isPdf(filename: string): boolean {
 }
 
 /**
- * Konverterar en fileId från string till number.
- * Hanterar både "rena" nummer som strängar och sammansatta ID-strängar
+ * Konverterar en fileId från string eller number till number.
+ * Hanterar både "rena" nummer som strängar, direkt nummer eller sammansatta ID-strängar
  * med format som "file_1234" eller liknande.
  * 
- * @param fileId - Fil-ID:t som string
+ * @param fileId - Fil-ID:t som string eller number
  * @returns number - Sifferdelen av ID:t, eller NaN om det inte är ett giltigt ID
  */
-export function getConsistentFileId(fileId: string): number {
+export function getConsistentFileId(fileId: string | number): number {
+  // If fileId is already a number, return it directly
+  if (typeof fileId === 'number') {
+    return fileId;
+  }
+  
   // Om fileId är helt numeriskt
   if (/^\d+$/.test(fileId)) {
     return parseInt(fileId, 10);
