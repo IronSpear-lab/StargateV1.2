@@ -676,67 +676,38 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                 </span>
               )}
               
-              <div 
-                className="ml-2 opacity-0 group-hover:opacity-100"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActionsMenuOpen(prev => ({
-                    ...prev,
-                    [node.id]: !prev[node.id]
-                  }));
-                }}
-              >
-                <DropdownMenu open={actionsMenuOpen[node.id]} onOpenChange={(open) => {
-                  setActionsMenuOpen(prev => ({ ...prev, [node.id]: open }));
-                }}>
-                  <DropdownMenuTrigger asChild>
-                    <span className="inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-neutral-100 cursor-pointer">
-                      <MoreVertical className="h-3.5 w-3.5 text-neutral-500" />
-                    </span>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-[160px]">
-                    {node.type === 'file' && isPdf(node.name) && (
-                      <div 
-                        className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent"
-                        onClick={() => handleFileClick(node)}
-                      >
-                        Open
-                      </div>
-                    )}
-                    <div className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent">
-                      {node.type === 'folder' ? 'Share folder' : 'Share file'}
-                    </div>
-                    <div className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent">
-                      <MessageSquare className="h-4 w-4 shrink-0" />
-                      <span>Add comment</span>
-                    </div>
-                    <DropdownMenuSeparator />
-                    {/* Bara visa radera-knapp för mappar om användaren har rätt behörighet */}
-                    {(node.type === 'folder' && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser")) && (
-                      <div
-                        className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-red-600 hover:bg-accent"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const folderId = parseInt(node.id.replace('folder_', ''));
-                          console.log(`Preparing to delete folder: ${node.name} with ID: ${folderId}`);
-                          setFolderToDelete({ id: folderId, name: node.name });
-                          setDeleteFolderDialogOpen(true);
-                        }}
-                      >
-                        <Trash className="h-4 w-4 shrink-0" />
-                        <span>Radera mapp</span>
-                      </div>
-                    )}
-                    {/* Visa standard radera-knapp för filer */}
-                    {node.type === 'file' && (
-                      <div className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-red-600 hover:bg-accent">
-                        <Trash className="h-4 w-4 shrink-0" />
-                        <span>Radera</span>
-                      </div>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              {/* Använder en helt anpassad meny med bara en knapp för mappborttagning (enklaste lösningen) */}
+              {node.type === 'folder' && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
+                <div 
+                  className="ml-2 opacity-0 group-hover:opacity-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const folderId = parseInt(node.id.replace('folder_', ''));
+                    console.log(`Preparing to delete folder: ${node.name} with ID: ${folderId}`);
+                    setFolderToDelete({ id: folderId, name: node.name });
+                    setDeleteFolderDialogOpen(true);
+                  }}
+                >
+                  <span className="inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-red-100 cursor-pointer text-red-600">
+                    <Trash className="h-3.5 w-3.5" />
+                  </span>
+                </div>
+              )}
+              
+              {/* För filer visar vi bara en actions-knapp utan meny (för att undvika HTML-validering) */}
+              {node.type === 'file' && (
+                <div 
+                  className="ml-2 opacity-0 group-hover:opacity-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Här skulle vi kunna lägga till filspecifika åtgärder
+                  }}
+                >
+                  <span className="inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-neutral-100 cursor-pointer">
+                    <MoreVertical className="h-3.5 w-3.5 text-neutral-500" />
+                  </span>
+                </div>
+              )}
             </div>
             
             {node.type === 'folder' && expandedFolders[node.id] && node.children && node.children.length > 0 && 
