@@ -827,8 +827,65 @@ export default function EnhancedPDFViewer({
   
   // Format date nicely
   const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' });
+    try {
+      if (!dateString) return 'Okänt datum';
+      
+      const date = new Date(dateString);
+      
+      // Kontrollera om datumet är giltigt
+      if (isNaN(date.getTime())) {
+        console.warn('Ogiltigt datum:', dateString);
+        return 'Ogiltigt datum';
+      }
+      
+      return date.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch (error) {
+      console.error('Fel vid formatering av datum:', error);
+      return 'Ogiltigt datum';
+    }
+  };
+
+  // Funktion för att spara alla osparade kommentarer
+  const saveAllUnsavedAnnotations = async () => {
+    if (!currentProject || annotations.length === 0) return;
+    
+    const numericFileId = getConsistentFileId(fileId);
+    if (isNaN(numericFileId)) return;
+    
+    try {
+      // Loopa igenom alla kommentarer och spara dem om de inte redan finns i databasen
+      for (const annotation of annotations) {
+        const isNumericId = typeof annotation.id === 'string' && !isNaN(parseInt(annotation.id));
+        // Om det är ett numeriskt ID, anta att den redan finns i databasen
+        if (isNumericId) continue;
+        
+        // Spara kommentaren till databasen
+        await savePDFAnnotation(numericFileId, {
+          pdfVersionId: parseInt(activeVersionId || '0'),
+          projectId: projectId || (currentProject ? currentProject.id : null),
+          rect: annotation.rect,
+          color: annotation.color,
+          comment: annotation.comment,
+          status: annotation.status,
+          createdAt: annotation.createdAt,
+          createdBy: annotation.createdBy,
+          assignedTo: annotation.assignedTo
+        });
+      }
+      
+      console.log('Alla osparade kommentarer har sparats');
+    } catch (error) {
+      console.error('Fel vid sparande av kommentarer:', error);
+    }
+  };
+  
+  // Hantera stängning av PDF-visaren
+  const handleClose = async () => {
+    // Spara alla osparade kommentarer innan stängning
+    await saveAllUnsavedAnnotations();
+    
+    // Anropa förälderns stängningsfunktion
+    onClose();
   };
 
   return (
@@ -836,7 +893,13 @@ export default function EnhancedPDFViewer({
       {/* Header bar */}
       <div className="border-b bg-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center">
-          <Button variant="ghost" size="sm" onClick={onClose} className="mr-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleClose} 
+            className="mr-2"
+            title="Tillbaka (sparar alla osparade kommentarer)"
+          >
             <ArrowLeft className="h-4 w-4 mr-1" /> Tillbaka
           </Button>
           <h1 className="text-lg font-medium">{filename}</h1>

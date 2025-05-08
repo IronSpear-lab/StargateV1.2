@@ -168,6 +168,7 @@ export async function savePDFAnnotation(
   annotation: PDFAnnotation
 ): Promise<PDFAnnotation | null> {
   try {
+    console.log('Sparar annotation för versionId:', versionId, 'Annotation data:', annotation);
     const res = await apiRequest('POST', `/api/pdf/versions/${versionId}/annotations`, annotation);
     if (!res.ok) {
       throw new Error(`Failed to save PDF annotation: ${res.statusText}`);
@@ -176,7 +177,11 @@ export async function savePDFAnnotation(
     // Invalidera annotationer cache för att uppdatera listan
     queryClient.invalidateQueries({ queryKey: [`/api/pdf/versions/${versionId}/annotations`] });
     
-    return await res.json();
+    // Extra loggning för felsökning
+    const savedData = await res.json();
+    console.log('Sparad annotation, svar från server:', savedData);
+    
+    return savedData;
   } catch (error) {
     console.error('Error saving PDF annotation:', error);
     return null;
