@@ -86,6 +86,7 @@ type NavItemType = {
   sectionId?: string; // ID för sektioner som ska kunna öppnas/stängas
   isOpen?: boolean; // Om en sektion är öppen eller stängd
   onToggle?: () => void; // Funktion för att toggla öppna/stängda sektioner
+  // onAddClick har tagits bort eftersom funktionaliteten har flyttats till FolderManagementWidget
 };
 
 interface NavGroupProps {
@@ -1117,18 +1118,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 <div className="py-2 px-3 whitespace-nowrap flex items-center justify-between">
                   <span className="font-medium text-sm">{item.label}</span>
                   
-                  {/* Plus-ikon för mappar i minimerat läge */}
-                  {item.type === "folder" && item.onAddClick && (
-                    <span
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        item.onAddClick?.();
-                      }}
-                      className="ml-3 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </span>
-                  )}
+                  {/* Plus-ikonen för mappar har tagits bort då funktionaliteten har flyttats till FolderManagementWidget */}
                   
                   {/* Badge (om det finns) */}
                   {item.badge && (
@@ -1190,22 +1180,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                     )}
                   >
                     <div className="flex items-center">
-                      {/* Ta bort-knapp för användarskapade mappar */}
-                      {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && item.type === "folder" && item.folderId && (
-                        <span 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteClick(item.folderId!);
-                          }}
-                          className={cn(
-                            "h-5 w-5 p-0 mr-1 flex items-center justify-center rounded-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer",
-                            "text-destructive hover:text-destructive-foreground hover:bg-destructive"
-                          )}
-                          aria-label="Ta bort mapp"
-                        >
-                          <X className="h-4 w-4" />
-                        </span>
-                      )}
+                      {/* Ta bort-knappen för mappar har tagits bort eftersom funktionaliteten har flyttats till FolderManagementWidget */}
                       <span className={cn(
                         "flex items-center justify-center mr-3",
                         item.active ? "text-primary" : "text-muted-foreground"
@@ -1263,28 +1238,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                     )}
                   >
                     <div className="flex items-center">
-                      {/* Ta bort-knapp för alla mappar */}
-                      {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && item.type === "folder" && (
-                        <span 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Hantera borttagning endast om mappen har ett folderId (användarskapad)
-                            if (item.folderId) {
-                              handleDeleteClick(item.folderId);
-                            }
-                          }}
-                          className={cn(
-                            "h-5 w-5 p-0 mr-1 flex items-center justify-center rounded-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer",
-                            // Avaktivera för inbyggda mappar som saknar folderId
-                            item.folderId 
-                              ? "text-destructive hover:text-destructive-foreground hover:bg-destructive" 
-                              : "text-muted pointer-events-none opacity-0"
-                          )}
-                          aria-label="Ta bort mapp"
-                        >
-                          <X className="h-4 w-4" />
-                        </span>
-                      )}
+                      {/* Ta bort-knappen för mappar har tagits bort eftersom funktionaliteten har flyttats till FolderManagementWidget */}
                       <span className={cn(
                         "flex items-center justify-center mr-3",
                         item.active ? "text-primary" : "text-muted-foreground"
@@ -1355,28 +1309,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 )}
               >
                 <div className="flex items-center">
-                  {/* Ta bort-knapp som bara visas vid hover */}
-                  {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && item.type === "folder" && (
-                    <span 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Hantera borttagning endast om mappen har ett folderId (användarskapad)
-                        if (item.folderId) {
-                          handleDeleteClick(item.folderId);
-                        }
-                      }}
-                      className={cn(
-                        "h-5 w-5 p-0 mr-1 flex items-center justify-center rounded-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer",
-                        // Avaktivera för inbyggda mappar som saknar folderId
-                        item.folderId 
-                          ? "text-destructive hover:text-destructive-foreground hover:bg-destructive" 
-                          : "text-muted pointer-events-none opacity-0"
-                      )}
-                      aria-label="Ta bort mapp"
-                    >
-                      <X className="h-4 w-4" />
-                    </span>
-                  )}
+                  {/* Ta bort-knappen för mappar har tagits bort eftersom funktionaliteten har flyttats till FolderManagementWidget */}
                   <span className={cn(
                     "flex items-center justify-center mr-3",
                     item.active ? "text-primary" : "text-muted-foreground"
