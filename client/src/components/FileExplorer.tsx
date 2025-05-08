@@ -1015,61 +1015,56 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         </CardContent>
       </Card>
       
-      {/* Enkel egen modal för att radera mappar istället för Shadcn Dialog */}
-      {deleteFolderDialogOpen && folderToDelete && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg max-w-md w-full p-6 relative">
-            <div className="mb-4">
-              <h3 className="text-xl font-bold mb-2">Radera mapp</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Är du säker på att du vill radera mappen "{folderToDelete.name}" och allt dess innehåll? Denna åtgärd kan inte ångras.
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-2 text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded mb-4">
-              <AlertTriangle className="h-5 w-5 flex-shrink-0" />
-              <span className="text-sm">Alla filer och undermappar kommer att raderas permanent.</span>
-            </div>
-            
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded text-sm font-medium"
-                onClick={() => {
-                  console.log("Avbryter borttagning av mapp");
-                  setDeleteFolderDialogOpen(false);
-                  setFolderToDelete(null);
-                }}
-              >
-                Avbryt
-              </button>
-              
-              <button
-                type="button"
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-medium flex items-center"
-                onClick={() => {
-                  if (folderToDelete) {
-                    console.log(`Executing delete for folder ID: ${folderToDelete.id}`);
-                    deleteFolderMutation.mutate(folderToDelete.id);
-                    setDeleteFolderDialogOpen(false);
-                    setFolderToDelete(null);
-                  }
-                }}
-                disabled={deleteFolderMutation.isPending}
-              >
-                {deleteFolderMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    <span>Raderar...</span>
-                  </>
-                ) : (
-                  <span>Radera mapp</span>
-                )}
-              </button>
-            </div>
+      {/* Använder AlertDialog för att radera mappar istället för egen modal */}
+      <AlertDialog open={deleteFolderDialogOpen} onOpenChange={(open) => {
+        setDeleteFolderDialogOpen(open);
+        if (!open) {
+          setFolderToDelete(null);
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Radera mapp</AlertDialogTitle>
+            <AlertDialogDescription>
+              Är du säker på att du vill radera mappen "{folderToDelete?.name}" och allt dess innehåll? Denna åtgärd kan inte ångras.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="flex items-center gap-2 text-destructive bg-destructive/10 p-3 rounded mb-4 mt-2">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+            <span className="text-sm">Alla filer och undermappar kommer att raderas permanent.</span>
           </div>
-        </div>
-      )}
+          
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              console.log("Avbryter borttagning av mapp");
+              setFolderToDelete(null);
+            }}>
+              Avbryt
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (folderToDelete) {
+                  console.log(`Executing delete for folder ID: ${folderToDelete.id}`);
+                  deleteFolderMutation.mutate(folderToDelete.id);
+                  setFolderToDelete(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteFolderMutation.isPending}
+            >
+              {deleteFolderMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <span>Raderar...</span>
+                </>
+              ) : (
+                <span>Radera mapp</span>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
