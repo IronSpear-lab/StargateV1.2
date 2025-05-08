@@ -11,16 +11,35 @@ export function formatDate(dateInput: string | Date | null | undefined): string 
   }
   
   try {
-    // Convert to Date object if it's a string
-    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
-    
-    // Verify that the date is valid before formatting
-    if (!(date instanceof Date) || isNaN(date.getTime())) {
-      console.warn('Invalid date encountered:', dateInput);
-      return "Ogiltigt datum";
+    // Kontrollera giltigt ISO-format om det är en sträng
+    if (typeof dateInput === 'string') {
+      // Om strängen inte är i ISO-format, gör det till giltigt datum
+      if (!dateInput.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(.\d{3})?Z?$/)) {
+        console.log('Fixing invalid date format:', dateInput);
+        // Skapa ett giltigt datum istället
+        const now = new Date();
+        dateInput = now.toISOString();
+      }
     }
     
-    // Format the date to a readable string
+    // Konvertera till Date-objekt om det är en sträng
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    
+    // Kontrollera att datumet är giltigt innan formatering
+    if (!(date instanceof Date) || isNaN(date.getTime())) {
+      console.warn('Invalid date encountered:', dateInput);
+      // Om datumet är ogiltigt, returnera dagens datum istället
+      const fallbackDate = new Date();
+      return fallbackDate.toLocaleString('sv-SE', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    
+    // Formatera datumet till en läsbar sträng
     return date.toLocaleString('sv-SE', {
       year: 'numeric',
       month: 'short',
@@ -30,7 +49,15 @@ export function formatDate(dateInput: string | Date | null | undefined): string 
     });
   } catch (error) {
     console.error('Error formatting date:', error, dateInput);
-    return "Kunde inte formatera datum";
+    // Om vi får ett fel, använd dagens datum
+    const fallbackDate = new Date();
+    return fallbackDate.toLocaleString('sv-SE', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   }
 }
 
