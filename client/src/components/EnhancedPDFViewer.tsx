@@ -191,8 +191,8 @@ export default function EnhancedPDFViewer({
               id: version.id.toString(),
               versionNumber: version.versionNumber,
               filename: version.metadata?.fileName || filename,
-              // Använd alltid direkta API-länkar istället för blob URLs för bättre stabilitet
-              fileUrl: `/api/pdf/versions/${version.id}/content?t=${Date.now()}`,
+              // Vi kommer att hämta och generera URL senare, inte direkt via API-länkar
+              fileUrl: '',
               description: version.description,
               uploaded: version.uploadedAt || new Date().toISOString(), // Säkerställ att uploaded alltid har ett värde
               uploadedBy: version.uploadedBy || user?.username || 'Unknown',
