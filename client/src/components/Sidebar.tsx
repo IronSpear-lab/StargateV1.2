@@ -985,15 +985,26 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       // Extra loggutskrift för att hjälpa debug
       console.log(`Checking item ${item.label}, parent=${parentName}, type=${item.type}, folderId=${item.folderId}`);
       
-      // Om denna mapp är föräldern, lägg till den nya mappen som ett barn
+      // STRIKT MATCHNING: Kontrollera om denna mapp är föräldern
+      // Vi matchar nu med striktare regler för att undvika dubletter
       const isParentMatch = 
-        // Matcha antingen på namn om förälder är Files
-        (item.label === parentName && (parentName === "Files" || item.type === "folder")) ||
-        // Eller matcha på ID om vi har en användarskapad mapp som förälder
+        // Om förälder är "Files" (huvudmappen), matcha på exakt namn och inte på andra mappar
+        (item.label === "Files" && parentName === "Files") ||
+        // ELLER om vi har en användarskapad mapp som förälder, matcha strikt på ID
         (item.folderId && newFolder.parentId && item.folderId === newFolder.parentId);
         
       if (isParentMatch) {
-        console.log(`Found parent! Adding folder ${newFolder.name} to ${item.label} (ID: ${item.folderId})`);
+        console.log(`✅ STRIKT MATCH! Tilldelar mapp ${newFolder.name} ENDAST till ${item.label} (ID: ${item.folderId})`);
+        
+        // Kontrollera om mappen redan finns för att undvika dubletter
+        const folderAlreadyExists = (item.children || []).some(
+          child => child.folderId === newFolder.id || child.label === newFolder.name
+        );
+        
+        if (folderAlreadyExists) {
+          console.log(`⚠️ Mappen ${newFolder.name} (ID: ${newFolder.id}) finns redan i ${item.label}, hoppar över`);
+          return item; // Returnera oförändrad om mappen redan finns
+        }
         
         // Skapa en kopia med den nya mappen
         return {
@@ -1016,8 +1027,9 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         };
       }
       
-      // Om detta objekt har barn, sök rekursivt
-      if (item.children && item.children.length > 0) {
+      // Om detta objekt har barn, sök rekursivt, men BARA om det är en mapp
+      // Detta eliminerar rekursion genom alla typer av element
+      if (item.type === "folder" && item.children && item.children.length > 0) {
         return {
           ...item,
           children: findParentAndAddFolder(item.children, parentName, newFolder)
