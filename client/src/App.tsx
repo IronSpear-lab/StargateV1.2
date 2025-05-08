@@ -22,6 +22,7 @@ import NotificationsPage from "@/pages/notifications-page";
 import TeamPage from "@/pages/team-page";
 import HelpPage from "@/pages/help-page";
 import VaultPage from "@/pages/vault-page";
+import VaultCommentsPage from "@/pages/vault-comments-page";
 import RitningarPage from "@/pages/ritningar-page";
 import DwgIfcViewerPage from "@/pages/dwg-ifc-viewer-page";
 import SimpleViewerPage from "@/pages/simple-viewer-page";
@@ -59,6 +60,7 @@ function Router() {
       <ProtectedRoute path="/3d-viewer" component={DwgIfcViewerPage} />
       <ProtectedRoute path="/simple-viewer" component={SimpleViewerPage} />
       <ProtectedRoute path="/vault" component={VaultPage} />
+      <ProtectedRoute path="/vault/comments" component={VaultCommentsPage} />
       <ProtectedRoute path="/vault/:section" component={VaultPage} />
       <ProtectedRoute path="/messages" component={MessagesPage} />
       <ProtectedRoute path="/communication/messages" component={MessagesPage} />
