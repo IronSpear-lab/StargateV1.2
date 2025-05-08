@@ -49,17 +49,17 @@ import { useToast } from "@/hooks/use-toast";
 import { useProject } from "@/contexts/ProjectContext";
 import { formatDate } from "@/lib/ui-utils";
 
-// Interface för dokument i en mapp
-interface FolderDocument {
-  id: number;
+// Interface för ritningar/dokument
+interface Ritning {
+  id: number | string;
   filename: string;
   version: string;
   description: string;
   uploaded: string;
   uploadedBy: string;
-  number: string;
-  status: string;
-  annat: string;
+  number?: string;
+  status?: string;
+  annat?: string;
   fileId?: string; // Används för att hålla reda på PDF-filer för uppladdade ritningar
   projectId?: number; // ID för det projekt ritningen tillhör
 }
@@ -68,34 +68,25 @@ export default function FolderPage() {
   // Hämta mappnamnet från URL:en
   const params = useParams<{ folderName: string }>();
   const folderName = params.folderName || "Mapp";
+  const [location] = useLocation();
   
   const { currentProject } = useProject();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortField, setSortField] = useState("uploaded");
-  const [sortDirection, setSortDirection] = useState("desc");
   const [versionFilter, setVersionFilter] = useState("all");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
-  const [fileToDelete, setFileToDelete] = useState<FolderDocument | null>(null);
+  const [fileToDelete, setFileToDelete] = useState<Ritning | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
-  // Använd localStorage med projektisolering och mappisolering
-  const getStorageKey = () => {
-    return currentProject ? `project_${currentProject.id}_folder_${folderName.toLowerCase()}` : `no_project_folder_${folderName.toLowerCase()}`;
-  };
-  
-  // Hämta sparade filer från localStorage om de finns, annars tom lista
-  const [folderData, setFolderData] = useState<FolderDocument[]>(() => {
-    const savedFolderData = localStorage.getItem(getStorageKey());
-    return savedFolderData ? JSON.parse(savedFolderData) : [];
-  });
-  
+  // Samma komponenter och state som i ritningar-page för konsekvent användargränssnitt
   const [selectedFile, setSelectedFile] = useState<{
     file: File | null;
     fileUrl?: string;
     fileData?: {
+      id?: number;
+      fileId?: string;
       filename: string;
       version: string;
       description: string;
@@ -104,125 +95,68 @@ export default function FolderPage() {
     };
   } | null>(null);
   
-  // Uppdatera filer när projektet ändras
-  useEffect(() => {
-    const savedData = localStorage.getItem(getStorageKey());
-    setFolderData(savedData ? JSON.parse(savedData) : []);
-  }, [currentProject, folderName]);
+  // Använd API:et för att hämta filer från databasen
+  const { data: apiRitningar, isLoading: isLoadingApi } = useQuery<any[]>({
+    queryKey: ['/api/files', currentProject?.id],
+    enabled: !!currentProject?.id,
+  });
   
-  // Hämta eventuella URL-parametrar för att direkt öppna en fil
-  useEffect(() => {
-    const checkUrlParams = async () => {
-      // Kontrollera om vi har en viewFile-parameter i URL:en
-      const params = new URLSearchParams(window.location.search);
-      const fileIdParam = params.get('viewFile');
-      
-      if (fileIdParam) {
-        console.log(`[${Date.now()}] Detected viewFile parameter: ${fileIdParam}`);
-        
-        try {
-          // Försök att hämta filen från persistent lagring
-          const storedFileData = await getStoredFileAsync(fileIdParam);
-          
-          if (storedFileData) {
-            console.log(`[${Date.now()}] Successfully loaded file from storage: ${fileIdParam}`);
-            
-            // Hitta fildatan för den här filen om den finns
-            const matchingFile = folderData.find(f => f.fileId === fileIdParam);
-            
-            setSelectedFile({
-              file: storedFileData.file,
-              fileUrl: storedFileData.url,
-              fileData: matchingFile ? {
-                filename: matchingFile.filename,
-                version: matchingFile.version,
-                description: matchingFile.description,
-                uploaded: matchingFile.uploaded,
-                uploadedBy: matchingFile.uploadedBy
-              } : {
-                // Standardvärden om vi inte hittar matchande fildata
-                filename: storedFileData.name,
-                version: "1",
-                description: "Uppladdad fil",
-                uploaded: new Date().toLocaleString(),
-                uploadedBy: "Du"
-              }
-            });
-          } else {
-            console.error(`[${Date.now()}] Could not load file with ID: ${fileIdParam}`);
-            toast({
-              title: "Kunde inte hitta filen",
-              description: "Filen du försöker visa finns inte längre tillgänglig.",
-              variant: "destructive",
-            });
-          }
-        } catch (error) {
-          console.error(`[${Date.now()}] Error loading file: ${error}`);
-          toast({
-            title: "Fel vid laddning av fil",
-            description: "Ett fel uppstod när filen skulle laddas. Försök igen senare.",
-            variant: "destructive",
-          });
-        }
-      }
-    };
-    
-    checkUrlParams();
-  }, [folderData]);
+  // Använd localStorage för temporär lagring av ritningar - samma som i ritningar-page
+  const getStorageKey = () => {
+    return currentProject 
+      ? `project_${currentProject.id}_folder_${folderName.toLowerCase()}_ritningar` 
+      : `no_project_folder_${folderName.toLowerCase()}_ritningar`;
+  };
   
-  // Hämta filer från databasen baserat på projekt-ID och mappnamn
-  const { data: apiFiles = [], isLoading: isLoadingApi } = useQuery({
-    queryKey: ['/api/files', currentProject?.id, folderName],
-    queryFn: async () => {
-      if (!currentProject) return [];
+  // Ladda tidigare sparade ritningar från localStorage som en fallback
+  const [ritningarData, setRitningarData] = useState<Ritning[]>(() => {
+    if (typeof window !== 'undefined') {
+      const savedRitningar = localStorage.getItem(getStorageKey());
       try {
-        const response = await fetch(`/api/files?projectId=${currentProject.id}&folder=${encodeURIComponent(folderName)}`);
-        if (!response.ok) throw new Error('Failed to fetch files');
-        const files = await response.json();
-        
-        // Transformera API-svaret till FolderDocument-format
-        return files.map((file: any) => ({
-          id: file.id,
-          filename: file.fileName || file.name || "dokument.pdf",
-          version: file.versionNumber?.toString() || "1",
-          description: file.description || "PDF-dokument",
-          uploaded: formatDate(file.uploadedAt || file.createdAt),
-          uploadedBy: file.uploadedBy || "System",
-          number: file.id.toString().padStart(3, '0'),
-          status: file.status || "Active",
-          annat: "PDF",
-          projectId: file.projectId
-        }));
-      } catch (error) {
-        console.error(`Error fetching ${folderName} files:`, error);
+        return savedRitningar ? JSON.parse(savedRitningar) : [];
+      } catch (e) {
+        console.error('Fel vid parsning av sparade ritningar:', e);
         return [];
       }
-    },
-    enabled: !!currentProject,
-  });
-
-  // Slå ihop lokalt sparade filer och API-data
-  // Vi prioriterar API-data om samma fil finns i båda källorna (baserat på ID)
-  const files = React.useMemo(() => {
-    let result = [];
-    
-    if (apiFiles.length > 0) {
-      // Om vi har data från API, använd främst den
-      const apiFilesMap = new Map(apiFiles.map(f => [f.id, f]));
-      
-      // Filtrera lokala filer som inte redan finns i API-data
-      const uniqueLocalFiles = folderData.filter(
-        local => !apiFilesMap.has(local.id) && 
-                 local.projectId === currentProject?.id
-      );
-      
-      result = [...apiFiles, ...uniqueLocalFiles];
-    } else {
-      // Om vi inte har någon API-data, använd bara lokala filer
-      result = folderData.filter(f => f.projectId === currentProject?.id);
     }
+    return [];
+  });
+  
+  // Spara ritningar i localStorage när de uppdateras - bra för offline-stöd och snabbare laddning
+  useEffect(() => {
+    if (ritningarData.length > 0) {
+      localStorage.setItem(getStorageKey(), JSON.stringify(ritningarData));
+    }
+  }, [ritningarData]);
+  
+  // Skapa en kombinerad lista av ritningar från API och lokal lagring
+  const ritningar = React.useMemo(() => {
+    const ritningarFromApi = apiRitningar || [];
     
-    // Sortera filer efter datum, med nyast först
+    // Mappa om API-data till vårt Ritning-format
+    const mappedApiRitningar = ritningarFromApi
+      .filter(file => currentProject && file.projectId === currentProject.id)
+      .map(file => ({
+        id: file.id,
+        filename: file.filename || 'Okänt filnamn',
+        version: file.version?.toString() || '1',
+        description: file.description || 'Ingen beskrivning',
+        uploaded: formatDate(file.uploadedAt) || 'Okänt datum',
+        uploadedBy: file.uploadedBy || 'Användare',
+        number: file.number || '',
+        status: file.status || '',
+        annat: file.annat || '',
+        projectId: file.projectId
+      }));
+    
+    // Kombinera API-ritningar och lokalt lagrade ritningar
+    // Filtrera bort dubletter baserat på ID
+    const idSet = new Set(mappedApiRitningar.map(r => r.id));
+    const filteredLocalRitningar = ritningarData.filter(r => !idSet.has(r.id));
+    
+    const result = [...mappedApiRitningar, ...filteredLocalRitningar];
+    
+    // Sortera med nyast först baserat på uppladdningsdatum
     return result.sort((a, b) => {
       try {
         const dateA = a.uploaded ? new Date(a.uploaded).getTime() : 0;
@@ -233,15 +167,15 @@ export default function FolderPage() {
         return 0;
       }
     });
-  }, [apiFiles, folderData, currentProject]);
+  }, [apiRitningar, ritningarData, currentProject]);
   
   const isLoading = isLoadingApi;
 
-  const filteredFiles = files.filter(file => 
-    file.filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    file.description.toLowerCase().includes(searchTerm.toLowerCase())
-  ).filter(file => 
-    versionFilter === "all" || file.version === versionFilter
+  const filteredRitningar = ritningar.filter(ritning => 
+    ritning.filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    ritning.description.toLowerCase().includes(searchTerm.toLowerCase())
+  ).filter(ritning => 
+    versionFilter === "all" || ritning.version === versionFilter
   );
   
   const toggleSidebar = () => {
@@ -259,7 +193,6 @@ export default function FolderPage() {
       formData.append('file', fileData.file);
       formData.append('projectId', currentProject.id.toString());
       formData.append('description', fileData.description);
-      formData.append('folder', folderName); // Lägg till mappnamnet
       
       // Använd apiRequest för att ladda upp filen till servern
       const response = await apiRequest('POST', '/api/files', formData);
@@ -272,7 +205,7 @@ export default function FolderPage() {
     },
     onSuccess: (data) => {
       // Invalidera queryn för att uppdatera listan med filer
-      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id, folderName] });
+      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id] });
       
       // Visa bekräftelse
       toast({
@@ -313,7 +246,7 @@ export default function FolderPage() {
     files.forEach(file => {
       uploadFileMutation.mutate({ 
         file,
-        description: `Uppladdad till ${folderName}`
+        description: `Uppladdad via ${folderName}-sidan` 
       });
     });
     
@@ -324,305 +257,376 @@ export default function FolderPage() {
   // Ta bort PDF-fil mutation
   const deleteFileMutation = useMutation({
     mutationFn: async (fileId: number) => {
-      if (!currentProject) {
-        throw new Error("Inget projekt valt");
-      }
-      
       const response = await apiRequest('DELETE', `/api/files/${fileId}`);
       if (!response.ok) {
-        throw new Error('Kunde inte ta bort filen');
+        throw new Error('Fel vid borttagning av fil');
       }
-      
       return fileId;
     },
     onSuccess: (fileId) => {
-      // Invalidera queryn för att uppdatera listan med filer
-      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id, folderName] });
+      // Invalidera queryn för att uppdatera listan
+      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id] });
       
-      // För lokala filer som inte finns i databasen
-      if (fileToDelete) {
-        const newFolderData = folderData.filter(file => file.id !== fileToDelete.id);
-        setFolderData(newFolderData);
-        localStorage.setItem(getStorageKey(), JSON.stringify(newFolderData));
-      }
-      
+      // Visa bekräftelse
       toast({
-        title: "Fil borttagen",
-        description: "Filen har tagits bort permanent.",
+        title: "Filen har tagits bort",
+        description: "Filen har tagits bort permanent från databasen.",
         variant: "default",
       });
       
-      setFileToDelete(null);
+      // Stäng bekräftelsedialogen
       setShowDeleteConfirm(false);
+      setFileToDelete(null);
     },
     onError: (error: Error) => {
       console.error("Fel vid borttagning:", error);
       toast({
         title: "Borttagning misslyckades",
-        description: error.message || "Ett fel uppstod vid borttagning av fil.",
+        description: error.message || "Ett fel uppstod när filen skulle tas bort.",
         variant: "destructive",
       });
-      setShowDeleteConfirm(false);
     }
   });
-
-  const confirmDelete = () => {
-    if (fileToDelete && fileToDelete.id) {
+  
+  // Visa bekräftelsedialog innan borttagning
+  const handleDeleteClick = (ritning: Ritning) => {
+    setFileToDelete(ritning);
+    setShowDeleteConfirm(true);
+  };
+  
+  // Ta bort fil efter bekräftelse
+  const handleDeleteConfirm = () => {
+    if (fileToDelete && typeof fileToDelete.id === 'number') {
+      // Om det är en fil från API:et, använd mutation för att ta bort den
       deleteFileMutation.mutate(fileToDelete.id);
+    } else if (fileToDelete) {
+      // Om det är en lokalt lagrad fil, ta bort den från localStorage
+      const updatedRitningar = ritningarData.filter(r => r.id !== fileToDelete.id);
+      setRitningarData(updatedRitningar);
+      localStorage.setItem(getStorageKey(), JSON.stringify(updatedRitningar));
+      
+      toast({
+        title: "Filen har tagits bort",
+        description: "Den lokalt lagrade filen har tagits bort.",
+        variant: "default",
+      });
+      
+      setShowDeleteConfirm(false);
+      setFileToDelete(null);
     }
   };
   
-  // Hantera åpning av PDF-fil
-  const handleOpenPDF = async (file: FolderDocument) => {
-    try {
-      let fileUrl: string | undefined = undefined;
+  // Hämta PDF-fil från servern när användaren klickar på den
+  const fetchFileContentMutation = useMutation({
+    mutationFn: async (fileId: number) => {
+      const response = await apiRequest('GET', `/api/files/${fileId}/content`);
+      if (!response.ok) {
+        throw new Error('Kunde inte hämta filinnehåll');
+      }
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      // Skapa URL från blob
+      let fileUrl = '';
       
-      // Om vi har ett fileId, försök hämta filen från localStorage
-      if (file.fileId) {
-        const storedFile = await getStoredFileAsync(file.fileId);
-        if (storedFile) {
-          fileUrl = storedFile.url;
+      if (data.fileContent) {
+        const base64Content = data.fileContent;
+        const binaryContent = atob(base64Content);
+        const bytes = new Uint8Array(binaryContent.length);
+        for (let i = 0; i < binaryContent.length; i++) {
+          bytes[i] = binaryContent.charCodeAt(i);
         }
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        fileUrl = URL.createObjectURL(blob);
+      } else {
+        fileUrl = data.url;
       }
       
-      // Om vi inte hittade en lokal fil, försök hämta från API
-      if (!fileUrl && currentProject) {
-        fileUrl = `/api/files/${file.id}/content`;
-      }
-      
-      if (fileUrl) {
+      if (!fileUrl) {
+        toast({
+          title: "Kunde inte öppna filen",
+          description: "Filinnehållet är tomt eller kunde inte läsas.",
+          variant: "destructive",
+        });
+      } else {
         setSelectedFile({
           file: null,
           fileUrl,
           fileData: {
-            filename: file.filename,
-            version: file.version,
-            description: file.description,
-            uploaded: file.uploaded,
-            uploadedBy: file.uploadedBy
+            filename: data.version.metadata?.fileName || "dokument.pdf",
+            version: data.version.versionNumber.toString(),
+            description: data.version.description || "PDF-dokument",
+            uploaded: new Date(data.version.uploadedAt).toLocaleString(),
+            uploadedBy: data.version.uploadedBy || "System"
           }
         });
-      } else {
-        toast({
-          title: "Kunde inte hitta filen",
-          description: "Filen du försöker visa finns inte längre tillgänglig.",
-          variant: "destructive",
-        });
       }
-    } catch (error) {
-      console.error('Fel vid öppning av PDF:', error);
+    },
+    onError: (error: Error) => {
+      console.error("Fel vid hämtning av fil:", error);
       toast({
-        title: "Fel vid öppning av fil",
-        description: "Ett fel uppstod när filen skulle öppnas. Försök igen senare.",
+        title: "Kunde inte öppna filen",
+        description: error.message || "Ett fel uppstod när filen skulle öppnas.",
         variant: "destructive",
       });
     }
-  };
-  
-  // Få unika versionsnummer för filtrering
-  const uniqueVersions = React.useMemo(() => {
-    const versions = new Set<string>();
-    files.forEach(file => versions.add(file.version));
-    return Array.from(versions).sort();
-  }, [files]);
-  
-  return (
-    <div className="flex min-h-screen bg-white dark:bg-background">
-      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-      
-      <div className={`flex flex-col flex-1 ${isSidebarOpen ? 'md:ml-72' : 'md:ml-20'}`}>
-        <Header title={`${folderName}`} />
+  });
+
+  // Öppna PDF-visaren när användaren klickar på en fil
+  const handleFileClick = async (ritning: Ritning) => {
+    // För lokalt sparade filer, försök först att använda den lokala kopian
+    if (ritning.fileId && ritning.fileId.startsWith('file_')) {
+      try {
+        // Använd asynkron version för att hämta från persistent lagring om det behövs
+        const storedFileData = await getStoredFileAsync(ritning.fileId);
         
-        <main className="flex-1 p-4 md:p-6">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-              <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                <Home className="h-4 w-4 mr-1" />
-                <span className="mx-1">/</span>
-                <span className="font-medium">Vault</span>
-                <span className="mx-1">/</span>
-                <span className="font-medium">Files</span>
-                <span className="mx-1">/</span>
-                <span className="font-medium text-gray-800 dark:text-gray-200">{folderName}</span>
+        if (storedFileData) {
+          console.log(`[${Date.now()}] Successfully loaded file from local storage for viewing: ${ritning.fileId}`);
+          setSelectedFile({
+            file: storedFileData.file,
+            fileUrl: storedFileData.url,
+            fileData: {
+              filename: ritning.filename,
+              version: ritning.version,
+              description: ritning.description,
+              uploaded: ritning.uploaded,
+              uploadedBy: ritning.uploadedBy
+            }
+          });
+          return;
+        }
+      } catch (error) {
+        console.warn(`[${Date.now()}] Error loading file with ID ${ritning.fileId} from local storage, will try server:`, error);
+      }
+    }
+    
+    // För filens numeriska ID, försök att hämta från servern
+    if (ritning.id && !isNaN(Number(ritning.id))) {
+      try {
+        // Starta hämtning av filinnehåll från servern via mutation
+        fetchFileContentMutation.mutate(Number(ritning.id));
+        return;
+      } catch (error) {
+        console.error(`[${Date.now()}] Error loading file with ID ${ritning.id} from server:`, error);
+      }
+    }
+    
+    // Fallback: För befintliga/mock-filer, använd exempelfilen om inget annat fungerar
+    const fileUrl = getUploadedFileUrl(ritning.id);
+    console.log(`[${Date.now()}] Using example file URL for file: ${ritning.filename}`);
+    setSelectedFile({
+      file: null,
+      fileUrl,
+      fileData: {
+        filename: ritning.filename,
+        version: ritning.version,
+        description: ritning.description,
+        uploaded: ritning.uploaded,
+        uploadedBy: ritning.uploadedBy
+      }
+    });
+  };
+
+  return (
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar className={isSidebarOpen ? "" : "hidden"} />
+      
+      <div className="flex-1 overflow-y-auto">
+        <Header title={folderName} onToggleSidebar={toggleSidebar} />
+        
+        <div className="container px-6 py-6">
+          <div className="flex items-center text-sm mb-4 text-blue-600 dark:text-blue-400">
+            <Home size={14} className="mr-1" />
+            <span>Vault</span>
+            <ChevronRight size={14} className="mx-1" />
+            <span>Files</span>
+            <ChevronRight size={14} className="mx-1" />
+            <span className="font-semibold">{folderName}</span>
+          </div>
+          
+          {!currentProject && (
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 rounded-md">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700">
+                    Inget projekt är valt. Välj ett projekt från projektväljaren ovan för att se och hantera filer.
+                  </p>
+                </div>
               </div>
-              
-              <div className="flex w-full md:w-auto justify-between md:justify-end space-x-2">
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={() => setShowUploadDialog(true)}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Ladda upp</span>
-                </Button>
+            </div>
+          )}
+          
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex-1 mr-2">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-gray-400" />
+                </div>
+                <Input
+                  type="text"
+                  placeholder="Sök efter fil..."
+                  className="pl-10"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
             </div>
             
-            <div className="bg-white dark:bg-card border border-border rounded-lg shadow-sm">
-              <div className="p-4 border-b border-border">
-                <div className="flex flex-col sm:flex-row gap-3 justify-between">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Sök efter filer..."
-                      className="pl-9"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Select
-                      value={versionFilter}
-                      onValueChange={setVersionFilter}
-                    >
-                      <SelectTrigger className="max-w-[180px]">
-                        <SelectValue placeholder="Välj version" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Alla versioner</SelectItem>
-                        {uniqueVersions.map(version => (
-                          <SelectItem key={version} value={version}>Version {version}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
+            <div className="flex items-center space-x-2">
+              <Select value={versionFilter} onValueChange={setVersionFilter}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Alla versioner" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alla versioner</SelectItem>
+                  {Array.from(new Set(ritningar.map(r => r.version)))
+                    .sort()
+                    .map(version => (
+                      <SelectItem key={version} value={version}>Ver {version}</SelectItem>
+                    ))
+                  }
+                </SelectContent>
+              </Select>
               
-              <div className="overflow-x-auto">
-                <Table className="w-full">
-                  <TableHeader>
+              <Button 
+                variant="default" 
+                size="sm" 
+                className="flex items-center" 
+                onClick={() => setShowUploadDialog(true)}
+                disabled={!currentProject}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Ladda upp
+              </Button>
+            </div>
+          </div>
+          
+          <div className="bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[200px]">Namn</TableHead>
+                    <TableHead className="w-[80px]">Version</TableHead>
+                    <TableHead className="w-[200px]">Beskrivning</TableHead>
+                    <TableHead className="w-[140px]">Uppladdad</TableHead>
+                    <TableHead className="w-[160px]">Uppladdad av</TableHead>
+                    <TableHead className="w-[100px]">Nummer</TableHead>
+                    <TableHead className="w-[120px]">Status</TableHead>
+                    <TableHead className="w-[120px]">Annat</TableHead>
+                    <TableHead className="w-[60px] text-right">Åtgärder</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
                     <TableRow>
-                      <TableHead className="w-[50px]">Nr</TableHead>
-                      <TableHead>Filnamn</TableHead>
-                      <TableHead>Beskrivning</TableHead>
-                      <TableHead>Version</TableHead>
-                      <TableHead>Uppladdad</TableHead>
-                      <TableHead>Uppladdad av</TableHead>
-                      <TableHead className="text-right">Åtgärder</TableHead>
+                      <TableCell colSpan={9} className="text-center py-4">Laddar...</TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoading ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center">
-                          <div className="flex justify-center items-center">
-                            <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
-                            <span>Laddar filer...</span>
+                  ) : filteredRitningar.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center py-4">Inga ritningar hittades</TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredRitningar.map((ritning) => (
+                      <TableRow key={ritning.id}>
+                        <TableCell className="py-2 w-[200px]">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 mr-3 text-red-500 dark:text-red-400">
+                              <FileText size={20} />
+                            </div>
+                            <div 
+                              className="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer whitespace-nowrap"
+                              onClick={() => handleFileClick(ritning)}
+                            >
+                              {ritning.filename}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="w-[80px]">{ritning.version}</TableCell>
+                        <TableCell className="w-[200px]">{ritning.description}</TableCell>
+                        <TableCell className="w-[140px]">{ritning.uploaded}</TableCell>
+                        <TableCell className="w-[160px]">{ritning.uploadedBy}</TableCell>
+                        <TableCell className="w-[100px]">{ritning.number}</TableCell>
+                        <TableCell className="w-[120px]">{ritning.status}</TableCell>
+                        <TableCell className="w-[120px]">{ritning.annat}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClick(ritning);
+                              }}
+                              title="Ta bort fil"
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
-                    ) : filteredFiles.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center">
-                          Inga filer hittades.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredFiles.map((file) => (
-                        <TableRow key={`${file.id}-${file.filename}`}>
-                          <TableCell className="font-mono text-xs">{file.number}</TableCell>
-                          <TableCell className="font-medium">
-                            <div 
-                              className="flex items-center hover:text-primary cursor-pointer"
-                              onClick={() => handleOpenPDF(file)}
-                            >
-                              <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
-                              {file.filename}
-                            </div>
-                          </TableCell>
-                          <TableCell>{file.description}</TableCell>
-                          <TableCell>{file.version}</TableCell>
-                          <TableCell>{file.uploaded}</TableCell>
-                          <TableCell>{file.uploadedBy}</TableCell>
-                          <TableCell className="text-right">
-                            <AlertDialog open={showDeleteConfirm && fileToDelete?.id === file.id} onOpenChange={setShowDeleteConfirm}>
-                              <AlertDialogTrigger asChild>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => {
-                                    setFileToDelete(file);
-                                    setShowDeleteConfirm(true);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Ta bort fil</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Är du säker på att du vill ta bort filen "{file.filename}"? 
-                                    Denna åtgärd kan inte ångras.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                                  <AlertDialogAction 
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    onClick={confirmDelete}
-                                  >
-                                    Ta bort
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </div>
-        </main>
+        </div>
       </div>
       
+      {/* PDF-visare - använder den förbättrade visaren med kommentarer och versionshantering */}
+      {selectedFile && (
+        <div className="fixed inset-0 z-50 bg-background/80">
+          <EnhancedPDFViewer
+            fileId={Number(selectedFile.fileData?.id) || (selectedFile.fileData as any)?.fileId || `file_${Date.now()}`}
+            initialUrl={selectedFile.fileUrl || ""}
+            filename={selectedFile.fileData?.filename || "Dokument"}
+            onClose={() => setSelectedFile(null)}
+            projectId={currentProject?.id || null}
+            useDatabase={true} // Använd databasen istället för localStorage för att spara anmärkningar
+          />
+        </div>
+      )}
+      
+      {/* Bekräftelsedialog för borttagning */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ta bort ritning</AlertDialogTitle>
+            <AlertDialogDescription>
+              Är du säker på att du vill ta bort ritningen "{fileToDelete?.filename}"? 
+              <br />
+              <br />
+              <span className="font-semibold text-red-600 dark:text-red-400">
+                Denna åtgärd kan inte ångras.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700 text-white">
+              Ta bort
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
       {/* Uppladdningsdialog */}
-      <UploadDialog 
-        open={showUploadDialog} 
+      <UploadDialog
+        open={showUploadDialog}
         onOpenChange={setShowUploadDialog}
         onUpload={handleUpload}
-        acceptedFileTypes={["application/pdf", ".pdf"]}
-        title={`Ladda upp dokument till ${folderName}`}
-        description="Välj PDF-filer som du vill ladda upp. Du kan välja flera filer samtidigt."
+        acceptedFileTypes=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+        title={`Ladda upp filer till ${folderName}`}
+        description="Välj filer att ladda upp till den här mappen."
         currentProject={currentProject}
       />
-      
-      {/* PDF Viewer Dialog */}
-      {selectedFile && (
-        <PDFViewerDialog 
-          open={!!selectedFile} 
-          onOpenChange={(open) => !open && setSelectedFile(null)}
-        >
-          <div className="w-full h-full flex flex-col">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-muted border-b">
-              <div>
-                <h3 className="text-lg font-semibold">
-                  {selectedFile.fileData?.filename || "PDF Dokument"}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {selectedFile.fileData?.description || "Ingen beskrivning"} • 
-                  Version {selectedFile.fileData?.version || "1"} • 
-                  Uppladdad {selectedFile.fileData?.uploaded || "okänt datum"} av {selectedFile.fileData?.uploadedBy || "okänd användare"}
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex-1 overflow-hidden">
-              {selectedFile.fileUrl && (
-                <EnhancedPDFViewer 
-                  fileUrl={selectedFile.fileUrl} 
-                  className="w-full h-full"
-                />
-              )}
-            </div>
-          </div>
-        </PDFViewerDialog>
-      )}
     </div>
   );
 }
