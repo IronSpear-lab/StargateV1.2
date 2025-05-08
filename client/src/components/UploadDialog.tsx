@@ -4,12 +4,24 @@ import { Button } from "@/components/ui/button";
 import { X, Upload, CloudUpload, FileText } from "lucide-react";
 
 interface UploadDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onUpload: (files: File[]) => void;
+  acceptedFileTypes: string;
+  title: string;
+  description: string;
+  currentProject: any | null;
 }
 
-export function UploadDialog({ isOpen, onClose, onUpload }: UploadDialogProps) {
+export function UploadDialog({ 
+  open: isOpen, 
+  onOpenChange: onClose, 
+  onUpload,
+  acceptedFileTypes,
+  title,
+  description,
+  currentProject 
+}: UploadDialogProps) {
   const [dragActive, setDragActive] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
