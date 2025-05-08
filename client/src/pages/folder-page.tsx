@@ -139,7 +139,7 @@ export default function FolderPage() {
   const ritningar = React.useMemo(() => {
     const ritningarFromApi = apiRitningar || [];
     
-    // Mappa om API-data till vårt Ritning-format
+    // Mappa om API-data till vårt Ritning-format med korrekta värden för metadata
     const mappedApiRitningar = ritningarFromApi
       .filter(file => currentProject && file.projectId === currentProject.id)
       .map(file => ({
@@ -149,10 +149,12 @@ export default function FolderPage() {
         description: file.description || 'Ingen beskrivning',
         uploaded: formatDate(file.uploadedAt) || 'Inget datum',
         uploadedBy: file.uploadedBy || 'Användare',
-        number: file.number || '',
-        status: file.status || '',
-        annat: file.annat || '',
-        projectId: file.projectId
+        number: file.metadata?.number || file.number || '',
+        status: file.metadata?.status || file.status || '',
+        annat: file.metadata?.annat || file.annat || '',
+        projectId: file.projectId,
+        // Lägg till ytterligare metadata om de finns
+        metadata: file.metadata || {}
       }));
     
     // Kombinera API-ritningar och lokalt lagrade ritningar
