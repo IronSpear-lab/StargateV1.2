@@ -29,7 +29,8 @@ import {
   Search,
   Box,
   Plus,
-  Shield
+  Shield,
+  Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
@@ -46,6 +47,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { 
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger
+} from "@/components/ui/context-menu";
 
 interface SidebarProps {
   className?: string;
@@ -790,6 +797,46 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     toast({
       title: "Mapp skapad",
       description: `Mappen "${folderName}" har skapats under "${parentName}"`,
+    });
+  };
+  
+  // Funktion för att ta bort en mapp
+  const deleteFolder = (folderId: string) => {
+    // Kontrollera behörighet för att endast tillåta project_leader, admin och superuser
+    if (!user || !(user.role === "project_leader" || user.role === "admin" || user.role === "superuser")) {
+      toast({
+        title: "Behörighet saknas",
+        description: "Du har inte behörighet att ta bort mappar",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Hitta mappen som ska tas bort
+    const folderToDelete = userCreatedFolders.find(folder => folder.id === folderId);
+    if (!folderToDelete) return;
+    
+    // Filtrera bort mappen och eventuella undermappar
+    const updatedFolders = userCreatedFolders.filter(folder => {
+      // Ta bort den specifika mappen
+      if (folder.id === folderId) return false;
+      
+      // Ta bort alla undermappar till den här mappen
+      if (folder.parent === folderToDelete.name) return false;
+      
+      return true;
+    });
+    
+    // Uppdatera state
+    setUserCreatedFolders(updatedFolders);
+    
+    // Spara i localStorage
+    localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
+    
+    // Visa meddelande om att mappen har tagits bort
+    toast({
+      title: "Mapp borttagen",
+      description: `Mappen "${folderToDelete.name}" har tagits bort`,
     });
   };
   
