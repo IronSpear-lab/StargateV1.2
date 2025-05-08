@@ -2593,6 +2593,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch PDF versions" });
     }
   });
+  
+  // Ta bort en PDF fil och alla dess versioner och annotationer
+  app.delete(`${apiPrefix}/pdf/:fileId`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Du måste vara inloggad för att utföra denna åtgärd" });
+      }
+      
+      const fileId = parseInt(req.params.fileId);
+      if (isNaN(fileId)) {
+        return res.status(400).json({ error: "Ogiltigt fil-ID" });
+      }
+      
+      // Hämta filen för att verifiera att den existerar
+      const file = await db.select()
+        .from(files)
+        .where(eq(files.id, fileId))
+        .then(result => result[0]);
+      
+      if (!file) {
+        return res.status(404).json({ error: "Filen hittades inte" });
+      }
+      
+      // Hämta alla versioner av filen
+      const versions = await db.select()
+        .from(pdfVersions)
+        .where(eq(pdfVersions.fileId, fileId));
+      
+      // Ta bort alla annotationer för varje version
+      for (const version of versions) {
+        await db.delete(pdfAnnotations)
+          .where(eq(pdfAnnotations.pdfVersionId, version.id));
+          
+        // Ta bort fysiska filen om den finns
+        if (version.filePath && fs.existsSync(version.filePath)) {
+          try {
+            fs.unlinkSync(version.filePath);
+          } catch (err) {
+            console.error(`Kunde inte ta bort filen: ${version.filePath}`, err);
+            // Fortsätt oavsett om filen inte kunde tas bort
+          }
+        }
+      }
+      
+      // Ta bort alla versioner
+      await db.delete(pdfVersions)
+        .where(eq(pdfVersions.fileId, fileId));
+      
+      // Till sist, ta bort själva filposten
+      await db.delete(files)
+        .where(eq(files.id, fileId));
+      
+      res.json({ 
+        success: true, 
+        message: "Filen och alla relaterade versioner och annotationer har tagits bort"
+      });
+    } catch (error) {
+      console.error("Error deleting PDF file:", error);
+      res.status(500).json({ error: "Ett fel uppstod när filen skulle tas bort" });
+    }
+  });
 
   // Ladda upp en ny version av en PDF
   app.post(`${apiPrefix}/pdf/:fileId/versions`, pdfUpload.single('file'), async (req, res) => {
