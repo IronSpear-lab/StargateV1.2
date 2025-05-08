@@ -95,9 +95,15 @@ export default function FolderPage() {
     };
   } | null>(null);
   
-  // Använd API:et för att hämta filer från databasen
+  // Använd API:et för att hämta filer från databasen med korrekt projektID-parameter
   const { data: apiRitningar, isLoading: isLoadingApi } = useQuery<any[]>({
     queryKey: ['/api/files', currentProject?.id],
+    queryFn: async ({ queryKey }) => {
+      if (!currentProject?.id) throw new Error("Inget projekt valt");
+      const response = await apiRequest('GET', `/api/files?projectId=${currentProject.id}`);
+      if (!response.ok) throw new Error('Kunde inte hämta filer');
+      return response.json();
+    },
     enabled: !!currentProject?.id,
   });
   
