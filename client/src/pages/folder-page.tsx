@@ -110,6 +110,16 @@ export default function FolderPage() {
     enabled: !!currentProject?.id,
   });
   
+  // Hämta PDF-versioner som innehåller metadata
+  const { data: pdfVersions, isLoading: isLoadingVersions } = useQuery<any[]>({
+    queryKey: ['/api/pdf/versions'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/pdf/versions');
+      if (!response.ok) throw new Error('Kunde inte hämta PDF-versioner');
+      return response.json();
+    },
+  });
+  
   // Använd localStorage för temporär lagring av ritningar - samma som i ritningar-page
   const getStorageKey = () => {
     return currentProject 
@@ -141,34 +151,62 @@ export default function FolderPage() {
   // Skapa en kombinerad lista av ritningar från API och lokal lagring
   const ritningar = React.useMemo(() => {
     const ritningarFromApi = apiRitningar || [];
+    const allVersions = pdfVersions || [];
     
     // Debug-information som hjälper oss att se exakt vilken data som kommer från API
     console.log("Ritningar från API (rådata):", JSON.stringify(ritningarFromApi, null, 2));
+    console.log("PDF-versioner från API (innehåller metadata):", JSON.stringify(allVersions, null, 2));
+    
+    // Skapa en lookup-tabell för att hitta versioner baserat på fil-ID
+    const versionsByFileId = {};
+    allVersions.forEach(version => {
+      if (version.fileId) {
+        if (!versionsByFileId[version.fileId]) {
+          versionsByFileId[version.fileId] = [];
+        }
+        versionsByFileId[version.fileId].push(version);
+      }
+    });
     
     // Mappa om API-data till vårt Ritning-format med korrekta värden för metadata
     const mappedApiRitningar = ritningarFromApi
       .filter(file => currentProject && file.projectId === currentProject.id)
       .map(file => {
+        // Hitta relaterade PDF-versioner om de finns
+        const fileVersions = versionsByFileId[file.id] || [];
+        
+        // Använd den senaste versionen för metadata (sortera efter versionsnummer om det finns)
+        const latestVersion = fileVersions.length > 0 
+          ? fileVersions.sort((a, b) => (b.versionNumber || 0) - (a.versionNumber || 0))[0] 
+          : null;
+          
         // Extrahera metadata från olika möjliga källfält
-        const metadata = file.metadata || {};
-        const number = file.metadata?.number || file.number || metadata?.number || '';
-        const status = file.metadata?.status || file.status || metadata?.status || '';
-        const annat = file.metadata?.annat || file.annat || metadata?.annat || '';
+        const metadata = latestVersion?.metadata || file.metadata || {};
+        const number = metadata?.number || latestVersion?.number || file.number || '';
+        const status = metadata?.status || latestVersion?.status || file.status || '';
+        const annat = metadata?.annat || latestVersion?.annat || file.annat || '';
+        
+        // Skapa en versionstext baserat på tillgänglig information
+        const versionText = latestVersion 
+          ? `${latestVersion.versionNumber || '1'}` 
+          : (file.version || file.versionNumber || file.latestVersion || '1').toString();
         
         // Skapa en ritningsobjekt med all tillgänglig data
         return {
           id: file.id,
-          filename: file.filename || 'Okänt filnamn',
-          version: (file.version || file.versionNumber || file.latestVersion || '1').toString(),
+          filename: file.name || file.filename || 'Okänt filnamn',
+          version: versionText,
           description: file.description || 'Ingen beskrivning',
-          uploaded: formatDate(file.uploadedAt || file.createdAt) || 'Inget datum',
+          uploaded: formatDate(file.uploadDate || file.createdAt) || 'Inget datum',
           uploadedBy: file.uploadedBy || file.createdBy || 'Användare',
           number: number,
           status: status,
           annat: annat,
           projectId: file.projectId,
           // Lägg till all tillgänglig metadata
-          metadata: metadata
+          metadata: metadata,
+          // Lägg till versionInfo
+          versionInfo: latestVersion
         };
       });
     
@@ -190,7 +228,7 @@ export default function FolderPage() {
         return 0;
       }
     });
-  }, [apiRitningar, ritningarData, currentProject]);
+  }, [apiRitningar, ritningarData, currentProject, pdfVersions]);
   
   const isLoading = isLoadingApi;
 
