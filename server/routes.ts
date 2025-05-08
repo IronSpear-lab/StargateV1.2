@@ -743,6 +743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
       const folderId = req.query.folderId ? parseInt(req.query.folderId as string) : undefined;
       const all = req.query.all === 'true'; // Läs in all-parametern som en boolean
+      const rootFilesOnly = req.query.rootFilesOnly === 'true'; // Ny parameter för att bara visa rotfiler
       
       if (!projectId) {
         return res.status(400).json({ error: "Project ID is required" });
@@ -761,8 +762,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'You do not have access to this project' });
       }
       
-      console.log(`API-anrop: /files för projekt ${projectId}, mapp ${folderId || 'ingen'}, all=${all}`);
-      const fileList = await storage.getFiles(projectId, folderId, all);
+      console.log(`API-anrop: /files för projekt ${projectId}, mapp ${folderId || 'ingen'}, all=${all}, rootFilesOnly=${rootFilesOnly}`);
+      
+      let fileList;
+      if (rootFilesOnly) {
+        // Om rootFilesOnly är true, hämta bara filer utan folderId (rotfiler)
+        console.log(`Hämtar endast rotfiler för projekt ${projectId}`);
+        fileList = await storage.getRootFiles(projectId);
+      } else {
+        // Annars, använd den vanliga funktionen
+        fileList = await storage.getFiles(projectId, folderId, all);
+      }
       res.json(fileList);
     } catch (error) {
       console.error("Error fetching files:", error);

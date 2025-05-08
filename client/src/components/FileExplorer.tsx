@@ -129,10 +129,17 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         return [];
       }
       
-      // Ändrat här: Ta bort all=true och använd selectedFolderId om det finns
-      // Detta gör att vi endast hämtar filer som tillhör den valda mappen
-      // eller rotfiler om ingen mapp är vald
-      const url = `/api/files?projectId=${currentProject.id}${selectedFolderId ? `&folderId=${selectedFolderId}` : ''}`;
+      // Ändrat här: Använd selectedFolderId om det finns eller "noFolder=true" för att bara visa rotfiler
+      // Detta gör att vi endast hämtar filer som tillhör den valda mappen (eller rotfiler)
+      let url = `/api/files?projectId=${currentProject.id}`;
+      
+      if (selectedFolderId) {
+        // Om en mapp är vald, hämta bara filer i den mappen
+        url += `&folderId=${selectedFolderId}`;
+      } else {
+        // Om ingen mapp är vald, visa bara rotfiler (filer utan folderId)
+        url += `&rootFilesOnly=true`;
+      }
       
       console.log("Hämtar filer med URL:", url);
       
