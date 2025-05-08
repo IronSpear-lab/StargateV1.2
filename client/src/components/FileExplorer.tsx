@@ -710,8 +710,8 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                     <DropdownMenuSeparator />
                     {/* Bara visa radera-knapp för mappar om användaren har rätt behörighet */}
                     {(node.type === 'folder' && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser")) && (
-                      <DropdownMenuItem 
-                        className="text-red-600 font-medium"
+                      <div
+                        className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-red-600 hover:bg-accent"
                         onClick={(e) => {
                           e.stopPropagation();
                           const folderId = parseInt(node.id.replace('folder_', ''));
@@ -720,16 +720,16 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                           setDeleteFolderDialogOpen(true);
                         }}
                       >
-                        <Trash className="mr-2 h-4 w-4" />
-                        Radera mapp
-                      </DropdownMenuItem>
+                        <Trash className="h-4 w-4 shrink-0" />
+                        <span>Radera mapp</span>
+                      </div>
                     )}
                     {/* Visa standard radera-knapp för filer */}
                     {node.type === 'file' && (
-                      <DropdownMenuItem className="text-red-600">
-                        <Trash className="mr-2 h-4 w-4" />
-                        Radera
-                      </DropdownMenuItem>
+                      <div className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-red-600 hover:bg-accent">
+                        <Trash className="h-4 w-4 shrink-0" />
+                        <span>Radera</span>
+                      </div>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
