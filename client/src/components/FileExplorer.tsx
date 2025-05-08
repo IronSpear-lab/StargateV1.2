@@ -834,6 +834,37 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
           </div>
         </CardContent>
       </Card>
+      
+      {/* Delete Folder Confirmation Dialog */}
+      <Dialog open={deleteFolderDialogOpen} onOpenChange={setDeleteFolderDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Radera mapp</DialogTitle>
+            <DialogDescription>
+              Är du säker på att du vill radera mappen "{folderToDelete?.name}" och allt dess innehåll? Denna åtgärd kan inte ångras.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteFolderDialogOpen(false)}
+            >
+              Avbryt
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (folderToDelete) {
+                  deleteFolderMutation.mutate(folderToDelete.id);
+                  setDeleteFolderDialogOpen(false);
+                }
+              }}
+            >
+              Radera mapp
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
