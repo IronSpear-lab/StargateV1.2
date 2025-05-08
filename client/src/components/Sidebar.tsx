@@ -81,8 +81,9 @@ type NavItemType = {
   active?: boolean;
   indent?: number;
   children?: NavItemType[];
-  type?: 'folder' | 'file' | 'link' | 'section' | string; // För att kunna identifiera mappar, sektioner
-  folderId?: string; // ID för mappen (endast för visning)
+  type?: 'folder' | 'file' | 'link' | 'section' | string; // För att kunna identifiera mappar, sektioner och visa plustecken
+  onAddClick?: () => void;
+  folderId?: string; // ID för mappen, används för borttagning
   sectionId?: string; // ID för sektioner som ska kunna öppnas/stängas
   isOpen?: boolean; // Om en sektion är öppen eller stängd
   onToggle?: () => void; // Funktion för att toggla öppna/stängda sektioner
@@ -95,7 +96,78 @@ interface NavGroupProps {
   location: string;
 }
 
-// Folder dialoger har tagits bort eftersom funktionaliteten har flyttats till FolderManagementWidget
+// Folder creation dialog component
+function AddFolderDialog({ 
+  isOpen, 
+  onClose, 
+  parentFolderName, 
+  onCreateFolder 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  parentFolderName: string;
+  onCreateFolder: (folderName: string, parentName: string) => void;
+}) {
+  const [folderName, setFolderName] = useState("");
+  const { toast } = useToast();
+  
+  const handleSubmit = () => {
+    if (!folderName.trim()) {
+      toast({
+        title: "Fel",
+        description: "Mappnamn kan inte vara tomt",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    onCreateFolder(folderName, parentFolderName);
+    setFolderName(""); // Återställ formuläret
+    onClose();
+  };
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Skapa ny mapp</DialogTitle>
+          <DialogDescription>
+            Skapa en ny mapp under "{parentFolderName}"
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="folderName">Mappnamn</Label>
+            <Input
+              id="folderName"
+              value={folderName}
+              onChange={(e) => setFolderName(e.target.value)}
+              placeholder="Ange mappnamn"
+              autoFocus
+            />
+          </div>
+        </div>
+        
+        <DialogFooter className="sm:justify-end">
+          <Button 
+            type="button" 
+            variant="secondary" 
+            onClick={onClose}
+          >
+            Avbryt
+          </Button>
+          <Button 
+            type="submit" 
+            onClick={handleSubmit}
+          >
+            Skapa mapp
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 // Profile Settings Dialog Component
 function ProfileSettingsDialog({
@@ -636,7 +708,11 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     "-Vault": true,
     "-Vault-Files": true
   });
+  const [folderDialogOpen, setFolderDialogOpen] = useState(false);
+  const [selectedParentFolder, setSelectedParentFolder] = useState("");
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [folderToDeleteId, setFolderToDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
   
   // State för att lagra mappar som användaren har skapat
@@ -807,6 +883,9 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     newFolder: { name: string, parent: string, id: string, parentId?: string | null }
   ): NavItemType[] => {
     return items.map(item => {
+      // Extra loggutskrift för att hjälpa debug
+      console.log(`Checking item ${item.label}, parent=${parentName}, type=${item.type}, folderId=${item.folderId}`);
+      
       // Om denna mapp är föräldern, lägg till den nya mappen som ett barn
       const isParentMatch = 
         // Matcha antingen på namn om förälder är Files
@@ -815,6 +894,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         (item.folderId && newFolder.parentId && item.folderId === newFolder.parentId);
         
       if (isParentMatch) {
+        console.log(`Found parent! Adding folder ${newFolder.name} to ${item.label} (ID: ${item.folderId})`);
         
         // Skapa en kopia med den nya mappen
         return {
@@ -829,6 +909,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               indent: (item.indent || 0) + 1,
               icon: <FolderClosed className={`w-4 h-4`} />,
               type: "folder",
+              onAddClick: () => handleAddFolder(newFolder.name),
               folderId: newFolder.id, // Lägg till ID för identifiering och borttagning
               children: []
             }
@@ -1113,7 +1194,18 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 <div className="py-2 px-3 whitespace-nowrap flex items-center justify-between">
                   <span className="font-medium text-sm">{item.label}</span>
                   
-                  {/* Plus-ikonen för mappar har tagits bort då funktionaliteten har flyttats till FolderManagementWidget */}
+                  {/* Plus-ikon för mappar i minimerat läge */}
+                  {item.type === "folder" && item.onAddClick && (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        item.onAddClick?.();
+                      }}
+                      className="ml-3 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </span>
+                  )}
                   
                   {/* Badge (om det finns) */}
                   {item.badge && (
@@ -1175,7 +1267,22 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                     )}
                   >
                     <div className="flex items-center">
-                      {/* Ta bort-knappen för mappar har tagits bort eftersom funktionaliteten har flyttats till FolderManagementWidget */}
+                      {/* Ta bort-knapp för användarskapade mappar */}
+                      {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && item.type === "folder" && item.folderId && (
+                        <span 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(item.folderId!);
+                          }}
+                          className={cn(
+                            "h-5 w-5 p-0 mr-1 flex items-center justify-center rounded-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer",
+                            "text-destructive hover:text-destructive-foreground hover:bg-destructive"
+                          )}
+                          aria-label="Ta bort mapp"
+                        >
+                          <X className="h-4 w-4" />
+                        </span>
+                      )}
                       <span className={cn(
                         "flex items-center justify-center mr-3",
                         item.active ? "text-primary" : "text-muted-foreground"
@@ -1233,7 +1340,28 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                     )}
                   >
                     <div className="flex items-center">
-                      {/* Ta bort-knappen för mappar har tagits bort eftersom funktionaliteten har flyttats till FolderManagementWidget */}
+                      {/* Ta bort-knapp för alla mappar */}
+                      {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && item.type === "folder" && (
+                        <span 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Hantera borttagning endast om mappen har ett folderId (användarskapad)
+                            if (item.folderId) {
+                              handleDeleteClick(item.folderId);
+                            }
+                          }}
+                          className={cn(
+                            "h-5 w-5 p-0 mr-1 flex items-center justify-center rounded-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer",
+                            // Avaktivera för inbyggda mappar som saknar folderId
+                            item.folderId 
+                              ? "text-destructive hover:text-destructive-foreground hover:bg-destructive" 
+                              : "text-muted pointer-events-none opacity-0"
+                          )}
+                          aria-label="Ta bort mapp"
+                        >
+                          <X className="h-4 w-4" />
+                        </span>
+                      )}
                       <span className={cn(
                         "flex items-center justify-center mr-3",
                         item.active ? "text-primary" : "text-muted-foreground"
@@ -1304,7 +1432,28 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 )}
               >
                 <div className="flex items-center">
-                  {/* Ta bort-knappen för mappar har tagits bort eftersom funktionaliteten har flyttats till FolderManagementWidget */}
+                  {/* Ta bort-knapp som bara visas vid hover */}
+                  {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && item.type === "folder" && (
+                    <span 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Hantera borttagning endast om mappen har ett folderId (användarskapad)
+                        if (item.folderId) {
+                          handleDeleteClick(item.folderId);
+                        }
+                      }}
+                      className={cn(
+                        "h-5 w-5 p-0 mr-1 flex items-center justify-center rounded-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer",
+                        // Avaktivera för inbyggda mappar som saknar folderId
+                        item.folderId 
+                          ? "text-destructive hover:text-destructive-foreground hover:bg-destructive" 
+                          : "text-muted pointer-events-none opacity-0"
+                      )}
+                      aria-label="Ta bort mapp"
+                    >
+                      <X className="h-4 w-4" />
+                    </span>
+                  )}
                   <span className={cn(
                     "flex items-center justify-center mr-3",
                     item.active ? "text-primary" : "text-muted-foreground"
@@ -1330,7 +1479,15 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 )}
               </Link>
               
-              {/* Plus-ikonen för mappar har tagits bort eftersom funktionaliteten har flyttats till FolderManagementWidget */}
+              {/* Plus-ikon för mappar - endast för project_leader, admin och superuser */}
+              {item.type === "folder" && item.onAddClick && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
+                <button
+                  onClick={() => item.onAddClick?.()}
+                  className="ml-1 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  <Plus className="h-3 w-3" />
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -1338,11 +1495,53 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     });
   };
 
-  // Mapp-borttagningsfunktionalitet har tagits bort - flyttats till FolderManagementWidget
+  // Bekräftelsedialog för borttagning av mapp
+  const folderToDelete = folderToDeleteId ? userCreatedFolders.find(f => f.id === folderToDeleteId) : null;
   
   return (
     <>
-      {/* Mapp-borttagningsdialoger har tagits bort eftersom funktionaliteten har flyttats till FolderManagementWidget */}
+      {/* Bekräftelsedialog för borttagning av mapp */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => {
+        setDeleteDialogOpen(open);
+        if (!open) {
+          setFolderToDeleteId(null);
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bekräfta borttagning</AlertDialogTitle>
+            <AlertDialogDescription>
+              Är du säker på att du vill ta bort {folderToDelete?.name ? `"${folderToDelete.name}"` : "denna mapp"}? 
+              Alla undermappar till mappen tas också bort. Denna åtgärd kan inte ångras.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="flex items-center gap-2 text-destructive bg-destructive/10 p-3 rounded mb-4 mt-2">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+            <span className="text-sm">
+              Alla filer och undermappar kommer att raderas permanent.
+            </span>
+          </div>
+          
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              console.log("Avbryter borttagning av mapp");
+              setFolderToDeleteId(null);
+            }}>
+              Avbryt
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                console.log("Bekräftar borttagning av mapp", folderToDeleteId);
+                deleteFolder();
+              }} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Ta bort
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       
       {isMobile && (
         <div 
@@ -1533,7 +1732,13 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         </div>
       </aside>
       
-      {/* Mapp-dialogerna har tagits bort eftersom funktionaliteten har flyttats till FolderManagementWidget */}
+      {/* Dialog för att skapa mapp */}
+      <AddFolderDialog
+        isOpen={folderDialogOpen}
+        onClose={() => setFolderDialogOpen(false)}
+        parentFolderName={selectedParentFolder}
+        onCreateFolder={createFolder}
+      />
       
       {/* Profile settings dialog */}
       <ProfileSettingsDialog
