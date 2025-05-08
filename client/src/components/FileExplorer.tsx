@@ -998,61 +998,57 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         </CardContent>
       </Card>
       
-      {/* Använder Dialog för att radera mappar (förenklad implementation) */}
-      <Dialog open={deleteFolderDialogOpen} onOpenChange={(open) => {
-        setDeleteFolderDialogOpen(open);
-        if (!open) {
-          setFolderToDelete(null);
-        }
-      }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Radera mapp</DialogTitle>
-            <DialogDescription>
-              Är du säker på att du vill radera mappen "{folderToDelete?.name}" och allt dess innehåll? Denna åtgärd kan inte ångras.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded mb-4 mt-2">
-            <AlertTriangle className="h-5 w-5 flex-shrink-0" />
-            <span className="text-sm">Alla filer och undermappar kommer att raderas permanent.</span>
-          </div>
-          
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                console.log("Avbryter borttagning av mapp");
-                setDeleteFolderDialogOpen(false);
-                setFolderToDelete(null);
-              }}
-            >
-              Avbryt
-            </Button>
-            <Button 
-              variant="destructive"
-              onClick={() => {
-                if (folderToDelete) {
-                  console.log(`Executing delete for folder ID: ${folderToDelete.id}`);
-                  deleteFolderMutation.mutate(folderToDelete.id);
+      {/* Custom dialog implementation utan att använda någon Shadcn UI-komponent */}
+      {deleteFolderDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+          <div className="bg-white rounded-lg max-w-lg w-full m-4 p-6">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold leading-none tracking-tight">Radera mapp</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Är du säker på att du vill radera mappen "{folderToDelete?.name}" och allt dess innehåll? Denna åtgärd kan inte ångras.
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded mb-4 mt-2">
+              <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+              <span className="text-sm">Alla filer och undermappar kommer att raderas permanent.</span>
+            </div>
+            
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
+              <div 
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 cursor-pointer"
+                onClick={() => {
+                  console.log("Avbryter borttagning av mapp");
                   setDeleteFolderDialogOpen(false);
                   setFolderToDelete(null);
-                }
-              }}
-              disabled={deleteFolderMutation.isPending}
-            >
-              {deleteFolderMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  <span>Raderar...</span>
-                </>
-              ) : (
-                <span>Radera mapp</span>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                }}
+              >
+                Avbryt
+              </div>
+              <div 
+                className={`inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2 cursor-pointer ${deleteFolderMutation.isPending ? 'opacity-50 pointer-events-none' : ''}`}
+                onClick={() => {
+                  if (folderToDelete && !deleteFolderMutation.isPending) {
+                    console.log(`Executing delete for folder ID: ${folderToDelete.id}`);
+                    deleteFolderMutation.mutate(folderToDelete.id);
+                    setDeleteFolderDialogOpen(false);
+                    setFolderToDelete(null);
+                  }
+                }}
+              >
+                {deleteFolderMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <span>Raderar...</span>
+                  </>
+                ) : (
+                  <span>Radera mapp</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
