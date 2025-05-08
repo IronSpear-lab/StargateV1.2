@@ -292,6 +292,44 @@ class DatabaseStorage implements IStorage {
     const result = await db.insert(folders).values(validatedData).returning();
     return result[0];
   }
+  
+  async deleteFolder(folderId: number): Promise<{ success: boolean }> {
+    try {
+      // Först hämta alla filer i denna mapp för att kunna radera dem
+      const folderFiles = await db
+        .select()
+        .from(files)
+        .where(eq(files.folderId, folderId));
+      
+      // Radera alla filer från databasen
+      if (folderFiles.length > 0) {
+        await db
+          .delete(files)
+          .where(eq(files.folderId, folderId));
+      }
+
+      // Ta bort mappar rekursivt - först ta reda på alla undermappar
+      const subFolders = await db
+        .select()
+        .from(folders)
+        .where(eq(folders.parentId, folderId));
+      
+      // Radera undermappar rekursivt
+      for (const subFolder of subFolders) {
+        await this.deleteFolder(subFolder.id);
+      }
+      
+      // Slutligen radera själva mappen
+      await db
+        .delete(folders)
+        .where(eq(folders.id, folderId));
+      
+      return { success: true };
+    } catch (error) {
+      console.error("Error deleting folder:", error);
+      return { success: false };
+    }
+  }
 
   async getFiles(projectId: number, folderId?: number): Promise<File[]> {
     if (folderId) {
