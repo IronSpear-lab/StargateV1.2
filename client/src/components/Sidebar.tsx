@@ -1556,20 +1556,42 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   return (
     <>
       {/* Bekräftelsedialog för borttagning av mapp */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => {
+        setDeleteDialogOpen(open);
+        if (!open) {
+          setFolderToDeleteId(null);
+        }
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Är du säker?</AlertDialogTitle>
+            <AlertDialogTitle>Bekräfta borttagning</AlertDialogTitle>
             <AlertDialogDescription>
               Är du säker på att du vill ta bort {folderToDelete?.name ? `"${folderToDelete.name}"` : "denna mapp"}? 
               Alla undermappar till mappen tas också bort. Denna åtgärd kan inte ångras.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          
+          <div className="flex items-center gap-2 text-destructive bg-destructive/10 p-3 rounded mb-4 mt-2">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+            <span className="text-sm">
+              Alla filer och undermappar kommer att raderas permanent.
+            </span>
+          </div>
+          
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setFolderToDeleteId(null)}>
+            <AlertDialogCancel onClick={() => {
+              console.log("Avbryter borttagning av mapp");
+              setFolderToDeleteId(null);
+            }}>
               Avbryt
             </AlertDialogCancel>
-            <AlertDialogAction onClick={deleteFolder} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction 
+              onClick={() => {
+                console.log("Bekräftar borttagning av mapp", folderToDeleteId);
+                deleteFolder();
+              }} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Ta bort
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1845,51 +1867,6 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           });
         }}
       />
-      
-      {/* Confirmation dialog for folder deletion - using Dialog instead of AlertDialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={(open) => !open && setDeleteDialogOpen(false)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Bekräfta borttagning</DialogTitle>
-            <DialogDescription>
-              {folderToDeleteId && (
-                <span>
-                  Är du säker på att du vill ta bort denna mapp och allt dess innehåll? Denna åtgärd kan inte ångras.
-                </span>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="flex items-center gap-2 text-destructive bg-destructive/10 p-3 rounded mb-4 mt-2">
-            <AlertTriangle className="h-5 w-5 flex-shrink-0" />
-            <span className="text-sm">
-              Alla filer och undermappar kommer att raderas permanent.
-            </span>
-          </div>
-          
-          <DialogFooter className="flex space-x-2 justify-end">
-            <Button
-              variant="outline"
-              onClick={() => {
-                console.log("Avbryter borttagning av mapp");
-                setDeleteDialogOpen(false);
-                setFolderToDeleteId(null);
-              }}
-            >
-              Avbryt
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => {
-                console.log("Bekräftar borttagning av mapp", folderToDeleteId);
-                deleteFolder();
-              }}
-            >
-              Ta bort
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
