@@ -636,11 +636,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     "-Vault": true,
     "-Vault-Files": true
   });
-  const [folderDialogOpen, setFolderDialogOpen] = useState(false);
-  const [selectedParentFolder, setSelectedParentFolder] = useState("");
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [folderToDeleteId, setFolderToDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
   
   // State för att lagra mappar som användaren har skapat
@@ -1427,48 +1423,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   
   return (
     <>
-      {/* Bekräftelsedialog för borttagning av mapp */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => {
-        setDeleteDialogOpen(open);
-        if (!open) {
-          setFolderToDeleteId(null);
-        }
-      }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Bekräfta borttagning</AlertDialogTitle>
-            <AlertDialogDescription>
-              Är du säker på att du vill ta bort {folderToDelete?.name ? `"${folderToDelete.name}"` : "denna mapp"}? 
-              Alla undermappar till mappen tas också bort. Denna åtgärd kan inte ångras.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          
-          <div className="flex items-center gap-2 text-destructive bg-destructive/10 p-3 rounded mb-4 mt-2">
-            <AlertTriangle className="h-5 w-5 flex-shrink-0" />
-            <span className="text-sm">
-              Alla filer och undermappar kommer att raderas permanent.
-            </span>
-          </div>
-          
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              console.log("Avbryter borttagning av mapp");
-              setFolderToDeleteId(null);
-            }}>
-              Avbryt
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => {
-                console.log("Bekräftar borttagning av mapp", folderToDeleteId);
-                deleteFolder();
-              }} 
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Ta bort
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Mapp-borttagningsdialoger har tagits bort eftersom funktionaliteten har flyttats till FolderManagementWidget */}
       
       {isMobile && (
         <div 
@@ -1659,13 +1614,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         </div>
       </aside>
       
-      {/* Dialog för att skapa mapp */}
-      <AddFolderDialog
-        isOpen={folderDialogOpen}
-        onClose={() => setFolderDialogOpen(false)}
-        parentFolderName={selectedParentFolder}
-        onCreateFolder={createFolder}
-      />
+      {/* Mapp-dialogerna har tagits bort eftersom funktionaliteten har flyttats till FolderManagementWidget */}
       
       {/* Profile settings dialog */}
       <ProfileSettingsDialog
