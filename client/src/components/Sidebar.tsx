@@ -1290,7 +1290,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 {item.type === "folder" && item.folderId ? (
                   <button 
                     className={cn(
-                      "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150",
+                      "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150 group",
                       item.active
                         ? "bg-primary/10 text-primary font-medium" 
                         : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -1365,7 +1365,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 ) : (
                   <button 
                     className={cn(
-                      "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150",
+                      "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150 group",
                       item.active
                         ? "bg-primary/10 text-primary font-medium" 
                         : "text-muted-foreground hover:bg-muted hover:text-foreground",
