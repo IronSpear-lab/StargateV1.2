@@ -5,6 +5,9 @@ import { Document, Page, pdfjs } from "react-pdf";
 import { useQueryClient } from "@tanstack/react-query";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
+
+// Konfigurerar PDF.js för att hantera avbrutna förfrågningar bättre
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 import { 
   Loader2, 
   ChevronLeft, 
