@@ -105,132 +105,260 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       return res.json();
     }
   });
-  
-  // Fetch files
-  const { 
-    data: filesData, 
-    isLoading: isLoadingFiles, 
-    error: filesError 
-  } = useQuery({
-    queryKey: ['/api/files'],
+
+  // Use first project as default if available
+  useEffect(() => {
+    if (projectsData && projectsData.length > 0 && projectsData[0].id) {
+      setUploadState(prev => ({ ...prev, projectId: projectsData[0].id.toString() }));
+    }
+  }, [projectsData]);
+
+  // Fetch files from the server
+  const { data: filesData, isLoading: isLoadingFiles } = useQuery({
+    queryKey: ['/api/files', { projectId: uploadState.projectId }],
     queryFn: async () => {
-      const res = await fetch('/api/files');
+      const res = await fetch(`/api/files?projectId=${uploadState.projectId}`);
       if (!res.ok) throw new Error('Failed to fetch files');
       return res.json();
-    }
+    },
+    enabled: !!uploadState.projectId
   });
-  
-  // Fetch folders
-  const { 
-    data: foldersData, 
-    isLoading: isLoadingFolders,
-    error: foldersError
-  } = useQuery({
-    queryKey: ['/api/folders'],
+
+  // Fetch folders from the server
+  const { data: foldersData, isLoading: isLoadingFolders } = useQuery({
+    queryKey: ['/api/folders', { projectId: uploadState.projectId }],
     queryFn: async () => {
-      const res = await fetch('/api/folders');
+      const res = await fetch(`/api/folders?projectId=${uploadState.projectId}`);
       if (!res.ok) throw new Error('Failed to fetch folders');
       return res.json();
-    }
+    },
+    enabled: !!uploadState.projectId
   });
 
-  // Create folder mutation
-  const createFolderMutation = useMutation({
-    mutationFn: async (folderData: FolderFormData) => {
-      const res = await apiRequest('POST', '/api/folders', folderData);
-      return await res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Folder created",
-        description: "New folder has been created successfully.",
-      });
-      setCreateFolderDialogOpen(false);
-      setNewFolderName("");
-      queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Failed to create folder",
-        description: error instanceof Error ? error.message : 'An unknown error occurred',
-        variant: "destructive",
-      });
-    }
-  });
-
-  // File upload mutation
-  const uploadFileMutation = useMutation({
+  // Mutation for file upload
+  const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
+      // Use XMLHttpRequest to track upload progress
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const progress = Math.round((event.loaded / event.total) * 100);
+            setUploadState(prev => ({ ...prev, uploadProgress: progress }));
+          }
+        };
+        
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const response = JSON.parse(xhr.responseText);
+              resolve(response);
+            } catch (error) {
+              reject(new Error("Failed to parse response"));
+            }
+          } else {
+            reject(new Error(xhr.statusText || "Upload failed"));
+          }
+        };
+        
+        xhr.onerror = () => reject(new Error("Network error during upload"));
+        
+        xhr.open("POST", "/api/files");
+        xhr.send(formData);
       });
-      
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Failed to upload file');
-      }
-      
-      return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       toast({
-        title: "File uploaded",
-        description: "Your file has been uploaded successfully.",
+        title: "File uploaded successfully",
+        description: uploadState.file?.name ? `${uploadState.file.name} has been uploaded.` : "Your file has been uploaded."
       });
-      setUploadDialogOpen(false);
-      setUploadState(prev => ({ ...prev, file: null, uploadProgress: 0, isUploading: false }));
       queryClient.invalidateQueries({ queryKey: ['/api/files'] });
+      setUploadDialogOpen(false);
+      setUploadState(prev => ({ 
+        ...prev, 
+        file: null, 
+        isUploading: false, 
+        uploadProgress: 0 
+      }));
+      
+      // If the uploaded file is a PDF, select it automatically
+      if (data && data.fileType === "application/pdf") {
+        onFileSelect({
+          id: data.id.toString(),
+          name: data.name,
+          type: 'file',
+          fileType: data.fileType
+        });
+      }
     },
     onError: (error) => {
       toast({
         title: "Upload failed",
-        description: error instanceof Error ? error.message : 'An unknown error occurred',
-        variant: "destructive",
+        description: `${error}`,
+        variant: "destructive"
       });
-      setUploadState(prev => ({ ...prev, isUploading: false }));
+      setUploadState(prev => ({ 
+        ...prev, 
+        isUploading: false, 
+        uploadProgress: 0 
+      }));
     }
   });
 
-  // Handle file selection
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files && event.target.files[0];
-    if (file) {
-      setUploadState(prev => ({ ...prev, file }));
+  // Mutation for creating new folders
+  const createFolderMutation = useMutation({
+    mutationFn: async (folderData: FolderFormData) => {
+      const response = await apiRequest('POST', '/api/folders', folderData);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Folder created",
+        description: `Folder "${newFolderName}" has been created.`
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
+      setCreateFolderDialogOpen(false);
+      setNewFolderName("");
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to create folder",
+        description: `${error}`,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Convert API data to FileNode structure
+  const buildFileTree = (): FileNode[] => {
+    if (!foldersData || !filesData) return [];
+    
+    // Map folders with their children
+    const folderMap: Record<string, FileNode> = {};
+    const rootItems: FileNode[] = [];
+    
+    // First pass: create all folder nodes
+    foldersData.forEach((folder: any) => {
+      folderMap[folder.id] = {
+        id: folder.id.toString(),
+        name: folder.name,
+        type: 'folder',
+        children: []
+      };
+      
+      // Expand folders by default
+      if (!expandedFolders.hasOwnProperty(folder.id.toString())) {
+        setExpandedFolders(prev => ({
+          ...prev,
+          [folder.id.toString()]: true
+        }));
+      }
+    });
+    
+    // Second pass: establish parent-child relationships
+    foldersData.forEach((folder: any) => {
+      const folderNode = folderMap[folder.id];
+      
+      if (folder.parentId && folderMap[folder.parentId]) {
+        // Add as child to parent folder
+        folderMap[folder.parentId].children = folderMap[folder.parentId].children || [];
+        folderMap[folder.parentId].children?.push(folderNode);
+      } else {
+        // Add to root level
+        rootItems.push(folderNode);
+      }
+    });
+    
+    // Add files to their respective folders
+    filesData.forEach((file: any) => {
+      const fileNode: FileNode = {
+        id: file.id.toString(),
+        name: file.name,
+        type: 'file',
+        fileType: file.fileType,
+        fileSize: file.fileSize
+      };
+      
+      if (file.folderId && folderMap[file.folderId]) {
+        // Add file to its folder
+        folderMap[file.folderId].children = folderMap[file.folderId].children || [];
+        folderMap[file.folderId].children?.push(fileNode);
+      } else {
+        // Add file to root level
+        rootItems.push(fileNode);
+      }
+    });
+    
+    return rootItems;
+  };
+  
+  const fileTree = buildFileTree();
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setUploadState(prev => ({ ...prev, file: e.target.files![0] }));
     }
   };
 
-  // Handle file upload
   const handleFileUpload = () => {
-    if (!uploadState.file) return;
-    
-    setUploadState(prev => ({ ...prev, isUploading: true, uploadProgress: 0 }));
-    
+    if (!uploadState.file) {
+      toast({
+        title: "No file selected",
+        description: "Please select a file to upload",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUploadState(prev => ({ 
+      ...prev, 
+      isUploading: true, 
+      uploadProgress: 0 
+    }));
+
     const formData = new FormData();
     formData.append('file', uploadState.file);
     formData.append('projectId', uploadState.projectId);
-    
     if (uploadState.selectedFolder) {
       formData.append('folderId', uploadState.selectedFolder);
     }
-    
-    // Simulate upload progress (in a real app, you'd use XHR or fetch with progress event)
-    const interval = setInterval(() => {
-      setUploadState(prev => {
-        if (prev.uploadProgress >= 99) {
-          clearInterval(interval);
-          return prev;
-        }
-        return { ...prev, uploadProgress: Math.min(prev.uploadProgress + 5, 99) };
-      });
-    }, 100);
-    
-    uploadFileMutation.mutate(formData, {
-      onSettled: () => clearInterval(interval)
-    });
+
+    uploadMutation.mutate(formData);
   };
   
-  // Drag and drop handlers
+  const handleCreateFolder = () => {
+    if (!newFolderName.trim()) {
+      toast({
+        title: "Folder name required",
+        description: "Please provide a name for the new folder",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const folderData: FolderFormData = {
+      name: newFolderName.trim(),
+      projectId: parseInt(uploadState.projectId),
+      parentId: uploadState.selectedFolder ? parseInt(uploadState.selectedFolder) : null
+    };
+    
+    createFolderMutation.mutate(folderData);
+  };
+
+  const toggleFolder = (folderId: string) => {
+    setExpandedFolders(prev => ({
+      ...prev,
+      [folderId]: !prev[folderId]
+    }));
+  };
+
+  const handleFileClick = (file: FileNode) => {
+    if (file.type === 'file') {
+      onFileSelect(file);
+    }
+  };
+  
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setDropzoneActive(true);
@@ -244,164 +372,79 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     e.preventDefault();
     setDropzoneActive(false);
     
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setUploadState(prev => ({ ...prev, file: e.dataTransfer.files[0] }));
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      setUploadState(prev => ({ ...prev, file }));
       setUploadDialogOpen(true);
     }
   };
   
-  // Handle folder creation
-  const handleCreateFolder = () => {
-    if (!newFolderName) return;
-    
-    const folderData: FolderFormData = {
-      name: newFolderName,
-      projectId: parseInt(uploadState.projectId),
-      parentId: uploadState.selectedFolder ? parseInt(uploadState.selectedFolder) : null
-    };
-    
-    createFolderMutation.mutate(folderData);
-  };
-  
-  // Build file tree
-  const buildFileTree = () => {
-    const tree: FileNode[] = [];
-    const folderMap: Record<string, FileNode> = {};
-    
-    // Add folders to the tree
-    if (foldersData) {
-      foldersData.forEach((folder: any) => {
-        const folderNode: FileNode = {
-          id: `folder_${folder.id}`,
-          name: folder.name,
-          type: 'folder',
-          children: []
-        };
-        
-        folderMap[folderNode.id] = folderNode;
-        
-        if (folder.parentId) {
-          const parentId = `folder_${folder.parentId}`;
-          if (folderMap[parentId]) {
-            folderMap[parentId].children = folderMap[parentId].children || [];
-            folderMap[parentId].children?.push(folderNode);
-          }
-        } else {
-          tree.push(folderNode);
-        }
-      });
-    }
-    
-    // Add files to the tree
-    if (filesData) {
-      filesData.forEach((file: any) => {
-        const fileNode: FileNode = {
-          id: `file_${file.id}`,
-          name: file.name,
-          type: 'file',
-          fileType: getFileExtension(file.name),
-          fileSize: file.size,
-          selected: `file_${file.id}` === selectedFileId
-        };
-        
-        if (file.folderId) {
-          const folderId = `folder_${file.folderId}`;
-          if (folderMap[folderId]) {
-            folderMap[folderId].children = folderMap[folderId].children || [];
-            folderMap[folderId].children?.push(fileNode);
-          } else {
-            tree.push(fileNode);
-          }
-        } else {
-          tree.push(fileNode);
-        }
-      });
-    }
-    
-    return tree;
-  };
-  
-  const fileTree = buildFileTree();
-  
-  // Handle file click
-  const handleFileClick = (file: FileNode) => {
-    if (file.type === 'file') {
-      onFileSelect(file);
-    } else {
-      setExpandedFolders(prev => ({
-        ...prev,
-        [file.id]: !prev[file.id]
-      }));
-    }
-  };
-  
-  // Get folder options for select fields
   const getFolderOptions = () => {
+    if (!foldersData) return [{ value: "root", label: "Root folder" }];
+    
     const options = [{ value: "root", label: "Root folder" }];
     
-    if (!foldersData) return options;
-    
-    const addFoldersToOptions = (folders: any[], depth = 0, parent = "") => {
-      folders.forEach(folder => {
-        const prefix = depth > 0 ? "└─ ".padStart(depth * 2 + 2, "  ") : "";
-        options.push({
-          value: folder.id.toString(),
-          label: `${prefix}${folder.name}`,
-          parent: parent
-        });
-        
-        if (folder.children && folder.children.length > 0) {
-          addFoldersToOptions(folder.children, depth + 1, folder.id.toString());
-        }
+    foldersData.forEach((folder: any) => {
+      options.push({
+        value: folder.id.toString(),
+        label: folder.name
       });
-    };
-    
-    addFoldersToOptions(foldersData.filter((f: any) => !f.parentId));
+    });
     
     return options;
   };
   
-  // Get file icon based on type
   const getFileIcon = (file: FileNode) => {
     if (file.type === 'folder') {
-      return <Folder className="h-4 w-4 text-yellow-500" />;
+      return <Folder className="h-4 w-4 text-amber-500" />;
     }
     
-    if (!file.fileType) return <FileIcon className="h-4 w-4 text-neutral-500" />;
+    const extension = file.name ? getFileExtension(file.name).toLowerCase() : '';
     
-    switch(file.fileType.toLowerCase()) {
-      case 'pdf':
-        return <File className="h-4 w-4 text-red-500" />;
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
-      case 'gif':
-        return <Image className="h-4 w-4 text-blue-500" />;
-      case 'doc':
-      case 'docx':
-      case 'txt':
-        return <FileText className="h-4 w-4 text-blue-400" />;
-      default:
-        return <FileIcon className="h-4 w-4 text-neutral-500" />;
+    if (isPdf(file.name)) {
+      return <File className="h-4 w-4 text-red-500" />;
     }
+    
+    if (isFileOfType(file.name, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+      return <Image className="h-4 w-4 text-blue-500" />;
+    }
+    
+    if (isFileOfType(file.name, ['doc', 'docx', 'txt', 'md'])) {
+      return <FileText className="h-4 w-4 text-blue-700" />;
+    }
+    
+    if (isFileOfType(file.name, ['xls', 'xlsx', 'csv'])) {
+      return <File className="h-4 w-4 text-green-600" />;
+    }
+    
+    if (isFileOfType(file.name, ['html', 'css', 'js', 'jsx', 'ts', 'tsx', 'json'])) {
+      return <File className="h-4 w-4 text-yellow-600" />;
+    }
+    
+    if (isFileOfType(file.name, ['zip', 'rar', 'tar', 'gz'])) {
+      return <File className="h-4 w-4 text-neutral-600" />;
+    }
+    
+    return <FileIcon className="h-4 w-4 text-neutral-500" />;
   };
-  
-  // Render file tree
+
   const renderFileTree = (nodes: FileNode[], level = 0) => {
     return (
-      <ul className={cn(
-        "space-y-1",
-        level > 0 ? "pl-4 pt-1" : ""
-      )}>
-        {nodes.map(node => (
+      <ul className={cn("space-y-1", level > 0 ? "pl-4 mt-1" : "")}>
+        {nodes.map((node) => (
           <li key={node.id} className="relative">
             <div 
               className={cn(
-                "flex items-center py-1 px-2 rounded-md cursor-pointer text-sm group transition-colors",
-                node.selected ? "bg-primary-50 text-primary-800" : "hover:bg-neutral-100",
-                node.type === 'folder' && expandedFolders[node.id] ? "font-medium" : ""
+                "flex items-center py-1.5 px-2 rounded-md",
+                node.type === 'file' && selectedFileId === node.id 
+                  ? "bg-primary-50 text-primary-700 font-medium" 
+                  : "hover:bg-neutral-100",
+                "group"
               )}
-              onClick={() => handleFileClick(node)}
+              onClick={(e) => {
+                e.stopPropagation();
+                node.type === 'folder' ? toggleFolder(node.id) : handleFileClick(node);
+              }}
             >
               {node.type === 'folder' ? (
                 <div className="flex-shrink-0 mr-1.5 w-4">
@@ -510,43 +553,20 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                           <Label htmlFor="folderName">Folder Name</Label>
                           <Input
                             id="folderName"
-                            placeholder="e.g. Project Documentation"
                             value={newFolderName}
                             onChange={(e) => setNewFolderName(e.target.value)}
+                            placeholder="Enter folder name"
                           />
                         </div>
                         
                         <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label htmlFor="projectId">Project</Label>
-                          </div>
-                          <Select 
-                            value={uploadState.projectId}
-                            onValueChange={(value) => setUploadState(prev => ({ ...prev, projectId: value }))}
-                          >
-                            <SelectTrigger id="projectId">
-                              <SelectValue placeholder="Select project" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {projectsData?.map((project: any) => (
-                                <SelectItem key={project.id} value={project.id.toString()}>
-                                  {project.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label htmlFor="parentFolder">Parent Folder (Optional)</Label>
-                          </div>
+                          <Label htmlFor="parentFolder">Parent Folder</Label>
                           <Select
                             value={uploadState.selectedFolder || "root"}
                             onValueChange={(value) => setUploadState(prev => ({ ...prev, selectedFolder: value === "root" ? null : value }))}
                           >
                             <SelectTrigger id="parentFolder">
-                              <SelectValue placeholder="Root folder" />
+                              <SelectValue placeholder="Select a folder" />
                             </SelectTrigger>
                             <SelectContent>
                               {getFolderOptions().map(option => (
@@ -559,14 +579,25 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                         </div>
                       </div>
                       <DialogFooter>
-                        <Button variant="outline" onClick={() => setCreateFolderDialogOpen(false)}>
+                        <Button
+                          variant="outline"
+                          onClick={() => setCreateFolderDialogOpen(false)}
+                          disabled={createFolderMutation.isPending}
+                        >
                           Cancel
                         </Button>
-                        <Button 
+                        <Button
                           onClick={handleCreateFolder}
-                          disabled={!newFolderName || !uploadState.projectId}
+                          disabled={!newFolderName.trim() || createFolderMutation.isPending}
                         >
-                          Create Folder
+                          {createFolderMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Creating...
+                            </>
+                          ) : (
+                            'Create Folder'
+                          )}
                         </Button>
                       </DialogFooter>
                     </DialogContent>
@@ -643,7 +674,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
                           />
                         </div>
-                        
+                    
                         {uploadState.file && uploadState.file.size > 10 * 1024 * 1024 && (
                           <div className="flex items-center text-amber-600 text-sm">
                             <AlertTriangle className="h-4 w-4 mr-2" />
@@ -684,7 +715,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                             <Progress value={uploadState.uploadProgress} className="h-2" />
                           </div>
                         )}
-                      </div>
+                  </div>
                       <DialogFooter>
                         <Button
                           variant="outline"
@@ -711,11 +742,10 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                           )}
                         </Button>
                       </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                </DialogContent>
+              </Dialog>
                 </>
               )}
-            </div>
           </div>
         </CardHeader>
         <CardContent className="p-4 pt-2">
