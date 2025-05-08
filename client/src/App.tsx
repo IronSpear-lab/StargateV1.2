@@ -24,6 +24,7 @@ import HelpPage from "@/pages/help-page";
 import VaultPage from "@/pages/vault-page";
 import VaultCommentsPage from "@/pages/vault-comments-page";
 import RitningarPage from "@/pages/ritningar-page";
+import FolderPage from "@/pages/folder-page";
 import DwgIfcViewerPage from "@/pages/dwg-ifc-viewer-page";
 import SimpleViewerPage from "@/pages/simple-viewer-page";
 import MessagesPage from "@/pages/messages-page";
@@ -31,8 +32,31 @@ import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ProjectProvider } from "./contexts/ProjectContext";
+import { useEffect, useState } from "react";
 
 function Router() {
+  // Läs användarskapade mappar från localStorage
+  const [userFolders, setUserFolders] = useState<string[]>([]);
+  
+  useEffect(() => {
+    // Försök hämta användarens skapade mappar från localStorage
+    const storedFolders = localStorage.getItem('user_created_folders');
+    if (storedFolders) {
+      try {
+        // Tolka JSON-strängen och extrahera mappnamn
+        const folders = JSON.parse(storedFolders);
+        const folderNames = folders
+          .filter((folder: any) => folder && folder.label) // Filtrera bort ogiltiga mappar
+          .map((folder: any) => folder.label); // Extrahera mappnamn
+        
+        setUserFolders(folderNames);
+      } catch (error) {
+        console.error('Fel vid inläsning av användarens mappar:', error);
+        setUserFolders([]);
+      }
+    }
+  }, []);
+
   return (
     <Switch>
       <ProtectedRoute path="/" component={DashboardPage} />
@@ -64,6 +88,7 @@ function Router() {
       <ProtectedRoute path="/vault" component={VaultPage} />
       <ProtectedRoute path="/vault/comments" component={VaultCommentsPage} />
       <ProtectedRoute path="/vault/:section" component={VaultPage} />
+      <ProtectedRoute path="/vault/files/:folderName" component={FolderPage} />
       <ProtectedRoute path="/messages" component={MessagesPage} />
       <ProtectedRoute path="/communication/messages" component={MessagesPage} />
       <Route path="/auth" component={AuthPage} />
