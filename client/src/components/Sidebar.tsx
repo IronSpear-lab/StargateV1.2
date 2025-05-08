@@ -1394,18 +1394,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       
                       {/* Borttagningsknappen har flyttats till vänster om mappikonen */}
                       
-                      {/* Lägg till plustecken för mappar - endast för project_leader, admin och superuser */}
-                      {item.type === "folder" && item.onAddClick && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation(); // Förhindra att mappknappen klickas
-                            item.onAddClick?.();
-                          }}
-                          className="mr-1 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          <Plus className="h-3 w-3" />
-                        </button>
-                      )}
+                      {/* Plustecken för mappar - temporärt borttaget */}
                       
                       <ChevronRight className={cn(
                         "h-4 w-4 transition-transform duration-200",
@@ -1450,18 +1439,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         </Badge>
                       )}
                       
-                      {/* Lägg till plustecken för mappar - endast för project_leader, admin och superuser */}
-                      {item.type === "folder" && item.onAddClick && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation(); // Förhindra att mappknappen klickas
-                            item.onAddClick?.();
-                          }}
-                          className="mr-1 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          <Plus className="h-3 w-3" />
-                        </button>
-                      )}
+                      {/* Plustecken för mappar - temporärt borttaget */}
                       
                       <ChevronRight className={cn(
                         "h-4 w-4 transition-transform duration-200",
@@ -1521,15 +1499,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 )}
               </Link>
               
-              {/* Plus-ikon för mappar - endast för project_leader, admin och superuser */}
-              {item.type === "folder" && item.onAddClick && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
-                <button
-                  onClick={() => item.onAddClick?.()}
-                  className="ml-1 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
-                >
-                  <Plus className="h-3 w-3" />
-                </button>
-              )}
+              {/* Plus-ikon för mappar - temporärt borttagen */}
             </div>
           )}
         </div>
