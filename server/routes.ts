@@ -742,6 +742,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
       const folderId = req.query.folderId ? parseInt(req.query.folderId as string) : undefined;
+      const all = req.query.all === 'true'; // Läs in all-parametern som en boolean
       
       if (!projectId) {
         return res.status(400).json({ error: "Project ID is required" });
@@ -760,7 +761,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'You do not have access to this project' });
       }
       
-      const fileList = await storage.getFiles(projectId, folderId);
+      console.log(`API-anrop: /files för projekt ${projectId}, mapp ${folderId || 'ingen'}, all=${all}`);
+      const fileList = await storage.getFiles(projectId, folderId, all);
       res.json(fileList);
     } catch (error) {
       console.error("Error fetching files:", error);

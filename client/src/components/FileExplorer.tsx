@@ -126,7 +126,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         return [];
       }
       
-      const res = await fetch(`/api/files?projectId=${currentProject.id}`, {
+      const res = await fetch(`/api/files?projectId=${currentProject.id}&all=true`, {
         credentials: 'include'  // Säkerställ att cookies skickas med för autentisering
       });
       if (!res.ok) {

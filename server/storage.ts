@@ -360,8 +360,8 @@ class DatabaseStorage implements IStorage {
     }
   }
 
-  async getFiles(projectId: number, folderId?: number): Promise<File[]> {
-    console.log(`storage.getFiles: Hämtar filer för projekt ${projectId}${folderId ? ` och mapp ${folderId}` : ''}`);
+  async getFiles(projectId: number, folderId?: number, allProjectFiles: boolean = false): Promise<File[]> {
+    console.log(`storage.getFiles: Hämtar filer för projekt ${projectId}${folderId ? ` och mapp ${folderId}` : ''}${allProjectFiles ? ' (alla projektfiler)' : ''}`);
     
     if (!projectId || isNaN(projectId)) {
       console.error('storage.getFiles: Ogiltigt projektID:', projectId);
@@ -371,7 +371,15 @@ class DatabaseStorage implements IStorage {
     try {
       let fileList;
       
-      if (folderId) {
+      if (allProjectFiles) {
+        // Om allProjectFiles är true, hämta alla filer för projektet oavsett mapp
+        fileList = await db
+          .select()
+          .from(files)
+          .where(eq(files.projectId, projectId));
+        console.log(`storage.getFiles: Hämtar ALLA filer för projekt ${projectId}`);
+      } else if (folderId) {
+        // Om folderId är angivet, hämta bara filer för den specifika mappen
         fileList = await db
           .select()
           .from(files)
@@ -382,6 +390,7 @@ class DatabaseStorage implements IStorage {
             )
           );
       } else {
+        // Om ingen folderId och inte allProjectFiles, hämta bara rotfiler (utan mapp)
         fileList = await db
           .select()
           .from(files)
@@ -402,8 +411,8 @@ class DatabaseStorage implements IStorage {
           return false;
         }
         
-        // Om en specifik mapp efterfrågas, kontrollera att filen tillhör den mappen
-        if (folderId && file.folderId !== folderId) {
+        // Om en specifik mapp efterfrågas och vi inte hämtar alla filer, kontrollera att filen tillhör den mappen
+        if (folderId && !allProjectFiles && file.folderId !== folderId) {
           console.error(`storage.getFiles: VARNING - Fil ${file.id} tillhör mapp ${file.folderId}, inte begärd mapp ${folderId}`);
           return false;
         }
