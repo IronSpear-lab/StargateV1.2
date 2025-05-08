@@ -142,23 +142,35 @@ export default function FolderPage() {
   const ritningar = React.useMemo(() => {
     const ritningarFromApi = apiRitningar || [];
     
+    // Debug-information som hjälper oss att se exakt vilken data som kommer från API
+    console.log("Ritningar från API (rådata):", JSON.stringify(ritningarFromApi, null, 2));
+    
     // Mappa om API-data till vårt Ritning-format med korrekta värden för metadata
     const mappedApiRitningar = ritningarFromApi
       .filter(file => currentProject && file.projectId === currentProject.id)
-      .map(file => ({
-        id: file.id,
-        filename: file.filename || 'Okänt filnamn',
-        version: file.version?.toString() || '1',
-        description: file.description || 'Ingen beskrivning',
-        uploaded: formatDate(file.uploadedAt) || 'Inget datum',
-        uploadedBy: file.uploadedBy || 'Användare',
-        number: file.metadata?.number || file.number || '',
-        status: file.metadata?.status || file.status || '',
-        annat: file.metadata?.annat || file.annat || '',
-        projectId: file.projectId,
-        // Lägg till ytterligare metadata om de finns
-        metadata: file.metadata || {}
-      }));
+      .map(file => {
+        // Extrahera metadata från olika möjliga källfält
+        const metadata = file.metadata || {};
+        const number = file.metadata?.number || file.number || metadata?.number || '';
+        const status = file.metadata?.status || file.status || metadata?.status || '';
+        const annat = file.metadata?.annat || file.annat || metadata?.annat || '';
+        
+        // Skapa en ritningsobjekt med all tillgänglig data
+        return {
+          id: file.id,
+          filename: file.filename || 'Okänt filnamn',
+          version: (file.version || file.versionNumber || file.latestVersion || '1').toString(),
+          description: file.description || 'Ingen beskrivning',
+          uploaded: formatDate(file.uploadedAt || file.createdAt) || 'Inget datum',
+          uploadedBy: file.uploadedBy || file.createdBy || 'Användare',
+          number: number,
+          status: status,
+          annat: annat,
+          projectId: file.projectId,
+          // Lägg till all tillgänglig metadata
+          metadata: metadata
+        };
+      });
     
     // Kombinera API-ritningar och lokalt lagrade ritningar
     // Filtrera bort dubletter baserat på ID
@@ -590,10 +602,10 @@ export default function FolderPage() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="w-[80px]">{ritning.version}</TableCell>
-                        <TableCell className="w-[200px]">{ritning.description}</TableCell>
-                        <TableCell className="w-[140px]">{ritning.uploaded}</TableCell>
-                        <TableCell className="w-[160px]">{ritning.uploadedBy}</TableCell>
+                        <TableCell className="w-[80px]">{ritning.version || '-'}</TableCell>
+                        <TableCell className="w-[200px]">{ritning.description || '-'}</TableCell>
+                        <TableCell className="w-[140px]">{ritning.uploaded || '-'}</TableCell>
+                        <TableCell className="w-[160px]">{ritning.uploadedBy || '-'}</TableCell>
                         <TableCell className="w-[100px]">{ritning.number || '-'}</TableCell>
                         <TableCell className="w-[120px]">{ritning.status || '-'}</TableCell>
                         <TableCell className="w-[120px]">{ritning.annat || '-'}</TableCell>
