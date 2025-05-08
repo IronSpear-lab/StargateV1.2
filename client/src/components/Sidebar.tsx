@@ -748,7 +748,18 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   };
 
   // Funktion för att hantera "Lägg till mapp" i olika mappar
+  // Kontrollera behörighet för att endast tillåta project_leader, admin och superuser
   const handleAddFolder = (parentName: string) => {
+    // Om användaren inte har rätt roll, visa en toast med felmeddelande
+    if (!user || !(user.role === "project_leader" || user.role === "admin" || user.role === "superuser")) {
+      toast({
+        title: "Behörighet saknas",
+        description: "Du har inte behörighet att skapa mappar",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setSelectedParentFolder(parentName);
     setFolderDialogOpen(true);
   };
@@ -1221,8 +1232,8 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       </Badge>
                     )}
                     
-                    {/* Lägg till plustecken för mappar */}
-                    {item.type === "folder" && item.onAddClick && (
+                    {/* Lägg till plustecken för mappar - endast för project_leader, admin och superuser */}
+                    {item.type === "folder" && item.onAddClick && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
                       <button 
                         onClick={(e) => {
                           e.stopPropagation(); // Förhindra att mappknappen klickas
@@ -1290,8 +1301,8 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 )}
               </Link>
               
-              {/* Plus-ikon för mappar */}
-              {item.type === "folder" && item.onAddClick && (
+              {/* Plus-ikon för mappar - endast för project_leader, admin och superuser */}
+              {item.type === "folder" && item.onAddClick && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
                 <button
                   onClick={() => item.onAddClick?.()}
                   className="ml-1 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
