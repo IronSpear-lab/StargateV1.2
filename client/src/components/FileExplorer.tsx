@@ -43,6 +43,7 @@ import {
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
+import { useProject } from "@/contexts/ProjectContext";
 import { getFileExtension, isFileOfType, formatFileSize } from "@/lib/file-utils";
 import { isPdf } from "@/lib/pdf-utils";
 
@@ -78,6 +79,7 @@ interface FolderFormData {
 export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { currentProject } = useProject();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -88,7 +90,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
   
   const [uploadState, setUploadState] = useState<FileUploadState>({
     selectedFolder: null,
-    projectId: "1", // Default project ID
+    projectId: currentProject?.id?.toString() || "1", // Use current project ID
     isUploading: false,
     file: null,
     uploadProgress: 0
@@ -126,12 +128,18 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     isLoading: isLoadingFolders,
     error: foldersError
   } = useQuery({
-    queryKey: ['/api/folders'],
+    queryKey: ['/api/folders', currentProject?.id],
     queryFn: async () => {
-      const res = await fetch('/api/folders');
+      if (!currentProject?.id) {
+        // Om inget projekt är valt, returnera en tom array
+        return [];
+      }
+      
+      const res = await fetch(`/api/folders?projectId=${currentProject.id}`);
       if (!res.ok) throw new Error('Failed to fetch folders');
       return res.json();
-    }
+    },
+    enabled: !!currentProject?.id // Kör bara denna query om vi har ett projekt
   });
 
   // Create folder mutation
@@ -147,7 +155,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       });
       setCreateFolderDialogOpen(false);
       setNewFolderName("");
-      queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/folders', currentProject?.id] });
     },
     onError: (error) => {
       toast({
@@ -180,7 +188,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       });
       setUploadDialogOpen(false);
       setUploadState(prev => ({ ...prev, file: null, uploadProgress: 0, isUploading: false }));
-      queryClient.invalidateQueries({ queryKey: ['/api/files'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id] });
     },
     onError: (error) => {
       toast({
