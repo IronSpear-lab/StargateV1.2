@@ -1011,6 +1011,27 @@ export default function EnhancedPDFViewer({
     }
   };
   
+  // Spara annotationer när komponenten unmountas
+  useEffect(() => {
+    return () => {
+      // Spara alla osparade annotationer när komponenten stängs
+      if (annotations.length > 0 && useDatabase && currentProject) {
+        console.log(`[${new Date().toISOString()}] Komponenten unmountas, sparar ${annotations.length} annotationer`);
+        saveAllUnsavedAnnotations().catch(err => {
+          console.error('Fel vid sparande av annotationer vid unmount:', err);
+        });
+      } else if (annotations.length > 0) {
+        console.log(`[${new Date().toISOString()}] Komponenten unmountas, sparar ${annotations.length} annotationer till localStorage`);
+        const storageKey = `pdf_annotations_${fileId.toString()}`;
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(annotations));
+        } catch (err) {
+          console.error('Fel vid sparande av annotationer till localStorage:', err);
+        }
+      }
+    };
+  }, [annotations, currentProject, useDatabase, activeVersionId]);
+  
 
   
   // Hantera stängning av PDF-visaren
