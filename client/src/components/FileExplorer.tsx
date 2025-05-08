@@ -32,6 +32,16 @@ import {
   DialogFooter,
   DialogDescription
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -557,12 +567,12 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
   
   // Get folder options for select fields
   const getFolderOptions = () => {
-    const options = [{ value: "root", label: "Root folder" }];
+    const options: {value: string, label: string}[] = [{ value: "root", label: "Root folder" }];
     
     if (!foldersData) return options;
     
     // Filtrera mappar som tillhör det aktuella projektet
-    const filteredFolders = foldersData.filter(folder => {
+    const filteredFolders = foldersData.filter((folder: any) => {
       if (folder.projectId !== currentProject?.id) {
         console.error(`getFolderOptions: Ignorerar mapp ${folder.id} från fel projekt ${folder.projectId}`);
         return false;
@@ -572,18 +582,17 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     
     console.log(`getFolderOptions: ${filteredFolders.length} av ${foldersData.length} mappar tillhör aktuellt projekt ${currentProject?.id}`);
     
-    const addFoldersToOptions = (folders: any[], depth = 0, parent = "") => {
-      folders.forEach(folder => {
+    const addFoldersToOptions = (folders: any[], depth = 0) => {
+      folders.forEach((folder: any) => {
         const prefix = depth > 0 ? "└─ ".padStart(depth * 2 + 2, "  ") : "";
         console.log(`getFolderOptions: Lägger till mapp ${folder.id} (projektID: ${folder.projectId}) i options`);
         options.push({
           value: folder.id.toString(),
-          label: `${prefix}${folder.name} [Projekt: ${folder.projectId}]`,
-          parent: parent
+          label: `${prefix}${folder.name} [Projekt: ${folder.projectId}]`
         });
         
         if (folder.children && folder.children.length > 0) {
-          addFoldersToOptions(folder.children, depth + 1, folder.id.toString());
+          addFoldersToOptions(folder.children, depth + 1);
         }
       });
     };
@@ -1015,42 +1024,47 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         </CardContent>
       </Card>
       
-      {/* Använder AlertDialog för att radera mappar istället för egen modal */}
-      <AlertDialog open={deleteFolderDialogOpen} onOpenChange={(open) => {
+      {/* Använder Dialog för att radera mappar (förenklad implementation) */}
+      <Dialog open={deleteFolderDialogOpen} onOpenChange={(open) => {
         setDeleteFolderDialogOpen(open);
         if (!open) {
           setFolderToDelete(null);
         }
       }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Radera mapp</AlertDialogTitle>
-            <AlertDialogDescription>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Radera mapp</DialogTitle>
+            <DialogDescription>
               Är du säker på att du vill radera mappen "{folderToDelete?.name}" och allt dess innehåll? Denna åtgärd kan inte ångras.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+            </DialogDescription>
+          </DialogHeader>
           
-          <div className="flex items-center gap-2 text-destructive bg-destructive/10 p-3 rounded mb-4 mt-2">
+          <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded mb-4 mt-2">
             <AlertTriangle className="h-5 w-5 flex-shrink-0" />
             <span className="text-sm">Alla filer och undermappar kommer att raderas permanent.</span>
           </div>
           
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              console.log("Avbryter borttagning av mapp");
-              setFolderToDelete(null);
-            }}>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                console.log("Avbryter borttagning av mapp");
+                setDeleteFolderDialogOpen(false);
+                setFolderToDelete(null);
+              }}
+            >
               Avbryt
-            </AlertDialogCancel>
-            <AlertDialogAction 
+            </Button>
+            <Button 
+              variant="destructive"
               onClick={() => {
                 if (folderToDelete) {
                   console.log(`Executing delete for folder ID: ${folderToDelete.id}`);
                   deleteFolderMutation.mutate(folderToDelete.id);
+                  setDeleteFolderDialogOpen(false);
                   setFolderToDelete(null);
                 }
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={deleteFolderMutation.isPending}
             >
               {deleteFolderMutation.isPending ? (
@@ -1061,10 +1075,10 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
               ) : (
                 <span>Radera mapp</span>
               )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
