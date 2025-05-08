@@ -1299,7 +1299,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                   >
                     <div className="flex items-center">
                       {/* Ta bort-knapp för användarskapade mappar */}
-                      {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
+                      {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && item.type === "folder" && item.folderId && (
                         <span 
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1368,6 +1368,28 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                     )}
                   >
                     <div className="flex items-center">
+                      {/* Ta bort-knapp för alla mappar */}
+                      {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && item.type === "folder" && (
+                        <span 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Hantera borttagning endast om mappen har ett folderId (användarskapad)
+                            if (item.folderId) {
+                              handleDeleteClick(item.folderId);
+                            }
+                          }}
+                          className={cn(
+                            "h-4 w-4 mr-1 flex items-center justify-center rounded-sm cursor-pointer transition-colors",
+                            // Avaktivera för inbyggda mappar som saknar folderId
+                            item.folderId 
+                              ? "text-destructive hover:text-destructive-foreground hover:bg-destructive" 
+                              : "text-muted pointer-events-none opacity-30"
+                          )}
+                          aria-label="Ta bort mapp"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </span>
+                      )}
                       <span className={cn(
                         "flex items-center justify-center mr-3",
                         item.active ? "text-primary" : "text-muted-foreground"
@@ -1438,6 +1460,28 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 )}
               >
                 <div className="flex items-center">
+                  {/* Ta bort-knapp även för mappar i undermenyer */}
+                  {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && item.type === "folder" && (
+                    <span 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Hantera borttagning endast om mappen har ett folderId (användarskapad)
+                        if (item.folderId) {
+                          handleDeleteClick(item.folderId);
+                        }
+                      }}
+                      className={cn(
+                        "h-4 w-4 mr-1 flex items-center justify-center rounded-sm cursor-pointer transition-colors",
+                        // Avaktivera för inbyggda mappar som saknar folderId
+                        item.folderId 
+                          ? "text-destructive hover:text-destructive-foreground hover:bg-destructive" 
+                          : "text-muted pointer-events-none opacity-30"
+                      )}
+                      aria-label="Ta bort mapp"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </span>
+                  )}
                   <span className={cn(
                     "flex items-center justify-center mr-3",
                     item.active ? "text-primary" : "text-muted-foreground"
