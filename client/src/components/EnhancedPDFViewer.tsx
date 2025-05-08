@@ -470,49 +470,68 @@ export default function EnhancedPDFViewer({
     console.error('Fel vid laddning av PDF:', error);
     setLoading(false);
     
-    // Om felet är "signal is aborted without reason" eller annat nätverksfel, försök med en annan metod
-    if (error.message.includes('signal is aborted') || 
-        error.message.includes('aborted') || 
-        error.message.includes('network error') ||
-        error.message.includes('failed to fetch') ||
-        error.message.includes('Unexpected server response')) {
-      
-      console.log('Avbrutet laddningsförsök, försöker med alternativ metod...');
-      
-      // Konfigurera om PDF.js med alternativ arbetarprocess
-      configureAlternativePdfLoading();
-      
-      // Konvertera från Blob URL till en direkt API-url om vi använder en blob
-      if (pdfUrl && pdfUrl.startsWith('blob:')) {
-        // Försök hämta den aktiva versionen och använda dess direkta filsökväg istället
-        if (activeVersionId) {
-          const directUrl = `/api/pdf/versions/${activeVersionId}/content?nocache=${Date.now()}`;
-          console.log('Byter från blob URL till direkt API-länk:', directUrl);
-          
-          setTimeout(() => {
-            setPdfUrl(directUrl);
-          }, 500);
-        } 
-        // Om vi inte har ett versionId, försök använda fileId istället
-        else if (fileId) {
-          const directUrl = `/api/files/${fileId}/content?nocache=${Date.now()}`;
-          console.log('Byter från blob URL till direkt fil-API-länk:', directUrl);
-          
-          setTimeout(() => {
-            setPdfUrl(directUrl);
-          }, 500);
-        }
-      } 
-      // Annars lägg bara till en cache-busting parameter
-      else if (pdfUrl) {
-        const newUrl = `${pdfUrl}${pdfUrl.includes('?') ? '&' : '?'}nocache=${Date.now()}`;
-        console.log('Provar att ladda PDF med ny URL med cache-busting:', newUrl);
+    // Hantera alla typer av fel som kan uppstå med PDF-filer
+    console.log('PDF-laddning misslyckades, försöker med alternativa metoder...');
+    
+    // Konfigurera om PDF.js med alternativ arbetarprocess
+    configureAlternativePdfLoading();
+    
+    // Skapa en fallback-funktion för att visa rå PDF-data om möjligt
+    const loadFallbackPdfData = async () => {
+      try {
+        let url = pdfUrl;
         
-        setTimeout(() => {
-          setPdfUrl(newUrl);
-        }, 500);
+        // Om vi använder blob URL, byt till API URL
+        if (pdfUrl && pdfUrl.startsWith('blob:')) {
+          if (activeVersionId) {
+            url = `/api/pdf/versions/${activeVersionId}/content?nocache=${Date.now()}`;
+          } else if (fileId) {
+            url = `/api/files/${fileId}/content?nocache=${Date.now()}`;
+          }
+        } 
+        // Lägg till cache-busting om URL redan har en sökväg
+        else if (pdfUrl) {
+          url = `${pdfUrl}${pdfUrl.includes('?') ? '&' : '?'}nocache=${Date.now()}`;
+        }
+        
+        console.log('Försöker med URL:', url);
+        
+        // Försök med fetch direkt för att se om vi kan få filen
+        const response = await fetch(url);
+        
+        if (response.ok) {
+          const blob = await response.blob();
+          console.log(`Lyckades hämta PDF med storlek: ${blob.size} bytes`);
+          
+          // Skapa en enklare visning om vanlig rendering inte fungerar
+          const blobUrl = URL.createObjectURL(blob);
+          setPdfUrl(blobUrl);
+          
+          // Felmeddelande i dialogrutan
+          toast({
+            title: "Information",
+            description: "PDF-filen kunde inte visas med standardläsaren. Vi använder ett förenklat visningsläge istället.",
+            variant: "default",
+          });
+        } else {
+          // Om vi inte kunde hämta filen via fetch heller, visa ett tydligt felmeddelande
+          console.error('Kunde inte hämta PDF-filen via API:', response.status, response.statusText);
+          throw new Error(`API svarade med felkod ${response.status}`);
+        }
+      } catch (fetchError) {
+        console.error('Fallback-metod misslyckades också:', fetchError);
+        
+        // Visa ett mycket tydligt felmeddelande
+        toast({
+          title: "PDF kunde inte öppnas",
+          description: "Filen är skadad eller i ett format som inte stöds. Försök med en annan fil.",
+          variant: "destructive",
+        });
       }
-    }
+    };
+    
+    // Vänta en stund innan vi försöker igen med fallback-metoden
+    setTimeout(loadFallbackPdfData, 1000);
   };
 
   // Navigation handlers
