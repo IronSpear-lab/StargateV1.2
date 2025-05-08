@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { FileText, Search, Plus, Upload, ChevronRight, Home, Loader2 } from "lucide-react";
@@ -227,6 +227,7 @@ interface Ritning {
   status: string;
   annat: string;
   fileId?: string; // Används för att hålla reda på PDF-filer för uppladdade ritningar
+  projectId?: number; // ID för det projekt ritningen tillhör
 }
 
 export default function RitningarPage() {
@@ -761,10 +762,12 @@ export default function RitningarPage() {
       {selectedFile && (
         <div className="fixed inset-0 z-50 bg-background/80">
           <EnhancedPDFViewer
-            fileId={(selectedFile.fileData as any)?.fileId || `file_${Date.now()}`}
+            fileId={Number(selectedFile.fileData?.id) || (selectedFile.fileData as any)?.fileId || `file_${Date.now()}`}
             initialUrl={selectedFile.fileUrl || ""}
             filename={selectedFile.fileData?.filename || "Dokument"}
             onClose={() => setSelectedFile(null)}
+            projectId={currentProject?.id || null}
+            useDatabase={true} // Använd databasen istället för localStorage för att spara anmärkningar
           />
         </div>
       )}

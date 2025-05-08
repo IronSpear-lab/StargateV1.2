@@ -106,10 +106,13 @@ const statusColors = {
 };
 
 interface EnhancedPDFViewerProps {
-  fileId: string;
+  fileId: string | number;
   initialUrl: string;
   filename: string;
   onClose?: () => void;
+  projectId?: number | null;
+  useDatabase?: boolean;
+  file?: File | null;
 }
 
 type Position = { x: number; y: number };
@@ -118,7 +121,10 @@ export default function EnhancedPDFViewer({
   fileId,
   initialUrl,
   filename,
-  onClose
+  onClose,
+  projectId,
+  useDatabase = false,
+  file
 }: EnhancedPDFViewerProps) {
   const { user } = useAuth();
   const { projectMembers, currentProject } = useProject();
