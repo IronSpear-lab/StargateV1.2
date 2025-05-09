@@ -44,7 +44,8 @@ import {
   Link as LinkIcon,
   Eye,
   Clock,
-  ClipboardList
+  ClipboardList,
+  Calendar as CalendarIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -59,6 +60,10 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { addPdfViewerAnimations, centerElementInView } from "@/lib/ui-utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format, addDays } from "date-fns";
+import { sv } from 'date-fns/locale';
 
 // Configure react-pdf worker is handled by pdf-worker-config.ts
 
@@ -81,6 +86,7 @@ export interface PDFAnnotation {
   createdAt: string;
   assignedTo?: string;
   taskId?: string;
+  deadline?: string; // Deadline för annotationen
 }
 
 // Add type declaration to augment the ApiPDFAnnotation interface
@@ -163,6 +169,7 @@ export default function EnhancedPDFViewer({
   const [newComment, setNewComment] = useState('');
   const [newTask, setNewTask] = useState('');
   const [assignTo, setAssignTo] = useState<string | undefined>(undefined);
+  const [deadline, setDeadline] = useState<Date | undefined>(addDays(new Date(), 14)); // Standard deadline 2 veckor framåt
   const [tempAnnotation, setTempAnnotation] = useState<Partial<PDFAnnotation> | null>(null);
   
   // Version management
