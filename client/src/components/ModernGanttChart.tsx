@@ -6,10 +6,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ZoomIn, ZoomOut, Filter, Plus, FileDown, ChevronDown, ChevronRight, CircleDashed, CheckCircle2, Clock, AlertTriangle, Trash2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, Filter, Plus, FileDown, ChevronDown, ChevronRight, CircleDashed, CheckCircle2, Clock, AlertTriangle, Trash2, UserCog } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
 
 // Interface för uppgifter i Gantt-diagrammet
 export interface GanttTask {
@@ -1074,6 +1075,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                 <TableHead className="py-2 w-24">Start Date</TableHead>
                 <TableHead className="py-2 w-24">End Date</TableHead>
                 <TableHead className="py-2 w-20">Duration</TableHead>
+                <TableHead className="py-2 w-24">Ansvarig</TableHead>
                 <TableHead className="py-2 w-10">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -1132,6 +1134,25 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                   <TableCell className="py-2">{format(parseISO(task.endDate), 'yyyy-MM-dd')}</TableCell>
                   <TableCell className="py-2">
                     {task.type === 'MILESTONE' ? '-' : `${task.duration} dagar`}
+                  </TableCell>
+                  <TableCell className="py-2">
+                    {task.assigneeName ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <div className="flex items-center">
+                              <UserCog className="h-4 w-4 mr-1 text-muted-foreground" />
+                              <span className="text-xs truncate max-w-[90px]">{task.assigneeName}</span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Tilldelad till: {task.assigneeName}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Inte tilldelad</span>
+                    )}
                   </TableCell>
                   <TableCell className="py-2">
                     <Button
@@ -1375,6 +1396,45 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                 className="col-span-3"
                 disabled={newTask.type === 'MILESTONE'}
               />
+            </div>
+
+            {/* Välja ansvarig person */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="task-assignee" className="text-right text-sm">
+                <UserCog className="h-4 w-4 inline mr-1" />
+                Ansvarig
+              </label>
+              <Select
+                value={newTask.assigneeId?.toString() || "none"}
+                onValueChange={(value) => {
+                  if (value === "none") {
+                    setNewTask({ 
+                      ...newTask, 
+                      assigneeId: null, 
+                      assigneeName: null 
+                    });
+                  } else {
+                    const selectedMember = projectMembers.find(m => m.id.toString() === value);
+                    setNewTask({
+                      ...newTask,
+                      assigneeId: selectedMember ? Number(value) : null,
+                      assigneeName: selectedMember ? selectedMember.username : null
+                    });
+                  }
+                }}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Välj ansvarig" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Ingen tilldelad</SelectItem>
+                  {projectMembers.map((member) => (
+                    <SelectItem key={member.id} value={member.id.toString()}>
+                      {member.username}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           
