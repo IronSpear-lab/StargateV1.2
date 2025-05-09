@@ -412,23 +412,25 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
             Se alla
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
-          <DialogHeader>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="pb-4">
             <DialogTitle>Alla dina tilldelade uppgifter</DialogTitle>
             <DialogDescription>
               {allAnnotations.length} uppgifter som kräver din uppmärksamhet
             </DialogDescription>
           </DialogHeader>
           
-          <ScrollArea className="flex-1 max-h-[60vh] pr-4 mt-2">
-            <div className="space-y-2 divide-y">
-              {allAnnotations.map(annotation => (
-                <div key={`all-annotation-${annotation.id}`} className="pt-2">
-                  {renderCompactAnnotation(annotation)}
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
+          <div className="flex-1 overflow-hidden">
+            <ScrollArea className="h-[50vh] pr-4 mt-2">
+              <div className="space-y-2 divide-y">
+                {allAnnotations.map(annotation => (
+                  <div key={`all-annotation-${annotation.id}`} className="pt-2">
+                    {renderCompactAnnotation(annotation)}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
     );
