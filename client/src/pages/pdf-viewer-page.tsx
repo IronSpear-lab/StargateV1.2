@@ -5,8 +5,9 @@ import { Sidebar } from "@/components/Sidebar";
 import EnhancedPDFViewer from "@/components/EnhancedPDFViewer";
 import { useQuery } from "@tanstack/react-query";
 import { getPDFVersionContent } from "@/lib/pdf-utils";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 
 export default function PDFViewerPage() {
   const [, setLocation] = useLocation();
@@ -51,6 +52,12 @@ export default function PDFViewerPage() {
     setIsSidebarOpen(!isSidebarOpen);
   };
   
+  // Hantera "Tillbaka"-knappen - navigera tillbaka till dashboard
+  const handleBack = () => {
+    console.log("Navigerar tillbaka till dashboard");
+    setLocation("/");
+  };
+  
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar className={isSidebarOpen ? "" : "hidden"} />
@@ -58,7 +65,24 @@ export default function PDFViewerPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header title="PDF Viewer" onToggleSidebar={toggleSidebar} />
         
-        <main className="flex-1 overflow-y-auto p-4">
+        <div className="border-b bg-white px-4 py-2 flex items-center">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="gap-1 mr-auto" 
+            onClick={handleBack}
+          >
+            <ArrowLeft className="h-4 w-4" /> Tillbaka
+          </Button>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Versioner</span>
+            <span className="text-sm font-medium ml-4">Markera område</span>
+            <span className="text-sm font-medium ml-4">Ny version</span>
+          </div>
+        </div>
+        
+        <main className="flex-1 overflow-y-auto">
           {isLoading ? (
             <div className="w-full h-full flex items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
