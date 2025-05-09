@@ -1091,7 +1091,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
         const taskData = {
           title: newTask.name,
           status: apiStatus,
-          type: apiType,
+          type: "gantt", // Explicit sätta typen till "gantt" för uppgifter i Gantt-vyn
           projectId: projectId,
           startDate: newTask.startDate,
           endDate: endDate,
