@@ -537,24 +537,14 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     console.log(`FileExplorer: ⚠️ HELT NY TRÄDBYGGNAD - byggTree start ⚠️`);
     console.log("FOLDERSDATA DETALJVY:", JSON.stringify(foldersData, null, 2));
     
-    // FORCE-LÄGG TILL TESTMAPPAR FÖR DEBUGGING
-    // Detta är endast för felsökning och bör tas bort när problemet är löst
-    const debugFolders = [
-      { id: 999, name: "DEBUG-TEST", projectId: currentProject.id, parentId: null },
-      { id: 998, name: "DEBUG-CHILD", projectId: currentProject.id, parentId: 999 }
-    ];
-    
+    // Vi ska inte längre lägga till testmappar
     // Filtrera och se till att vi bara använder mappar från aktuellt projekt
     const projectFolders = foldersData.filter((folder: FolderData) => 
       folder && folder.projectId && folder.projectId.toString() === currentProject.id.toString()
     );
     
-    // Lägg till testmappar för felsökning om inga mappar hittades
+    // Använd de filtrerade projektmapparna för fortsatt bearbetning
     let workingFolders = [...projectFolders];
-    if (projectFolders.length === 0) {
-      console.warn("🔴 INGA MAPPAR HITTADES - LÄGGER TILL TESTMAPPAR FÖR DEBUGGING");
-      workingFolders = [...debugFolders as any];
-    }
     
     console.log(`FileExplorer: ${workingFolders.length} mappar tillhör projekt ${currentProject.id}`);
     console.log("PROJEKTMAPPAR:", JSON.stringify(workingFolders, null, 2));
