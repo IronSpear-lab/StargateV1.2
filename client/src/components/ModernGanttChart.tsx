@@ -250,7 +250,7 @@ interface ModernGanttChartProps {
   focusTaskId?: string | null;
 }
 
-const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
+const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTaskId = null }) => {
   const { toast } = useToast();
   
   // Hämta projektmedlemmar för att kunna tilldela uppgifter
@@ -495,6 +495,60 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
       console.log('Uppdaterade tasks state med API-data:', apiTasks.length, 'uppgifter');
     }
   }, [apiTasks, isLoadingTasks]);
+  
+  // Lyssna efter förändringar i focusTaskId och öppna uppgiften om den finns
+  useEffect(() => {
+    if (focusTaskId && apiTasks && apiTasks.length > 0 && !isLoadingTasks) {
+      console.log(`Letar efter fokuserad uppgift med ID: ${focusTaskId} i ${apiTasks.length} uppgifter`);
+      const focusedTask = apiTasks.find((task: GanttTask) => task.id.toString() === focusTaskId);
+      
+      if (focusedTask) {
+        console.log("Fokuserad gantt-uppgift hittad:", focusedTask);
+        
+        // Hitta förälderfaser och expandera dem för att visa uppgiften
+        if (focusedTask.parentId) {
+          setTasks(prev => {
+            return prev.map(task => {
+              if (task.id === focusedTask.parentId) {
+                return { ...task, expanded: true };
+              }
+              return task;
+            });
+          });
+        }
+        
+        // Skrolla till uppgiften i Gantt-diagrammet
+        setTimeout(() => {
+          const taskElement = document.getElementById(`gantt-task-${focusedTask.id}`);
+          if (taskElement) {
+            taskElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            taskElement.classList.add('highlight-task');
+            setTimeout(() => {
+              taskElement.classList.remove('highlight-task');
+            }, 3000); // Ta bort highlight efter 3 sekunder
+          }
+        }, 500);
+        
+        // Öppna redigeringsdialogen för uppgiften
+        setEditingTaskId(focusedTask.id);
+        setNewTask({
+          type: focusedTask.type,
+          status: focusedTask.status,
+          project: focusedTask.project,
+          name: focusedTask.name,
+          startDate: focusedTask.startDate,
+          endDate: focusedTask.endDate,
+          duration: focusedTask.duration,
+          assigneeId: focusedTask.assigneeId || null,
+          assigneeName: focusedTask.assigneeName || null
+        });
+        setIsEditMode(true);
+        setShowCreateDialog(true);
+      } else {
+        console.log(`Uppgift med ID ${focusTaskId} hittades inte i Gantt-vyn för projektet`);
+      }
+    }
+  }, [focusTaskId, apiTasks, isLoadingTasks]);
   
   // Spara uppgifter till localStorage när de ändras
   useEffect(() => {
@@ -1494,6 +1548,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                   
                   {/* Uppgiftsstapel */}
                   <div 
+                    id={`gantt-task-${task.id}`}
                     style={getTaskBarStyle(task)}
                     onClick={(e) => {
                       e.stopPropagation();
