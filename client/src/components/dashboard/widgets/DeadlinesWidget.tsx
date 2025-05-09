@@ -27,64 +27,67 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
   const { data: deadlinesData, isLoading } = useQuery({
     queryKey: ['deadlines', projectId],
     queryFn: async () => {
-      // Simulate API call - in real implementation, replace with actual API call
-      try {
-        const response = await fetch(`/api/deadlines${projectId ? `?projectId=${projectId}` : ''}`);
-        if (!response.ok) {
-          // Return sample data for demonstration
-          return [
-            {
-              id: "1",
-              title: "Frontend Code Review",
-              description: "Review the UI component implementation for the dashboard feature",
-              dueDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(),
-              category: "Development",
-              priority: "high",
-              completed: false
-            },
-            {
-              id: "2",
-              title: "API Documentation Update",
-              description: "Update the documentation for the new auth endpoints",
-              dueDate: new Date(new Date().setDate(new Date().getDate() + 3)).toISOString(),
-              category: "Documentation",
-              priority: "medium",
-              completed: false
-            },
-            {
-              id: "3",
-              title: "Q2 Sprint Planning",
-              description: "Finalize the scope and tasks for the next sprint",
-              dueDate: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString(),
-              category: "Planning",
-              priority: "high",
-              completed: false
-            },
-            {
-              id: "4",
-              title: "Security Audit Report",
-              description: "Complete the security vulnerability report for last month",
-              dueDate: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
-              category: "Security",
-              priority: "high",
-              completed: false
-            },
-            {
-              id: "5",
-              title: "User Testing Session",
-              description: "Conduct user testing for the new feature with the team",
-              dueDate: new Date(new Date().setDate(new Date().getDate() + 10)).toISOString(),
-              category: "QA",
-              priority: "medium",
-              completed: false
-            }
-          ];
+      // För demos använder vi alltid mockdata för deadlines
+      const mockDeadlines = [
+        {
+          id: "1",
+          title: "Frontend Code Review",
+          description: "Review the UI component implementation for the dashboard feature",
+          dueDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(),
+          category: "Development",
+          priority: "high",
+          completed: false
+        },
+        {
+          id: "2",
+          title: "API Documentation Update",
+          description: "Update the documentation for the new auth endpoints",
+          dueDate: new Date(new Date().setDate(new Date().getDate() + 3)).toISOString(),
+          category: "Documentation",
+          priority: "medium",
+          completed: false
+        },
+        {
+          id: "3",
+          title: "Q2 Sprint Planning",
+          description: "Finalize the scope and tasks for the next sprint",
+          dueDate: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString(),
+          category: "Planning",
+          priority: "high",
+          completed: false
+        },
+        {
+          id: "4",
+          title: "Security Audit Report",
+          description: "Complete the security vulnerability report for last month",
+          dueDate: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
+          category: "Security",
+          priority: "high",
+          completed: false
+        },
+        {
+          id: "5",
+          title: "User Testing Session",
+          description: "Conduct user testing for the new feature with the team",
+          dueDate: new Date(new Date().setDate(new Date().getDate() + 10)).toISOString(),
+          category: "QA",
+          priority: "medium",
+          completed: false
         }
-        return await response.json();
-      } catch (error) {
-        console.error("Error fetching deadlines:", error);
-        return [];
-      }
+      ];
+      
+      // För produktion, avkommentera denna kod:
+      // try {
+      //   const response = await fetch(`/api/deadlines${projectId ? `?projectId=${projectId}` : ''}`);
+      //   if (response.ok) {
+      //     return await response.json();
+      //   }
+      // } catch (error) {
+      //   console.error("Error fetching deadlines:", error);
+      // }
+      
+      // Returnera mockdata för demo
+      return mockDeadlines;
     }
   });
 
