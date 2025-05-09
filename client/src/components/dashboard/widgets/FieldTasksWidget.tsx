@@ -393,7 +393,7 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
             Se alla
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col" closeButton={false}>
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>Alla PDF-kommentarer</DialogTitle>
