@@ -802,41 +802,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Loggning av resultatet före svaret för att kunna felsöka bättre
       console.log(`/api/files - SVARAR med ${fileList.length} filer:`, fileList.map(f => `${f.id}: ${f.name}`).join(', '));
       
-      // Om listan är tom, skicka ett mock-svar för testning (BARA FÖR UTVECKLING)
-      if (fileList.length === 0 && process.env.NODE_ENV !== 'production') {
-        console.log('/api/files - VARNING: Tom fillista, skickar dummy-data för testning');
-        const dummyFiles = [];
-        
-        // Lägg till testmappar baserat på folderId om det finns
-        if (folderId) {
-          dummyFiles.push({
-            id: 901,
-            name: `Test File in Folder ${folderId}.pdf`,
-            fileType: 'application/pdf',
-            fileSize: 1024 * 100,
-            projectId: projectId,
-            folderId: folderId,
-            uploadDate: new Date(),
-            uploaderId: req.user!.id,
-            filePath: '/path/to/test.pdf'
-          });
-        } else {
-          // Rotfiler om ingen folderId
-          dummyFiles.push({
-            id: 902,
-            name: 'Root Test File.pdf',
-            fileType: 'application/pdf',
-            fileSize: 1024 * 200,
-            projectId: projectId,
-            folderId: null,
-            uploadDate: new Date(),
-            uploaderId: req.user!.id,
-            filePath: '/path/to/root-test.pdf'
-          });
-        }
-        
-        fileList = dummyFiles;
-      }
+      // TA BORT DUMMY-DATA:
+      // Vi ska inte längre använda dummy-data eftersom detta orsakar problem med visning av filer
+      // i fel mappar. Istället respekterar vi den faktiska mappstrukturen.
+      // Om listan är tom, returnera bara en tom array.
       
       res.json(fileList);
     } catch (error) {
