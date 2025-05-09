@@ -28,7 +28,18 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   // Default to dark if not found
   const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || "dark"
+    () => {
+      try {
+        // Check if localStorage is available
+        if (typeof localStorage !== 'undefined') {
+          return (localStorage.getItem(storageKey) as Theme) || "dark";
+        }
+        return "dark";
+      } catch (error) {
+        console.error("Error accessing localStorage:", error);
+        return "dark";
+      }
+    }
   );
 
   useEffect(() => {
@@ -51,8 +62,15 @@ export function ThemeProvider({
   const value = {
     theme,
     setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(storageKey, theme);
+        }
+        setTheme(theme);
+      } catch (error) {
+        console.error("Error setting theme in localStorage:", error);
+        setTheme(theme);
+      }
     },
   };
 

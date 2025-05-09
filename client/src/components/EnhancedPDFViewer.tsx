@@ -8,6 +8,10 @@ import "react-pdf/dist/esm/Page/TextLayer.css";
 import { configurePdfWorker, configureAlternativePdfLoading } from '@/lib/pdf-worker-config';
 import { useToast } from "@/hooks/use-toast";
 import { toast } from "@/hooks/use-toast";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { sv } from "date-fns/locale";
 import { 
   getPDFVersionContent, 
   getLatestPDFVersion, 
@@ -60,10 +64,7 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { addPdfViewerAnimations, centerElementInView } from "@/lib/ui-utils";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { format, addDays } from "date-fns";
-import { sv } from 'date-fns/locale';
+import { addDays } from "date-fns";
 
 // Configure react-pdf worker is handled by pdf-worker-config.ts
 
