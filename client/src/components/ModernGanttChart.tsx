@@ -26,6 +26,8 @@ export interface GanttTask {
   expanded?: boolean;
   parentId?: number;
   level?: number;
+  assigneeId?: number | null;
+  assigneeName?: string | null;
 }
 
 // Demo-data för Gantt-diagrammet - helt separerad från tasks API
