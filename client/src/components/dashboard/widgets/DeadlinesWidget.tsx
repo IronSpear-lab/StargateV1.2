@@ -1,11 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, ChevronRight, AlertCircle, Clock, MapPin } from "lucide-react";
+import { Calendar, ChevronRight, AlertCircle, Clock, MapPin, MessageSquare, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { useLocation } from "wouter";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 // Traditionella field task-objekt (matchande FieldTasksWidget)
 interface FieldTask {
@@ -284,6 +294,227 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
     return `Om ${daysUntil} dagar`;
   };
   
+  // Få initialer från ett namn
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
+  };
+
+  // Få en slumpmässig pastellfärg som bakgrund baserat på namnet
+  const getAvatarColor = (name: string) => {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+
+    const colors = [
+      "bg-blue-200", "bg-green-200", "bg-yellow-200", 
+      "bg-red-200", "bg-purple-200", "bg-pink-200",
+      "bg-indigo-200", "bg-teal-200"
+    ];
+    
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
+  };
+
+  // PDF-statusetiketter
+  const pdfStatusLabels: Record<PdfAnnotation["status"], string> = {
+    "new_comment": "Ny kommentar",
+    "action_required": "Åtgärd krävs",
+    "rejected": "Avvisad",
+    "new_review": "Under granskning",
+    "other_forum": "Annat forum",
+    "resolved": "Löst"
+  };
+
+  // Stilar för olika statusar
+  const statusStyles: Record<string, { bg: string, text: string, icon?: JSX.Element }> = {
+    pending: { 
+      bg: "bg-[#727cf5]/10", 
+      text: "text-[#727cf5]",
+      icon: <Clock className="h-3 w-3 mr-1" />
+    },
+    in_progress: { 
+      bg: "bg-[#ffc35a]/10", 
+      text: "text-[#ffc35a]",
+      icon: <Calendar className="h-3 w-3 mr-1" />
+    },
+    completed: { 
+      bg: "bg-[#0acf97]/10", 
+      text: "text-[#0acf97]" 
+    },
+    cancelled: { 
+      bg: "bg-[#fa5c7c]/10", 
+      text: "text-[#fa5c7c]" 
+    },
+  };
+
+  // Visa alla deadlines dialog
+  const AllDeadlinesDialog = () => {
+    // Sortera alla deadlines i kombinerade items (inte bara de första 'limit' antal)
+    const sortedDeadlines = combinedItems.sort((a, b) => {
+      const dateA = new Date(getDeadlineDate(a)).getTime();
+      const dateB = new Date(getDeadlineDate(b)).getTime();
+      return dateA - dateB; // Sortera stigande (tidiga deadlines först)
+    });
+
+    const openDialog = () => {
+      console.log("Öppnar dialog med följande sorterade deadlines:", sortedDeadlines);
+      console.log("Deadlines per typ:", {
+        "task": sortedDeadlines.filter(item => item.type === "task").length,
+        "pdf_annotation": sortedDeadlines.filter(item => item.type === "pdf_annotation").length
+      });
+    };
+
+    // Visa PDF-kommentar i dialogen
+    const renderPdfAnnotation = (annotation: PdfAnnotation) => {
+      const status = getItemStatus({ type: "pdf_annotation", data: annotation });
+      
+      return (
+        <div 
+          className="flex py-2.5 px-3 rounded-md hover:bg-gray-50 transition-colors cursor-pointer group"
+          onClick={() => handleItemClick({ type: "pdf_annotation", data: annotation })}
+        >
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className={cn(
+                  "px-2 py-0.5 rounded text-xs",
+                  statusStyles[status].bg,
+                  statusStyles[status].text
+                )}>
+                  <div className="flex items-center">
+                    {statusStyles[status].icon}
+                    <span>{pdfStatusLabels[annotation.status]}</span>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500">PDF</div>
+              </div>
+              
+              <Avatar className="h-6 w-6">
+                <AvatarImage src="" alt={annotation.createdBy} />
+                <AvatarFallback className={getAvatarColor(annotation.createdBy)}>
+                  {getInitials(annotation.createdBy)}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+            
+            <div className="text-sm font-medium mt-0.5 text-gray-900">
+              {annotation.comment || "PDF-kommentar"}
+            </div>
+            
+            <div className="mt-1.5 flex items-center space-x-4">
+              <div className="text-xs text-gray-500 flex items-center">
+                <FileText className="h-3 w-3 mr-1 text-[#727cf5]" />
+                <span className="truncate">{annotation.fileName}</span>
+              </div>
+              
+              <div className="text-xs text-gray-500 flex items-center">
+                <MessageSquare className="h-3 w-3 mr-1 text-[#ffc35a]" />
+                {annotation.projectName}
+              </div>
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+      );
+    };
+
+    // Visa uppgift i dialogen
+    const renderTask = (task: FieldTask) => {
+      return (
+        <div className="flex py-2.5 px-3 rounded-md hover:bg-gray-50 transition-colors cursor-pointer group">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className={cn(
+                  "px-2 py-0.5 rounded text-xs",
+                  statusStyles[task.status].bg,
+                  statusStyles[task.status].text
+                )}>
+                  <div className="flex items-center">
+                    {statusStyles[task.status].icon}
+                    <span>{task.status.replace('_', ' ')}</span>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500">{task.taskType}</div>
+              </div>
+              
+              <Avatar className="h-6 w-6">
+                <AvatarImage src={task.assigneeAvatar} alt={task.assignee} />
+                <AvatarFallback className={getAvatarColor(task.assignee)}>
+                  {getInitials(task.assignee)}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+            
+            <div className="text-sm font-medium mt-0.5 text-gray-900">{task.title}</div>
+            
+            <div className="mt-1.5 flex items-center space-x-4">
+              <div className="text-xs text-gray-500 flex items-center">
+                <MapPin className="h-3 w-3 mr-1 text-[#727cf5]" />
+                <span className="truncate">{task.location}</span>
+              </div>
+              
+              <div className="text-xs text-gray-500 flex items-center">
+                <Calendar className="h-3 w-3 mr-1 text-[#ffc35a]" />
+                {format(parseISO(task.scheduledDate), "MMM d, HH:mm")}
+              </div>
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+      );
+    };
+
+    // Rendera item baserat på typ
+    const renderItem = (item: DeadlineItem, index: number) => {
+      console.log(`Renderar deadline ${index}:`, item);
+      return (
+        <div key={`all-${item.type}-${item.data.id}`} className="pt-2">
+          {item.type === "pdf_annotation" 
+            ? renderPdfAnnotation(item.data)
+            : renderTask(item.data)
+          }
+        </div>
+      );
+    };
+    
+    return (
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-7 px-2 text-blue-600 text-xs font-normal"
+            onClick={openDialog}
+          >
+            Visa alla
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="pb-4">
+            <DialogTitle>Alla kommande deadlines</DialogTitle>
+            <DialogDescription>
+              {sortedDeadlines.length} uppgifter med deadlines som kräver din uppmärksamhet
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-hidden">
+            <ScrollArea className="h-[50vh] pr-4 mt-2">
+              <div className="space-y-2 divide-y">
+                {sortedDeadlines.map((item, index) => renderItem(item, index))}
+              </div>
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-3">
@@ -292,14 +523,7 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
           <span>Kommande deadlines</span>
         </div>
         
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="h-7 px-2 text-blue-600 text-xs font-normal"
-          onClick={() => setLocation('/deadlines')}
-        >
-          Visa alla
-        </Button>
+        <AllDeadlinesDialog />
       </div>
       
       <ScrollArea className="flex-1 pr-4">
