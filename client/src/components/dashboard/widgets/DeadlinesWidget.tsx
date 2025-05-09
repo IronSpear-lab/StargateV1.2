@@ -141,6 +141,18 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
     }
   };
 
+  // Logga uppgifternas datum för att debugga
+  (tasks || []).forEach((task: FieldTask, index) => {
+    console.log(`DeadlinesWidget Task ${index}:`, {
+      id: task.id,
+      title: task.title,
+      startDate: task.startDate,
+      endDate: task.endDate,
+      dueDate: task.dueDate,
+      scheduledDate: task.scheduledDate
+    });
+  });
+
   // Kombinera uppgifter och PDF-kommentarer till deadline-items
   const combinedItems: DeadlineItem[] = [
     ...(tasks || [])
