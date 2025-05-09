@@ -704,8 +704,8 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   });
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({
     "-Planning": false,
-    "-Vault": true,
-    "-Vault-Files": true
+    "-Vault": false,
+    "-Vault-Files": false
   });
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [selectedParentFolder, setSelectedParentFolder] = useState("");
@@ -790,16 +790,12 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               setUserCreatedFolders(filteredFolders);
               
               // Öppna Files-sektionen automatiskt om det finns mappar
+              // Ta bort automatisk öppning av Vault och Files när det finns mappar
+              // Om användaren vill se mapparna får de öppna Vault manuellt
               if (filteredFolders.length > 0) {
-                console.log("Det finns mappar, säkerställer att Files-sektionen är öppen");
-                // Öppna Vault-sektionen om den inte redan är öppen
-                if (!openSections.includes("vault")) {
-                  toggleSection("vault");
-                }
-                // Öppna Files-undermenyn om den inte redan är öppen
-                if (!openItems["file_folders"]) {
-                  toggleItem("file_folders");
-                }
+                console.log("Det finns mappar, men vi öppnar inte Vault automatiskt längre");
+                // Kommentera bort automatisk öppning av Vault och Files
+                // Låt användaren öppna dessa sektioner själv
               }
             }
           } catch (e) {
