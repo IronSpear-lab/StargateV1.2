@@ -204,7 +204,13 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
   // Handle task creation
   const createTaskMutation = useMutation({
     mutationFn: async (taskData: Partial<Task>) => {
-      const response = await apiRequest('POST', '/api/tasks', taskData);
+      // Säkerställ att type-fältet är satt till "kanban" för alla uppgifter i Kanban-vyn
+      const taskDataWithType = {
+        ...taskData,
+        type: "kanban" // Explicit sätta typen
+      };
+      
+      const response = await apiRequest('POST', '/api/tasks', taskDataWithType);
       return await response.json();
     },
     onSuccess: () => {
@@ -231,7 +237,13 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
   // Handle task updates (when dragging/resizing ends)
   const updateTaskMutation = useMutation({
     mutationFn: async (task: Partial<Task> & { id: number }) => {
-      const response = await apiRequest('PATCH', `/api/tasks/${task.id}`, task);
+      // Säkerställ att type-fältet är satt till "kanban" för alla uppgifter i Kanban-vyn
+      const taskDataWithType = {
+        ...task,
+        type: "kanban" // Explicit sätta typen
+      };
+      
+      const response = await apiRequest('PATCH', `/api/tasks/${task.id}`, taskDataWithType);
       return await response.json();
     },
     onSuccess: () => {
