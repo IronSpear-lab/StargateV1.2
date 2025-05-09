@@ -75,7 +75,8 @@ export interface PDFAnnotation {
   createdBy?: string;
   createdById?: number;
   assignedTo?: string; // Lägg till tilldelad användare
-  taskId?: string; // Task ID referens
+  taskId?: string | null; // Task ID referens
+  deadline?: string | null; // Deadline för annotationen
 }
 
 // Hämta alla versioner för en PDF-fil

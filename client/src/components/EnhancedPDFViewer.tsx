@@ -358,8 +358,9 @@ export default function EnhancedPDFViewer({
             
             // Load annotations - filter by project if available
             const projectIdToUse = projectId || (currentProject ? currentProject.id : undefined);
-            const annots = await getPDFAnnotations(numericFileId, projectIdToUse);
-            console.log(`PDF-annotationer från API:`, JSON.stringify(annots, null, 2));
+            // Använd latestVersion.id (versions-ID) istället för numericFileId (fil-ID) för att hämta annotationer
+            const annots = await getPDFAnnotations(parseInt(latestVersion.id), projectIdToUse);
+            console.log(`PDF-annotationer från API för versionId ${latestVersion.id}:`, JSON.stringify(annots, null, 2));
             
             if (annots && annots.length > 0) {
               const uiAnnotations: PDFAnnotation[] = annots.map(anno => ({
@@ -380,8 +381,9 @@ export default function EnhancedPDFViewer({
                     anno.createdAt : new Date().toISOString()) : 
                   new Date().toISOString(),
                 assignedTo: anno.assignedTo,
-                taskId: anno.id?.toString(),
-                pdfVersionId: anno.pdfVersionId // Viktig för korrekt hantering av PDF-versioner
+                taskId: anno.taskId?.toString() || null, // Använd anno.taskId istället för anno.id
+                pdfVersionId: anno.pdfVersionId, // Viktig för korrekt hantering av PDF-versioner
+                deadline: anno.deadline // Lägg till deadline i UI-objektet
               }));
               
               setAnnotations(uiAnnotations);
@@ -553,7 +555,9 @@ export default function EnhancedPDFViewer({
                     status: annotation.status,
                     createdAt: annotation.createdAt,
                     createdBy: annotation.createdBy,
-                    assignedTo: annotation.assignedTo
+                    assignedTo: annotation.assignedTo,
+                    taskId: annotation.taskId || null,
+                    deadline: annotation.deadline || null
                   };
                   
                   return await savePDFAnnotation(numericFileId, annotationToSave);
@@ -835,6 +839,7 @@ export default function EnhancedPDFViewer({
       createdAt: new Date().toISOString(),
       assignedTo: user.username, // Tilldela kommentaren automatiskt till inloggad användare
       deadline: defaultDeadline.toISOString(), // Sätt standarddeadline två veckor fram
+      taskId: null // Explicit sätt taskId till null för nya annotationer
     };
     
     if (newAnnotation.rect.width > 10 / scale && newAnnotation.rect.height > 10 / scale) {
