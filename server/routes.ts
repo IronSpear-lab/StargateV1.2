@@ -1124,6 +1124,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         taskData.createdAt = new Date(taskData.createdAt);
       }
       
+      // Säkerställ att type-fältet är korrekt satt
+      if (!taskData.type) {
+        // Försök avgöra typen om den inte explicit angetts
+        if (taskData.startDate && taskData.endDate) {
+          taskData.type = "gantt";
+          console.log("Task type auto-set to 'gantt' based on having both startDate and endDate.");
+        } else {
+          taskData.type = "kanban";
+          console.log("Task type defaulted to 'kanban' as no explicit type was specified.");
+        }
+      } else {
+        console.log(`Creating task with explicit type: ${taskData.type}`);
+      }
+      
       const task = await storage.createTask({
         ...taskData,
         createdById: req.user?.id || taskData.createdById || 1
@@ -1147,6 +1161,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (taskData.dueDate === '') taskData.dueDate = null;
       if (taskData.startDate === '') taskData.startDate = null;
       if (taskData.endDate === '') taskData.endDate = null;
+      
+      // Om taskData.type är satt till explicit "" (tom sträng), ersätt med null
+      if (taskData.type === '') {
+        taskData.type = null;
+      }
+      
+      // Om type är null eller inte finns med, behåll den befintliga typen med fallback till "kanban"
+      if (taskData.type === null || taskData.type === undefined) {
+        // Hämta den befintliga uppgiften för att få dess typ
+        const existingTask = await db.query.tasks.findFirst({
+          where: eq(tasks.id, taskId),
+          columns: {
+            type: true
+          }
+        });
+        
+        if (existingTask) {
+          // Använd befintlig typ eller defaulta till "kanban" om typ saknas
+          taskData.type = existingTask.type || "kanban";
+          console.log(`Preserving existing task type: ${taskData.type}`);
+        } else {
+          // Om uppgiften av någon anledning inte kan hittas, använd "kanban" som standard
+          taskData.type = "kanban";
+          console.log(`Task ${taskId} not found, defaulting type to "kanban"`);
+        }
+      } else {
+        console.log(`Updating task with explicit type: ${taskData.type}`);
+      }
       
       const task = await storage.updateTask(taskId, taskData);
       res.json(task);
