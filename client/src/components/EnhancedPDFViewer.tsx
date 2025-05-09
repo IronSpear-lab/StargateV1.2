@@ -117,13 +117,17 @@ const statusColors = {
 };
 
 interface EnhancedPDFViewerProps {
-  fileId: string | number;
-  initialUrl: string;
-  filename: string;
+  fileId?: string | number;
+  initialUrl?: string;
+  filename?: string;
   onClose?: () => void;
   projectId?: number | null;
   useDatabase?: boolean;
   file?: File | null;
+  // Parameters for direct PDF viewing with annotations
+  versionId?: number;
+  pdfFile?: Blob | null;
+  highlightAnnotationId?: number;
 }
 
 type Position = { x: number; y: number };
@@ -135,7 +139,10 @@ export default function EnhancedPDFViewer({
   onClose,
   projectId,
   useDatabase = false,
-  file
+  file,
+  versionId,
+  pdfFile,
+  highlightAnnotationId
 }: EnhancedPDFViewerProps) {
   const { user } = useAuth();
   const { projectMembers, currentProject } = useProject();
@@ -230,12 +237,73 @@ export default function EnhancedPDFViewer({
 
   // Load PDF data when component mounts
   useEffect(() => {
+    // Om vi får direkta parametrar (versionId och pdfFile), använd dessa istället för att ladda från databasen
+    if (versionId && pdfFile) {
+      console.log(`Använder direkt versionId: ${versionId} och pdfFile (Blob)`);
+      const blobUrl = URL.createObjectURL(pdfFile);
+      setPdfUrl(blobUrl);
+      setActiveVersionId(versionId);
+      
+      // Ladda annotationer om versionId är tillgängligt
+      if (versionId) {
+        const loadAnnotations = async () => {
+          try {
+            const annots = await getPDFAnnotations(versionId, projectId);
+            console.log(`Hämtade ${annots.length} annotationer för versionId: ${versionId}`);
+            
+            if (annots && annots.length > 0) {
+              const uiAnnotations: PDFAnnotation[] = annots.map(anno => ({
+                id: anno.id?.toString() || `anno_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                rect: {
+                  x: anno.rect.x,
+                  y: anno.rect.y,
+                  width: anno.rect.width,
+                  height: anno.rect.height,
+                  pageNumber: anno.rect.pageNumber
+                },
+                color: anno.color || statusColors[anno.status],
+                comment: anno.comment || '',
+                status: anno.status,
+                createdBy: anno.createdBy || user?.username || 'Unknown',
+                createdAt: anno.createdAt ? 
+                  (typeof anno.createdAt === 'string' && anno.createdAt.match(/^\d{4}-\d{2}-\d{2}/) ? 
+                    anno.createdAt : new Date().toISOString()) : 
+                  new Date().toISOString(),
+                assignedTo: anno.assignedTo,
+                taskId: anno.id?.toString(),
+                pdfVersionId: anno.pdfVersionId
+              }));
+              
+              setAnnotations(uiAnnotations);
+              
+              // Markera den specificerade annotationen om highlightAnnotationId anges
+              if (highlightAnnotationId) {
+                const annotation = uiAnnotations.find(a => Number(a.id) === highlightAnnotationId);
+                if (annotation) {
+                  setActiveAnnotation(annotation);
+                  // Sätt sidebarMode till comment för att visa kommentarspanelen
+                  setSidebarMode('comment');
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Fel vid hämtning av annotationer för versionId ${versionId}:`, error);
+          }
+        };
+        
+        loadAnnotations();
+      }
+      
+      return; // Avsluta här, vi behöver inte ladda mer data
+    }
+    
     async function loadData() {
       try {
-        const numericFileId = getConsistentFileId(fileId);
+        // Fallback till fileId om versionId inte är tillgängligt
+        const numericFileId = fileId ? getConsistentFileId(fileId) : undefined;
         console.log(`[${new Date().toISOString()}] Laddar PDF-data för fileId: ${fileId} (numeriskt: ${numericFileId})`);
         
-        if (!isNaN(numericFileId) && (useDatabase || projectId)) {
+        if (numericFileId !== undefined && !isNaN(numericFileId) && (useDatabase || projectId)) {
           // Load versions
           const versions = await getPDFVersions(numericFileId);
           console.log(`PDF-versioner från API (innehåller metadata):`, JSON.stringify(versions, null, 2));
