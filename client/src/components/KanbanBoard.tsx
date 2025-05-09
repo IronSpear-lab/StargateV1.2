@@ -109,12 +109,12 @@ interface KanbanColumn {
 
 // Form validation schema for task creation/editing
 const taskFormSchema = z.object({
-  title: z.string().min(1, "Title is required"),
+  title: z.string().min(1, "Titel krävs"),
   description: z.string().optional(),
   status: z.string(),
   priority: z.string().optional(),
   type: z.string().optional(),
-  assigneeId: z.string().optional(),
+  assigneeId: z.string().optional().transform(val => val === "" ? null : val),
   projectId: z.string(),
   dueDate: z.string().optional().transform(val => val === "" ? null : val),
   startDate: z.string().optional().transform(val => val === "" ? null : val),
@@ -137,25 +137,25 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
     },
     {
       id: 'todo',
-      title: 'To Do',
+      title: 'Att göra',
       tasks: [],
       bgColor: 'bg-amber-100 dark:bg-amber-950/30'
     },
     {
       id: 'in_progress',
-      title: 'In Progress',
+      title: 'Pågående',
       tasks: [],
       bgColor: 'bg-blue-100 dark:bg-blue-950/30'
     },
     {
       id: 'review',
-      title: 'Testing',
+      title: 'Testning',
       tasks: [],
       bgColor: 'bg-purple-100 dark:bg-purple-950/30'
     },
     {
       id: 'done',
-      title: 'Done',
+      title: 'Klart',
       tasks: [],
       bgColor: 'bg-green-100 dark:bg-green-950/30'
     }
@@ -263,17 +263,17 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
         const colors = getTaskColors(task);
         
         // Format due date for display
-        let dueDateDisplay = 'No due date';
+        let dueDateDisplay = 'Inget slutdatum';
         if (task.dueDate) {
           const dueDate = new Date(task.dueDate);
           const today = new Date();
           
           if (isAfter(dueDate, today)) {
-            dueDateDisplay = `Due ${format(dueDate, 'MMM d')}`;
+            dueDateDisplay = `Klart ${format(dueDate, 'd MMM')}`;
           } else if (isBefore(dueDate, today)) {
-            dueDateDisplay = 'Overdue';
+            dueDateDisplay = 'Försenad';
           } else {
-            dueDateDisplay = 'Due today';
+            dueDateDisplay = 'Klart idag';
           }
         }
         
@@ -602,10 +602,10 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-medium">Kanban Board</h2>
+        <h2 className="text-lg font-medium">Kanban-tavla</h2>
         <Button onClick={addNewTask} className="gap-1">
           <PlusCircle className="h-4 w-4" />
-          Add Task
+          Lägg till uppgift
         </Button>
       </div>
       
@@ -700,7 +700,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                     className="w-full text-center py-2 px-3 bg-background hover:bg-muted rounded-md text-muted-foreground text-sm flex items-center justify-center gap-1 mt-2"
                   >
                     <PlusCircle className="h-4 w-4" />
-                    Add new card
+                    Lägg till kort
                   </button>
                 </DroppableColumn>
               </div>
@@ -752,11 +752,11 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
       <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>{selectedTask ? "Edit Task" : "Create New Task"}</DialogTitle>
+            <DialogTitle>{selectedTask ? "Redigera uppgift" : "Skapa ny uppgift"}</DialogTitle>
             <DialogDescription>
               {selectedTask 
-                ? "Update task details and attributes." 
-                : "Fill in the details to create a new task."}
+                ? "Uppdatera uppgiftens detaljer och attribut." 
+                : "Fyll i detaljerna för att skapa en ny uppgift."}
             </DialogDescription>
           </DialogHeader>
           
@@ -775,9 +775,9 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Title</FormLabel>
+                    <FormLabel>Titel</FormLabel>
                     <FormControl>
-                      <Input placeholder="Task title" {...field} />
+                      <Input placeholder="Uppgiftens titel" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -789,10 +789,10 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description</FormLabel>
+                    <FormLabel>Beskrivning</FormLabel>
                     <FormControl>
                       <Textarea 
-                        placeholder="Task description" 
+                        placeholder="Uppgiftens beskrivning" 
                         className="min-h-[100px]" 
                         {...field} 
                         value={field.value || ""}
@@ -816,15 +816,15 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
+                            <SelectValue placeholder="Välj status" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="backlog">Backlog</SelectItem>
-                          <SelectItem value="todo">To Do</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
-                          <SelectItem value="review">Testing</SelectItem>
-                          <SelectItem value="done">Done</SelectItem>
+                          <SelectItem value="todo">Att göra</SelectItem>
+                          <SelectItem value="in_progress">Pågående</SelectItem>
+                          <SelectItem value="review">Granskning</SelectItem>
+                          <SelectItem value="done">Klar</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -837,20 +837,20 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                   name="priority"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Priority</FormLabel>
+                      <FormLabel>Prioritet</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select priority" />
+                            <SelectValue placeholder="Välj prioritet" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="high">Hög</SelectItem>
                           <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="low">Låg</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
