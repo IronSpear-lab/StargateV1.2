@@ -393,16 +393,9 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
             Se alla
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col" closeButton={false}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle>Alla PDF-kommentarer</DialogTitle>
-              <DialogClose asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <X className="h-4 w-4" />
-                </Button>
-              </DialogClose>
-            </div>
+            <DialogTitle>Alla PDF-kommentarer</DialogTitle>
             <DialogDescription>
               {allAnnotations.length} PDF-kommentarer som kräver din uppmärksamhet
             </DialogDescription>
