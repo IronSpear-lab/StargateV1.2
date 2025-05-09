@@ -15,9 +15,19 @@ import {
   Map, 
   MapPin, 
   MessageSquare, 
-  MoreHorizontal 
+  MoreHorizontal,
+  X 
 } from "lucide-react";
 import { useLocation } from "wouter";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 // Traditionella fältuppgifter
 interface FieldTask {
@@ -330,6 +340,88 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
     }
   };
 
+  // Förbättrad visning av PDF-kommentarer - allt på en rad
+  const renderCompactAnnotation = (annotation: PdfAnnotation) => {
+    const status = mapPdfStatusToFieldStatus(annotation.status);
+    
+    return (
+      <div 
+        key={`annotation-${annotation.id}`}
+        className="flex items-center py-2 px-3 hover:bg-gray-50 transition-colors cursor-pointer rounded-md"
+        onClick={() => handlePdfAnnotationClick(annotation)}
+      >
+        <div className={cn(
+          "px-2 py-0.5 rounded text-xs mr-2 flex-shrink-0",
+          statusStyles[status].bg,
+          statusStyles[status].text
+        )}>
+          <div className="flex items-center">
+            {statusStyles[status].icon}
+            <span>{pdfStatusLabels[annotation.status]}</span>
+          </div>
+        </div>
+        
+        <div className="flex-1 flex items-center min-w-0">
+          <FileText className="h-3.5 w-3.5 text-[#727cf5] mr-1.5 flex-shrink-0" />
+          <span className="truncate text-xs font-medium">{annotation.fileName}</span>
+          <span className="mx-1.5 text-gray-400">·</span>
+          <span className="truncate text-xs text-gray-600">{annotation.comment || "Kommentar"}</span>
+        </div>
+        
+        <Avatar className="h-6 w-6 ml-2 flex-shrink-0">
+          <AvatarImage src="" alt={annotation.createdBy} />
+          <AvatarFallback className={getAvatarColor(annotation.createdBy)}>
+            {getInitials(annotation.createdBy)}
+          </AvatarFallback>
+        </Avatar>
+      </div>
+    );
+  };
+
+  // Visa alla kommentarer popup dialog
+  const AllAnnotationsDialog = () => {
+    const allAnnotations = (pdfAnnotations || []) as PdfAnnotation[];
+    
+    return (
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-7 px-2 text-blue-600 text-xs font-normal"
+          >
+            Se alla
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Alla PDF-kommentarer</DialogTitle>
+              <DialogClose asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <X className="h-4 w-4" />
+                </Button>
+              </DialogClose>
+            </div>
+            <DialogDescription>
+              {allAnnotations.length} PDF-kommentarer som kräver din uppmärksamhet
+            </DialogDescription>
+          </DialogHeader>
+          
+          <ScrollArea className="flex-1 max-h-[60vh] pr-4 mt-2">
+            <div className="space-y-2 divide-y">
+              {allAnnotations.map(annotation => (
+                <div key={`all-annotation-${annotation.id}`} className="pt-2">
+                  {renderCompactAnnotation(annotation)}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-3">
@@ -337,13 +429,7 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
           <MapPin className="h-4 w-4 text-blue-500" />
           <span>My Field Tasks</span>
         </div>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="h-7 px-2 text-blue-600 text-xs font-normal"
-        >
-          View All
-        </Button>
+        <AllAnnotationsDialog />
       </div>
       
       <ScrollArea className="flex-1 pr-4">
@@ -353,8 +439,16 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
             <span className="ml-2 text-sm text-gray-500">Loading field tasks...</span>
           </div>
         ) : sortedItems.length > 0 ? (
-          <div className="space-y-1">
-            {sortedItems.slice(0, limit).map(item => renderItem(item))}
+          <div className="space-y-1.5 divide-y">
+            {sortedItems.slice(0, Math.max(8, limit)).map(item => 
+              item.type === "pdf_annotation" 
+                ? <div key={`item-${item.type}-${item.data.id}`} className="pt-1.5">
+                    {renderCompactAnnotation(item.data)}
+                  </div>
+                : <div key={`item-${item.type}-${item.data.id}`} className="pt-1.5">
+                    {renderItem(item)}
+                  </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-[200px] text-center p-4">
