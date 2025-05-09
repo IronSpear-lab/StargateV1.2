@@ -42,6 +42,14 @@ interface FieldTask {
   scheduledDate: string;
   priority: "high" | "medium" | "low";
   taskType: string;
+  description?: string;
+  // Extra datumfält som kan finnas i Kanban/Gantt uppgifter
+  dueDate?: string; // ISO date string
+  startDate?: string; // ISO date string
+  endDate?: string; // ISO date string
+  createdAt?: string; // ISO date string
+  projectId?: number;
+  projectName?: string;
 }
 
 // PDF-kommentarer med status
@@ -67,6 +75,7 @@ interface PdfAnnotation {
   taskId: number | null;
   fileName: string;
   filePath: string;
+  deadline?: string; // ISO date string for deadline
 }
 
 // Kombinerad typ för allt som kan visas i widgeten
@@ -140,16 +149,48 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
   
   console.log("Kombinerade uppgifter:", combinedItems);
 
+  // Funktion för att normalisera datum (matchar andra komponenter)
+  const normalizeDate = (dateStr?: string): string | undefined => {
+    if (!dateStr) return undefined;
+    
+    // Om datumet redan är ett ISO-format med tid, använd det direkt
+    if (dateStr.includes('T')) return dateStr;
+    
+    // Om det är bara YYYY-MM-DD, konvertera till ISO med tid (midnatt lokal tid)
+    try {
+      const date = new Date(dateStr);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString();
+      }
+    } catch (e) {
+      console.error("Kunde inte normalisera datum:", dateStr, e);
+    }
+    return dateStr;
+  };
+  
+  // Få säkert datum från en item (för sortering, etc.)
+  const getItemDate = (item: FieldTaskItem): Date => {
+    if (item.type === "field_task") {
+      // För field tasks, prioritera scheduledDate, sen dueDate, endDate, startDate
+      const dateStr = normalizeDate(item.data.scheduledDate) || 
+                     normalizeDate(item.data.dueDate) || 
+                     normalizeDate(item.data.endDate) || 
+                     normalizeDate(item.data.startDate) || 
+                     item.data.createdAt;
+      console.log(`Field task ${item.data.title} datum: ${dateStr}`);
+      return new Date(dateStr);
+    } else {
+      // För PDF annotationer, använd deadline om det finns, annars createdAt
+      const dateStr = normalizeDate(item.data.deadline) || item.data.createdAt;
+      console.log(`PDF Annotation ${item.data.id} datum: ${dateStr}`);
+      return new Date(dateStr);
+    }
+  };
+  
   // Sortera efter datum - nyast först
   const sortedItems = combinedItems.sort((a, b) => {
-    const dateA = a.type === "field_task" 
-      ? new Date(a.data.scheduledDate).getTime()
-      : new Date(a.data.createdAt).getTime();
-    
-    const dateB = b.type === "field_task" 
-      ? new Date(b.data.scheduledDate).getTime()
-      : new Date(b.data.createdAt).getTime();
-    
+    const dateA = getItemDate(a).getTime();
+    const dateB = getItemDate(b).getTime();
     return dateB - dateA;
   });
 
@@ -277,7 +318,8 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
                 
                 <div className="text-xs text-gray-500 flex items-center">
                   <Calendar className="h-3 w-3 mr-1 text-[#ffc35a]" />
-                  {format(parseISO(task.scheduledDate), "MMM d, HH:mm")}
+                  {/* Använd getItemDate för att få korrekt datumformat */}
+                  {format(getItemDate({ type: "field_task", data: task }), "MMM d, HH:mm")}
                 </div>
               </div>
             </div>
