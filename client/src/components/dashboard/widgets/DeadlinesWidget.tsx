@@ -47,6 +47,7 @@ interface PdfAnnotation {
   taskId: number | null;
   fileName: string;
   filePath: string;
+  deadline?: string; // ISO date string för deadline
 }
 
 // Kombinerad typ för deadline-items
@@ -103,6 +104,23 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
 
   const isLoading = isLoadingTasks || isLoadingAnnotations;
 
+  // Få ett datum att visa för deadlines beroende på typ
+  const getDeadlineDate = (item: DeadlineItem): string => {
+    if (item.type === "task") {
+      return item.data.dueDate || item.data.endDate || item.data.startDate || new Date().toISOString();
+    } else {
+      // Om PDF-kommentaren har en egen deadline, använd den
+      if (item.data.deadline) {
+        return item.data.deadline;
+      }
+      
+      // Annars, använd standarddeadline 14 dagar från skapandedatum
+      const date = new Date(item.data.createdAt);
+      date.setDate(date.getDate() + 14); // Ändrat från 7 till 14 dagar för att matcha EnhancedPDFViewer
+      return date.toISOString();
+    }
+  };
+
   // Kombinera uppgifter och PDF-kommentarer till deadline-items
   const combinedItems: DeadlineItem[] = [
     ...(tasks || [])
@@ -126,28 +144,11 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
 
   // Sortera deadlines efter datum (tidiga deadlines först)
   const deadlines = combinedItems.sort((a, b) => {
-    const dateA = a.type === "task" 
-      ? new Date(a.data.dueDate || a.data.endDate || a.data.startDate || new Date().toISOString()).getTime()
-      : new Date(a.data.createdAt).getTime() + (7 * 24 * 60 * 60 * 1000); // PDF kommentarer får en veckas deadline
-    
-    const dateB = b.type === "task" 
-      ? new Date(b.data.dueDate || b.data.endDate || b.data.startDate || new Date().toISOString()).getTime()
-      : new Date(b.data.createdAt).getTime() + (7 * 24 * 60 * 60 * 1000); // PDF kommentarer får en veckas deadline
+    const dateA = new Date(getDeadlineDate(a)).getTime();
+    const dateB = new Date(getDeadlineDate(b)).getTime();
     
     return dateA - dateB; // Sortera stigande (tidiga deadlines först)
   });
-
-  // Få ett datum att visa för deadlines beroende på typ
-  const getDeadlineDate = (item: DeadlineItem): string => {
-    if (item.type === "task") {
-      return item.data.dueDate || item.data.endDate || item.data.startDate || new Date().toISOString();
-    } else {
-      // För pdf-kommentarer, lägg till 7 dagar från skapandedatum som en deadline
-      const date = new Date(item.data.createdAt);
-      date.setDate(date.getDate() + 7);
-      return date.toISOString();
-    }
-  };
 
   // Kontrollera om deadline är passerad
   const isOverdue = (item: DeadlineItem): boolean => {
