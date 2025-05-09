@@ -829,6 +829,7 @@ export default function EnhancedPDFViewer({
       status: 'new_comment',
       createdBy: user.username,
       createdAt: new Date().toISOString(),
+      assignedTo: user.username, // Tilldela kommentaren automatiskt till inloggad användare
     };
     
     if (newAnnotation.rect.width > 10 / scale && newAnnotation.rect.height > 10 / scale) {
@@ -863,7 +864,8 @@ export default function EnhancedPDFViewer({
             comment: newAnnotation.comment,
             status: newAnnotation.status,
             createdAt: newAnnotation.createdAt,
-            createdBy: newAnnotation.createdBy
+            createdBy: newAnnotation.createdBy,
+            assignedTo: user?.username // Tilldela kommentaren till inloggad användare
           });
           
           if (savedAnnotation && savedAnnotation.id) {
