@@ -813,6 +813,10 @@ export default function EnhancedPDFViewer({
     }
     
     // Create a new annotation
+    // Skapa deadline 2 veckor fram i tiden som standard
+    const defaultDeadline = new Date();
+    defaultDeadline.setDate(defaultDeadline.getDate() + 14); // +14 dagar
+
     const newAnnotation: PDFAnnotation = {
       id: `annotation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       pdfVersionId: versionId, // Lägg till pdfVersionId här
@@ -830,6 +834,7 @@ export default function EnhancedPDFViewer({
       createdBy: user.username,
       createdAt: new Date().toISOString(),
       assignedTo: user.username, // Tilldela kommentaren automatiskt till inloggad användare
+      deadline: defaultDeadline.toISOString(), // Sätt standarddeadline två veckor fram
     };
     
     if (newAnnotation.rect.width > 10 / scale && newAnnotation.rect.height > 10 / scale) {
@@ -871,7 +876,9 @@ export default function EnhancedPDFViewer({
             status: newAnnotation.status,
             createdAt: newAnnotation.createdAt,
             createdBy: newAnnotation.createdBy,
-            assignedTo: assignTo || user?.username // Använd tilldelad användare eller inloggad som fallback
+            assignedTo: assignTo || user?.username, // Använd tilldelad användare eller inloggad som fallback
+            deadline: newAnnotation.deadline, // Inkludera deadline fältet
+            taskId: null // Säkerställ att taskId är med, null för nya annotationer 
           };
           
           console.log("Skickar annotation till servern:", annotationToSave);
@@ -1128,7 +1135,8 @@ export default function EnhancedPDFViewer({
             createdAt: annotation.createdAt,
             createdBy: annotation.createdBy,
             assignedTo: annotation.assignedTo,
-            deadline: annotation.deadline
+            deadline: annotation.deadline,
+            taskId: annotation.taskId || null // Säkerställ att taskId finns med
           };
           
           console.log(`[${new Date().toISOString()}] Sparar statusförändring till databasen:`, {
@@ -1427,7 +1435,9 @@ export default function EnhancedPDFViewer({
             status: annotation.status,
             createdAt: annotation.createdAt,
             createdBy: annotation.createdBy,
-            assignedTo: annotation.assignedTo
+            assignedTo: annotation.assignedTo,
+            deadline: annotation.deadline,
+            taskId: annotation.taskId || null
           };
           
           const result = await savePDFAnnotation(numericFileId, annotationToSave);

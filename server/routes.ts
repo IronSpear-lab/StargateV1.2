@@ -3067,6 +3067,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: status || 'new_comment',
           assignedTo: assignedTo,
           deadline: deadline,
+          taskId: null, // Sätt taskId till null eftersom den inte är konverterad till uppgift än
           createdById: req.user!.id
         });
         
