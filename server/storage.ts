@@ -77,6 +77,7 @@ export interface IStorage {
   
   // Tasks
   getTasks(projectId: number): Promise<Task[]>;
+  getTasksAssignedToUser(userId: number): Promise<Task[]>;
   createTask(task: Omit<Task, "id" | "createdAt">): Promise<Task>;
   updateTask(id: number, task: Partial<Task>): Promise<Task>;
   
@@ -534,6 +535,34 @@ class DatabaseStorage implements IStorage {
       if (task.dependencies) {
         try {
           // Parse the dependencies JSON string into an array
+          const deps = JSON.parse(task.dependencies);
+          return {
+            ...task,
+            dependencies: deps
+          };
+        } catch (e) {
+          console.error("Error parsing task dependencies:", e);
+        }
+      }
+      return {
+        ...task,
+        dependencies: []
+      };
+    });
+  }
+  
+  async getTasksAssignedToUser(userId: number): Promise<Task[]> {
+    console.log(`Hämtar uppgifter tilldelade till användare ${userId}`);
+    
+    const result = await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.assigneeId, userId));
+    
+    // Process dependencies as JSON for the frontend
+    return result.map(task => {
+      if (task.dependencies) {
+        try {
           const deps = JSON.parse(task.dependencies);
           return {
             ...task,
