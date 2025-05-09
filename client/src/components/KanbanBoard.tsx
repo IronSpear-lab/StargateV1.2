@@ -938,7 +938,7 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
                       <FormLabel>Typ</FormLabel>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        defaultValue={field.value || "none"}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -968,7 +968,7 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
                       <FormLabel>Ansvarig</FormLabel>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        defaultValue={field.value || "none"}
                       >
                         <FormControl>
                           <SelectTrigger>

@@ -1702,7 +1702,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
                       assigneeName: null 
                     });
                   } else {
-                    const selectedMember = projectMembers.find(m => m.id.toString() === value);
+                    const selectedMember = projectMembers.find((m: { id: number; username: string }) => m.id.toString() === value);
                     setNewTask({
                       ...newTask,
                       assigneeId: selectedMember ? Number(value) : null,
@@ -1716,7 +1716,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Ingen tilldelad</SelectItem>
-                  {projectMembers.map((member) => (
+                  {projectMembers.map((member: { id: number; username: string }) => (
                     <SelectItem key={member.id} value={member.id.toString()}>
                       {member.username}
                     </SelectItem>
