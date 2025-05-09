@@ -74,8 +74,10 @@ function Router() {
       <ProtectedRoute path="/timeline" component={TimelinePage} />
       <ProtectedRoute path="/gantt" component={GanttPage} />
       <ProtectedRoute path="/kanban" component={KanbanPage} />
+      <ProtectedRoute path="/kanban/:projectId" component={KanbanPage} />
       <ProtectedRoute path="/planning/kanban" component={KanbanPage} />
       <ProtectedRoute path="/planning/gantt-chart" component={GanttChartPage} />
+      <ProtectedRoute path="/gantt-chart/:projectId" component={GanttChartPage} />
       <ProtectedRoute path="/wiki" component={WikiPage} />
       <ProtectedRoute path="/time-tracking" component={TimeTrackingPage} />
       <ProtectedRoute path="/notifications" component={NotificationsPage} />
