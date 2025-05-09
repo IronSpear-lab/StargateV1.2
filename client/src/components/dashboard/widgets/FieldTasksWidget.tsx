@@ -124,6 +124,9 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
   });
 
   // Kombinera uppgifter och sortera efter datum
+  console.log("Field tasks från API:", fieldTasks);
+  console.log("PDF-annotationer från API:", pdfAnnotations);
+  
   const combinedItems: FieldTaskItem[] = [
     ...(fieldTasks || []).map((task: FieldTask) => ({
       type: "field_task" as const,
@@ -134,6 +137,8 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
       data: annotation
     }))
   ];
+  
+  console.log("Kombinerade uppgifter:", combinedItems);
 
   // Sortera efter datum - nyast först
   const sortedItems = combinedItems.sort((a, b) => {
@@ -401,6 +406,13 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
   const AllTasksDialog = () => {
     // Använd hela sortedItems istället för bara pdfAnnotations
     // Detta inkluderar både traditionella uppgifter (Kanban + Gantt) och PDF-annotationer
+    const openDialog = () => {
+      console.log("Öppnar dialog med följande sortedItems:", sortedItems);
+      console.log("Uppgifter per typ:", {
+        "field_task": sortedItems.filter(item => item.type === "field_task").length,
+        "pdf_annotation": sortedItems.filter(item => item.type === "pdf_annotation").length
+      });
+    };
     
     return (
       <Dialog>
@@ -409,6 +421,7 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
             variant="ghost" 
             size="sm" 
             className="h-7 px-2 text-blue-600 text-xs font-normal"
+            onClick={openDialog}
           >
             Se alla
           </Button>
@@ -424,14 +437,17 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
           <div className="flex-1 overflow-hidden">
             <ScrollArea className="h-[50vh] pr-4 mt-2">
               <div className="space-y-2 divide-y">
-                {sortedItems.map(item => (
-                  <div key={`all-${item.type}-${item.data.id}`} className="pt-2">
-                    {item.type === "pdf_annotation" 
-                      ? renderCompactAnnotation(item.data)
-                      : renderItem(item)
-                    }
-                  </div>
-                ))}
+                {sortedItems.map((item, index) => {
+                  console.log(`Renderar uppgift ${index}:`, item);
+                  return (
+                    <div key={`all-${item.type}-${item.data.id}`} className="pt-2">
+                      {item.type === "pdf_annotation" 
+                        ? renderCompactAnnotation(item.data)
+                        : renderItem(item)
+                      }
+                    </div>
+                  );
+                })}
               </div>
             </ScrollArea>
           </div>
