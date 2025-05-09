@@ -1,318 +1,107 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, Play, Calendar, PlusCircle, Pause, BarChart2, User, CheckSquare } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAuth } from "@/hooks/use-auth";
-import { Sidebar } from "@/components/Sidebar";
-import { Header } from "@/components/Header";
+import { useEffect, useState } from 'react';
+import { useParams, useLocation, Link } from 'wouter';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowLeft, CalendarRange, Loader2 } from 'lucide-react';
+
+import { PageHeader } from '@/components/page-header';
+import TimeTracking from '@/components/TimeTracking';
+import { Button } from '@/components/ui/button';
+import { MainNav } from '@/components/main-nav';
+import { SideNav } from '@/components/side-nav';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Project } from '@shared/schema';
 
 export default function TimeTrackingPage() {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("today");
-  const [isTracking, setIsTracking] = useState(false);
-  const [timer, setTimer] = useState("00:00:00");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-  
-  // Mock data for time entries
-  const timeEntries = [
-    {
-      id: 1,
-      task: "API Documentation",
-      project: "ValvXlstart Development",
-      startTime: "09:30 AM",
-      endTime: "11:45 AM",
-      duration: "2h 15m",
-      date: "Today"
+  const [, setLocation] = useLocation();
+  const params = useParams<{ projectId: string }>();
+  const projectId = parseInt(params.projectId || '0');
+
+  // Håll reda på vilket projekt vi är i
+  const { data: project, isLoading: projectLoading, error: projectError } = useQuery({
+    queryKey: [`/api/projects/${projectId}`],
+    queryFn: async () => {
+      const res = await fetch(`/api/projects/${projectId}`);
+      if (!res.ok) throw new Error('Kunde inte ladda projektet');
+      return await res.json() as Project;
     },
-    {
-      id: 2,
-      task: "Frontend Implementation",
-      project: "ValvXlstart Development",
-      startTime: "01:15 PM",
-      endTime: "03:30 PM",
-      duration: "2h 15m",
-      date: "Today"
-    },
-    {
-      id: 3,
-      task: "Code Review",
-      project: "Mobile App Integration",
-      startTime: "04:00 PM",
-      endTime: "05:30 PM",
-      duration: "1h 30m",
-      date: "Today"
-    },
-    {
-      id: 4,
-      task: "Database Schema Design",
-      project: "ValvXlstart Development",
-      startTime: "10:00 AM",
-      endTime: "12:30 PM", 
-      duration: "2h 30m",
-      date: "Yesterday"
-    },
-    {
-      id: 5,
-      task: "UI Component Library",
-      project: "Design System",
-      startTime: "02:00 PM",
-      endTime: "05:15 PM",
-      duration: "3h 15m",
-      date: "Yesterday"
-    }
-  ];
-  
-  // Filter time entries based on active tab
-  const filteredEntries = timeEntries.filter(entry => {
-    if (activeTab === "today") return entry.date === "Today";
-    if (activeTab === "yesterday") return entry.date === "Yesterday";
-    return true; // "all" tab
+    enabled: !!projectId && !isNaN(projectId),
   });
-  
-  // Calculate total time
-  const totalTime = filteredEntries.reduce((acc, entry) => {
-    // Parse hours and minutes from the duration string (e.g., "2h 15m")
-    const hoursMatch = entry.duration.match(/(\d+)h/);
-    const minutesMatch = entry.duration.match(/(\d+)m/);
-    
-    const hours = hoursMatch ? parseInt(hoursMatch[1], 10) : 0;
-    const minutes = minutesMatch ? parseInt(minutesMatch[1], 10) : 0;
-    
-    return acc + (hours * 60 + minutes);
-  }, 0);
-  
-  // Format total time as hours and minutes
-  const totalHours = Math.floor(totalTime / 60);
-  const totalMinutes = totalTime % 60;
-  const formattedTotalTime = `${totalHours}h ${totalMinutes}m`;
-  
-  const toggleTimeTracking = () => {
-    setIsTracking(!isTracking);
-  };
+
+  // Använd useEffect för att omdirigera om projektet inte finns eller om vi inte har ett giltigt projektId
+  useEffect(() => {
+    if (!projectId || isNaN(projectId)) {
+      setLocation('/');
+    }
+  }, [projectId, setLocation]);
+
+  if (projectLoading) {
+    return (
+      <div className="container flex h-screen items-center justify-center">
+        <Loader2 className="mr-2 h-8 w-8 animate-spin" />
+        <span>Laddar projekt...</span>
+      </div>
+    );
+  }
+
+  if (projectError || !project) {
+    return (
+      <div className="container py-10">
+        <Alert variant="destructive">
+          <AlertTitle>Ett fel uppstod</AlertTitle>
+          <AlertDescription>
+            Kunde inte ladda projektet. Kontrollera att du har tillgång till detta projekt.
+          </AlertDescription>
+        </Alert>
+        <div className="mt-4">
+          <Button onClick={() => setLocation('/')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Tillbaka till startsidan
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar className={isSidebarOpen ? "" : "hidden"} />
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header title="Time Tracking" onToggleSidebar={toggleSidebar} />
-        
-        <main className="flex-1 p-6 overflow-y-auto">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-semibold text-neutral-900">Time Tracking</h1>
-              <p className="text-neutral-500">Track your time and monitor your productivity</p>
-            </div>
-            <div className="flex items-center space-x-2 mt-4 md:mt-0">
-              <Select defaultValue="week">
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Select period" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="day">Today</SelectItem>
-                  <SelectItem value="week">This Week</SelectItem>
-                  <SelectItem value="month">This Month</SelectItem>
-                  <SelectItem value="year">This Year</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button>
-                <BarChart2 className="mr-2 h-4 w-4" />
-                Report
-              </Button>
-            </div>
-          </div>
+    <div className="flex min-h-screen flex-col">
+      <MainNav />
+      <div className="container flex-1 items-start md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10">
+        <SideNav projectId={projectId} projectName={project.name} />
+        <main className="flex flex-col w-full py-6">
+          <PageHeader 
+            heading={`Tidsrapportering: ${project.name}`}
+            subheading="Hantera din arbetstid och rapportera tid på projektuppgifter"
+            icon={<CalendarRange className="h-6 w-6 text-muted-foreground" />}
+          >
+            <Button variant="outline" asChild>
+              <Link href={`/projects/${projectId}`}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Tillbaka till projektet
+              </Link>
+            </Button>
+          </PageHeader>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div className="xl:col-span-2">
-              <Card className="border border-neutral-200">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg font-medium">Time Entries</CardTitle>
-                      <CardDescription>Your recent time tracking activities</CardDescription>
-                    </div>
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[300px]">
-                      <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="today">Today</TabsTrigger>
-                        <TabsTrigger value="yesterday">Yesterday</TabsTrigger>
-                        <TabsTrigger value="all">All</TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {filteredEntries.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Clock className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-neutral-700">No time entries</h3>
-                      <p className="text-neutral-500 mt-1">Start tracking time for your tasks</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {filteredEntries.map((entry, i) => (
-                        <div key={entry.id}>
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2">
-                            <div className="flex items-start space-x-3">
-                              <div className="h-8 w-8 rounded-full bg-primary-50 flex items-center justify-center">
-                                <CheckSquare className="h-4 w-4 text-primary-600" />
-                              </div>
-                              <div>
-                                <div className="font-medium">{entry.task}</div>
-                                <div className="text-sm text-neutral-500">{entry.project}</div>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-4 mt-2 sm:mt-0">
-                              <div className="text-sm text-neutral-500">
-                                {entry.startTime} - {entry.endTime}
-                              </div>
-                              <div className="text-sm font-medium">{entry.duration}</div>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                                  <circle cx="12" cy="12" r="1" />
-                                  <circle cx="19" cy="12" r="1" />
-                                  <circle cx="5" cy="12" r="1" />
-                                </svg>
-                                <span className="sr-only">Menu</span>
-                              </Button>
-                            </div>
-                          </div>
-                          {i < filteredEntries.length - 1 && <Separator />}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center justify-between mt-8 pt-4 border-t border-neutral-200">
-                    <div className="font-medium">Total time: <span className="text-primary-700">{formattedTotalTime}</span></div>
-                    <Button variant="outline">
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Add Entry
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className="space-y-6">
-              <Card className="border border-neutral-200">
-                <CardHeader>
-                  <CardTitle className="text-lg font-medium">Current Timer</CardTitle>
-                  <CardDescription>Track time for your current task</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-center">
-                      <div className="text-4xl font-mono font-bold text-neutral-900 bg-neutral-50 px-4 py-3 rounded-md">
-                        {timer}
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="task">Task</Label>
-                        <Select defaultValue="documentation">
-                          <SelectTrigger id="task">
-                            <SelectValue placeholder="Select task" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="documentation">API Documentation</SelectItem>
-                            <SelectItem value="frontend">Frontend Implementation</SelectItem>
-                            <SelectItem value="review">Code Review</SelectItem>
-                            <SelectItem value="database">Database Schema Design</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-1.5">
-                        <Label htmlFor="project">Project</Label>
-                        <Select defaultValue="valvxl">
-                          <SelectTrigger id="project">
-                            <SelectValue placeholder="Select project" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="valvxl">ValvXlstart Development</SelectItem>
-                            <SelectItem value="mobile">Mobile App Integration</SelectItem>
-                            <SelectItem value="design">Design System</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-1.5">
-                        <Label htmlFor="description">Description (optional)</Label>
-                        <Input id="description" placeholder="Add notes about your work" />
-                      </div>
-                    </div>
-                    
-                    <div className="flex justify-center pt-2">
-                      <Button 
-                        size="lg" 
-                        className={isTracking ? "bg-red-600 hover:bg-red-700" : ""}
-                        onClick={toggleTimeTracking}
-                      >
-                        {isTracking ? (
-                          <>
-                            <Pause className="mr-2 h-5 w-5" />
-                            Stop
-                          </>
-                        ) : (
-                          <>
-                            <Play className="mr-2 h-5 w-5" />
-                            Start Timer
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="border border-neutral-200">
-                <CardHeader>
-                  <CardTitle className="text-lg font-medium">Recent Projects</CardTitle>
-                  <CardDescription>Your activity by project</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="text-sm font-medium">ValvXlstart Development</div>
-                        <div className="text-sm text-neutral-500">4h 30m</div>
-                      </div>
-                      <Progress value={75} className="h-2" />
-                    </div>
-                    
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="text-sm font-medium">Mobile App Integration</div>
-                        <div className="text-sm text-neutral-500">1h 30m</div>
-                      </div>
-                      <Progress value={25} className="h-2" />
-                    </div>
-                    
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="text-sm font-medium">Design System</div>
-                        <div className="text-sm text-neutral-500">3h 15m</div>
-                      </div>
-                      <Progress value={50} className="h-2" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+          <div className="mt-8 space-y-8">
+            <Tabs defaultValue="my-time" className="w-full">
+              <TabsList className="grid w-full max-w-md grid-cols-2">
+                <TabsTrigger value="my-time">Min tidrapportering</TabsTrigger>
+                <TabsTrigger value="project-time">Projektets tidrapportering</TabsTrigger>
+              </TabsList>
+              <TabsContent value="my-time" className="mt-6">
+                <TimeTracking projectId={projectId} />
+              </TabsContent>
+              <TabsContent value="project-time" className="mt-6">
+                <div className="bg-muted p-4 rounded-lg">
+                  <Alert>
+                    <AlertTitle>Projektöversikt</AlertTitle>
+                    <AlertDescription>
+                      Här kan du se alla tidsrapporter för hela projektet. Funktionen är under utveckling.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
         </main>
       </div>

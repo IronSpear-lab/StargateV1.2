@@ -1251,13 +1251,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Time entries API
+  // Tidsrapportering API
   app.get(`${apiPrefix}/time-entries`, async (req, res) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
       const taskId = req.query.taskId ? parseInt(req.query.taskId as string) : undefined;
+      const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
       const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user!.id;
       
-      const timeEntries = await storage.getTimeEntries(userId, taskId);
+      // Hantera datum om de skickats med
+      let startDate: Date | undefined = undefined;
+      let endDate: Date | undefined = undefined;
+      
+      if (req.query.startDate) {
+        startDate = new Date(req.query.startDate as string);
+      }
+      
+      if (req.query.endDate) {
+        endDate = new Date(req.query.endDate as string);
+      }
+      
+      const timeEntries = await storage.getTimeEntries(userId, projectId, taskId, startDate, endDate);
       res.json(timeEntries);
     } catch (error) {
       console.error("Error fetching time entries:", error);
@@ -1265,16 +1282,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Hämta tidsrapporter för ett specifikt projekt
+  app.get(`${apiPrefix}/projects/:projectId/time-entries`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const projectId = parseInt(req.params.projectId);
+      
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project ID" });
+      }
+      
+      // Kontrollera att användaren har tillgång till projektet
+      const userProjects = await storage.getUserProjects(req.user!.id);
+      const canAccess = userProjects.some(p => p.id === projectId);
+      
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied to this project" });
+      }
+      
+      const timeEntries = await storage.getProjectTimeEntries(projectId);
+      res.json(timeEntries);
+    } catch (error) {
+      console.error("Error fetching project time entries:", error);
+      res.status(500).json({ error: "Failed to fetch project time entries" });
+    }
+  });
+
+  // Skapa ny tidsrapport
   app.post(`${apiPrefix}/time-entries`, async (req, res) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      // Säkerställ att vi har ett giltigt projektID
+      if (!req.body.projectId) {
+        return res.status(400).json({ error: "Project ID is required" });
+      }
+      
+      // Om rapportdatum saknas, använd dagens datum
+      if (!req.body.reportDate) {
+        req.body.reportDate = new Date().toISOString().split('T')[0];
+      }
+      
       const timeEntry = await storage.createTimeEntry({
         ...req.body,
-        userId: req.user!.id
+        userId: req.user!.id,
+        createdAt: new Date()
       });
+      
       res.status(201).json(timeEntry);
     } catch (error) {
       console.error("Error creating time entry:", error);
       res.status(500).json({ error: "Failed to create time entry" });
+    }
+  });
+  
+  // Ta bort tidsrapport
+  app.delete(`${apiPrefix}/time-entries/:id`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const entryId = parseInt(req.params.id);
+      
+      if (isNaN(entryId)) {
+        return res.status(400).json({ error: "Invalid time entry ID" });
+      }
+      
+      // Säkerställ att användaren äger denna tidsrapport eller är admin/projektledare
+      // Först hämta tidsrapporteringen
+      const timeEntries = await storage.getTimeEntries(req.user!.id);
+      const entry = timeEntries.find(e => e.id === entryId);
+      
+      if (!entry) {
+        return res.status(404).json({ error: "Time entry not found or access denied" });
+      }
+      
+      await storage.deleteTimeEntry(entryId);
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error deleting time entry:", error);
+      res.status(500).json({ error: "Failed to delete time entry" });
     }
   });
 
