@@ -247,6 +247,7 @@ const StatusIcon = ({ status }: { status: string }) => {
 
 interface ModernGanttChartProps {
   projectId?: number;
+  focusTaskId?: string | null;
 }
 
 const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {

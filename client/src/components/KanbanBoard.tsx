@@ -128,7 +128,7 @@ interface KanbanBoardProps {
   focusTaskId?: string | null;
 }
 
-export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
+export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardProps) {
   const [columns, setColumns] = useState<KanbanColumn[]>([
     {
       id: 'backlog',
@@ -255,6 +255,75 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // Lyssna efter förändringar i focusTaskId och öppna uppgiften om den finns
+  useEffect(() => {
+    if (focusTaskId && tasksData) {
+      console.log(`Letar efter fokuserad uppgift med ID: ${focusTaskId}`);
+      const focusedTask = tasksData.find((task: any) => task.id.toString() === focusTaskId);
+      
+      if (focusedTask) {
+        console.log("Fokuserad uppgift hittad:", focusedTask);
+        // Formatera uppgiften för att passa KanbanTask-gränssnittet
+        const colors = getTaskColors(focusedTask);
+        
+        // Skapa assigneeInitials
+        let assigneeInitials = '--';
+        if (focusedTask.assignee) {
+          assigneeInitials = focusedTask.assignee.username
+            .split(' ')
+            .map((part: string) => part[0])
+            .join('')
+            .toUpperCase()
+            .substring(0, 2);
+        }
+        
+        // Formatera dueDateDisplay
+        let dueDateDisplay = 'Inget slutdatum';
+        if (focusedTask.dueDate) {
+          const dueDate = new Date(focusedTask.dueDate);
+          const today = new Date();
+          
+          if (isAfter(dueDate, today)) {
+            dueDateDisplay = `Klart ${format(dueDate, 'd MMM')}`;
+          } else if (isBefore(dueDate, today)) {
+            dueDateDisplay = 'Försenad';
+          } else {
+            dueDateDisplay = 'Klart idag';
+          }
+        }
+        
+        // Skapa KanbanTask-objekt
+        const formattedTask: KanbanTask = {
+          id: focusedTask.id,
+          title: focusedTask.title,
+          description: focusedTask.description,
+          type: focusedTask.type,
+          typeBg: colors.typeBg,
+          typeColor: colors.typeColor,
+          priority: focusedTask.priority,
+          priorityColor: colors.priorityColor,
+          assignee: focusedTask.assignee ? focusedTask.assignee.username : null,
+          assigneeId: focusedTask.assigneeId,
+          assigneeInitials,
+          dueDate: focusedTask.dueDate,
+          dueDateDisplay,
+          status: focusedTask.status,
+          borderColor: colors.borderColor,
+          startDate: focusedTask.startDate,
+          endDate: focusedTask.endDate,
+          projectId: focusedTask.projectId,
+          createdAt: focusedTask.createdAt
+        };
+        
+        // Öppna uppgiftsdetaljer för den fokuserade uppgiften
+        setSelectedTask(formattedTask);
+        setIsTaskDialogOpen(true);
+      } else {
+        console.log(`Uppgift med ID ${focusTaskId} hittades inte i projektet`);
+      }
+    }
+  }, [focusTaskId, tasksData]);
 
   // Process task data from API
   useEffect(() => {
