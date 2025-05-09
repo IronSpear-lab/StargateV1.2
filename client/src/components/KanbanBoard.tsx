@@ -125,6 +125,7 @@ type TaskFormValues = z.infer<typeof taskFormSchema>;
 
 interface KanbanBoardProps {
   projectId?: number;
+  focusTaskId?: string | null;
 }
 
 export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {

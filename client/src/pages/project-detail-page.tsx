@@ -69,11 +69,39 @@ type ProjectFormValues = z.infer<typeof projectFormSchema>;
 export default function ProjectDetailPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const { toast } = useToast();
   const [match, params] = useRoute("/projects/:id");
   const projectId = params?.id ? parseInt(params.id) : 0;
-  const [activeTab, setActiveTab] = useState("overview");
+  
+  // Parsa query-parametrar från URL:en
+  const urlParams = new URLSearchParams(location.split('?')[1] || '');
+  const tabParam = urlParams.get('tab');
+  const taskIdParam = urlParams.get('taskId');
+  
+  // Sätt default-fliken baserat på URL-parametrar
+  const [activeTab, setActiveTab] = useState(tabParam || "overview");
+  
+  // Håll koll på taskId som ska fokuseras
+  const [focusedTaskId, setFocusedTaskId] = useState<string | null>(taskIdParam);
+  
+  // Lyssna efter förändringar i URL-parametrar och uppdatera state
+  useEffect(() => {
+    // Uppdatera URL-parametrarna om användaren ändrar flik manuellt
+    const newUrlParams = new URLSearchParams(location.split('?')[1] || '');
+    const newTabParam = newUrlParams.get('tab');
+    const newTaskIdParam = newUrlParams.get('taskId');
+    
+    if (newTabParam && newTabParam !== activeTab) {
+      console.log(`Uppdaterar aktiv flik från ${activeTab} till ${newTabParam}`);
+      setActiveTab(newTabParam);
+    }
+    
+    if (newTaskIdParam !== focusedTaskId) {
+      console.log(`Uppdaterar fokuserad uppgift: ${newTaskIdParam}`);
+      setFocusedTaskId(newTaskIdParam);
+    }
+  }, [location]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -401,11 +429,17 @@ export default function ProjectDetailPage() {
                 </TabsContent>
                 
                 <TabsContent value="tasks" className="pt-2">
-                  <KanbanBoard projectId={projectId} />
+                  <KanbanBoard 
+                    projectId={projectId} 
+                    focusTaskId={activeTab === "tasks" ? focusedTaskId : null} 
+                  />
                 </TabsContent>
                 
                 <TabsContent value="timeline" className="pt-2">
-                  <GanttChart projectId={projectId} />
+                  <GanttChart 
+                    projectId={projectId} 
+                    focusTaskId={activeTab === "timeline" ? focusedTaskId : null} 
+                  />
                 </TabsContent>
                 
                 <TabsContent value="wiki" className="pt-2">
