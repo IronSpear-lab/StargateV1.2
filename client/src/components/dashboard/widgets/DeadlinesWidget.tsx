@@ -136,17 +136,15 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
         data: task
       })),
     ...(pdfAnnotations || [])
-      .filter((annotation: PdfAnnotation) => 
-        // Filtrera annotationer baserat på status som kräver åtgärd
-        annotation.status === "action_required" || 
-        annotation.status === "new_comment" || 
-        annotation.status === "new_review"
-      )
       .map((annotation: PdfAnnotation) => ({
         type: "pdf_annotation" as const,
         data: annotation
       }))
   ];
+  
+  console.log("DeadlinesWidget - Antal kombinerade deadline items:", combinedItems.length);
+  console.log("DeadlinesWidget - Antal tasks:", (tasks || []).length);
+  console.log("DeadlinesWidget - Antal PDF-annotationer:", (pdfAnnotations || []).length);
 
   // Sortera deadlines efter datum (tidiga deadlines först) och begränsa till 'limit' poster
   const deadlines = combinedItems
