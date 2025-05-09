@@ -75,7 +75,7 @@ interface TaskFormValues {
   dependencies: string[];
 }
 
-export function GanttChart({ projectId = 1 }: { projectId?: number }) {
+export function GanttChart({ projectId = 1, focusTaskId = null }: { projectId?: number, focusTaskId?: string | null }) {
   const [tasks, setTasks] = useState<GanttTask[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
@@ -271,6 +271,35 @@ export function GanttChart({ projectId = 1 }: { projectId?: number }) {
       setUsers(Array.from(uniqueUsers.values()));
     }
   }, [usersData]);
+  
+  // Handle focus on specific task when focusTaskId changes
+  useEffect(() => {
+    if (focusTaskId && tasks.length > 0) {
+      const taskToFocus = tasks.find(task => task.id.toString() === focusTaskId);
+      
+      if (taskToFocus) {
+        console.log("Focusing on Gantt task:", taskToFocus);
+        
+        // Open task dialog for editing
+        setEditingTask(taskToFocus);
+        setIsTaskDialogOpen(true);
+        
+        // Highlight the task in the Gantt chart
+        setTimeout(() => {
+          const taskElement = document.querySelector(`[data-task-id="${taskToFocus.id}"]`);
+          if (taskElement) {
+            taskElement.scrollIntoView({ behavior: "smooth", block: "center" });
+            taskElement.classList.add("highlight-task");
+            setTimeout(() => {
+              taskElement.classList.remove("highlight-task");
+            }, 3000);
+          }
+        }, 300);
+      } else {
+        console.log(`Task with ID ${focusTaskId} not found in Gantt chart`);
+      }
+    }
+  }, [focusTaskId, tasks]);
 
   // Calculate task position and width based on timeline
   const getTaskPosition = (task: GanttTask) => {
