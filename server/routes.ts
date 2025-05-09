@@ -3327,6 +3327,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`PDF-annotations/assigned: Söker efter annotationer för användare: ${username}`);
       
       // Hämta alla annotationer där användaren är tilldelad
+      // Samt se till att inkludera information om associerade tasks
       const assignedAnnotations = await db.query.pdfAnnotations.findMany({
         where: eq(pdfAnnotations.assignedTo, username),
         with: {
@@ -3341,7 +3342,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               username: true
             }
           },
-          project: true
+          project: true,
+          task: true // Lägg till relation för task
         },
         orderBy: [desc(pdfAnnotations.createdAt)]
       });
@@ -3363,13 +3365,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Kontrollera att pdfVersion och file finns
         if (!annotation.pdfVersion) {
           console.log(`PDF-annotations/assigned: Varning - pdfVersion saknas för annotation ID ${annotation.id}`);
+          // Använd tasknamn om det finns en associerad task
+          const taskTitle = annotation.task?.title;
+          const displayName = taskTitle || annotation.comment || 'PDF-kommentar';
+          
           return {
             id: annotation.id,
             pdfVersionId: annotation.pdfVersionId,
             projectId: annotation.projectId,
             rect: annotation.rect,
             color: annotation.color,
-            comment: annotation.comment,
+            comment: displayName, // Använd taskens titel om den finns
             status: annotation.status,
             createdAt: annotation.createdAt,
             createdById: annotation.createdById,
@@ -3403,13 +3409,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         }
         
+        // Använd tasknamn om det finns en associerad task
+        const taskTitle = annotation.task?.title;
+        const displayName = taskTitle || annotation.comment || 'PDF-kommentar';
+        
         return {
           id: annotation.id,
           pdfVersionId: annotation.pdfVersionId,
           projectId: annotation.projectId,
           rect: annotation.rect,
           color: annotation.color,
-          comment: annotation.comment,
+          comment: displayName, // Använd taskens titel om den finns
           status: annotation.status,
           createdAt: annotation.createdAt,
           createdById: annotation.createdById,
