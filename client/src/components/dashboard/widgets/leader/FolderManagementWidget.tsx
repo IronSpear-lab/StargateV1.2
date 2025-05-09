@@ -129,9 +129,21 @@ export function FolderManagementWidget() {
       
       // Uppdatera lokalt lagrade mappar i localStorage för att de ska visas i sidomenyn
       // Sparar en temporär referens i lokalstorage med speciell struktur
-      // för att respektera mappstrukturen i sidofältet
+      // för att respektera mappstrukturen i sidofältet och projektspecifik avgränsning
       try {
-        const userFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
+        // Hämta alla befintliga mappar från localStorage
+        const allUserFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
+        
+        // Filtrera ut mappar från andra projekt så vi inte skriver över dem
+        const otherProjectFolders = allUserFolders.filter((f: any) => {
+          // Behåll mappar som inte har ett projectId eller som tillhör ett annat projekt
+          return !f.projectId || f.projectId !== currentProject?.id.toString();
+        });
+        
+        // Hämta befintliga mappar för det aktuella projektet
+        const currentProjectFolders = allUserFolders.filter((f: any) => 
+          f.projectId === currentProject?.id.toString()
+        );
         
         // Identifiera föräldermappens namn från dess ID
         let parentFolderName = 'Files'; // Standardvärde om ingen föräldermapp är vald
@@ -150,15 +162,29 @@ export function FolderManagementWidget() {
           }
         }
         
+        // Skapa den nya mappen med explicit projektID-referens
         const newFolder = {
           name: data.name,
           parent: parentFolderName, // Använd föräldermappens namn för korrekt hierarki
           id: data.id.toString(),
-          parentId: data.parentId ? data.parentId.toString() : null
+          parentId: data.parentId ? data.parentId.toString() : null,
+          projectId: currentProject?.id.toString(), // Lägg till projektID för korrekt filtrering
+          type: 'folder' // Explicit typ för korrekt rendering
         };
         
         console.log('Saving new folder to localStorage:', newFolder);
-        localStorage.setItem('userCreatedFolders', JSON.stringify([...userFolders, newFolder]));
+        console.log(`Current project: ${currentProject?.id}, Adding to ${currentProjectFolders.length} existing folders`);
+        
+        // Kombinera mappar från andra projekt och uppdaterad lista för aktuellt projekt
+        const updatedFolders = [...otherProjectFolders, ...currentProjectFolders, newFolder];
+        localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
+        
+        // Tvinga en refresh av sidebar-menyn genom att utlösa en custom event
+        // Sidomenyn lyssnar efter denna händelse för att uppdatera sig
+        window.dispatchEvent(new CustomEvent('folder-structure-changed', { 
+          detail: { projectId: currentProject?.id } 
+        }));
+        
       } catch (e) {
         console.error("Error updating local storage folders:", e);
       }
@@ -203,6 +229,11 @@ export function FolderManagementWidget() {
           (folder: { id: string }) => folder.id !== deletedFolderId.toString()
         );
         localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
+        
+        // Tvinga en refresh av sidebar-menyn genom att utlösa en custom event
+        window.dispatchEvent(new CustomEvent('folder-structure-changed', { 
+          detail: { projectId: currentProject?.id } 
+        }));
       } catch (e) {
         console.error("Error updating local storage folders after deletion:", e);
       }
