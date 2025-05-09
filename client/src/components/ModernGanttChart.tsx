@@ -10,7 +10,8 @@ import { ZoomIn, ZoomOut, Filter, Plus, FileDown, ChevronDown, ChevronRight, Cir
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 
 // Interface för uppgifter i Gantt-diagrammet
 export interface GanttTask {
@@ -269,6 +270,67 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
     enabled: !!projectId && projectId > 0
   });
   
+  // Mutation för att skapa nya uppgifter
+  const createTaskMutation = useMutation({
+    mutationFn: async (taskData: any) => {
+      const response = await apiRequest('POST', '/api/tasks', taskData);
+      return await response.json();
+    },
+    onSuccess: () => {
+      // Invalidera tasks-queryn för att hämta uppdaterade data
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks', projectId] });
+    },
+    onError: (error) => {
+      console.error('Fel vid skapande av uppgift:', error);
+      toast({
+        title: "Kunde inte skapa uppgiften",
+        description: "Ett fel uppstod när uppgiften skulle sparas i databasen",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Mutation för att uppdatera befintliga uppgifter
+  const updateTaskMutation = useMutation({
+    mutationFn: async ({ taskId, taskData }: { taskId: number, taskData: any }) => {
+      const response = await apiRequest('PATCH', `/api/tasks/${taskId}`, taskData);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks', projectId] });
+      // Invalidera också field-tasks för att uppdatera dashboardwidget
+      queryClient.invalidateQueries({ queryKey: ['/api/field-tasks'] });
+    },
+    onError: (error) => {
+      console.error('Fel vid uppdatering av uppgift:', error);
+      toast({
+        title: "Kunde inte uppdatera uppgiften",
+        description: "Ett fel uppstod när uppgiften skulle uppdateras i databasen",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Mutation för att radera uppgifter
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => {
+      const response = await apiRequest('DELETE', `/api/tasks/${taskId}`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/field-tasks'] });
+    },
+    onError: (error) => {
+      console.error('Fel vid radering av uppgift:', error);
+      toast({
+        title: "Kunde inte radera uppgiften",
+        description: "Ett fel uppstod när uppgiften skulle raderas från databasen",
+        variant: "destructive",
+      });
+    }
+  });
+  
   // Generera ett projektnamn baserat på projektid
   const currentProjectName = useMemo(() => {
     if (!projectId) return "Default Project";
@@ -280,24 +342,58 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
     return projectId ? `project_${projectId}_gantt_tasks` : 'no_project_gantt_tasks';
   };
   
-  // Läs uppgifter från localStorage, om de finns, annars använd tomma uppgifter om projektId finns
-  // eller initialTasks för demo om inget projektId
-  const [tasks, setTasks] = useState<GanttTask[]>(() => {
-    try {
-      const savedTasks = localStorage.getItem(getStorageKey());
-      if (savedTasks) {
-        return JSON.parse(savedTasks);
-      } 
-      
-      // Om det är ett specifikt projekt och inga sparade uppgifter, returnera tom array
-      if (projectId) {
+  // Hämta uppgifter från API om projektId finns, annars från localStorage
+  const { data: apiTasks = [], isLoading: isLoadingTasks } = useQuery({
+    queryKey: ['/api/tasks', projectId],
+    queryFn: async () => {
+      if (!projectId) return [];
+      try {
+        const response = await fetch(`/api/tasks?projectId=${projectId}`);
+        if (!response.ok) throw new Error('Kunde inte hämta uppgifter');
+        const data = await response.json();
+        console.log('Hämtade uppgifter från API:', data);
+        
+        // Omvandla API-formatet till GanttTask-formatet
+        return data.map((task: any) => ({
+          id: task.id,
+          project: currentProjectName,
+          type: task.type === 'milestone' ? 'MILESTONE' : (task.type === 'phase' ? 'PHASE' : 'TASK'),
+          name: task.title,
+          status: task.status === 'todo' || task.status === 'backlog' ? 'New' : 
+                 task.status === 'in_progress' || task.status === 'review' ? 'Ongoing' : 
+                 task.status === 'done' ? 'Completed' : 'Delayed',
+          startDate: task.startDate || task.createdAt.substring(0, 10),
+          endDate: task.endDate || task.startDate || task.createdAt.substring(0, 10),
+          duration: task.duration || 1,
+          parentId: task.parentId,
+          expanded: true,
+          assigneeId: task.assigneeId,
+          assigneeName: task.assignee
+        }));
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
         return [];
       }
+    },
+    enabled: !!projectId
+  });
+  
+  const [tasks, setTasks] = useState<GanttTask[]>(() => {
+    try {
+      // Om det inte finns ett projektId, använd localStorage eller demodata
+      if (!projectId) {
+        const savedTasks = localStorage.getItem(getStorageKey());
+        if (savedTasks) {
+          return JSON.parse(savedTasks);
+        }
+        return initialTasks;
+      }
       
-      // Endast använd demodata för "ingen projekt" vyn
-      return initialTasks;
+      // För projektspecifika vyer, börja med tom array och låt useEffect 
+      // uppdatera när API-data kommer in
+      return [];
     } catch (error) {
-      console.error('Error loading tasks from localStorage:', error);
+      console.error('Error loading tasks:', error);
       return projectId ? [] : initialTasks;
     }
   });
@@ -344,6 +440,14 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
       });
     });
   };
+  
+  // Uppdatera tasks state när API-data laddas
+  useEffect(() => {
+    if (apiTasks && apiTasks.length > 0 && !isLoadingTasks) {
+      setTasks(apiTasks);
+      console.log('Uppdaterade tasks state med API-data:', apiTasks.length, 'uppgifter');
+    }
+  }, [apiTasks, isLoadingTasks]);
   
   // Spara uppgifter till localStorage när de ändras
   useEffect(() => {
@@ -792,8 +896,20 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
       ? 0 
       : differenceInDays(parseISO(endDate!), parseISO(newTask.startDate!)) + 1;
     
+    // Konvertera Gantt-uppgiftsstatus till API-format
+    const apiStatus = newTask.status === 'New' ? 'todo' :
+                      newTask.status === 'Ongoing' ? 'in_progress' :
+                      newTask.status === 'Completed' ? 'done' :
+                      'backlog';
+                      
+    // Konvertera Gantt uppgiftstyp till API-format
+    const apiType = newTask.type === 'TASK' ? 'task' :
+                    newTask.type === 'MILESTONE' ? 'milestone' :
+                    'phase';
+    
     // Om vi redigerar en befintlig uppgift
     if (isEditMode && editingTaskId !== null) {
+      // Uppdatera i UI för direkt feedback
       setTasks(prev => prev.map(task => {
         if (task.id === editingTaskId) {
           return {
@@ -801,7 +917,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
             type: newTask.type as "TASK" | "MILESTONE" | "PHASE",
             name: newTask.name!,
             status: newTask.status as "New" | "Ongoing" | "Completed" | "Delayed",
-            project: task.project, // Behåll befintligt projektnamn vid redigering
+            project: task.project,
             startDate: newTask.startDate!,
             endDate: endDate!,
             duration,
@@ -811,6 +927,27 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
         }
         return task;
       }));
+      
+      // För projekt med projektId, spara till databasen
+      if (projectId) {
+        // Skapa API-data objekt
+        const taskData = {
+          title: newTask.name,
+          status: apiStatus,
+          type: apiType,
+          projectId: projectId,
+          startDate: newTask.startDate,
+          endDate: endDate,
+          parentId: null, // Kan läggas till senare för hierarkistöd
+          assigneeId: newTask.assigneeId
+        };
+        
+        // Anropa uppdateringsmutation
+        updateTaskMutation.mutate({ 
+          taskId: editingTaskId, 
+          taskData: taskData 
+        });
+      }
       
       const taskTypeSv = newTask.type === 'TASK' ? 'Uppgift' : 
                        newTask.type === 'MILESTONE' ? 'Milstolpe' : 'Fas';
@@ -826,31 +963,51 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
     } 
     // Skapa en ny uppgift
     else {
-      const taskId = flattenedTasks.length > 0 
-        ? Math.max(...flattenedTasks.map(t => t.id)) + 1 
-        : 1;
+      // För lokala Gantt-uppgifter (utan projektId), använd gamla metoden
+      if (!projectId) {
+        const taskId = flattenedTasks.length > 0 
+          ? Math.max(...flattenedTasks.map(t => t.id)) + 1 
+          : 1;
+        
+        const newTaskItem: GanttTask = {
+          id: taskId,
+          project: currentProjectName,
+          type: newTask.type as "TASK" | "MILESTONE" | "PHASE",
+          name: newTask.name!,
+          status: newTask.status as "New" | "Ongoing" | "Completed" | "Delayed",
+          startDate: newTask.startDate!,
+          endDate: endDate!,
+          duration,
+          assigneeId: newTask.assigneeId,
+          assigneeName: newTask.assigneeName
+        };
+        
+        setTasks(prev => [...prev, newTaskItem]);
+      }
+      // För uppgifter med projektId, spara till databasen
+      else {
+        // Skapa API-data objekt
+        const taskData = {
+          title: newTask.name,
+          status: apiStatus,
+          type: apiType,
+          projectId: projectId,
+          startDate: newTask.startDate,
+          endDate: endDate,
+          parentId: null,
+          assigneeId: newTask.assigneeId
+        };
+        
+        // Skapa uppgiften via API
+        createTaskMutation.mutate(taskData);
+      }
       
-      const newTaskItem: GanttTask = {
-        id: taskId,
-        project: currentProjectName, // Använd det aktuella projektnamnet automatiskt
-        type: newTask.type as "TASK" | "MILESTONE" | "PHASE",
-        name: newTask.name!,
-        status: newTask.status as "New" | "Ongoing" | "Completed" | "Delayed",
-        startDate: newTask.startDate!,
-        endDate: endDate!,
-        duration,
-        assigneeId: newTask.assigneeId,
-        assigneeName: newTask.assigneeName
-      };
-      
-      setTasks(prev => [...prev, newTaskItem]);
-      
-      const taskTypeSv = newTaskItem.type === 'TASK' ? 'Uppgift' : 
-                         newTaskItem.type === 'MILESTONE' ? 'Milstolpe' : 'Fas';
+      const taskTypeSv = newTask.type === 'TASK' ? 'Uppgift' : 
+                         newTask.type === 'MILESTONE' ? 'Milstolpe' : 'Fas';
       
       toast({
         title: "Uppgift skapad",
-        description: `${taskTypeSv} "${newTaskItem.name}" har lagts till i Gantt-diagrammet.`,
+        description: `${taskTypeSv} "${newTask.name}" har lagts till i Gantt-diagrammet.`,
       });
     }
     
