@@ -65,15 +65,18 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
   
   // Hämta uppgifter från API
   const { data: tasks, isLoading: isLoadingTasks } = useQuery({
-    queryKey: ['field-tasks', 'deadlines'],
+    queryKey: ['field-tasks'],
     queryFn: async () => {
       try {
+        console.log("DeadlinesWidget: Hämtar field tasks...");
         const response = await fetch('/api/field-tasks');
         if (!response.ok) {
           console.error("Error fetching tasks for deadlines:", response.status);
           return [] as Task[];
         }
-        return await response.json();
+        const data = await response.json();
+        console.log("DeadlinesWidget: Tasks hämtade:", data);
+        return data;
       } catch (error) {
         console.error("Error fetching tasks for deadlines:", error);
         return [];
@@ -83,10 +86,12 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
 
   // Hämta PDF-kommentarer som är tilldelade användaren
   const { data: pdfAnnotations, isLoading: isLoadingAnnotations } = useQuery({
-    queryKey: ['pdf-annotations-assigned', 'deadlines'],
+    queryKey: ['/api/pdf-annotations/assigned'],
     queryFn: async () => {
       try {
+        console.log("DeadlinesWidget: Hämtar PDF-annotationer...");
         const response = await fetch('/api/pdf-annotations/assigned');
+        console.log("DeadlinesWidget: PDF-annotations response status:", response.status);
         
         if (!response.ok) {
           console.error("Error response from PDF annotations API:", response.status);
@@ -94,6 +99,7 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
         }
         
         const data = await response.json();
+        console.log("DeadlinesWidget: PDF-annotationer hämtade:", data);
         return data;
       } catch (error) {
         console.error("Error fetching PDF annotations for deadlines:", error);
@@ -142,13 +148,15 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
       }))
   ];
 
-  // Sortera deadlines efter datum (tidiga deadlines först)
-  const deadlines = combinedItems.sort((a, b) => {
-    const dateA = new Date(getDeadlineDate(a)).getTime();
-    const dateB = new Date(getDeadlineDate(b)).getTime();
-    
-    return dateA - dateB; // Sortera stigande (tidiga deadlines först)
-  });
+  // Sortera deadlines efter datum (tidiga deadlines först) och begränsa till 'limit' poster
+  const deadlines = combinedItems
+    .sort((a, b) => {
+      const dateA = new Date(getDeadlineDate(a)).getTime();
+      const dateB = new Date(getDeadlineDate(b)).getTime();
+      
+      return dateA - dateB; // Sortera stigande (tidiga deadlines först)
+    })
+    .slice(0, limit);
 
   // Kontrollera om deadline är passerad
   const isOverdue = (item: DeadlineItem): boolean => {
@@ -286,6 +294,7 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
           variant="ghost" 
           size="sm" 
           className="h-7 px-2 text-blue-600 text-xs font-normal"
+          onClick={() => setLocation('/deadlines')}
         >
           Visa alla
         </Button>
