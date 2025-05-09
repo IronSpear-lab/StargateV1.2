@@ -224,36 +224,44 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     }
   }, [foldersData]);
   
-  // Fetch files - modifierad för att enbart hämta filer som är relevanta för den valda mappen
+  // Fetch files - HELT OMDESIGNAD för att förhindra fel i filvisning
   const { 
     data: filesData, 
     isLoading: isLoadingFiles, 
     error: filesError 
   } = useQuery({
-    queryKey: ['/api/files', currentProject?.id, selectedFolderId],
+    queryKey: ['/api/files', currentProject?.id, selectedFolderId, 'strict_mode_enabled'],
     queryFn: async () => {
       if (!currentProject?.id) {
-        // Om inget projekt är valt, returnera en tom array
+        console.log("FileExplorer: Inget projekt valt, inga filer att visa");
         return [];
       }
       
-      // Konstruera URL med korrekt filtrering baserat på vald mapp
+      // STRIKT LÄGE: SEPARAT ANROP BASERAT PÅ KONTEXT
+      // Detta säkerställer att vi håller filer separerade mellan kontexter
+      
+      console.log(`FileExplorer: STRIKT LÄGE AKTIVERAT för filhämtning. Vald mapp: ${selectedFolderId || 'ROOT'}`);
+      
+      // Sätt alltid projektets ID för grundläggande filtrering
       let url = `/api/files?projectId=${currentProject.id}`;
       
+      // För tydlighetens skull loggar vi exakt vilken typ av filhämtning vi gör
       if (selectedFolderId) {
-        // Om en specifik mapp är vald, hämta bara filer som tillhör den mappen
+        // MAPPLÄGRE: Hämta endast filer för en specifik mapp
+        console.log(`FileExplorer: MAPPLÄGE - Hämtar ENDAST filer för mapp ${selectedFolderId}`);
         url += `&folderId=${selectedFolderId}`;
-        console.log(`FileExplorer: Hämtar ENDAST filer för mapp ${selectedFolderId}`);
       } else {
-        // Om ingen mapp är vald, visa bara rotfiler (filer utan folderId)
+        // ROTLÄGE: Hämta endast filer utan mapptillhörighet
+        console.log(`FileExplorer: ROTLÄGE - Hämtar ENDAST filer utan mapptillhörighet`);
         url += `&rootFilesOnly=true`;
-        console.log(`FileExplorer: Hämtar ENDAST rotfiler utan mapptillhörighet`);
       }
       
-      console.log("FileExplorer: API-anrop med URL:", url);
+      console.log(`FileExplorer: API-anrop med URL: "${url}" - Detta kommer enbart hämta filer enligt strikt filtrering`);
       
+      // Lägg till cache-busting för att säkerställa att vi alltid får aktuella data
+      // och användandes för session cookies
       const res = await fetch(url, {
-        credentials: 'include',  // Säkerställ att cookies skickas med för autentisering
+        credentials: 'include',
         headers: {
           'Cache-Control': 'no-cache, no-store',
           'Pragma': 'no-cache'
@@ -261,13 +269,40 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       });
       
       if (!res.ok) {
-        console.warn("FileExplorer: API-anrop för filer misslyckades med status", res.status);
-        throw new Error(`Failed to fetch files: ${res.status}`);
+        const errorText = await res.text().catch(() => 'No error details');
+        console.error(`FileExplorer: API-anrop för filer misslyckades med status ${res.status}: ${errorText}`);
+        throw new Error(`Failed to fetch files: ${res.status} - ${errorText}`);
       }
       
       const data = await res.json();
-      console.log(`FileExplorer: Hämtade ${data.length} filer från servern`);
-      return data;
+      
+      // EXTRA VALIDERING: Verifiera att filerna vi har hämtat faktiskt uppfyller rätt kriterier
+      // Detta är en extra säkerhetsåtgärd för att undvika fel i filvisningen
+      const validatedData = data.filter((file: FileData) => {
+        const isValid = selectedFolderId
+          // I mappläge: alla filer måste ha matchande folderId
+          ? file.folderId?.toString() === selectedFolderId
+          // I rotläge: alla filer får INTE ha en folderId
+          : !file.folderId;
+      
+        if (!isValid) {
+          console.warn(`FileExplorer: Filtreringsfel! Fil ${file.id} (${file.name}) uppfyller inte gällande filtreringskriterier:`, {
+            läge: selectedFolderId ? 'MAPPLÄGE' : 'ROTLÄGE',
+            filMappId: file.folderId,
+            valdMappId: selectedFolderId
+          });
+        }
+        
+        return isValid;
+      });
+      
+      // Logga resultatet av extra filtreringen
+      if (validatedData.length !== data.length) {
+        console.error(`FileExplorer: VIKTIGT! Klient-filtreringen tog bort ${data.length - validatedData.length} filer som inte uppfyllde kriterierna.`);
+      }
+      
+      console.log(`FileExplorer: Slutligen returnerar ${validatedData.length} validerade filer efter strikt filtrering`);
+      return validatedData;
     },
     enabled: !!currentProject?.id, // Kör bara denna query om vi har ett projekt
     staleTime: 0, // Inaktivera caching för att alltid få färsk data
