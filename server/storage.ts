@@ -721,6 +721,40 @@ class DatabaseStorage implements IStorage {
       dependencies: []
     };
   }
+  
+  async deleteTask(id: number): Promise<boolean> {
+    try {
+      // Kontrollera om uppgiften är kopplad till en PDF-annotering
+      const relatedAnnotation = await db.query.pdfAnnotations.findFirst({
+        where: eq(pdfAnnotations.taskId, id)
+      });
+      
+      // Om det finns en kopplad annotation, sätt bara taskId till null
+      if (relatedAnnotation) {
+        await db.update(pdfAnnotations)
+          .set({ taskId: null })
+          .where(eq(pdfAnnotations.taskId, id));
+      }
+      
+      // Ta bort relaterade tidsregistreringar
+      await db.delete(timeEntries)
+        .where(eq(timeEntries.taskId, id));
+      
+      // Ta bort relaterade kommentarer
+      await db.delete(comments)
+        .where(eq(comments.taskId, id));
+      
+      // Ta bort själva uppgiften
+      const result = await db.delete(tasks)
+        .where(eq(tasks.id, id))
+        .returning();
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      return false;
+    }
+  }
 
   // Comments methods
   async getComments(fileId?: number, taskId?: number): Promise<Comment[]> {

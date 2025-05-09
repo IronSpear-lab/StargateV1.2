@@ -1156,19 +1156,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Add DELETE endpoint for tasks
+  // DELETE endpoint for tasks
   app.delete(`${apiPrefix}/tasks/:id`, async (req, res) => {
     try {
       const taskId = parseInt(req.params.id);
       
-      // For now, we'll just return success since we don't have a deleteTask method in storage
-      // In a real implementation, you would call something like:
-      // await storage.deleteTask(taskId);
+      // Anropa den nya deleteTask-metoden i storage
+      const success = await storage.deleteTask(taskId);
       
-      res.status(200).json({ message: "Task deleted successfully" });
+      if (success) {
+        res.status(200).json({ success: true, message: "Uppgift borttagen" });
+      } else {
+        res.status(404).json({ success: false, error: "Uppgiften kunde inte hittas" });
+      }
     } catch (error) {
       console.error("Error deleting task:", error);
-      res.status(500).json({ error: "Failed to delete task" });
+      res.status(500).json({ success: false, error: "Ett fel uppstod när uppgiften skulle tas bort" });
     }
   });
 
