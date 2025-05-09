@@ -280,6 +280,14 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
     onSuccess: () => {
       // Invalidera tasks-queryn för att hämta uppdaterade data
       queryClient.invalidateQueries({ queryKey: ['/api/tasks', projectId] });
+      
+      // Invalidera alla field-tasks queries för att uppdatera dashboardwidgets
+      queryClient.invalidateQueries({ queryKey: ['field-tasks'] });
+      
+      toast({
+        title: "Uppgift skapad",
+        description: "En ny uppgift har skapats",
+      });
     },
     onError: (error) => {
       console.error('Fel vid skapande av uppgift:', error);
@@ -299,8 +307,14 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks', projectId] });
-      // Invalidera också field-tasks för att uppdatera dashboardwidget
-      queryClient.invalidateQueries({ queryKey: ['/api/field-tasks'] });
+      
+      // Invalidera alla field-tasks queries för att uppdatera dashboardwidgets
+      queryClient.invalidateQueries({ queryKey: ['field-tasks'] });
+      
+      toast({
+        title: "Uppgift uppdaterad",
+        description: "Uppgiften har uppdaterats",
+      });
     },
     onError: (error) => {
       console.error('Fel vid uppdatering av uppgift:', error);
@@ -320,7 +334,15 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/field-tasks'] });
+      
+      // Invalidera alla field-tasks queries för att uppdatera dashboardwidgets
+      queryClient.invalidateQueries({ queryKey: ['field-tasks'] });
+      
+      toast({
+        title: "Uppgift borttagen",
+        description: "Uppgiften har tagits bort",
+      });
+      setIsDeleteDialogOpen(false);
     },
     onError: (error) => {
       console.error('Fel vid radering av uppgift:', error);
