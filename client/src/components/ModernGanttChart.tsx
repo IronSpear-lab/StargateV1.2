@@ -382,14 +382,15 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
   
   // Hämta uppgifter från API om projektId finns, annars från localStorage
   const { data: apiTasks = [], isLoading: isLoadingTasks } = useQuery({
-    queryKey: ['/api/tasks', projectId],
+    queryKey: ['/api/tasks', projectId, 'gantt'],
     queryFn: async () => {
       if (!projectId) return [];
       try {
-        const response = await fetch(`/api/tasks?projectId=${projectId}`);
+        // Lägg till type=gantt i sökningen för att bara hämta Gantt-uppgifter
+        const response = await fetch(`/api/tasks?projectId=${projectId}&type=gantt`);
         if (!response.ok) throw new Error('Kunde inte hämta uppgifter');
         const data = await response.json();
-        console.log('Hämtade uppgifter från API:', data);
+        console.log(`Gantt: Hittade ${data.length} gantt-uppgifter för projekt ${projectId}`);
         
         // Funktion för att normalisera datum (matchar den i DeadlinesWidget)
         const normalizeDate = (dateStr?: string): string | undefined => {
@@ -1068,11 +1069,13 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
       
       // För projekt med projektId, spara till databasen
       if (projectId) {
-        // Skapa API-data objekt
+        // Skapa API-data objekt - ALLTID sätta 'type' fältet till 'gantt' för 
+        // databastypfältet, medan apiType används för visuell representation
         const taskData = {
           title: newTask.name,
           status: apiStatus,
-          type: apiType,
+          type: "gantt", // Explicit sätter databas-typen till "gantt"
+          taskType: apiType, // Använd separata fält för Gantt-vyn
           projectId: projectId,
           startDate: newTask.startDate,
           endDate: endDate,
