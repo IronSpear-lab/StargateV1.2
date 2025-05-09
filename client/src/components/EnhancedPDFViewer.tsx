@@ -899,12 +899,13 @@ export default function EnhancedPDFViewer({
   const handleSaveComment = async () => {
     if (!activeAnnotation || !currentProject) return;
     
-    // Create updated annotation with comment and task
+    // Create updated annotation with comment, task and deadline
     const updatedAnnotation: PDFAnnotation = {
       ...activeAnnotation,
       comment: newComment,
       assignedTo: assignTo,
-      taskId: newTask ? `TASK-${Math.floor(Math.random() * 10000)}` : activeAnnotation.taskId
+      taskId: newTask ? `TASK-${Math.floor(Math.random() * 10000)}` : activeAnnotation.taskId,
+      deadline: deadline ? deadline.toISOString() : undefined
     };
     
     // Update annotations array
@@ -960,7 +961,8 @@ export default function EnhancedPDFViewer({
           status: updatedAnnotation.status,
           createdAt: updatedAnnotation.createdAt,
           createdBy: updatedAnnotation.createdBy,
-          assignedTo: updatedAnnotation.assignedTo
+          assignedTo: updatedAnnotation.assignedTo,
+          deadline: updatedAnnotation.deadline
         };
         
         console.log(`[${new Date().toISOString()}] Sparar annotation till databasen:`, {
@@ -1112,7 +1114,8 @@ export default function EnhancedPDFViewer({
             status: newStatus,
             createdAt: annotation.createdAt,
             createdBy: annotation.createdBy,
-            assignedTo: annotation.assignedTo
+            assignedTo: annotation.assignedTo,
+            deadline: annotation.deadline
           };
           
           console.log(`[${new Date().toISOString()}] Sparar statusförändring till databasen:`, {
