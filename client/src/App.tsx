@@ -80,6 +80,7 @@ function Router() {
       <ProtectedRoute path="/gantt-chart/:projectId" component={GanttChartPage} />
       <ProtectedRoute path="/wiki" component={WikiPage} />
       <ProtectedRoute path="/time-tracking" component={TimeTrackingPage} />
+      <ProtectedRoute path="/time-tracking/:projectId" component={TimeTrackingPage} />
       <ProtectedRoute path="/notifications" component={NotificationsPage} />
       <ProtectedRoute path="/team" component={TeamPage} />
       <ProtectedRoute path="/help" component={HelpPage} />
