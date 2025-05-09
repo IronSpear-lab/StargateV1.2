@@ -28,6 +28,7 @@ import FolderPage from "@/pages/folder-page";
 import DwgIfcViewerPage from "@/pages/dwg-ifc-viewer-page";
 import SimpleViewerPage from "@/pages/simple-viewer-page";
 import MessagesPage from "@/pages/messages-page";
+import PDFViewerPage from "@/pages/pdf-viewer-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -95,6 +96,7 @@ function Router() {
       <ProtectedRoute path="/vault/files/:folderName" component={FolderPage} />
       <ProtectedRoute path="/messages" component={MessagesPage} />
       <ProtectedRoute path="/communication/messages" component={MessagesPage} />
+      <ProtectedRoute path="/files/pdf/:versionId" component={PDFViewerPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
