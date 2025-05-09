@@ -1165,13 +1165,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const success = await storage.deleteTask(taskId);
       
       if (success) {
-        res.status(200).json({ success: true, message: "Uppgift borttagen" });
+        // Returnera det gamla formatet som klienten förväntar sig
+        res.status(200).json({ message: "Task deleted successfully" });
       } else {
-        res.status(404).json({ success: false, error: "Uppgiften kunde inte hittas" });
+        res.status(404).json({ error: "Uppgiften kunde inte hittas" });
       }
     } catch (error) {
       console.error("Error deleting task:", error);
-      res.status(500).json({ success: false, error: "Ett fel uppstod när uppgiften skulle tas bort" });
+      res.status(500).json({ error: "Ett fel uppstod när uppgiften skulle tas bort" });
     }
   });
 
