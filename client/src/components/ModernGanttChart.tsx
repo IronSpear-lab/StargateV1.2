@@ -252,28 +252,22 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
   const { toast } = useToast();
   
   // Hämta projektmedlemmar för att kunna tilldela uppgifter
-  const [projectMembers, setProjectMembers] = useState<{ id: number; username: string }[]>([]);
-  
-  // Hämta projektmedlemmar från API:n om projectId finns
-  useEffect(() => {
-    if (projectId) {
-      const fetchProjectMembers = async () => {
-        try {
-          const response = await fetch(`/api/project-members/${projectId}`);
-          if (response.ok) {
-            const members = await response.json();
-            setProjectMembers(members);
-          } else {
-            console.error('Failed to fetch project members');
-          }
-        } catch (error) {
-          console.error('Error fetching project members:', error);
+  const { data: projectMembers = [] } = useQuery({
+    queryKey: ['/api/project-members', projectId],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/project-members/${projectId}`);
+        if (!response.ok) {
+          throw new Error('Kunde inte hämta projektmedlemmar');
         }
-      };
-      
-      fetchProjectMembers();
-    }
-  }, [projectId]);
+        return await response.json();
+      } catch (error) {
+        console.error('Error fetching project members:', error);
+        return [];
+      }
+    },
+    enabled: !!projectId && projectId > 0
+  });
   
   // Generera ett projektnamn baserat på projektid
   const currentProjectName = useMemo(() => {
@@ -1324,23 +1318,23 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>{isEditMode ? 'Edit Task' : 'Create New Task'}</DialogTitle>
+            <DialogTitle>{isEditMode ? 'Redigera uppgift' : 'Skapa ny uppgift'}</DialogTitle>
           </DialogHeader>
           
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="task-type" className="text-right text-sm">Type</label>
+              <label htmlFor="task-type" className="text-right text-sm">Typ</label>
               <Select
                 value={newTask.type}
                 onValueChange={(value) => setNewTask({ ...newTask, type: value as any })}
               >
                 <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select type" />
+                  <SelectValue placeholder="Välj typ" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="TASK">TASK</SelectItem>
-                  <SelectItem value="MILESTONE">MILESTONE</SelectItem>
-                  <SelectItem value="PHASE">PHASE</SelectItem>
+                  <SelectItem value="TASK">Uppgift</SelectItem>
+                  <SelectItem value="MILESTONE">Milstolpe</SelectItem>
+                  <SelectItem value="PHASE">Fas</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1348,7 +1342,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
             {/* Projektfältet borttaget eftersom det används automatiskt från aktuellt projekt */}
             
             <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="task-name" className="text-right text-sm">Name</label>
+              <label htmlFor="task-name" className="text-right text-sm">Namn</label>
               <Input
                 id="task-name"
                 value={newTask.name}
@@ -1364,19 +1358,19 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                 onValueChange={(value) => setNewTask({ ...newTask, status: value as any })}
               >
                 <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select status" />
+                  <SelectValue placeholder="Välj status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="New">New</SelectItem>
-                  <SelectItem value="Ongoing">Ongoing</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
-                  <SelectItem value="Delayed">Delayed</SelectItem>
+                  <SelectItem value="New">Ny</SelectItem>
+                  <SelectItem value="Ongoing">Pågående</SelectItem>
+                  <SelectItem value="Completed">Avslutad</SelectItem>
+                  <SelectItem value="Delayed">Försenad</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="task-start-date" className="text-right text-sm">Start Date</label>
+              <label htmlFor="task-start-date" className="text-right text-sm">Startdatum</label>
               <Input
                 id="task-start-date"
                 type="date"
@@ -1387,7 +1381,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
             </div>
             
             <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="task-end-date" className="text-right text-sm">End Date</label>
+              <label htmlFor="task-end-date" className="text-right text-sm">Slutdatum</label>
               <Input
                 id="task-end-date"
                 type="date"
@@ -1439,7 +1433,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={cancelCreateTask}>Cancel</Button>
+            <Button variant="outline" onClick={cancelCreateTask}>Avbryt</Button>
             {isEditMode ? (
               <>
                 <Button 
@@ -1458,8 +1452,8 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                           setTasks(prevTasks => prevTasks.filter(t => t.id !== editingTaskId));
                           
                           toast({
-                            title: "Task Deleted",
-                            description: `${taskToRemove.name} has been removed from the Gantt chart`,
+                            title: "Uppgift borttagen",
+                            description: `${taskToRemove.name} har tagits bort från Gantt-diagrammet`,
                           });
                         }
                         
@@ -1470,15 +1464,15 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                     }
                   }}
                 >
-                  Delete Task
+                  Ta bort
                 </Button>
                 <Button onClick={saveNewTask}>
-                  Update
+                  Uppdatera
                 </Button>
               </>
             ) : (
               <Button onClick={saveNewTask}>
-                Create
+                Skapa
               </Button>
             )}
           </DialogFooter>
@@ -1489,33 +1483,35 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Delete Task</DialogTitle>
+            <DialogTitle>Ta bort uppgift</DialogTitle>
           </DialogHeader>
           
           <div className="py-4">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete this task? 
+              Är du säker på att du vill ta bort denna uppgift? 
               {taskToDelete?.type === 'PHASE' && (
                 <span className="text-destructive font-semibold block mt-2">
-                  Warning: This will also delete all child tasks under this phase!
+                  Varning: Detta kommer även ta bort alla underuppgifter under denna fas!
                 </span>
               )}
             </p>
             
             {taskToDelete && (
               <div className="mt-4 p-3 border rounded-md bg-muted">
-                <p><span className="font-medium">Name:</span> {taskToDelete.name}</p>
-                <p><span className="font-medium">Type:</span> {taskToDelete.type}</p>
-                <p><span className="font-medium">Status:</span> {taskToDelete.status}</p>
-                <p><span className="font-medium">Project:</span> {taskToDelete.project}</p>
+                <p><span className="font-medium">Namn:</span> {taskToDelete.name}</p>
+                <p><span className="font-medium">Typ:</span> {taskToDelete.type === 'TASK' ? 'Uppgift' : taskToDelete.type === 'MILESTONE' ? 'Milstolpe' : 'Fas'}</p>
+                <p><span className="font-medium">Status:</span> {taskToDelete.status === 'New' ? 'Ny' : 
+                                                               taskToDelete.status === 'Ongoing' ? 'Pågående' : 
+                                                               taskToDelete.status === 'Completed' ? 'Avslutad' : 'Försenad'}</p>
+                <p><span className="font-medium">Projekt:</span> {taskToDelete.project}</p>
               </div>
             )}
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Avbryt</Button>
             <Button variant="destructive" onClick={confirmDeleteTask}>
-              Delete
+              Ta bort
             </Button>
           </DialogFooter>
         </DialogContent>
