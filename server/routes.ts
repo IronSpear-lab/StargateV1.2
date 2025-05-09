@@ -1060,13 +1060,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid task ID" });
       }
       
-      // Hämta uppgiftsdata från databasen
+      // Hämta uppgiftsdata från databasen med fler fält för bättre typbestämning
       const taskData = await db.query.tasks.findFirst({
         where: eq(tasks.id, taskId),
         columns: {
           id: true,
-          type: true,  // Vi använder tasks.type istället för taskType som inte finns
-          title: true
+          type: true,
+          title: true,
+          startDate: true,
+          endDate: true,
+          dueDate: true
         }
       });
       
@@ -1074,12 +1077,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Task not found" });
       }
       
-      // Avgör vilken typ av uppgift det är baserat på type-fältet
-      let type = "kanban"; // Standard är kanban
+      // Avgör vilken typ av uppgift det är baserat på flera kriterier, inte bara type-fältet
+      let type = "kanban"; // Standard är fortfarande kanban
       
+      // Kontroll 1: Om type-fältet är explicit satt till "gantt"
       if (taskData.type === "gantt") {
         type = "gantt";
+      } 
+      // Kontroll 2: Om titeln innehåller "gantt" (oberoende av skiftläge)
+      else if (taskData.title && taskData.title.toLowerCase().includes("gantt")) {
+        type = "gantt";
+        console.log(`Uppgift ${taskId} klassificerad som 'gantt' baserat på titeln: "${taskData.title}"`);
+      } 
+      // Kontroll 3: Om uppgiften har både startDate och endDate (typiskt för gantt-uppgifter)
+      else if (taskData.startDate && taskData.endDate) {
+        type = "gantt";
+        console.log(`Uppgift ${taskId} klassificerad som 'gantt' baserat på att den har både startDate och endDate`);
       }
+      
+      // Logga resultatet för debugging
+      console.log(`Uppgiftstyp för ID ${taskId} (${taskData.title}): ${type}`);
       
       res.json({
         id: taskData.id,
