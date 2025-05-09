@@ -3198,6 +3198,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Field Tasks API - hämta uppgifter tilldelade användaren
+  app.get(`${apiPrefix}/field-tasks`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        console.log("Field-tasks: Ej autentiserad, returnerar 401");
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const userId = parseInt(req.query.userId as string) || req.user.id;
+      console.log(`Field-tasks: Hämtar uppgifter för användare ${userId}`);
+      
+      // Hämta alla uppgifter där användaren är tilldelad
+      const assignedTasks = await storage.getTasksAssignedToUser(userId);
+      
+      console.log(`Field-tasks: Hittade ${assignedTasks.length} uppgifter`);
+      
+      if (assignedTasks.length === 0) {
+        return res.json([]);
+      }
+      
+      // Hämta projektinformation för att lägga till i svaret
+      const projectIds = [...new Set(assignedTasks.map(task => task.projectId))];
+      const projectsMap = new Map();
+      
+      for (const projectId of projectIds) {
+        const project = await db.query.projects.findFirst({
+          where: eq(projects.id, projectId),
+          columns: {
+            id: true,
+            name: true
+          }
+        });
+        
+        if (project) {
+          projectsMap.set(project.id, project.name);
+        }
+      }
+      
+      // Formattera uppgifter för frontend-användning
+      const formattedTasks = await Promise.all(assignedTasks.map(async (task) => {
+        // Hämta information om skaparen
+        const creator = await db.query.users.findFirst({
+          where: eq(users.id, task.createdById),
+          columns: {
+            id: true,
+            username: true
+          }
+        });
+        
+        // Hämta information om användaren som är tilldelad
+        const assignee = await db.query.users.findFirst({
+          where: eq(users.id, task.assigneeId || 0),
+          columns: {
+            id: true,
+            username: true
+          }
+        });
+        
+        const projectName = projectsMap.get(task.projectId) || "Okänt projekt";
+        
+        // Mappning av status
+        const statusMap = {
+          "todo": "pending",
+          "backlog": "pending",
+          "in_progress": "in_progress",
+          "review": "in_progress",
+          "done": "completed"
+        };
+        
+        return {
+          id: task.id.toString(),
+          title: task.title,
+          location: projectName,
+          address: task.description || "",
+          assignee: assignee?.username || "Ej tilldelad",
+          assigneeId: task.assigneeId?.toString() || "",
+          status: statusMap[task.status] || "pending",
+          scheduledDate: task.startDate || task.createdAt.toISOString(),
+          priority: task.priority || "medium",
+          taskType: task.type || "task"
+        };
+      }));
+      
+      console.log(`Field-tasks: Returnerar ${formattedTasks.length} formaterade uppgifter`);
+      res.json(formattedTasks);
+    } catch (error) {
+      console.error("Error fetching field tasks:", error);
+      res.status(500).json({ error: "Failed to fetch field tasks" });
+    }
+  });
+
   // Hämta PDF-annotationer som är tilldelade den inloggade användaren
   app.get(`${apiPrefix}/pdf-annotations/assigned`, async (req, res) => {
     try {
