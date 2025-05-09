@@ -144,7 +144,6 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
   // Kombinera uppgifter och PDF-kommentarer till deadline-items
   const combinedItems: DeadlineItem[] = [
     ...(tasks || [])
-      .filter((task: FieldTask) => task.dueDate || task.endDate) // Endast inkludera tasks med deadline
       .map((task: FieldTask) => ({
         type: "task" as const,
         data: task
