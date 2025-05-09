@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Rensa mappar</title>
+</head>
+<body>
+  <h2>Rensa mappar från localStorage</h2>
+  <button id="clearButton">Rensa alla mappar</button>
+  <div id="result"></div>
+
+  <script>
+    document.getElementById('clearButton').addEventListener('click', function() {
+      // Ta bort alla mappar från localStorage
+      localStorage.removeItem('userCreatedFolders');
+      document.getElementById('result').innerHTML = 'Alla mappar har rensats! Ladda om huvudapplikationen för att se ändringarna.';
+    });
+  </script>
+</body>
+</html>

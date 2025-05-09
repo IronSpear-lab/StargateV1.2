@@ -281,6 +281,8 @@ export function FolderManagementWidget() {
       });
     }
   });
+  
+
 
   // Handle folder deletion
   const handleDeleteFolder = (folder: FolderData) => {
