@@ -305,7 +305,7 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
                       <span>{pdfStatusLabels[annotation.status]}</span>
                     </div>
                   </div>
-                  <div className="text-xs text-gray-500">{annotation.taskId ? 'Uppgift' : 'PDF Kommentar'}</div>
+                  <div className="text-xs text-gray-500">PDF</div>
                 </div>
                 
                 <Avatar className="h-6 w-6">
@@ -363,7 +363,7 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
                   <span>{pdfStatusLabels[annotation.status]}</span>
                 </div>
               </div>
-              <div className="text-xs text-gray-500">{annotation.taskId ? 'Uppgift' : 'PDF Kommentar'}</div>
+              <div className="text-xs text-gray-500">PDF</div>
             </div>
             
             <Avatar className="h-6 w-6">
