@@ -128,23 +128,53 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
   const getDeadlineDate = (item: DeadlineItem): string => {
     // Logga datum-relaterade fält för uppgifter för att debugga
     if (item.type === "task") {
+      const isGanttTask = item.data.taskType === "gantt";
       console.log("DeadlinesWidget - Task datum:", {
         id: item.data.id,
         title: item.data.title,
+        type: item.data.taskType, 
         status: item.data.status,
         dueDate: item.data.dueDate,
         endDate: item.data.endDate,
         startDate: item.data.startDate,
-        createdAt: item.data.createdAt
+        scheduledDate: item.data.scheduledDate,
+        isGanttTask
       });
       
-      // Prioritera dueDate för Kanban-uppgifter, men för Gantt använd endDate först
-      const isGanttTask = item.data.taskType === "gantt";
-      
+      // För Gantt-uppgifter är det viktigt att prioritera endDate
       if (isGanttTask) {
-        return item.data.endDate || item.data.dueDate || item.data.startDate || new Date().toISOString();
+        // Kontrollera om datestring behöver korrigeras (vissa datum kommer som YYYY-MM-DD)
+        const normalizeDate = (dateStr?: string): string | undefined => {
+          if (!dateStr) return undefined;
+          
+          // Om datumet redan är ett ISO-format med tid, använd det direkt
+          if (dateStr.includes('T')) return dateStr;
+          
+          // Om det är bara YYYY-MM-DD, konvertera till ISO med tid (midnatt lokal tid)
+          try {
+            const date = new Date(dateStr + 'T00:00:00');
+            if (!isNaN(date.getTime())) {
+              return date.toISOString();
+            }
+          } catch (e) {
+            console.error("Kunde inte normalisera datum:", dateStr, e);
+          }
+          return dateStr;
+        };
+        
+        // Använd normaliserade datum (med prioritet för endDate i Gantt)
+        const deadlineDate = normalizeDate(item.data.endDate) || 
+                            normalizeDate(item.data.dueDate) || 
+                            normalizeDate(item.data.startDate) || 
+                            new Date().toISOString();
+        
+        console.log(`Gantt-uppgift (${item.data.title}) använder deadline: ${deadlineDate}`);
+        return deadlineDate;
       } else {
-        return item.data.dueDate || item.data.endDate || item.data.startDate || new Date().toISOString();
+        // För Kanban och andra uppgifter prioritera dueDate
+        const deadlineDate = item.data.dueDate || item.data.endDate || item.data.startDate || new Date().toISOString();
+        console.log(`Kanban-uppgift (${item.data.title}) använder deadline: ${deadlineDate}`);
+        return deadlineDate;
       }
     } else {
       // Om PDF-kommentaren har en egen deadline, använd den
@@ -589,7 +619,21 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
             
             <div className="text-xs text-gray-500 flex items-center">
               <Clock className="h-3 w-3 mr-1 text-[#ffc35a]" />
-              {format(new Date(getDeadlineDate({ type: "pdf_annotation", data: annotation })), "dd MMM yyyy")}
+              {(() => {
+                try {
+                  const deadlineDate = getDeadlineDate({ type: "pdf_annotation", data: annotation });
+                  console.log(`Formaterar datum för PDF-kommentar: ${deadlineDate}`);
+                  const date = new Date(deadlineDate);
+                  if (isNaN(date.getTime())) {
+                    console.error(`Ogiltigt datum för PDF-kommentar: ${deadlineDate}`);
+                    return "Ogiltigt datum";
+                  }
+                  return format(date, "yyyy-MM-dd");
+                } catch (e) {
+                  console.error("Fel vid formatering av datum för PDF-kommentar:", e);
+                  return "Ogiltigt datum";
+                }
+              })()}
             </div>
           </div>
         </div>
@@ -639,7 +683,21 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
             
             <div className="text-xs text-gray-500 flex items-center">
               <Clock className="h-3 w-3 mr-1 text-[#ffc35a]" />
-              {format(new Date(getDeadlineDate({ type: "task", data: task })), "dd MMM yyyy")}
+              {(() => {
+                try {
+                  const deadlineDate = getDeadlineDate({ type: "task", data: task });
+                  console.log(`Formaterar datum för uppgift "${task.title}": ${deadlineDate}`);
+                  const date = new Date(deadlineDate);
+                  if (isNaN(date.getTime())) {
+                    console.error(`Ogiltigt datum för uppgift "${task.title}": ${deadlineDate}`);
+                    return "Ogiltigt datum";
+                  }
+                  return format(date, "yyyy-MM-dd");
+                } catch (e) {
+                  console.error(`Fel vid formatering av datum för uppgift "${task.title}":`, e);
+                  return "Ogiltigt datum";
+                }
+              })()}
             </div>
           </div>
         </div>
