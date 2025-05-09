@@ -85,12 +85,49 @@ export default function ProjectDetailPage() {
   // Håll koll på taskId som ska fokuseras
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(taskIdParam);
   
+  // Hämta uppgiftstyp för att kunna dirigera till rätt flik
+  const { data: taskTypeData } = useQuery({
+    queryKey: ['/api/tasks/type', { taskId: taskIdParam }],
+    queryFn: async () => {
+      if (!taskIdParam) return null;
+      try {
+        const response = await apiRequest('GET', `/api/tasks/${taskIdParam}/type`);
+        return await response.json();
+      } catch (error) {
+        console.error("Error fetching task type:", error);
+        return null;
+      }
+    },
+    enabled: !!taskIdParam
+  });
+  
   // Lyssna efter förändringar i URL-parametrar och uppdatera state
   useEffect(() => {
     // Uppdatera URL-parametrarna om användaren ändrar flik manuellt
     const newUrlParams = new URLSearchParams(location.split('?')[1] || '');
     const newTabParam = newUrlParams.get('tab');
     const newTaskIdParam = newUrlParams.get('taskId');
+    
+    if (newTaskIdParam && (!newTabParam || newTabParam === "overview")) {
+      // Om vi har ett taskId men ingen specificerad flik eller overview är vald, 
+      // försök identifiera korrekt flik baserat på cachelagrad uppgiftstyp
+      const cachedTaskType = queryClient.getQueryData(['/api/tasks/type', { taskId: newTaskIdParam }]);
+      
+      // Utred vilken flik vi bör navigera till baserat på uppgiftstyp
+      if (cachedTaskType) {
+        if (cachedTaskType.type === "gantt") {
+          console.log(`Automatisk navigering till Gantt-fliken för uppgift: ${newTaskIdParam}`);
+          // Ändra till timeline-fliken för Gantt-uppgifter
+          setActiveTab("timeline");
+          return; // Avsluta tidigt så vi inte dubbeluppdaterar tab
+        } else {
+          console.log(`Automatisk navigering till Kanban-fliken för uppgift: ${newTaskIdParam}`);
+          // Ändra till tasks-fliken för andra typer (kanban, etc.)
+          setActiveTab("tasks");
+          return; // Avsluta tidigt så vi inte dubbeluppdaterar tab
+        }
+      }
+    }
     
     if (newTabParam && newTabParam !== activeTab) {
       console.log(`Uppdaterar aktiv flik från ${activeTab} till ${newTabParam}`);
@@ -101,7 +138,7 @@ export default function ProjectDetailPage() {
       console.log(`Uppdaterar fokuserad uppgift: ${newTaskIdParam}`);
       setFocusedTaskId(newTaskIdParam);
     }
-  }, [location]);
+  }, [location, taskTypeData]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
