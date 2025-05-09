@@ -229,14 +229,14 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
   console.log("DeadlinesWidget - Antal tasks:", (tasks || []).length);
   console.log("DeadlinesWidget - Antal PDF-annotationer:", (pdfAnnotations || []).length);
 
-  // Sortera deadlines efter datum (tidiga deadlines först) och begränsa till 'limit' poster
+  // Sortera deadlines efter slutdatum (tidiga deadlines först) och begränsa till 'limit' poster
   const deadlines = combinedItems
     .sort((a, b) => {
       try {
         const dateA = new Date(getDeadlineDate(a)).getTime();
         const dateB = new Date(getDeadlineDate(b)).getTime();
         
-        console.log(`Jämför deadlines: ${getItemTitle(a)} (${dateA}) vs ${getItemTitle(b)} (${dateB})`);
+        console.log(`Jämför deadlines: ${getItemTitle(a)} (${new Date(dateA).toLocaleDateString()}) vs ${getItemTitle(b)} (${new Date(dateB).toLocaleDateString()})`);
         
         return dateA - dateB; // Sortera stigande (tidiga deadlines först)
       } catch (error) {
@@ -506,7 +506,7 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
         const dateA = new Date(getDeadlineDate(a)).getTime();
         const dateB = new Date(getDeadlineDate(b)).getTime();
         
-        console.log(`Jämför deadlines i dialog: ${getItemTitle(a)} (${dateA}) vs ${getItemTitle(b)} (${dateB})`);
+        console.log(`Jämför deadlines i dialog: ${getItemTitle(a)} (${new Date(dateA).toLocaleDateString()}) vs ${getItemTitle(b)} (${new Date(dateB).toLocaleDateString()})`);
         
         return dateA - dateB; // Sortera stigande (tidiga deadlines först)
       } catch (error) {
