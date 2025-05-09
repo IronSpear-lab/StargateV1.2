@@ -737,8 +737,8 @@ class DatabaseStorage implements IStorage {
       }
       
       // Ta bort relaterade tidsregistreringar
-      await db.delete(timeEntries)
-        .where(eq(timeEntries.taskId, id));
+      await db.delete(taskTimeEntries)
+        .where(eq(taskTimeEntries.taskId, id));
       
       // Ta bort relaterade kommentarer
       await db.delete(comments)
