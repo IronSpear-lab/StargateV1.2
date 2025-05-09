@@ -253,7 +253,7 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
   };
 
   // Hanterare för klick på en fältuppgift
-  const handleFieldTaskClick = (task: FieldTask) => {
+  const handleFieldTaskClick = async (task: FieldTask) => {
     // Logga detaljerad information för felsökning
     console.log(`Klickad uppgift detaljer:`, {
       id: task.id,
@@ -269,22 +269,57 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
     // Vi vet att projektID 6 existerar från webview-loggarna
     const knownProjectId = 6;
     
-    // Navigera till rätt vy baserat på typ av uppgift
+    try {
+      // Använd den nya API-endpointen för att avgöra uppgiftstyp
+      const response = await fetch(`/api/tasks/${task.id}/type`);
+      
+      if (response.ok) {
+        const taskTypeData = await response.json();
+        console.log("API-svar för uppgiftstyp:", taskTypeData);
+        
+        // Använda projektID från uppgiften eller fallback till känt projekt
+        const projectId = task.projectId || knownProjectId;
+        
+        if (taskTypeData.type === "gantt") {
+          // Gå till projektsidan och aktivera Gantt-fliken
+          console.log(`Navigerar till projektets Gantt-vy: /projects/${projectId}?tab=timeline&taskId=${task.id}`);
+          setLocation(`/projects/${projectId}?tab=timeline&taskId=${task.id}`);
+        } else {
+          // För alla andra uppgiftstyper, gå till projektsidan och aktivera Tasks-fliken (Kanban)
+          console.log(`Navigerar till projektets Tasks-vy: /projects/${projectId}?tab=tasks&taskId=${task.id}`);
+          setLocation(`/projects/${projectId}?tab=tasks&taskId=${task.id}`);
+        }
+      } else {
+        console.error("Kunde inte hämta uppgiftstyp från API:", response.status);
+        // Fallback till befintlig logik baserad på taskType-fältet i uppgiftsobjektet
+        fallbackNavigate(task);
+      }
+    } catch (error) {
+      console.error("Fel vid hämtning av uppgiftstyp:", error);
+      // Fallback till befintlig logik baserad på taskType-fältet i uppgiftsobjektet
+      fallbackNavigate(task);
+    }
+  };
+  
+  // Fallback-navigation baserad på taskType-fältet i uppgiftsobjektet
+  const fallbackNavigate = (task: FieldTask) => {
+    const knownProjectId = 6;
+    
     if (task.taskType === "gantt") {
       // Gå till projektsidan och aktivera Gantt-fliken
-      console.log(`Navigerar till projektets Gantt-vy: /projects/${task.projectId || knownProjectId}?tab=timeline&taskId=${task.id}`);
+      console.log(`Fallback: Navigerar till projektets Gantt-vy: /projects/${task.projectId || knownProjectId}?tab=timeline&taskId=${task.id}`);
       setLocation(`/projects/${task.projectId || knownProjectId}?tab=timeline&taskId=${task.id}`);
     } else if (task.taskType === "kanban" || task.taskType === "Setup" || task.taskType === "Research") {
       // För Kanban-uppgifter, gå till projektsidan och aktivera Tasks-fliken
-      console.log(`Navigerar till projektets Tasks-vy: /projects/${task.projectId || knownProjectId}?tab=tasks&taskId=${task.id}`);
+      console.log(`Fallback: Navigerar till projektets Tasks-vy: /projects/${task.projectId || knownProjectId}?tab=tasks&taskId=${task.id}`);
       setLocation(`/projects/${task.projectId || knownProjectId}?tab=tasks&taskId=${task.id}`);
     } else if (task.projectId) {
       // För andra uppgiftstyper med projektID, gå till projektets startsida
-      console.log(`Navigerar till projektets startsida: /projects/${task.projectId}`);
+      console.log(`Fallback: Navigerar till projektets startsida: /projects/${task.projectId}`);
       setLocation(`/projects/${task.projectId}`);
     } else {
       // För uppgifter utan projektID, gå till Test2-projektets Tasks-vy
-      console.log(`Ingen projektID eller taskType, navigerar till fallback: /projects/${knownProjectId}?tab=tasks&taskId=${task.id}`);
+      console.log(`Fallback: Ingen projektID eller taskType, navigerar till fallback: /projects/${knownProjectId}?tab=tasks&taskId=${task.id}`);
       setLocation(`/projects/${knownProjectId}?tab=tasks&taskId=${task.id}`);
     }
   };

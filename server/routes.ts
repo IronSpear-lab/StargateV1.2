@@ -1065,7 +1065,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         where: eq(tasks.id, taskId),
         columns: {
           id: true,
-          taskType: true,
+          type: true,  // Vi använder tasks.type istället för taskType som inte finns
           title: true
         }
       });
@@ -1074,10 +1074,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Task not found" });
       }
       
-      // Avgör vilken typ av uppgift det är baserat på taskType-fältet
+      // Avgör vilken typ av uppgift det är baserat på type-fältet
       let type = "kanban"; // Standard är kanban
       
-      if (taskData.taskType === "gantt") {
+      if (taskData.type === "gantt") {
         type = "gantt";
       }
       
