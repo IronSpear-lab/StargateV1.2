@@ -81,6 +81,7 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
   // Hämta uppgifter från API med samma queryKey-format som i FieldTasksWidget
   const { data: tasks, isLoading: isLoadingTasks } = useQuery({
     queryKey: ['field-tasks', null], // Null för att hämta alla tasks (inte begränsa till userId)
+    refetchOnWindowFocus: true, // Uppdatera data när fönstret får fokus
     queryFn: async () => {
       try {
         console.log("DeadlinesWidget: Hämtar field tasks...");
@@ -102,6 +103,7 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
   // Hämta PDF-kommentarer som är tilldelade användaren
   const { data: pdfAnnotations, isLoading: isLoadingAnnotations } = useQuery({
     queryKey: ['field-tasks', 'pdf-annotations/assigned'], // Uppdaterat format för att matcha övriga i systemet
+    refetchOnWindowFocus: true, // Uppdatera data när fönstret får fokus  
     queryFn: async () => {
       try {
         console.log("DeadlinesWidget: Hämtar PDF-annotationer...");
