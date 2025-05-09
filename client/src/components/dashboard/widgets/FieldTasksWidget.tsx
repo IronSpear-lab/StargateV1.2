@@ -271,22 +271,21 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
     
     // Navigera till rätt vy baserat på typ av uppgift
     if (task.taskType === "gantt") {
-      // Gå till Gantt-schemat och fokusera på uppgiften
-      console.log(`Navigerar till Gantt-schema: /projects/${task.projectId || knownProjectId}/gantt?taskId=${task.id}`);
-      setLocation(`/projects/${task.projectId || knownProjectId}/gantt?taskId=${task.id}`);
+      // Gå till projektsidan och aktivera Gantt-fliken
+      console.log(`Navigerar till projektets Gantt-vy: /projects/${task.projectId || knownProjectId}?tab=timeline&taskId=${task.id}`);
+      setLocation(`/projects/${task.projectId || knownProjectId}?tab=timeline&taskId=${task.id}`);
     } else if (task.taskType === "kanban" || task.taskType === "Setup" || task.taskType === "Research") {
-      // För Kanban-tavlan, gå till rätt projekt och markera kortet
-      // Vi använder projektID 6 (Test2) om inget projektID finns
-      console.log(`Navigerar till Kanban-tavla: /projects/${task.projectId || knownProjectId}/kanban?taskId=${task.id}`);
-      setLocation(`/projects/${task.projectId || knownProjectId}/kanban?taskId=${task.id}`);
+      // För Kanban-uppgifter, gå till projektsidan och aktivera Tasks-fliken
+      console.log(`Navigerar till projektets Tasks-vy: /projects/${task.projectId || knownProjectId}?tab=tasks&taskId=${task.id}`);
+      setLocation(`/projects/${task.projectId || knownProjectId}?tab=tasks&taskId=${task.id}`);
     } else if (task.projectId) {
       // För andra uppgiftstyper med projektID, gå till projektets startsida
       console.log(`Navigerar till projektets startsida: /projects/${task.projectId}`);
       setLocation(`/projects/${task.projectId}`);
     } else {
-      // För uppgifter utan projektID, gå till Test2-projektets Kanban-tavla
-      console.log(`Ingen projektID eller taskType, navigerar till fallback: /projects/${knownProjectId}/kanban?taskId=${task.id}`);
-      setLocation(`/projects/${knownProjectId}/kanban?taskId=${task.id}`);
+      // För uppgifter utan projektID, gå till Test2-projektets Tasks-vy
+      console.log(`Ingen projektID eller taskType, navigerar till fallback: /projects/${knownProjectId}?tab=tasks&taskId=${task.id}`);
+      setLocation(`/projects/${knownProjectId}?tab=tasks&taskId=${task.id}`);
     }
   };
 
