@@ -258,14 +258,17 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
     if (task.taskType === "gantt") {
       // Gå till Gantt-schemat och fokusera på uppgiften
       setLocation(`/projects/${task.projectId}/gantt?taskId=${task.id}`);
-    } else {
+    } else if (task.taskType === "kanban" && task.projectId) {
       // För Kanban-tavlan, gå till rätt projekt och markera kortet
-      if (task.projectId) {
-        setLocation(`/projects/${task.projectId}/kanban?taskId=${task.id}`);
-      } else {
-        // Fallback om ingen projektID finns
-        setLocation(`/tasks/${task.id}`);
-      }
+      setLocation(`/projects/${task.projectId}/kanban?taskId=${task.id}`);
+    } else if (task.projectId) {
+      // För andra uppgiftstyper med projektID, gå till projektets startsida
+      setLocation(`/projects/${task.projectId}`);
+    } else {
+      // För uppgifter utan projektID, gå till dashboard
+      // Vi har ingen dedikerad uppgiftssida för standalone uppgifter
+      console.log("Kunde inte navigera till uppgiften - ingen dedikerad sida finns:", task);
+      setLocation(`/dashboard`);
     }
   };
 

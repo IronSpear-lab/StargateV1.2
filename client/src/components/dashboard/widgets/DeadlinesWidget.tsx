@@ -315,14 +315,16 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
     } else if (item.data.taskType === "gantt") {
       // Gå till Gantt-schemat och fokusera på uppgiften
       setLocation(`/projects/${item.data.projectId}/gantt?taskId=${item.data.id}`);
-    } else {
+    } else if (item.data.taskType === "kanban" && item.data.projectId) {
       // För Kanban-tavlan, gå till rätt projekt och markera kortet
-      if (item.data.projectId) {
-        setLocation(`/projects/${item.data.projectId}/kanban?taskId=${item.data.id}`);
-      } else {
-        // Fallback om ingen projektID finns
-        setLocation(`/tasks/${item.data.id}`);
-      }
+      setLocation(`/projects/${item.data.projectId}/kanban?taskId=${item.data.id}`);
+    } else if (item.data.projectId) {
+      // För andra uppgiftstyper med projektID, gå till projektets startsida
+      setLocation(`/projects/${item.data.projectId}`);
+    } else {
+      // För uppgifter utan projektID, gå till dashboard
+      console.log("Kunde inte navigera till uppgiften - ingen dedikerad sida finns:", item.data);
+      setLocation(`/dashboard`);
     }
   };
   
