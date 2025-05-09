@@ -274,7 +274,13 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
   // Mutation för att skapa nya uppgifter
   const createTaskMutation = useMutation({
     mutationFn: async (taskData: any) => {
-      const response = await apiRequest('POST', '/api/tasks', taskData);
+      // Säkerställ att type-fältet är satt till "gantt" för alla uppgifter i Gantt-vyn
+      const taskDataWithType = {
+        ...taskData,
+        type: "gantt" // Explicit sätta typen
+      };
+      
+      const response = await apiRequest('POST', '/api/tasks', taskDataWithType);
       return await response.json();
     },
     onSuccess: () => {
@@ -283,6 +289,9 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
       
       // Invalidera alla field-tasks queries för att uppdatera dashboardwidgets
       queryClient.invalidateQueries({ queryKey: ['field-tasks'] });
+      
+      // Stäng dialogen om den är öppen
+      setShowCreateDialog(false);
       
       toast({
         title: "Uppgift skapad",
@@ -302,7 +311,13 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
   // Mutation för att uppdatera befintliga uppgifter
   const updateTaskMutation = useMutation({
     mutationFn: async ({ taskId, taskData }: { taskId: number, taskData: any }) => {
-      const response = await apiRequest('PATCH', `/api/tasks/${taskId}`, taskData);
+      // Säkerställ att type-fältet är satt till "gantt" för alla uppgifter som uppdateras
+      const taskDataWithType = {
+        ...taskData,
+        type: "gantt" // Explicit sätta typen
+      };
+      
+      const response = await apiRequest('PATCH', `/api/tasks/${taskId}`, taskDataWithType);
       return await response.json();
     },
     onSuccess: () => {
