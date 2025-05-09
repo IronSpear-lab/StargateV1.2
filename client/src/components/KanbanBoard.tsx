@@ -182,18 +182,20 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
     }
   });
 
-  // Query to fetch users for assignee dropdown
-  const { data: usersData } = useQuery({
-    queryKey: ['/api/user-projects'],
+  // Query to fetch project members for assignee dropdown
+  const { data: projectMembersData } = useQuery({
+    queryKey: ['/api/project-members', projectId],
     queryFn: async () => {
       try {
-        const response = await apiRequest('GET', '/api/user-projects');
+        const response = await apiRequest('GET', `/api/project-members/${projectId}`);
         return await response.json();
       } catch (error) {
-        console.error("Error fetching users:", error);
+        console.error("Error fetching project members:", error);
         return [];
       }
-    }
+    },
+    // Only fetch if projectId is valid
+    enabled: !!projectId && projectId > 0
   });
 
   // Handle task creation
@@ -327,7 +329,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
       
       setColumns(newColumns);
     }
-  }, [tasksData]);
+  }, [tasksData, projectMembersData]);
 
   // Get colors for task attributes
   const getTaskColors = (task: any) => {
@@ -594,18 +596,8 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
     }
   };
 
-  // Extract unique users from project data
-  const uniqueUsers = new Map();
-  
-  if (usersData) {
-    usersData.forEach((project: any) => {
-      if (project.user && !uniqueUsers.has(project.user.id)) {
-        uniqueUsers.set(project.user.id, project.user);
-      }
-    });
-  }
-  
-  const users = Array.from(uniqueUsers.values());
+  // Use project members data directly
+  const projectMembers = projectMembersData || [];
 
   return (
     <div>
@@ -913,10 +905,10 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="unassigned">Unassigned</SelectItem>
-                          {users.map((user: any) => (
-                            <SelectItem key={user.id} value={user.id.toString()}>
-                              {user.username}
+                          <SelectItem value="">Ej tilldelad</SelectItem>
+                          {projectMembers.map((member: any) => (
+                            <SelectItem key={member.id} value={member.id.toString()}>
+                              {member.username}
                             </SelectItem>
                           ))}
                         </SelectContent>
