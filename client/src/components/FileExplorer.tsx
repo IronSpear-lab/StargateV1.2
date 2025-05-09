@@ -224,7 +224,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     }
   }, [foldersData]);
   
-  // Fetch files
+  // Fetch files - modifierad för att enbart hämta filer som är relevanta för den valda mappen
   const { 
     data: filesData, 
     isLoading: isLoadingFiles, 
@@ -237,30 +237,41 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         return [];
       }
       
-      // Ändrat här: Använd selectedFolderId om det finns eller "noFolder=true" för att bara visa rotfiler
-      // Detta gör att vi endast hämtar filer som tillhör den valda mappen (eller rotfiler)
+      // Konstruera URL med korrekt filtrering baserat på vald mapp
       let url = `/api/files?projectId=${currentProject.id}`;
       
       if (selectedFolderId) {
-        // Om en mapp är vald, hämta bara filer i den mappen
+        // Om en specifik mapp är vald, hämta bara filer som tillhör den mappen
         url += `&folderId=${selectedFolderId}`;
+        console.log(`FileExplorer: Hämtar ENDAST filer för mapp ${selectedFolderId}`);
       } else {
         // Om ingen mapp är vald, visa bara rotfiler (filer utan folderId)
         url += `&rootFilesOnly=true`;
+        console.log(`FileExplorer: Hämtar ENDAST rotfiler utan mapptillhörighet`);
       }
       
-      console.log("Hämtar filer med URL:", url);
+      console.log("FileExplorer: API-anrop med URL:", url);
       
       const res = await fetch(url, {
-        credentials: 'include'  // Säkerställ att cookies skickas med för autentisering
+        credentials: 'include',  // Säkerställ att cookies skickas med för autentisering
+        headers: {
+          'Cache-Control': 'no-cache, no-store',
+          'Pragma': 'no-cache'
+        }
       });
+      
       if (!res.ok) {
-        console.warn("API call failed for files with status", res.status);
+        console.warn("FileExplorer: API-anrop för filer misslyckades med status", res.status);
         throw new Error(`Failed to fetch files: ${res.status}`);
       }
-      return res.json();
+      
+      const data = await res.json();
+      console.log(`FileExplorer: Hämtade ${data.length} filer från servern`);
+      return data;
     },
-    enabled: !!currentProject?.id // Kör bara denna query om vi har ett projekt
+    enabled: !!currentProject?.id, // Kör bara denna query om vi har ett projekt
+    staleTime: 0, // Inaktivera caching för att alltid få färsk data
+    retry: 1 // Försök igen en gång vid fel
   });
 
   // Create folder mutation
@@ -599,6 +610,8 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       tree.map(node => `${node.type}: ${node.name} (${node.id})`).join(", "));
     
     // STEG 4: Organisera filer i respektive mapp (eller i root om de inte har någon mapp)
+    // OBS: API-anropet har redan filtrerat filer för rätt mapp eller rotfiler,
+    // men för att vara säker implementerar vi ytterligare en explicit filtrering här
     projectFiles.forEach((file: FileData) => {
       const fileNode: FileNode = {
         id: `file_${file.id}`,
@@ -609,9 +622,19 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         selected: `file_${file.id}` === selectedFileId
       };
       
+      // Notera att vi gör striktare kontroll av mapptillhörighet här
       if (file.folderId) {
         // Denna fil tillhör en specifik mapp
         const folderKey = `folder_${file.folderId}`;
+        
+        // Kontrollera att filen ska visas i den aktuella mappen (endast om en mapp är vald)
+        if (selectedFolderId) {
+          // Om en mapp är vald, visa bara filer som tillhör den valda mappen
+          if (file.folderId.toString() !== selectedFolderId) {
+            console.log(`FileExplorer: 🔴 Fil "${file.name}" (${file.id}) tillhör inte den valda mappen ${selectedFolderId}, hoppar över`);
+            return; // Hoppa över denna fil
+          }
+        }
         
         if (folderMap[folderKey]) {
           // Mappen finns, lägg till filen som ett barn
@@ -619,14 +642,18 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
           folderMap[folderKey].children.push(fileNode);
           console.log(`FileExplorer: ✅ Fil "${file.name}" (${file.id}) läggs i mapp ${file.folderId}`);
         } else {
-          // Mappen finns inte, lägg filen i root
-          console.warn(`FileExplorer: ⚠️ Kan inte hitta mapp ${file.folderId} för fil ${file.id}, placerar i root`);
-          tree.push(fileNode);
+          // Mappen finns inte, men vi hoppar över filen helt eftersom API-anropet bör ha filtrerat korrekt
+          console.warn(`FileExplorer: ⚠️ Kan inte hitta mapp ${file.folderId} för fil ${file.id}, ignorerar`);
         }
       } else {
-        // Denna fil har ingen mapp, placera i root
-        tree.push(fileNode);
-        console.log(`FileExplorer: Rotfil "${file.name}" (${file.id}) läggs i trädets rot`);
+        // Denna fil har ingen mapp (är en rotfil)
+        // Visa endast om ingen mapp är vald (vi är i rotnivån)
+        if (!selectedFolderId) {
+          tree.push(fileNode);
+          console.log(`FileExplorer: ✅ Rotfil "${file.name}" (${file.id}) läggs i trädets rot`);
+        } else {
+          console.log(`FileExplorer: 🔴 Rotfil "${file.name}" visas inte i mapp ${selectedFolderId}`);
+        }
       }
     });
     
