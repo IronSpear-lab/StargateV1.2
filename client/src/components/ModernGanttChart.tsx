@@ -812,9 +812,12 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
         return task;
       }));
       
+      const taskTypeSv = newTask.type === 'TASK' ? 'Uppgift' : 
+                       newTask.type === 'MILESTONE' ? 'Milstolpe' : 'Fas';
+      
       toast({
         title: "Uppgift uppdaterad",
-        description: `${newTask.type} "${newTask.name}" har uppdaterats i Gantt-diagrammet.`,
+        description: `${taskTypeSv} "${newTask.name}" har uppdaterats i Gantt-diagrammet.`,
       });
       
       // Återställ redigeringsläge
@@ -842,9 +845,12 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
       
       setTasks(prev => [...prev, newTaskItem]);
       
+      const taskTypeSv = newTaskItem.type === 'TASK' ? 'Uppgift' : 
+                         newTaskItem.type === 'MILESTONE' ? 'Milstolpe' : 'Fas';
+      
       toast({
         title: "Uppgift skapad",
-        description: `${newTaskItem.type} "${newTaskItem.name}" har lagts till i Gantt-diagrammet.`,
+        description: `${taskTypeSv} "${newTaskItem.name}" har lagts till i Gantt-diagrammet.`,
       });
     }
     
@@ -939,13 +945,13 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
               onClick={() => {
                 setZoomLevel(prev => Math.max(10, prev - 10));
                 toast({
-                  title: "Zoomed Out",
-                  description: "Reduced the zoom level of the Gantt chart",
+                  title: "Zooma ut",
+                  description: "Minskade zoomnivån för Gantt-diagrammet",
                 });
               }}
             >
               <ZoomOut className="w-4 h-4 mr-1" />
-              <span>Zoom Out</span>
+              <span>Zooma ut</span>
             </Button>
             <Button 
               variant="outline" 
@@ -953,24 +959,24 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
               onClick={() => {
                 setZoomLevel(prev => Math.min(100, prev + 10));
                 toast({
-                  title: "Zoomed In",
-                  description: "Increased the zoom level of the Gantt chart",
+                  title: "Zooma in",
+                  description: "Ökade zoomnivån för Gantt-diagrammet",
                 });
               }}
             >
               <ZoomIn className="w-4 h-4 mr-1" />
-              <span>Zoom In</span>
+              <span>Zooma in</span>
             </Button>
           </div>
           
           <div className="flex items-center space-x-2">
             <Button variant="outline" size="sm" onClick={() => setShowCreateDialog(true)}>
               <Plus className="w-4 h-4 mr-1" />
-              <span>Add Task</span>
+              <span>Lägg till uppgift</span>
             </Button>
             <Button variant="outline" size="sm">
               <FileDown className="w-4 h-4 mr-1" />
-              <span>Export</span>
+              <span>Exportera</span>
             </Button>
           </div>
           
@@ -980,12 +986,12 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
               onValueChange={(val) => setViewMode(val as any)}
             >
               <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="View" />
+                <SelectValue placeholder="Visa" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="day">Day</SelectItem>
-                <SelectItem value="week">Week</SelectItem>
-                <SelectItem value="month">Month</SelectItem>
+                <SelectItem value="day">Dag</SelectItem>
+                <SelectItem value="week">Vecka</SelectItem>
+                <SelectItem value="month">Månad</SelectItem>
               </SelectContent>
             </Select>
             
@@ -993,16 +999,16 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
               <Dialog>
                 <Button variant="outline" size="sm">
                   <Filter className="w-4 h-4 mr-1" />
-                  <span>Filter</span>
+                  <span>Filtrera</span>
                 </Button>
                 <DialogContent className="sm:max-w-[550px]">
                   <DialogHeader>
-                    <DialogTitle>Filter Tasks</DialogTitle>
+                    <DialogTitle>Filtrera uppgifter</DialogTitle>
                   </DialogHeader>
                   
                   <div className="grid gap-6 py-4">
                     <div>
-                      <h3 className="text-sm font-medium mb-2">Projects</h3>
+                      <h3 className="text-sm font-medium mb-2">Projekt</h3>
                       <div className="grid grid-cols-2 gap-2">
                         {projects.map(project => (
                           <div key={project} className="flex items-center space-x-2">
@@ -1027,14 +1033,18 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                               checked={statusFilter.includes(status)}
                               onCheckedChange={() => toggleStatusFilter(status)}
                             />
-                            <label htmlFor={`status-${status}`} className="text-sm cursor-pointer">{status}</label>
+                            <label htmlFor={`status-${status}`} className="text-sm cursor-pointer">
+                              {status === 'New' ? 'Ny' : 
+                               status === 'Ongoing' ? 'Pågående' : 
+                               status === 'Completed' ? 'Avslutad' : 'Försenad'}
+                            </label>
                           </div>
                         ))}
                       </div>
                     </div>
                     
                     <div>
-                      <h3 className="text-sm font-medium mb-2">Type</h3>
+                      <h3 className="text-sm font-medium mb-2">Typ</h3>
                       <div className="grid grid-cols-2 gap-2">
                         {types.map(type => (
                           <div key={type} className="flex items-center space-x-2">
@@ -1043,7 +1053,10 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                               checked={typeFilter.includes(type)}
                               onCheckedChange={() => toggleTypeFilter(type)}
                             />
-                            <label htmlFor={`type-${type}`} className="text-sm cursor-pointer">{type}</label>
+                            <label htmlFor={`type-${type}`} className="text-sm cursor-pointer">
+                              {type === 'TASK' ? 'Uppgift' : 
+                               type === 'MILESTONE' ? 'Milstolpe' : 'Fas'}
+                            </label>
                           </div>
                         ))}
                       </div>
@@ -1063,14 +1076,14 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
           <Table>
             <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
-                <TableHead className="w-10 py-2">Type</TableHead>
-                <TableHead className="py-2">Task Name</TableHead>
+                <TableHead className="w-10 py-2">Typ</TableHead>
+                <TableHead className="py-2">Uppgiftsnamn</TableHead>
                 <TableHead className="py-2 text-center w-20">Status</TableHead>
-                <TableHead className="py-2 w-24">Start Date</TableHead>
-                <TableHead className="py-2 w-24">End Date</TableHead>
-                <TableHead className="py-2 w-20">Duration</TableHead>
+                <TableHead className="py-2 w-24">Startdatum</TableHead>
+                <TableHead className="py-2 w-24">Slutdatum</TableHead>
+                <TableHead className="py-2 w-20">Varaktighet</TableHead>
                 <TableHead className="py-2 w-24">Ansvarig</TableHead>
-                <TableHead className="py-2 w-10">Actions</TableHead>
+                <TableHead className="py-2 w-10">Åtgärder</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1100,10 +1113,10 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                         <TooltipContent>
                           <p>{
                             task.type === 'MILESTONE' 
-                              ? 'Important date or event' 
+                              ? 'Viktigt datum eller händelse' 
                               : task.type === 'PHASE' 
-                                ? 'Container of tasks' 
-                                : 'Work item'
+                                ? 'Behållare för uppgifter' 
+                                : 'Arbetsuppgift'
                           }</p>
                         </TooltipContent>
                       </Tooltip>
@@ -1119,7 +1132,11 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>{task.status}</p>
+                          <p>
+                            {task.status === 'New' ? 'Ny' : 
+                             task.status === 'Ongoing' ? 'Pågående' : 
+                             task.status === 'Completed' ? 'Avslutad' : 'Försenad'}
+                          </p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
