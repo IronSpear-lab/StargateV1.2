@@ -747,6 +747,12 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
   
   // Hantera klick på uppgift för att visa/redigera den
   const handleTaskClick = (task: GanttTask) => {
+    // För PHASE-typer, expandera/kollapsa istället för att redigera
+    if (task.type === "PHASE") {
+      toggleExpand(task.id);
+      return;
+    }
+    
     // Initiera redigeringsläge för uppgiften
     setIsEditMode(true);
     setEditingTaskId(task.id);
@@ -759,7 +765,9 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
       name: task.name,
       startDate: task.startDate,
       endDate: task.endDate,
-      duration: task.duration
+      duration: task.duration,
+      assigneeId: task.assigneeId || null,
+      assigneeName: task.assigneeName || ''
     });
     
     // Visa dialogen
@@ -797,7 +805,9 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
             project: task.project, // Behåll befintligt projektnamn vid redigering
             startDate: newTask.startDate!,
             endDate: endDate!,
-            duration
+            duration,
+            assigneeId: newTask.assigneeId,
+            assigneeName: newTask.assigneeName
           };
         }
         return task;
@@ -826,7 +836,9 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
         status: newTask.status as "New" | "Ongoing" | "Completed" | "Delayed",
         startDate: newTask.startDate!,
         endDate: endDate!,
-        duration
+        duration,
+        assigneeId: newTask.assigneeId,
+        assigneeName: newTask.assigneeName || ''
       };
       
       setTasks(prev => [...prev, newTaskItem]);
@@ -851,7 +863,9 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
       name: '',
       startDate: '',
       endDate: '',
-      duration: 0
+      duration: 0,
+      assigneeId: null,
+      assigneeName: ''
     });
     // Återställ redigeringsläge
     setIsEditMode(false);
