@@ -1016,8 +1016,9 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       // STRIKT MATCHNING: Kontrollera om denna mapp är föräldern
       // Vi matchar nu med striktare regler för att undvika dubletter
       const isParentMatch = 
-        // Om förälder är "Files" (huvudmappen), matcha på exakt namn och inte på andra mappar
-        (item.label === "Files" && parentName === "Files") ||
+        // Om förälder är "Files" (huvudmappen), matcha på exakt namn 
+        // OCH kontrollera att "Files" finns under Vault-sektionen
+        (item.label === "Files" && parentName === "Files" && item.folderId === "files_root") ||
         // ELLER om vi har en användarskapad mapp som förälder, matcha strikt på ID
         (item.folderId && newFolder.parentId && item.folderId === newFolder.parentId);
         
@@ -1210,7 +1211,14 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           indent: 1,
           icon: <FileText className="w-4 h-4" />,
           type: "folder", // För att kunna visa mappar under Files-sektionen
-          children: []
+          folderId: "files_root", // Unikt ID för rotkatalogen
+          onAddClick: () => handleAddFolder("Files"), // För att lägga till mappar under Files
+          isOpen: openItems["file_folders"] || false, // För att hålla mappen öppen/stängd
+          onToggle: () => toggleItem("file_folders"), // För att toggla öppen/stängd status
+          children: [
+            // Dynamiska undermappar kommer att läggas till i useEffect nedan
+            // tillsammans med userCreatedFolders
+          ]
         },
         {
           href: "#",
