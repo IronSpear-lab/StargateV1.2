@@ -6,18 +6,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ZoomIn, ZoomOut, Filter, Plus, FileDown, ChevronDown, ChevronRight, CircleDashed, CheckCircle2, Clock, AlertTriangle, Trash2, User } from 'lucide-react';
+import { ZoomIn, ZoomOut, Filter, Plus, FileDown, ChevronDown, ChevronRight, CircleDashed, CheckCircle2, Clock, AlertTriangle, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
-
-// Interface för projektmedlemmar
-interface ProjectMember {
-  id: number;
-  username: string;
-  role: string;
-}
 
 // Interface för uppgifter i Gantt-diagrammet
 export interface GanttTask {
@@ -34,8 +26,6 @@ export interface GanttTask {
   expanded?: boolean;
   parentId?: number;
   level?: number;
-  assigneeId?: number | null;
-  assigneeName?: string;
 }
 
 // Demo-data för Gantt-diagrammet - helt separerad från tasks API
@@ -258,12 +248,6 @@ interface ModernGanttChartProps {
 const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
   const { toast } = useToast();
   
-  // Hämtar projektmedlemmar från API
-  const { data: projectMembers = [], isLoading: membersLoading } = useQuery<ProjectMember[]>({
-    queryKey: [projectId ? `/api/projects/${projectId}/members` : null],
-    enabled: !!projectId, // Endast aktivera om det finns ett projektId
-  });
-  
   // Generera ett projektnamn baserat på projektid
   const currentProjectName = useMemo(() => {
     if (!projectId) return "Default Project";
@@ -323,9 +307,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
     name: '',
     startDate: '',
     endDate: '',
-    duration: 0,
-    assigneeId: null,
-    assigneeName: ''
+    duration: 0
   });
   
   // Hantera expandering/kollapsning av faser
@@ -747,12 +729,6 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
   
   // Hantera klick på uppgift för att visa/redigera den
   const handleTaskClick = (task: GanttTask) => {
-    // För PHASE-typer, expandera/kollapsa istället för att redigera
-    if (task.type === "PHASE") {
-      toggleExpand(task.id);
-      return;
-    }
-    
     // Initiera redigeringsläge för uppgiften
     setIsEditMode(true);
     setEditingTaskId(task.id);
@@ -765,9 +741,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
       name: task.name,
       startDate: task.startDate,
       endDate: task.endDate,
-      duration: task.duration,
-      assigneeId: task.assigneeId || null,
-      assigneeName: task.assigneeName || ''
+      duration: task.duration
     });
     
     // Visa dialogen
@@ -805,9 +779,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
             project: task.project, // Behåll befintligt projektnamn vid redigering
             startDate: newTask.startDate!,
             endDate: endDate!,
-            duration,
-            assigneeId: newTask.assigneeId,
-            assigneeName: newTask.assigneeName
+            duration
           };
         }
         return task;
@@ -836,9 +808,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
         status: newTask.status as "New" | "Ongoing" | "Completed" | "Delayed",
         startDate: newTask.startDate!,
         endDate: endDate!,
-        duration,
-        assigneeId: newTask.assigneeId,
-        assigneeName: newTask.assigneeName || ''
+        duration
       };
       
       setTasks(prev => [...prev, newTaskItem]);
@@ -863,9 +833,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
       name: '',
       startDate: '',
       endDate: '',
-      duration: 0,
-      assigneeId: null,
-      assigneeName: ''
+      duration: 0
     });
     // Återställ redigeringsläge
     setIsEditMode(false);
@@ -1070,7 +1038,6 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                 <TableHead className="py-2 w-24">Start Date</TableHead>
                 <TableHead className="py-2 w-24">End Date</TableHead>
                 <TableHead className="py-2 w-20">Duration</TableHead>
-                <TableHead className="py-2 w-24">Ansvarig</TableHead>
                 <TableHead className="py-2 w-10">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -1129,16 +1096,6 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                   <TableCell className="py-2">{format(parseISO(task.endDate), 'yyyy-MM-dd')}</TableCell>
                   <TableCell className="py-2">
                     {task.type === 'MILESTONE' ? '-' : `${task.duration} dagar`}
-                  </TableCell>
-                  <TableCell className="py-2">
-                    {task.assigneeName ? (
-                      <div className="flex items-center gap-1">
-                        <User className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs">{task.assigneeName}</span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground italic">Ej tilldelad</span>
-                    )}
                   </TableCell>
                   <TableCell className="py-2">
                     <Button
@@ -1383,41 +1340,6 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                 disabled={newTask.type === 'MILESTONE'}
               />
             </div>
-            
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="task-assignee" className="text-right text-sm">Tilldela</label>
-              <Select
-                value={newTask.assigneeId?.toString() || ""}
-                onValueChange={(value) => {
-                  if (value === "") {
-                    setNewTask({ 
-                      ...newTask, 
-                      assigneeId: null, 
-                      assigneeName: "" 
-                    });
-                  } else {
-                    const selectedMember = projectMembers.find(m => m.id.toString() === value);
-                    setNewTask({ 
-                      ...newTask, 
-                      assigneeId: parseInt(value), 
-                      assigneeName: selectedMember?.username || "" 
-                    });
-                  }
-                }}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Välj ansvarig person" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Ingen tilldelad</SelectItem>
-                  {projectMembers.map(member => (
-                    <SelectItem key={member.id} value={member.id.toString()}>
-                      {member.username} ({member.role})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
           
           <DialogFooter>
@@ -1490,13 +1412,6 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                 <p><span className="font-medium">Type:</span> {taskToDelete.type}</p>
                 <p><span className="font-medium">Status:</span> {taskToDelete.status}</p>
                 <p><span className="font-medium">Project:</span> {taskToDelete.project}</p>
-                <p>
-                  <span className="font-medium">Ansvarig:</span> {' '}
-                  {taskToDelete.assigneeName 
-                    ? taskToDelete.assigneeName 
-                    : <span className="text-muted-foreground italic">Ej tilldelad</span>
-                  }
-                </p>
               </div>
             )}
           </div>
