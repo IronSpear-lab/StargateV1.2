@@ -158,12 +158,33 @@ class DatabaseStorage implements IStorage {
   async createPDFAnnotation(annotation: Omit<PdfAnnotation, "id" | "createdAt">): Promise<PdfAnnotation> {
     console.log("createPDFAnnotation: Sparar ny annotation med data:", JSON.stringify(annotation, null, 2));
     
-    // Garantera att assignedTo existerar
+    // Förbereder data för validering
+    let annotationData = { ...annotation };
+    
+    // Garantera att assignedTo existerar som ett giltigt värde
+    if (annotationData.assignedTo === undefined) {
+      annotationData.assignedTo = null;
+    }
+    
+    // Säkerställ att taskId är ett tal eller null, inte undefined
+    if (annotationData.taskId === undefined) {
+      annotationData.taskId = null;
+    } else if (typeof annotationData.taskId === 'string' && !isNaN(parseInt(annotationData.taskId))) {
+      // Om taskId är en sträng med ett tal, konvertera till nummer
+      annotationData.taskId = parseInt(annotationData.taskId);
+    }
+    
+    // Konvertera deadline string till Date-objekt om den finns
+    if (typeof annotationData.deadline === 'string') {
+      annotationData.deadline = new Date(annotationData.deadline);
+    }
+    
+    console.log("createPDFAnnotation: Förberedd data:", JSON.stringify(annotationData, null, 2));
+    
+    // Validera och skapa
     const validatedData = insertPdfAnnotationSchema.parse({
-      ...annotation,
-      createdAt: new Date(),
-      // Konvertera deadline string till Date-objekt om den finns
-      deadline: annotation.deadline ? new Date(annotation.deadline) : undefined
+      ...annotationData,
+      createdAt: new Date()
     });
     
     const result = await db.insert(pdfAnnotations).values(validatedData).returning();
@@ -174,11 +195,23 @@ class DatabaseStorage implements IStorage {
   async updatePDFAnnotation(id: number, annotation: Partial<PdfAnnotation>): Promise<PdfAnnotation> {
     console.log("updatePDFAnnotation: Uppdaterar annotation", id, "med data:", JSON.stringify(annotation, null, 2));
     
-    // Hanterar deadline konvertering
+    // Hanterar deadline och taskId
     let updateData = { ...annotation };
+    
+    // Konvertera deadline sträng till Date-objekt om den finns
     if (typeof annotation.deadline === 'string') {
       updateData.deadline = new Date(annotation.deadline);
     }
+    
+    // Säkerställ att taskId är ett tal eller null, inte undefined
+    if (annotation.taskId === undefined) {
+      updateData.taskId = null;
+    } else if (typeof annotation.taskId === 'string' && !isNaN(parseInt(annotation.taskId))) {
+      // Om taskId är en sträng med ett tal, konvertera till nummer
+      updateData.taskId = parseInt(annotation.taskId);
+    }
+    
+    console.log("updatePDFAnnotation: Förberedd data:", JSON.stringify(updateData, null, 2));
     
     const result = await db
       .update(pdfAnnotations)
