@@ -397,9 +397,10 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
     );
   };
 
-  // Visa alla kommentarer popup dialog
-  const AllAnnotationsDialog = () => {
-    const allAnnotations = (pdfAnnotations || []) as PdfAnnotation[];
+  // Visa alla uppgifter popup dialog
+  const AllTasksDialog = () => {
+    // Använd hela sortedItems istället för bara pdfAnnotations
+    // Detta inkluderar både traditionella uppgifter (Kanban + Gantt) och PDF-annotationer
     
     return (
       <Dialog>
@@ -416,16 +417,19 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
           <DialogHeader className="pb-4">
             <DialogTitle>Alla dina tilldelade uppgifter</DialogTitle>
             <DialogDescription>
-              {allAnnotations.length} uppgifter som kräver din uppmärksamhet
+              {sortedItems.length} uppgifter som kräver din uppmärksamhet
             </DialogDescription>
           </DialogHeader>
           
           <div className="flex-1 overflow-hidden">
             <ScrollArea className="h-[50vh] pr-4 mt-2">
               <div className="space-y-2 divide-y">
-                {allAnnotations.map(annotation => (
-                  <div key={`all-annotation-${annotation.id}`} className="pt-2">
-                    {renderCompactAnnotation(annotation)}
+                {sortedItems.map(item => (
+                  <div key={`all-${item.type}-${item.data.id}`} className="pt-2">
+                    {item.type === "pdf_annotation" 
+                      ? renderCompactAnnotation(item.data)
+                      : renderItem(item)
+                    }
                   </div>
                 ))}
               </div>
@@ -443,7 +447,7 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
           <MapPin className="h-4 w-4 text-blue-500" />
           <span>My Field Tasks</span>
         </div>
-        <AllAnnotationsDialog />
+        <AllTasksDialog />
       </div>
       
       <ScrollArea className="flex-1 pr-4">
