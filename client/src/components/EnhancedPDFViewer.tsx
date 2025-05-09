@@ -344,8 +344,10 @@ export default function EnhancedPDFViewer({
             fetchPdfContentMutation.mutate(latestVersion.id);
             
             // Spara versionsinformation i localStorage för om servern skulle starta om
-            localStorage.setItem(`pdf_versions_${fileId.toString()}`, JSON.stringify(uiVersions));
-            console.log(`Sparade ${uiVersions.length} versioner till localStorage (säkerhetskopia)`);
+            if (fileId) {
+              localStorage.setItem(`pdf_versions_${fileId.toString()}`, JSON.stringify(uiVersions));
+              console.log(`Sparade ${uiVersions.length} versioner till localStorage (säkerhetskopia)`);
+            }
             
             // Load annotations - filter by project if available
             const projectIdToUse = projectId || (currentProject ? currentProject.id : undefined);
@@ -378,8 +380,10 @@ export default function EnhancedPDFViewer({
               setAnnotations(uiAnnotations);
               
               // Spara annotationer i localStorage för om servern skulle starta om
-              localStorage.setItem(`pdf_annotations_${fileId.toString()}`, JSON.stringify(uiAnnotations));
-              console.log(`Sparade ${uiAnnotations.length} annotationer till localStorage (säkerhetskopia)`);
+              if (fileId) {
+                localStorage.setItem(`pdf_annotations_${fileId.toString()}`, JSON.stringify(uiAnnotations));
+                console.log(`Sparade ${uiAnnotations.length} annotationer till localStorage (säkerhetskopia)`);
+              }
             } else {
               loadFromLocalStorage();
             }
@@ -401,6 +405,12 @@ export default function EnhancedPDFViewer({
       // Om vi explicit ska använda databasen kan vi skippa localStorage
       if (useDatabase && !projectId) {
         console.log(`Skippar localStorage eftersom useDatabase=${useDatabase}`);
+        return;
+      }
+      
+      // Hantera om fileId är undefined
+      if (!fileId) {
+        console.log("Inget fileId tillgängligt för att läsa från localStorage");
         return;
       }
       
@@ -455,11 +465,15 @@ export default function EnhancedPDFViewer({
         }
       } else {
         // Create initial version if no saved versions exist
+        // Säkerställ att filename och initialUrl har defaultvärden
+        const safeFilename = filename || 'unnamed-document';
+        const safeInitialUrl = initialUrl || '';
+        
         const initialVersion: FileVersion = {
           id: fileId.toString(),
           versionNumber: 1, 
-          filename: filename,
-          fileUrl: initialUrl,
+          filename: safeFilename,
+          fileUrl: safeInitialUrl,
           description: 'Initial version',
           uploaded: new Date().toISOString(),
           uploadedBy: user?.username || 'Unknown',
@@ -468,7 +482,7 @@ export default function EnhancedPDFViewer({
         
         setFileVersions([initialVersion]);
         setActiveVersionId(initialVersion.id);
-        setPdfUrl(initialVersion.fileUrl);
+        setPdfUrl(safeInitialUrl);
         
         localStorage.setItem(`pdf_versions_${fileId.toString()}`, JSON.stringify([initialVersion]));
       }
@@ -554,11 +568,13 @@ export default function EnhancedPDFViewer({
           savePromise.catch(err => {
             console.error(`[${new Date().toISOString()}] Fel vid sparande av kommentarer vid avmontering:`, err);
           });
-        } else {
+        } else if (fileId) {
           console.log(`[${new Date().toISOString()}] Sparar ${annotations.length} kommentarer till localStorage vid avmontering`);
           // Spara till localStorage
           const storageKey = `pdf_annotations_${fileId.toString()}`;
           localStorage.setItem(storageKey, JSON.stringify(annotations));
+        } else {
+          console.log(`[${new Date().toISOString()}] Kunde inte spara annotationer - fileId saknas`);
         }
       }
     };
@@ -814,10 +830,12 @@ export default function EnhancedPDFViewer({
       setSidebarMode('comment');
       
       // Spara till localStorage först för säkerhets skull
-      const storageKey = `pdf_annotations_${fileId.toString()}`;
-      const updatedAnnotations = [...annotations, newAnnotation];
-      localStorage.setItem(storageKey, JSON.stringify(updatedAnnotations));
-      console.log(`Sparade ${updatedAnnotations.length} annotationer till localStorage (säkerhetskopia)`);
+      if (fileId) {
+        const storageKey = `pdf_annotations_${fileId.toString()}`;
+        const updatedAnnotations = [...annotations, newAnnotation];
+        localStorage.setItem(storageKey, JSON.stringify(updatedAnnotations));
+        console.log(`Sparade ${updatedAnnotations.length} annotationer till localStorage (säkerhetskopia)`);
+      }
       
       try {
         const numericFileId = getConsistentFileId(fileId);
@@ -960,15 +978,15 @@ export default function EnhancedPDFViewer({
             setActiveAnnotation(newUpdatedAnnotations[index]);
           }
         }
-      } else if (!useDatabase) {
-        // Only use localStorage if not explicitly using database
+      } else if (!useDatabase && fileId) {
+        // Only use localStorage if not explicitly using database and fileId exists
         localStorage.setItem(`pdf_annotations_${fileId.toString()}`, JSON.stringify(updatedAnnotations));
       }
     } catch (error) {
       console.error('Error updating annotation:', error);
       
       // Save to localStorage as fallback, but only if not explicitly using database
-      if (!useDatabase) {
+      if (!useDatabase && fileId) {
         localStorage.setItem(`pdf_annotations_${fileId.toString()}`, JSON.stringify(updatedAnnotations));
       }
     }
@@ -1118,7 +1136,7 @@ export default function EnhancedPDFViewer({
             }
           }
         }
-      } else if (!useDatabase) {
+      } else if (!useDatabase && fileId) {
         // Only use localStorage if not explicitly using database
         localStorage.setItem(`pdf_annotations_${fileId.toString()}`, JSON.stringify(updatedAnnotations));
       }
@@ -1126,7 +1144,7 @@ export default function EnhancedPDFViewer({
       console.error('Error updating annotation status:', error);
       
       // Save to localStorage as fallback, but only if not explicitly using database
-      if (!useDatabase) {
+      if (!useDatabase && fileId) {
         localStorage.setItem(`pdf_annotations_${fileId.toString()}`, JSON.stringify(updatedAnnotations));
       }
     }
@@ -1201,7 +1219,7 @@ export default function EnhancedPDFViewer({
           setPdfUrl(newVersion.fileUrl);
           
           // Also save to localStorage as backup if not explicitly using database
-          if (!useDatabase) {
+          if (!useDatabase && fileId) {
             localStorage.setItem(`pdf_versions_${fileId.toString()}`, JSON.stringify(updatedVersions));
           }
         } else if (!useDatabase) {
