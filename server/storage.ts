@@ -42,7 +42,7 @@ import {
   PdfVersion,
   PdfAnnotation
 } from "@shared/schema";
-import { eq, and, or, isNull } from "drizzle-orm";
+import { eq, and, or, isNull, gte, lte, desc } from "drizzle-orm";
 
 const MemoryStore = createMemoryStore(session);
 
@@ -92,8 +92,10 @@ export interface IStorage {
   updateWikiPage(id: number, wikiPage: Partial<WikiPage>): Promise<WikiPage>;
   
   // Time Tracking
-  getTimeEntries(userId: number, taskId?: number): Promise<TimeEntry[]>;
-  createTimeEntry(timeEntry: Omit<TimeEntry, "id">): Promise<TimeEntry>;
+  getTimeEntries(userId: number, projectId?: number, taskId?: number, startDate?: Date, endDate?: Date): Promise<TimeEntry[]>;
+  createTimeEntry(timeEntry: Omit<TimeEntry, "id" | "createdAt">): Promise<TimeEntry>;
+  deleteTimeEntry(id: number): Promise<void>;
+  getProjectTimeEntries(projectId: number): Promise<TimeEntry[]>;
   
   // User Projects (Roles)
   assignUserToProject(userProject: Omit<UserProject, "id">): Promise<UserProject>;
@@ -823,30 +825,68 @@ class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  // Time Tracking methods
-  async getTimeEntries(userId: number, taskId?: number): Promise<TimeEntry[]> {
-    if (taskId) {
-      return await db
-        .select()
-        .from(taskTimeEntries)
-        .where(
-          and(
-            eq(taskTimeEntries.userId, userId),
-            eq(taskTimeEntries.taskId, taskId)
-          )
-        );
-    } else {
-      return await db
-        .select()
-        .from(taskTimeEntries)
-        .where(eq(taskTimeEntries.userId, userId));
+  // Tidsrapportering metoder
+  async getTimeEntries(
+    userId: number, 
+    projectId?: number, 
+    taskId?: number,
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<TimeEntry[]> {
+    let query = db.select().from(taskTimeEntries);
+    
+    // Lägg till grundläggande filter för användare
+    query = query.where(eq(taskTimeEntries.userId, userId));
+    
+    // Lägg till projektfilter om det finns
+    if (projectId) {
+      query = query.where(eq(taskTimeEntries.projectId, projectId));
     }
+    
+    // Lägg till uppgiftsfilter om det finns
+    if (taskId) {
+      query = query.where(eq(taskTimeEntries.taskId, taskId));
+    }
+    
+    // Lägg till datumfilter om de finns
+    if (startDate && endDate) {
+      query = query.where(
+        and(
+          gte(taskTimeEntries.reportDate, startDate),
+          lte(taskTimeEntries.reportDate, endDate)
+        )
+      );
+    } else if (startDate) {
+      query = query.where(gte(taskTimeEntries.reportDate, startDate));
+    } else if (endDate) {
+      query = query.where(lte(taskTimeEntries.reportDate, endDate));
+    }
+    
+    // Sortera efter rapportdatum (nyaste först)
+    query = query.orderBy(desc(taskTimeEntries.reportDate));
+    
+    return await query;
   }
 
-  async createTimeEntry(timeEntry: Omit<TimeEntry, "id">): Promise<TimeEntry> {
-    const validatedData = insertTimeEntrySchema.parse(timeEntry);
+  async createTimeEntry(timeEntry: Omit<TimeEntry, "id" | "createdAt">): Promise<TimeEntry> {
+    const validatedData = insertTimeEntrySchema.parse({
+      ...timeEntry,
+      createdAt: new Date()
+    });
     const result = await db.insert(taskTimeEntries).values(validatedData).returning();
     return result[0];
+  }
+  
+  async deleteTimeEntry(id: number): Promise<void> {
+    await db.delete(taskTimeEntries).where(eq(taskTimeEntries.id, id));
+  }
+  
+  async getProjectTimeEntries(projectId: number): Promise<TimeEntry[]> {
+    return await db
+      .select()
+      .from(taskTimeEntries)
+      .where(eq(taskTimeEntries.projectId, projectId))
+      .orderBy(desc(taskTimeEntries.reportDate));
   }
 
   // User Projects (Roles) methods
