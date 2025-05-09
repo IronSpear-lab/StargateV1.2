@@ -80,12 +80,13 @@ export const tasks = pgTable("tasks", {
 // Time entries for tasks
 export const taskTimeEntries = pgTable("task_time_entries", {
   id: serial("id").primaryKey(),
+  projectId: integer("project_id").references(() => projects.id).notNull(), // Projektreferens
   taskId: integer("task_id").references(() => tasks.id).notNull(),
   userId: integer("user_id").references(() => users.id).notNull(),
-  startTime: timestamp("start_time").notNull(),
-  endTime: timestamp("end_time"),
-  duration: integer("duration"), // Duration in minutes
-  notes: text("notes"),
+  reportDate: date("report_date").notNull(), // Datum som tiden rapporteras för
+  hours: integer("hours").notNull(), // Antal timmar (kan innehålla decimaler, lagras som minuter)
+  description: text("description"), // Beskrivning av arbetet
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Comments for files or tasks
@@ -135,9 +136,10 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   folders: many(folders),
   files: many(files),
   tasks: many(tasks),
+  timeEntries: many(taskTimeEntries), // Lägger till relation för tidsrapporter
   wikiPages: many(wikiPages),
   calendarEvents: many(calendarEvents),
-  pdfAnnotations: many(pdfAnnotations), // Lägg till relation för PDF-annotationer
+  pdfAnnotations: many(pdfAnnotations), // Relation för PDF-annotationer
 }));
 
 export const userProjectsRelations = relations(userProjects, ({ one }) => ({
@@ -204,6 +206,10 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
 }));
 
 export const taskTimeEntriesRelations = relations(taskTimeEntries, ({ one }) => ({
+  project: one(projects, {
+    fields: [taskTimeEntries.projectId],
+    references: [projects.id]
+  }),
   task: one(tasks, {
     fields: [taskTimeEntries.taskId],
     references: [tasks.id]
