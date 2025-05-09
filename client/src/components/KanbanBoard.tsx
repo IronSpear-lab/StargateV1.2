@@ -271,6 +271,21 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
       });
     }
   });
+  
+  // Function to handle task deletion
+  const handleDeleteTask = () => {
+    if (selectedTask && typeof selectedTask.id === 'number') {
+      console.log("Raderar uppgift med ID:", selectedTask.id);
+      deleteTaskMutation.mutate(selectedTask.id);
+    } else {
+      console.error("Kan inte radera uppgift: Inget giltigt ID");
+      toast({
+        title: "Kunde inte ta bort uppgiften",
+        description: "Inget giltigt uppgifts-ID",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Setup for drag and drop
   const sensors = useSensors(
@@ -696,12 +711,7 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
     }
   };
   
-  // Hantera radering av en uppgift
-  const handleDeleteTask = () => {
-    if (selectedTask) {
-      deleteTaskMutation.mutate(Number(selectedTask.id));
-    }
-  };
+  // Denna duplicerade metod tas bort
 
   // Use project members data directly
   const projectMembers = projectMembersData || [];
