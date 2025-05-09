@@ -209,9 +209,13 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      
+      // Invalidera alla field-tasks queries för att uppdatera dashboardwidgets
+      queryClient.invalidateQueries({ queryKey: ['field-tasks'] });
+      
       toast({
-        title: "Task created",
-        description: "New task has been created successfully",
+        title: "Uppgift skapad",
+        description: "En ny uppgift har skapats",
       });
       setIsTaskDialogOpen(false);
     },
@@ -232,6 +236,10 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      
+      // Invalidera alla field-tasks queries för att uppdatera dashboardwidgets
+      queryClient.invalidateQueries({ queryKey: ['field-tasks'] });
+      
       toast({
         title: "Uppgift uppdaterad",
         description: "Uppgiften har uppdaterats",
