@@ -528,7 +528,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
       const taskData = {
         ...values,
         projectId: parseInt(values.projectId),
-        assigneeId: values.assigneeId ? parseInt(values.assigneeId) : null,
+        assigneeId: values.assigneeId && values.assigneeId !== "none" ? parseInt(values.assigneeId) : null,
       };
       
       createTaskMutation.mutate(taskData);
@@ -547,7 +547,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
       status: "todo",
       priority: "medium",
       type: "none",
-      assigneeId: "",
+      assigneeId: "none",
       projectId: projectId.toString(),
       dueDate: "",
       startDate: "",
@@ -566,7 +566,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
       status: task.status,
       priority: task.priority || "",
       type: task.type || "none",
-      assigneeId: task.assigneeId ? task.assigneeId.toString() : "",
+      assigneeId: task.assigneeId ? task.assigneeId.toString() : "none",
       projectId: task.projectId.toString(),
       dueDate: task.dueDate || "",
       startDate: task.startDate || "",
@@ -689,7 +689,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                         status: column.id,
                         priority: "medium",
                         type: "none",
-                        assigneeId: "",
+                        assigneeId: "none",
                         projectId: projectId.toString(),
                         dueDate: "",
                         startDate: "",
@@ -906,7 +906,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Ej tilldelad</SelectItem>
+                          <SelectItem value="none">Ej tilldelad</SelectItem>
                           {projectMembers.map((member: any) => (
                             <SelectItem key={member.id} value={member.id.toString()}>
                               {member.username}
