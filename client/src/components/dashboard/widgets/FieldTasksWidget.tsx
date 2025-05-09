@@ -340,40 +340,57 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
     }
   };
 
-  // Förbättrad visning av PDF-kommentarer - allt på en rad
+  // Förbättrad visning av PDF-kommentarer - använder samma layout som fältuppgifter
   const renderCompactAnnotation = (annotation: PdfAnnotation) => {
     const status = mapPdfStatusToFieldStatus(annotation.status);
     
     return (
       <div 
         key={`annotation-${annotation.id}`}
-        className="flex items-center py-2 px-3 hover:bg-gray-50 transition-colors cursor-pointer rounded-md"
+        className="flex py-2.5 px-3 rounded-md hover:bg-gray-50 transition-colors cursor-pointer group"
         onClick={() => handlePdfAnnotationClick(annotation)}
       >
-        <div className={cn(
-          "px-2 py-0.5 rounded text-xs mr-2 flex-shrink-0",
-          statusStyles[status].bg,
-          statusStyles[status].text
-        )}>
-          <div className="flex items-center">
-            {statusStyles[status].icon}
-            <span>{pdfStatusLabels[annotation.status]}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className={cn(
+                "px-2 py-0.5 rounded text-xs",
+                statusStyles[status].bg,
+                statusStyles[status].text
+              )}>
+                <div className="flex items-center">
+                  {statusStyles[status].icon}
+                  <span>{pdfStatusLabels[annotation.status]}</span>
+                </div>
+              </div>
+              <div className="text-xs text-gray-500">PDF Kommentar</div>
+            </div>
+            
+            <Avatar className="h-6 w-6">
+              <AvatarImage src="" alt={annotation.createdBy} />
+              <AvatarFallback className={getAvatarColor(annotation.createdBy)}>
+                {getInitials(annotation.createdBy)}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+          
+          <div className="text-sm font-medium mt-0.5 text-gray-900">
+            {annotation.comment || "PDF-kommentar"}
+          </div>
+          
+          <div className="mt-1.5 flex items-center space-x-4">
+            <div className="text-xs text-gray-500 flex items-center">
+              <FileText className="h-3 w-3 mr-1 text-[#727cf5]" />
+              <span className="truncate">{annotation.fileName}</span>
+            </div>
+            
+            <div className="text-xs text-gray-500 flex items-center">
+              <MessageSquare className="h-3 w-3 mr-1 text-[#ffc35a]" />
+              {annotation.projectName}
+            </div>
           </div>
         </div>
-        
-        <div className="flex-1 flex items-center min-w-0">
-          <FileText className="h-3.5 w-3.5 text-[#727cf5] mr-1.5 flex-shrink-0" />
-          <span className="truncate text-xs font-medium">{annotation.fileName}</span>
-          <span className="mx-1.5 text-gray-400">·</span>
-          <span className="truncate text-xs text-gray-600">{annotation.comment || "Kommentar"}</span>
-        </div>
-        
-        <Avatar className="h-6 w-6 ml-2 flex-shrink-0">
-          <AvatarImage src="" alt={annotation.createdBy} />
-          <AvatarFallback className={getAvatarColor(annotation.createdBy)}>
-            {getInitials(annotation.createdBy)}
-          </AvatarFallback>
-        </Avatar>
+        <ChevronRight className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
     );
   };
