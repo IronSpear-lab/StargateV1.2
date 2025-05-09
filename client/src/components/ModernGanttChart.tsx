@@ -250,6 +250,30 @@ interface ModernGanttChartProps {
 const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
   const { toast } = useToast();
   
+  // Hämta projektmedlemmar för att kunna tilldela uppgifter
+  const [projectMembers, setProjectMembers] = useState<{ id: number; username: string }[]>([]);
+  
+  // Hämta projektmedlemmar från API:n om projectId finns
+  useEffect(() => {
+    if (projectId) {
+      const fetchProjectMembers = async () => {
+        try {
+          const response = await fetch(`/api/project-members/${projectId}`);
+          if (response.ok) {
+            const members = await response.json();
+            setProjectMembers(members);
+          } else {
+            console.error('Failed to fetch project members');
+          }
+        } catch (error) {
+          console.error('Error fetching project members:', error);
+        }
+      };
+      
+      fetchProjectMembers();
+    }
+  }, [projectId]);
+  
   // Generera ett projektnamn baserat på projektid
   const currentProjectName = useMemo(() => {
     if (!projectId) return "Default Project";
@@ -309,7 +333,9 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
     name: '',
     startDate: '',
     endDate: '',
-    duration: 0
+    duration: 0,
+    assigneeId: null, // Null betyder att ingen har tilldelats uppgiften
+    assigneeName: null // Kommer att sättas baserat på assigneeId
   });
   
   // Hantera expandering/kollapsning av faser
@@ -743,7 +769,9 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
       name: task.name,
       startDate: task.startDate,
       endDate: task.endDate,
-      duration: task.duration
+      duration: task.duration,
+      assigneeId: task.assigneeId || null,
+      assigneeName: task.assigneeName || null
     });
     
     // Visa dialogen
@@ -781,7 +809,9 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
             project: task.project, // Behåll befintligt projektnamn vid redigering
             startDate: newTask.startDate!,
             endDate: endDate!,
-            duration
+            duration,
+            assigneeId: newTask.assigneeId,
+            assigneeName: newTask.assigneeName
           };
         }
         return task;
@@ -810,7 +840,9 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
         status: newTask.status as "New" | "Ongoing" | "Completed" | "Delayed",
         startDate: newTask.startDate!,
         endDate: endDate!,
-        duration
+        duration,
+        assigneeId: newTask.assigneeId,
+        assigneeName: newTask.assigneeName
       };
       
       setTasks(prev => [...prev, newTaskItem]);
@@ -835,7 +867,9 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
       name: '',
       startDate: '',
       endDate: '',
-      duration: 0
+      duration: 0,
+      assigneeId: null,
+      assigneeName: null
     });
     // Återställ redigeringsläge
     setIsEditMode(false);
