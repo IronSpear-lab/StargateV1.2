@@ -865,23 +865,23 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                   name="type"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Type</FormLabel>
+                      <FormLabel>Typ</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select type" />
+                            <SelectValue placeholder="Välj typ" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="Feature">Feature</SelectItem>
-                          <SelectItem value="Bug">Bug</SelectItem>
+                          <SelectItem value="Feature">Funktion</SelectItem>
+                          <SelectItem value="Bug">Bugg</SelectItem>
                           <SelectItem value="Design">Design</SelectItem>
-                          <SelectItem value="Research">Research</SelectItem>
-                          <SelectItem value="Setup">Setup</SelectItem>
-                          <SelectItem value="Planning">Planning</SelectItem>
+                          <SelectItem value="Research">Utredning</SelectItem>
+                          <SelectItem value="Setup">Konfiguration</SelectItem>
+                          <SelectItem value="Planning">Planering</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -894,14 +894,14 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                   name="assigneeId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Assignee</FormLabel>
+                      <FormLabel>Ansvarig</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select assignee" />
+                            <SelectValue placeholder="Välj ansvarig" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -925,7 +925,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                   name="startDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Start Date</FormLabel>
+                      <FormLabel>Startdatum</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} value={field.value || ""} />
                       </FormControl>
@@ -939,7 +939,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                   name="endDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>End Date</FormLabel>
+                      <FormLabel>Slutdatum</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} value={field.value || ""} />
                       </FormControl>
@@ -953,7 +953,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                   name="dueDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Due Date</FormLabel>
+                      <FormLabel>Förfallodatum</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} value={field.value || ""} />
                       </FormControl>
@@ -965,10 +965,10 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
               
               <DialogFooter>
                 <Button variant="outline" type="button" onClick={() => setIsTaskDialogOpen(false)}>
-                  Cancel
+                  Avbryt
                 </Button>
                 <Button type="submit" disabled={createTaskMutation.isPending || updateTaskMutation.isPending}>
-                  {selectedTask ? "Update" : "Create"}
+                  {selectedTask ? "Uppdatera" : "Skapa"}
                 </Button>
               </DialogFooter>
             </form>
