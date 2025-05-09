@@ -86,7 +86,7 @@ export default function ProjectDetailPage() {
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(taskIdParam);
   
   // Hämta uppgiftstyp för att kunna dirigera till rätt flik
-  const { data: taskTypeData } = useQuery({
+  const { data: taskTypeData } = useQuery<{ type: string; id: number; title: string } | null>({
     queryKey: ['/api/tasks/type', { taskId: taskIdParam }],
     queryFn: async () => {
       if (!taskIdParam) return null;
@@ -111,7 +111,7 @@ export default function ProjectDetailPage() {
     if (newTaskIdParam && (!newTabParam || newTabParam === "overview")) {
       // Om vi har ett taskId men ingen specificerad flik eller overview är vald, 
       // försök identifiera korrekt flik baserat på cachelagrad uppgiftstyp
-      const cachedTaskType = queryClient.getQueryData(['/api/tasks/type', { taskId: newTaskIdParam }]);
+      const cachedTaskType = queryClient.getQueryData<{ type: string; id: number; title: string } | null>(['/api/tasks/type', { taskId: newTaskIdParam }]);
       
       // Utred vilken flik vi bör navigera till baserat på uppgiftstyp
       if (cachedTaskType) {

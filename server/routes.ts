@@ -1048,6 +1048,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch tasks" });
     }
   });
+  
+  // Hämtar information om en uppgifts typ (kanban, gantt, etc) för att kunna navigera till rätt vy
+  app.get(`${apiPrefix}/tasks/:taskId/type`, async (req, res) => {
+    // Denna endpoint är öppen även för icke-autentiserade användare eftersom den
+    // bara används för navigering och inte avslöjar känslig information
+    try {
+      const taskId = parseInt(req.params.taskId);
+      
+      if (isNaN(taskId)) {
+        return res.status(400).json({ error: "Invalid task ID" });
+      }
+      
+      // Hämta uppgiftsdata från databasen
+      const taskData = await db.query.tasks.findFirst({
+        where: eq(tasks.id, taskId),
+        columns: {
+          id: true,
+          taskType: true,
+          title: true
+        }
+      });
+      
+      if (!taskData) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+      
+      // Avgör vilken typ av uppgift det är baserat på taskType-fältet
+      let type = "kanban"; // Standard är kanban
+      
+      if (taskData.taskType === "gantt") {
+        type = "gantt";
+      }
+      
+      res.json({
+        id: taskData.id,
+        type: type,
+        title: taskData.title
+      });
+    } catch (error) {
+      console.error("Error fetching task type:", error);
+      res.status(500).json({ error: "Failed to determine task type" });
+    }
+  });
 
   app.post(`${apiPrefix}/tasks`, async (req, res) => {
     try {

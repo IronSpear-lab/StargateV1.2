@@ -308,7 +308,7 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
   };
   
   // Klicka på en uppgift för att gå till detaljvyn
-  const handleItemClick = (item: DeadlineItem) => {
+  const handleItemClick = async (item: DeadlineItem) => {
     // Task ID 28, 30-32 är Kanban uppgifter från Test2 projekt (ID 6)
     // Vi vet att projektID 6 existerar från webview-loggarna
     const knownProjectId = 6;
@@ -329,23 +329,61 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
         status: item.data.status
       });
       
-      if (item.data.taskType === "gantt") {
-        // Gå till projektsidan och aktivera Gantt-fliken
-        console.log(`Navigerar till projektets Gantt-vy: /projects/${item.data.projectId || knownProjectId}?tab=timeline&taskId=${item.data.id}`);
-        setLocation(`/projects/${item.data.projectId || knownProjectId}?tab=timeline&taskId=${item.data.id}`);
-      } else if (item.data.taskType === "kanban" || item.data.taskType === "Setup" || item.data.taskType === "Research") {
-        // För Kanban-uppgifter, gå till projektsidan och aktivera Tasks-fliken
-        console.log(`Navigerar till projektets Tasks-vy: /projects/${item.data.projectId || knownProjectId}?tab=tasks&taskId=${item.data.id}`);
-        setLocation(`/projects/${item.data.projectId || knownProjectId}?tab=tasks&taskId=${item.data.id}`);
-      } else if (item.data.projectId) {
-        // För andra uppgiftstyper med projektID, gå till projektets startsida
-        console.log(`Navigerar till projektets startsida: /projects/${item.data.projectId}`);
-        setLocation(`/projects/${item.data.projectId}`);
-      } else {
-        // För uppgifter utan projektID, gå till Test2-projektets Tasks-vy
-        console.log(`Ingen projektID eller taskType, navigerar till fallback: /projects/${knownProjectId}?tab=tasks&taskId=${item.data.id}`);
-        setLocation(`/projects/${knownProjectId}?tab=tasks&taskId=${item.data.id}`);
+      try {
+        // Använd den nya API-endpointen för att avgöra uppgiftstyp
+        const response = await fetch(`/api/tasks/${item.data.id}/type`);
+        
+        if (response.ok) {
+          const taskTypeData = await response.json();
+          console.log("API-svar för uppgiftstyp:", taskTypeData);
+          
+          // Använda projektID från uppgiften eller fallback till känt projekt
+          const projectId = item.data.projectId || knownProjectId;
+          
+          if (taskTypeData.type === "gantt") {
+            // Gå till projektsidan och aktivera Gantt-fliken
+            console.log(`Navigerar till projektets Gantt-vy: /projects/${projectId}?tab=timeline&taskId=${item.data.id}`);
+            setLocation(`/projects/${projectId}?tab=timeline&taskId=${item.data.id}`);
+          } else {
+            // För alla andra uppgiftstyper, gå till projektsidan och aktivera Tasks-fliken (Kanban)
+            console.log(`Navigerar till projektets Tasks-vy: /projects/${projectId}?tab=tasks&taskId=${item.data.id}`);
+            setLocation(`/projects/${projectId}?tab=tasks&taskId=${item.data.id}`);
+          }
+        } else {
+          console.error("Kunde inte hämta uppgiftstyp från API:", response.status);
+          // Fallback till befintlig logik baserad på taskType-fältet i uppgiftsobjektet
+          fallbackNavigate(item);
+        }
+      } catch (error) {
+        console.error("Fel vid hämtning av uppgiftstyp:", error);
+        // Fallback till befintlig logik baserad på taskType-fältet i uppgiftsobjektet
+        fallbackNavigate(item);
       }
+    }
+  };
+  
+  // Fallback-navigation baserad på taskType-fältet i uppgiftsobjektet
+  const fallbackNavigate = (item: DeadlineItem) => {
+    if (item.type !== "task") return;
+    
+    const knownProjectId = 6;
+    
+    if (item.data.taskType === "gantt") {
+      // Gå till projektsidan och aktivera Gantt-fliken
+      console.log(`Fallback: Navigerar till projektets Gantt-vy: /projects/${item.data.projectId || knownProjectId}?tab=timeline&taskId=${item.data.id}`);
+      setLocation(`/projects/${item.data.projectId || knownProjectId}?tab=timeline&taskId=${item.data.id}`);
+    } else if (item.data.taskType === "kanban" || item.data.taskType === "Setup" || item.data.taskType === "Research") {
+      // För Kanban-uppgifter, gå till projektsidan och aktivera Tasks-fliken
+      console.log(`Fallback: Navigerar till projektets Tasks-vy: /projects/${item.data.projectId || knownProjectId}?tab=tasks&taskId=${item.data.id}`);
+      setLocation(`/projects/${item.data.projectId || knownProjectId}?tab=tasks&taskId=${item.data.id}`);
+    } else if (item.data.projectId) {
+      // För andra uppgiftstyper med projektID, gå till projektets startsida
+      console.log(`Fallback: Navigerar till projektets startsida: /projects/${item.data.projectId}`);
+      setLocation(`/projects/${item.data.projectId}`);
+    } else {
+      // För uppgifter utan projektID, gå till Test2-projektets Tasks-vy
+      console.log(`Fallback: Ingen projektID eller taskType, navigerar till fallback: /projects/${knownProjectId}?tab=tasks&taskId=${item.data.id}`);
+      setLocation(`/projects/${knownProjectId}?tab=tasks&taskId=${item.data.id}`);
     }
   };
   
