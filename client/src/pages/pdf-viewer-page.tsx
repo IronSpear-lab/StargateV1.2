@@ -52,11 +52,12 @@ export default function PDFViewerPage() {
     setIsSidebarOpen(!isSidebarOpen);
   };
   
-  // Hantera "Tillbaka"-knappen - navigera tillbaka till dashboard
-  const handleBack = () => {
-    console.log("Navigerar tillbaka till dashboard");
-    setLocation("/");
-  };
+  // Denna funktion används inte längre eftersom tillbaka-knappen nu finns i EnhancedPDFViewer
+  // Vi behåller den för dokumentation och om vi behöver återinföra funktionaliteten senare
+  // const handleBack = () => {
+  //  console.log("Navigerar tillbaka till dashboard");
+  //  setLocation("/");
+  // };
   
   return (
     <div className="flex h-screen overflow-hidden">
@@ -64,23 +65,6 @@ export default function PDFViewerPage() {
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header title="PDF Viewer" onToggleSidebar={toggleSidebar} />
-        
-        <div className="border-b bg-white px-4 py-2 flex items-center">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="gap-1 mr-auto" 
-            onClick={handleBack}
-          >
-            <ArrowLeft className="h-4 w-4" /> Tillbaka
-          </Button>
-          
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Versioner</span>
-            <span className="text-sm font-medium ml-4">Markera område</span>
-            <span className="text-sm font-medium ml-4">Ny version</span>
-          </div>
-        </div>
         
         <main className="flex-1 overflow-y-auto">
           {isLoading ? (
