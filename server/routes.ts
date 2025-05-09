@@ -3260,11 +3260,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Mappning av status
         const statusMap = {
+          // Kanban-status
           "todo": "pending",
           "backlog": "pending",
           "in_progress": "in_progress",
           "review": "in_progress",
-          "done": "completed"
+          "done": "completed",
+          
+          // Gantt-status
+          "New": "pending",
+          "Ongoing": "in_progress",
+          "Completed": "completed",
+          "Delayed": "pending"
         };
         
         return {

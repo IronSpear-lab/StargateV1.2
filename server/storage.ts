@@ -559,8 +559,21 @@ class DatabaseStorage implements IStorage {
       .from(tasks)
       .where(eq(tasks.assigneeId, userId));
     
+    console.log(`Hittade ${result.length} uppgifter för användare ${userId}`);
+    
+    if (result.length > 0) {
+      console.log("Exempel på uppgift:", {
+        id: result[0].id,
+        title: result[0].title,
+        status: result[0].status,
+        assigneeId: result[0].assigneeId,
+        type: result[0].type
+      });
+    }
+    
     // Process dependencies as JSON for the frontend
     return result.map(task => {
+      // Här konverterar vi Gantt-specifika statusar till generiska API-statusar
       if (task.dependencies) {
         try {
           const deps = JSON.parse(task.dependencies);
