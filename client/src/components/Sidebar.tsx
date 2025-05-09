@@ -757,23 +757,44 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           try {
             const parsedFolders = JSON.parse(savedFolders);
             
-            // Jämför med aktuell state för att undvika onödiga renderingar
-            if (JSON.stringify(parsedFolders) !== JSON.stringify(userCreatedFolders)) {
+            // Hämta aktuellt project-ID
+            const projectId = localStorage.getItem('currentProjectId');
+            
+            // Filtrera mappar baserat på aktuellt projekt, om ett projekt är valt
+            const filteredFolders = projectId
+              ? parsedFolders.filter((folder: any) => {
+                  // Inkludera mappar som saknar projektId och mappar som tillhör aktuellt projekt
+                  const matchesProject = !folder.projectId || folder.projectId === projectId;
+                  console.log(`Sidebar: Kontrollerar mapp ${folder.name}, projectId=${folder.projectId}, match=${matchesProject}`);
+                  return matchesProject;
+                })
+              : parsedFolders;
+              
+            // Loggning av mappinformation
+            console.log(`Sidebar: Hittade ${filteredFolders.length} mappar för projekt ${projectId || 'inget projekt'}`);
+            console.log("Mappar:", filteredFolders.map((f: any) => `${f.name} (${f.projectId || 'ingen projektId'})`));
+            
+            // Jämför med aktuell state för att undvika onödiga renderingar - med strikt jämförelse
+            const currentFolderIds = userCreatedFolders.map((f: any) => f.id).sort().join(',');
+            const newFolderIds = filteredFolders.map((f: any) => f.id).sort().join(',');
+            
+            if (currentFolderIds !== newFolderIds) {
               console.log("Sidebar: Uppdaterar mapplistan från localStorage", {
-                count: parsedFolders.length
+                gammalt: currentFolderIds,
+                nytt: newFolderIds,
+                antal: filteredFolders.length
               });
               
-              // Filtrera mappar baserat på aktuellt projekt, om ett projekt är valt
-              const projectId = localStorage.getItem('currentProjectId');
-              if (projectId) {
-                console.log(`Sidebar: Filtrerar mappar för aktuellt projekt (${projectId})`);
-                const filteredFolders = parsedFolders.filter((folder: any) => 
-                  !folder.projectId || folder.projectId === projectId
-                );
-                setUserCreatedFolders(filteredFolders);
-              } else {
-                // Om inget projekt är valt, visa alla mappar
-                setUserCreatedFolders(parsedFolders);
+              // Uppdatera state med de filtrerade mapparna
+              setUserCreatedFolders(filteredFolders);
+              
+              // Mata in mapparna i Files-sektionen
+              const filesSection = document.querySelector('[data-folder-id="files_root"]');
+              if (filesSection) {
+                console.log("Hittade Files-sektionen, triggar klick för att expandera");
+                if (!openItems["file_folders"]) {
+                  toggleItem("file_folders");
+                }
               }
             }
           } catch (e) {
@@ -904,20 +925,35 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   
   // Funktion för att skapa en ny mapp
   const createFolder = (folderName: string, parentName: string) => {
+    // Hämta aktuellt project-ID för att knyta mappen till rätt projekt
+    const currentProjectId = localStorage.getItem('currentProjectId');
+    
     // Skapa ett unikt ID för mappen
     const folderId = `folder_${Date.now()}`;
     
-    // Skapa den nya mappen med unik ID
+    // Skapa den nya mappen med unik ID och projektID
     const newFolder = { 
       name: folderName, 
       parent: parentName, 
       id: folderId,
+      parentId: null, // Denna sätts bara när mappen skapas under en annan mapp
+      projectId: currentProjectId, // Lägg till projektId för korrekt filtrering
       label: folderName, // Samma som name, men enklare att använda i andra delar av koden
       href: `/vault/files/${encodeURIComponent(folderName)}` // Länk till den dynamiska sidan
     };
     
+    // Hämta alla befintliga mappar från localStorage
+    const allUserFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
+    
+    // Filtrera ut mappar från andra projekt så vi inte skriver över dem
+    const otherProjectFolders = allUserFolders.filter((f: any) => {
+      return !f.projectId || f.projectId !== currentProjectId;
+    });
+    
+    // Kombinera mappar från andra projekt med den nya mappen
+    const updatedFolders = [...otherProjectFolders, newFolder];
+    
     // Uppdatera state
-    const updatedFolders = [...userCreatedFolders, newFolder];
     setUserCreatedFolders(updatedFolders);
     
     // Spara i localStorage
@@ -929,9 +965,15 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     const foldersForApp = existingFoldersForApp ? JSON.parse(existingFoldersForApp) : [];
     const updatedFoldersForApp = [...foldersForApp, { 
       label: folderName,
-      parent: parentName
+      parent: parentName,
+      projectId: currentProjectId // Lägg till projektId för korrekt filtrering
     }];
     localStorage.setItem('user_created_folders', JSON.stringify(updatedFoldersForApp));
+    
+    // Utlös en uppdatering av sidofältet
+    window.dispatchEvent(new CustomEvent('folder-structure-changed', { 
+      detail: { projectId: currentProjectId } 
+    }));
     
     // Visa meddelande om att mappen har skapats
     toast({
