@@ -126,8 +126,26 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
 
   // Få ett datum att visa för deadlines beroende på typ
   const getDeadlineDate = (item: DeadlineItem): string => {
+    // Logga datum-relaterade fält för uppgifter för att debugga
     if (item.type === "task") {
-      return item.data.dueDate || item.data.endDate || item.data.startDate || new Date().toISOString();
+      console.log("DeadlinesWidget - Task datum:", {
+        id: item.data.id,
+        title: item.data.title,
+        status: item.data.status,
+        dueDate: item.data.dueDate,
+        endDate: item.data.endDate,
+        startDate: item.data.startDate,
+        createdAt: item.data.createdAt
+      });
+      
+      // Prioritera dueDate för Kanban-uppgifter, men för Gantt använd endDate först
+      const isGanttTask = item.data.taskType === "gantt";
+      
+      if (isGanttTask) {
+        return item.data.endDate || item.data.dueDate || item.data.startDate || new Date().toISOString();
+      } else {
+        return item.data.dueDate || item.data.endDate || item.data.startDate || new Date().toISOString();
+      }
     } else {
       // Om PDF-kommentaren har en egen deadline, använd den
       if (item.data.deadline) {
