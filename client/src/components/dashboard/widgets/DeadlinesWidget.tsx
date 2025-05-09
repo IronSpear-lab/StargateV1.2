@@ -233,12 +233,22 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
   const deadlines = combinedItems
     .sort((a, b) => {
       try {
-        const dateA = new Date(getDeadlineDate(a)).getTime();
-        const dateB = new Date(getDeadlineDate(b)).getTime();
+        const dateStrA = getDeadlineDate(a);
+        const dateStrB = getDeadlineDate(b);
         
-        console.log(`Jämför deadlines: ${getItemTitle(a)} (${new Date(dateA).toLocaleDateString()}) vs ${getItemTitle(b)} (${new Date(dateB).toLocaleDateString()})`);
+        // För att säkerställa att datumet hanteras korrekt, använd parseISO från date-fns
+        const dateA = parseISO(dateStrA);
+        const dateB = parseISO(dateStrB);
         
-        return dateA - dateB; // Sortera stigande (tidiga deadlines först)
+        const timeA = dateA.getTime();
+        const timeB = dateB.getTime();
+        
+        console.log(`Jämför deadlines: ${getItemTitle(a)} (${format(dateA, 'yyyy-MM-dd')}) vs ${getItemTitle(b)} (${format(dateB, 'yyyy-MM-dd')})`);
+        
+        // Använd format() för att kontrollera att datumen tolkas rätt
+        console.log(`  Datum A: ${format(dateA, 'yyyy-MM-dd HH:mm:ss')}, Datum B: ${format(dateB, 'yyyy-MM-dd HH:mm:ss')}`);
+        
+        return timeA - timeB; // Sortera stigande (tidiga deadlines först)
       } catch (error) {
         console.error("Fel vid sortering av deadlines:", error);
         return 0; // Behåll ordningen oförändrad om fel uppstår
@@ -503,12 +513,22 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
     // Sortera alla deadlines i kombinerade items (inte bara de första 'limit' antal)
     const sortedDeadlines = combinedItems.sort((a, b) => {
       try {
-        const dateA = new Date(getDeadlineDate(a)).getTime();
-        const dateB = new Date(getDeadlineDate(b)).getTime();
+        const dateStrA = getDeadlineDate(a);
+        const dateStrB = getDeadlineDate(b);
         
-        console.log(`Jämför deadlines i dialog: ${getItemTitle(a)} (${new Date(dateA).toLocaleDateString()}) vs ${getItemTitle(b)} (${new Date(dateB).toLocaleDateString()})`);
+        // För att säkerställa att datumet hanteras korrekt, använd parseISO från date-fns
+        const dateA = parseISO(dateStrA);
+        const dateB = parseISO(dateStrB);
         
-        return dateA - dateB; // Sortera stigande (tidiga deadlines först)
+        const timeA = dateA.getTime();
+        const timeB = dateB.getTime();
+        
+        console.log(`Jämför deadlines i dialog: ${getItemTitle(a)} (${format(dateA, 'yyyy-MM-dd')}) vs ${getItemTitle(b)} (${format(dateB, 'yyyy-MM-dd')})`);
+        
+        // Använd format() för att kontrollera att datumen tolkas rätt
+        console.log(`  Datum A: ${format(dateA, 'yyyy-MM-dd HH:mm:ss')}, Datum B: ${format(dateB, 'yyyy-MM-dd HH:mm:ss')}`);
+        
+        return timeA - timeB; // Sortera stigande (tidiga deadlines först)
       } catch (error) {
         console.error("Fel vid sortering i dialog:", error);
         return 0;
@@ -721,12 +741,17 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
                 try {
                   const deadlineDate = getDeadlineDate({ type: "pdf_annotation", data: annotation });
                   console.log(`Formaterar datum för PDF-kommentar: ${deadlineDate}`);
-                  const date = new Date(deadlineDate);
+                  
+                  // Använd parseISO istället för Date constructor för mer pålitlig datumparsning
+                  const date = parseISO(deadlineDate);
+                  
                   if (isNaN(date.getTime())) {
                     console.error(`Ogiltigt datum för PDF-kommentar: ${deadlineDate}`);
                     return "Ogiltigt datum";
                   }
-                  return format(date, "yyyy-MM-dd");
+                  
+                  // Visa mer användarvänligt format med dag och månad
+                  return format(date, "d MMM yyyy");
                 } catch (e) {
                   console.error("Fel vid formatering av datum för PDF-kommentar:", e);
                   return "Ogiltigt datum";
@@ -785,12 +810,17 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
                 try {
                   const deadlineDate = getDeadlineDate({ type: "task", data: task });
                   console.log(`Formaterar datum för uppgift "${task.title}": ${deadlineDate}`);
-                  const date = new Date(deadlineDate);
+                  
+                  // Använd parseISO istället för Date constructor för mer pålitlig datumparsning
+                  const date = parseISO(deadlineDate);
+                  
                   if (isNaN(date.getTime())) {
                     console.error(`Ogiltigt datum för uppgift "${task.title}": ${deadlineDate}`);
                     return "Ogiltigt datum";
                   }
-                  return format(date, "yyyy-MM-dd");
+                  
+                  // Visa mer användarvänligt format med dag och månad
+                  return format(date, "d MMM yyyy");
                 } catch (e) {
                   console.error(`Fel vid formatering av datum för uppgift "${task.title}":`, e);
                   return "Ogiltigt datum";
