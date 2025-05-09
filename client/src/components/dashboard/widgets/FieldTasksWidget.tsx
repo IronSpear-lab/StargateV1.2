@@ -414,9 +414,9 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
         </DialogTrigger>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>Alla PDF-kommentarer</DialogTitle>
+            <DialogTitle>Alla dina tilldelade uppgifter</DialogTitle>
             <DialogDescription>
-              {allAnnotations.length} PDF-kommentarer som kräver din uppmärksamhet
+              {allAnnotations.length} uppgifter som kräver din uppmärksamhet
             </DialogDescription>
           </DialogHeader>
           
