@@ -788,10 +788,14 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               // Uppdatera state med de filtrerade mapparna
               setUserCreatedFolders(filteredFolders);
               
-              // Mata in mapparna i Files-sektionen
-              const filesSection = document.querySelector('[data-folder-id="files_root"]');
-              if (filesSection) {
-                console.log("Hittade Files-sektionen, triggar klick för att expandera");
+              // Öppna Files-sektionen automatiskt om det finns mappar
+              if (filteredFolders.length > 0) {
+                console.log("Det finns mappar, säkerställer att Files-sektionen är öppen");
+                // Öppna Vault-sektionen om den inte redan är öppen
+                if (!openSections.includes("vault")) {
+                  toggleSection("vault");
+                }
+                // Öppna Files-undermenyn om den inte redan är öppen
                 if (!openItems["file_folders"]) {
                   toggleItem("file_folders");
                 }
@@ -928,6 +932,8 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     // Hämta aktuellt project-ID för att knyta mappen till rätt projekt
     const currentProjectId = localStorage.getItem('currentProjectId');
     
+    console.log(`createFolder: Skapar mapp '${folderName}' under '${parentName}' för projekt ${currentProjectId || 'inget projekt'}`);
+    
     // Skapa ett unikt ID för mappen
     const folderId = `folder_${Date.now()}`;
     
@@ -944,17 +950,20 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     
     // Hämta alla befintliga mappar från localStorage
     const allUserFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
+    console.log(`createFolder: Hittade ${allUserFolders.length} existerande mappar i localStorage`);
     
     // Filtrera ut mappar från andra projekt så vi inte skriver över dem
     const otherProjectFolders = allUserFolders.filter((f: any) => {
       return !f.projectId || f.projectId !== currentProjectId;
     });
+    console.log(`createFolder: Behåller ${otherProjectFolders.length} mappar från andra projekt`);
     
     // Kombinera mappar från andra projekt med den nya mappen
     const updatedFolders = [...otherProjectFolders, newFolder];
     
     // Uppdatera state
     setUserCreatedFolders(updatedFolders);
+    console.log(`createFolder: State uppdaterad med ${updatedFolders.length} mappar`);
     
     // Spara i localStorage
     localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
@@ -970,7 +979,18 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     }];
     localStorage.setItem('user_created_folders', JSON.stringify(updatedFoldersForApp));
     
+    // Säkerställ att Vault-sektionen är öppen
+    if (!openSections.includes("vault")) {
+      toggleSection("vault");
+    }
+    
+    // Säkerställ att Files-sektionen är öppen
+    if (!openItems["file_folders"]) {
+      toggleItem("file_folders");
+    }
+    
     // Utlös en uppdatering av sidofältet
+    console.log("createFolder: Utlöser folder-structure-changed event");
     window.dispatchEvent(new CustomEvent('folder-structure-changed', { 
       detail: { projectId: currentProjectId } 
     }));
@@ -1289,10 +1309,82 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     // Börja med kopian av grundnavigationen
     let navCopy = [...baseNavItems];
     
-    // Lägg till alla användar-skapade mappar
-    userCreatedFolders.forEach(folder => {
-      navCopy = findParentAndAddFolder(navCopy, folder.parent, folder);
-    });
+    // Logga alla mappar som vi ska försöka lägga till
+    console.log(`getNavItems: Försöker lägga till ${userCreatedFolders.length} mappar i Sidebar`);
+    
+    // Iterera först igenom navigationsobjekten för att hitta Files-sektionen
+    let filesSection = null;
+    
+    // Rekursiv funktion för att hitta Files-sektionen i navigationsobjektet
+    const findFilesSection = (items: NavItemType[]): NavItemType | null => {
+      for (const item of items) {
+        if (item.label === "Files" && item.folderId === "files_root") {
+          return item;
+        }
+        
+        if (item.children && item.children.length > 0) {
+          const found = findFilesSection(item.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    
+    // Sök igenom för att hitta Files-sektionen
+    const vaultSection = navCopy.find(item => item.label === "Vault");
+    if (vaultSection && vaultSection.children) {
+      filesSection = findFilesSection(vaultSection.children);
+    }
+    
+    // Om Files-sektionen hittades, lägg till mappar direkt till den
+    if (filesSection) {
+      console.log("Hittade Files-sektionen i navigationsobjektet:", filesSection.label);
+      
+      // Skapa barnmappar direkt till Files-sektionen
+      if (!filesSection.children) {
+        filesSection.children = [];
+      }
+      
+      // Använd skapade mappar som barnelement i Files-sektionen istället för att använda rekursiv mapping
+      userCreatedFolders.forEach(folder => {
+        // Kontrollera om mappen redan finns i Files-sektionen för att undvika dubletter
+        const existingFolder = filesSection!.children!.find(child => 
+          child.folderId === folder.id || child.label === folder.name
+        );
+        
+        if (!existingFolder) {
+          // Lägg till mappen direkt som ett barnelement till Files-sektionen
+          filesSection!.children!.push({
+            href: `/vault/files/${encodeURIComponent(folder.name)}`,
+            label: folder.name,
+            active: location === `/vault/files/${encodeURIComponent(folder.name)}`,
+            indent: (filesSection!.indent || 0) + 1,
+            icon: <FolderClosed className="w-4 h-4" />,
+            type: "folder",
+            onAddClick: () => handleAddFolder(folder.name),
+            folderId: folder.id,
+            children: []
+          });
+          console.log(`Lade till mapp ${folder.name} (ID: ${folder.id}) direkt i Files-sektionen`);
+        } else {
+          console.log(`Mappen ${folder.name} finns redan i Files-sektionen, hoppar över`);
+        }
+      });
+      
+      // Säkerställ att Files-sektionen är öppen om den har mappar
+      if (filesSection.children && filesSection.children.length > 0) {
+        filesSection.isOpen = true;
+        // Öppna även Vault-sektionen
+        if (vaultSection) {
+          vaultSection.isOpen = true;
+          if (!openSections.includes("vault")) {
+            toggleSection("vault");
+          }
+        }
+      }
+    } else {
+      console.warn("Kunde inte hitta Files-sektionen i navigationsobjektet!");
+    }
     
     return navCopy;
   };
