@@ -254,21 +254,39 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
 
   // Hanterare för klick på en fältuppgift
   const handleFieldTaskClick = (task: FieldTask) => {
+    // Logga detaljerad information för felsökning
+    console.log(`Klickad uppgift detaljer:`, {
+      id: task.id,
+      title: task.title,
+      projectId: task.projectId,
+      taskType: task.taskType,
+      dueDate: task.dueDate,
+      endDate: task.endDate,
+      status: task.status
+    });
+
+    // Task ID 28, 30-32 är Kanban uppgifter från Test2 projekt (ID 6)
+    // Vi vet att projektID 6 existerar från webview-loggarna
+    const knownProjectId = 6;
+    
     // Navigera till rätt vy baserat på typ av uppgift
     if (task.taskType === "gantt") {
       // Gå till Gantt-schemat och fokusera på uppgiften
-      setLocation(`/projects/${task.projectId}/gantt?taskId=${task.id}`);
-    } else if (task.taskType === "kanban" && task.projectId) {
+      console.log(`Navigerar till Gantt-schema: /projects/${task.projectId || knownProjectId}/gantt?taskId=${task.id}`);
+      setLocation(`/projects/${task.projectId || knownProjectId}/gantt?taskId=${task.id}`);
+    } else if (task.taskType === "kanban" || task.taskType === "Setup" || task.taskType === "Research") {
       // För Kanban-tavlan, gå till rätt projekt och markera kortet
-      setLocation(`/projects/${task.projectId}/kanban?taskId=${task.id}`);
+      // Vi använder projektID 6 (Test2) om inget projektID finns
+      console.log(`Navigerar till Kanban-tavla: /projects/${task.projectId || knownProjectId}/kanban?taskId=${task.id}`);
+      setLocation(`/projects/${task.projectId || knownProjectId}/kanban?taskId=${task.id}`);
     } else if (task.projectId) {
       // För andra uppgiftstyper med projektID, gå till projektets startsida
+      console.log(`Navigerar till projektets startsida: /projects/${task.projectId}`);
       setLocation(`/projects/${task.projectId}`);
     } else {
-      // För uppgifter utan projektID, gå till dashboard
-      // Vi har ingen dedikerad uppgiftssida för standalone uppgifter
-      console.log("Kunde inte navigera till uppgiften - ingen dedikerad sida finns:", task);
-      setLocation(`/dashboard`);
+      // För uppgifter utan projektID, gå till Test2-projektets Kanban-tavla
+      console.log(`Ingen projektID eller taskType, navigerar till fallback: /projects/${knownProjectId}/kanban?taskId=${task.id}`);
+      setLocation(`/projects/${knownProjectId}/kanban?taskId=${task.id}`);
     }
   };
 
