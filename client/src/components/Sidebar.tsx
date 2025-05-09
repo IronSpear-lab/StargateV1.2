@@ -747,6 +747,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   }, [user]);
   
   // Lägg till en periodisk kontroll för uppdateringar av localStorage
+  // och lyssna på custom events från FolderManagementWidget
   useEffect(() => {
     // Funktionen som kontrollerar localStorage för förändringar
     const checkForFolderUpdates = () => {
@@ -758,7 +759,22 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
             
             // Jämför med aktuell state för att undvika onödiga renderingar
             if (JSON.stringify(parsedFolders) !== JSON.stringify(userCreatedFolders)) {
-              setUserCreatedFolders(parsedFolders);
+              console.log("Sidebar: Uppdaterar mapplistan från localStorage", {
+                count: parsedFolders.length
+              });
+              
+              // Filtrera mappar baserat på aktuellt projekt, om ett projekt är valt
+              const projectId = localStorage.getItem('currentProjectId');
+              if (projectId) {
+                console.log(`Sidebar: Filtrerar mappar för aktuellt projekt (${projectId})`);
+                const filteredFolders = parsedFolders.filter((folder: any) => 
+                  !folder.projectId || folder.projectId === projectId
+                );
+                setUserCreatedFolders(filteredFolders);
+              } else {
+                // Om inget projekt är valt, visa alla mappar
+                setUserCreatedFolders(parsedFolders);
+              }
             }
           } catch (e) {
             console.error("Fel vid periodisk kontroll av mappar i localStorage:", e);
@@ -767,14 +783,26 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       }
     };
     
+    // Eventlyssnare för manuell refresh av mappar (utlöst av FolderManagementWidget)
+    const handleFolderStructureChanged = (event: CustomEvent) => {
+      console.log("Sidebar: Mottog folder-structure-changed-event", event.detail);
+      checkForFolderUpdates();
+    };
+    
+    // Lägg till lyssnare för den anpassade händelsen
+    window.addEventListener('folder-structure-changed', handleFolderStructureChanged as EventListener);
+    
     // Kör direkt och sätt sedan intervall
     checkForFolderUpdates();
     
-    // Sätt ett intervall för att kontrollera var 3:e sekund
-    const intervalId = setInterval(checkForFolderUpdates, 3000);
+    // Sätt ett intervall för att kontrollera var 2:a sekund istället för var 3:e
+    const intervalId = setInterval(checkForFolderUpdates, 2000);
     
-    // Städa upp intervall vid unmount
-    return () => clearInterval(intervalId);
+    // Städa upp intervall och event listener vid unmount
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('folder-structure-changed', handleFolderStructureChanged as EventListener);
+    };
   }, [userCreatedFolders]);
   
   // State för användarens profilbild med lagring i localStorage

@@ -225,15 +225,50 @@ export function FolderManagementWidget() {
       // Also remove folder from localStorage for sidebar
       try {
         const userFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
-        const updatedFolders = userFolders.filter(
-          (folder: { id: string }) => folder.id !== deletedFolderId.toString()
-        );
-        localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
         
-        // Tvinga en refresh av sidebar-menyn genom att utlösa en custom event
-        window.dispatchEvent(new CustomEvent('folder-structure-changed', { 
-          detail: { projectId: currentProject?.id } 
-        }));
+        // Identifiera den borttagna mappen
+        const folderToRemove = userFolders.find((folder: any) => 
+          folder.id === deletedFolderId.toString()
+        );
+        
+        // Ta bort den markerade mappen och alla dess underliggande mappar
+        if (folderToRemove) {
+          const folderName = folderToRemove.name;
+          console.log(`Removing folder ${folderName} and all its children from local storage`);
+          
+          // Funktionen identifierar alla undermappar rekursivt
+          const findChildFolderIds = (parentName: string): string[] => {
+            const directChildren = userFolders.filter((folder: any) => 
+              folder.parent === parentName
+            );
+            
+            return [
+              ...directChildren.map((child: any) => child.id),
+              ...directChildren.flatMap((child: any) => findChildFolderIds(child.name))
+            ];
+          };
+          
+          // Hitta IDs för alla mappar som ska tas bort (den valda mappen + undermappar)
+          const idsToRemove = [
+            deletedFolderId.toString(),
+            ...findChildFolderIds(folderToRemove.name)
+          ];
+          
+          console.log(`Will remove ${idsToRemove.length} folders in total`);
+          
+          // Filtrera bort de mappar som ska tas bort
+          const updatedFolders = userFolders.filter((folder: any) => 
+            !idsToRemove.includes(folder.id)
+          );
+          
+          // Spara de uppdaterade mapparna till localStorage
+          localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
+          
+          // Tvinga en refresh av sidebar-menyn genom att utlösa en custom event
+          window.dispatchEvent(new CustomEvent('folder-structure-changed', { 
+            detail: { projectId: currentProject?.id } 
+          }));
+        }
       } catch (e) {
         console.error("Error updating local storage folders after deletion:", e);
       }
