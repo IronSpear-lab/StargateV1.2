@@ -375,7 +375,8 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
           </div>
           
           <div className="text-sm font-medium mt-0.5 text-gray-900">
-            {/* Nytt sätt att visa kommentartext med prioritet på task-titel */}
+            {/* Om annotationen är kopplad till en task, visar vi hellre kommentaren 
+                eftersom servern inkluderar task-titeln som kommentar när den är tillgänglig */}
             {annotation.comment || "PDF-kommentar"}
           </div>
           
