@@ -281,13 +281,13 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
         const projectId = task.projectId || knownProjectId;
         
         if (taskTypeData.type === "gantt") {
-          // Gå till projektsidan och aktivera Gantt-fliken
-          console.log(`Navigerar till projektets Gantt-vy: /projects/${projectId}?tab=timeline&taskId=${task.id}`);
-          setLocation(`/projects/${projectId}?tab=timeline&taskId=${task.id}`);
+          // Gå direkt till projektets Gantt-vy
+          console.log(`Navigerar direkt till Gantt-vy för projekt ${projectId} och uppgift ${task.id}`);
+          setLocation(`/gantt-chart/${projectId}?taskId=${task.id}`);
         } else {
-          // För alla andra uppgiftstyper, gå till projektsidan och aktivera Tasks-fliken (Kanban)
-          console.log(`Navigerar till projektets Tasks-vy: /projects/${projectId}?tab=tasks&taskId=${task.id}`);
-          setLocation(`/projects/${projectId}?tab=tasks&taskId=${task.id}`);
+          // För alla andra uppgiftstyper, gå direkt till Kanban-vyn
+          console.log(`Navigerar direkt till Kanban-vy för projekt ${projectId} och uppgift ${task.id}`);
+          setLocation(`/kanban/${projectId}?taskId=${task.id}`);
         }
       } else {
         console.error("Kunde inte hämta uppgiftstyp från API:", response.status);
@@ -304,23 +304,24 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
   // Fallback-navigation baserad på taskType-fältet i uppgiftsobjektet
   const fallbackNavigate = (task: FieldTask) => {
     const knownProjectId = 6;
+    const projectId = task.projectId || knownProjectId;
     
     if (task.taskType === "gantt") {
-      // Gå till projektsidan och aktivera Gantt-fliken
-      console.log(`Fallback: Navigerar till projektets Gantt-vy: /projects/${task.projectId || knownProjectId}?tab=timeline&taskId=${task.id}`);
-      setLocation(`/projects/${task.projectId || knownProjectId}?tab=timeline&taskId=${task.id}`);
+      // Gå direkt till Gantt-sidan
+      console.log(`Fallback: Navigerar direkt till Gantt-vy: /gantt-chart/${projectId}?taskId=${task.id}`);
+      setLocation(`/gantt-chart/${projectId}?taskId=${task.id}`);
     } else if (task.taskType === "kanban" || task.taskType === "Setup" || task.taskType === "Research") {
-      // För Kanban-uppgifter, gå till projektsidan och aktivera Tasks-fliken
-      console.log(`Fallback: Navigerar till projektets Tasks-vy: /projects/${task.projectId || knownProjectId}?tab=tasks&taskId=${task.id}`);
-      setLocation(`/projects/${task.projectId || knownProjectId}?tab=tasks&taskId=${task.id}`);
+      // För Kanban-uppgifter, gå direkt till Kanban-sidan
+      console.log(`Fallback: Navigerar direkt till Kanban-vy: /kanban/${projectId}?taskId=${task.id}`);
+      setLocation(`/kanban/${projectId}?taskId=${task.id}`);
     } else if (task.projectId) {
-      // För andra uppgiftstyper med projektID, gå till projektets startsida
-      console.log(`Fallback: Navigerar till projektets startsida: /projects/${task.projectId}`);
-      setLocation(`/projects/${task.projectId}`);
+      // För andra uppgiftstyper med projektID, anta att det är en Kanban-uppgift
+      console.log(`Fallback: Antar Kanban-uppgift, går till Kanban-vy: /kanban/${projectId}?taskId=${task.id}`);
+      setLocation(`/kanban/${projectId}?taskId=${task.id}`);
     } else {
-      // För uppgifter utan projektID, gå till Test2-projektets Tasks-vy
-      console.log(`Fallback: Ingen projektID eller taskType, navigerar till fallback: /projects/${knownProjectId}?tab=tasks&taskId=${task.id}`);
-      setLocation(`/projects/${knownProjectId}?tab=tasks&taskId=${task.id}`);
+      // För uppgifter utan projektID, gå till fallback-projektets Kanban-vy
+      console.log(`Fallback: Ingen projektID eller taskType, går till fallback Kanban-vy: /kanban/${knownProjectId}?taskId=${task.id}`);
+      setLocation(`/kanban/${knownProjectId}?taskId=${task.id}`);
     }
   };
 
