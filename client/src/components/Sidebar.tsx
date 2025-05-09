@@ -1065,6 +1065,35 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     setDeleteDialogOpen(false);
   };
   
+  // Funktion för att ta bort alla mappar
+  const deleteAllFolders = () => {
+    // Kontrollera behörighet för att endast tillåta project_leader, admin och superuser
+    if (!user || !(user.role === "project_leader" || user.role === "admin" || user.role === "superuser")) {
+      toast({
+        title: "Behörighet saknas",
+        description: "Du har inte behörighet att ta bort mappar",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Rensa alla sparade mappar
+    localStorage.setItem('userCreatedFolders', '[]');
+    localStorage.setItem('user_created_folders', '[]');
+    
+    // Uppdatera state
+    setUserCreatedFolders([]);
+    
+    // Visa ett meddelande
+    toast({
+      title: "Alla mappar borttagna",
+      description: "Alla mappar har tagits bort från systemet",
+    });
+    
+    // Utlös en uppdatering av sidofältet
+    window.dispatchEvent(new CustomEvent('folder-structure-changed'));
+  };
+  
   // Funktion för att hitta den rätta föräldern för en nyskapad mapp och uppdatera den
   const findParentAndAddFolder = (
     items: NavItemType[], 
