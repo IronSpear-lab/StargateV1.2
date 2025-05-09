@@ -126,10 +126,36 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
 
   // Få ett datum att visa för deadlines beroende på typ
   const getDeadlineDate = (item: DeadlineItem): string => {
+    // Funktion för att normalisera datum (flyttad till yttre scope för att kunna användas överallt)
+    const normalizeDate = (dateStr?: string): string | undefined => {
+      if (!dateStr) return undefined;
+      
+      // Om datumet redan är ett ISO-format med tid, använd det direkt
+      if (dateStr.includes('T')) return dateStr;
+      
+      // Om det är bara YYYY-MM-DD, konvertera till ISO med tid (midnatt lokal tid)
+      try {
+        // Fixa problemet med 9 maj som visas istället för 30 maj
+        // Sätt alltid 00:00:00Z tidsstämpel för att undvika skiftningar pga. tidszoner
+        const date = new Date(dateStr);
+        
+        // Logga och verifiera datumkonvertering
+        console.log(`Normaliserar '${dateStr}' -> Datum: ${date.toISOString()}, månad: ${date.getMonth() + 1}, dag: ${date.getDate()}`);
+        
+        if (!isNaN(date.getTime())) {
+          // Justera för att ge en fullständig ISO-sträng med Z (UTC-tid)
+          return date.toISOString();
+        }
+      } catch (e) {
+        console.error("Kunde inte normalisera datum:", dateStr, e);
+      }
+      return dateStr;
+    };
+    
     // Logga datum-relaterade fält för uppgifter för att debugga
     if (item.type === "task") {
       const isGanttTask = item.data.taskType === "gantt";
-      console.log("DeadlinesWidget - Task datum:", {
+      const taskInfo = {
         id: item.data.id,
         title: item.data.title,
         type: item.data.taskType, 
@@ -139,29 +165,12 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
         startDate: item.data.startDate,
         scheduledDate: item.data.scheduledDate,
         isGanttTask
-      });
+      };
+      
+      console.log("DeadlinesWidget - Task datum:", taskInfo);
       
       // För Gantt-uppgifter är det viktigt att prioritera endDate
       if (isGanttTask) {
-        // Kontrollera om datestring behöver korrigeras (vissa datum kommer som YYYY-MM-DD)
-        const normalizeDate = (dateStr?: string): string | undefined => {
-          if (!dateStr) return undefined;
-          
-          // Om datumet redan är ett ISO-format med tid, använd det direkt
-          if (dateStr.includes('T')) return dateStr;
-          
-          // Om det är bara YYYY-MM-DD, konvertera till ISO med tid (midnatt lokal tid)
-          try {
-            const date = new Date(dateStr + 'T00:00:00');
-            if (!isNaN(date.getTime())) {
-              return date.toISOString();
-            }
-          } catch (e) {
-            console.error("Kunde inte normalisera datum:", dateStr, e);
-          }
-          return dateStr;
-        };
-        
         // Använd normaliserade datum (med prioritet för endDate i Gantt)
         const deadlineDate = normalizeDate(item.data.endDate) || 
                             normalizeDate(item.data.dueDate) || 
@@ -171,15 +180,19 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
         console.log(`Gantt-uppgift (${item.data.title}) använder deadline: ${deadlineDate}`);
         return deadlineDate;
       } else {
-        // För Kanban och andra uppgifter prioritera dueDate
-        const deadlineDate = item.data.dueDate || item.data.endDate || item.data.startDate || new Date().toISOString();
+        // För Kanban och andra uppgifter prioritera dueDate, men använd också normalizeDate
+        const deadlineDate = normalizeDate(item.data.dueDate) || 
+                             normalizeDate(item.data.endDate) || 
+                             normalizeDate(item.data.startDate) || 
+                             new Date().toISOString();
+                             
         console.log(`Kanban-uppgift (${item.data.title}) använder deadline: ${deadlineDate}`);
         return deadlineDate;
       }
     } else {
       // Om PDF-kommentaren har en egen deadline, använd den
       if (item.data.deadline) {
-        return item.data.deadline;
+        return normalizeDate(item.data.deadline) || item.data.deadline;
       }
       
       // Annars, använd standarddeadline 14 dagar från skapandedatum

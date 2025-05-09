@@ -353,23 +353,69 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
         const data = await response.json();
         console.log('Hämtade uppgifter från API:', data);
         
+        // Funktion för att normalisera datum (matchar den i DeadlinesWidget)
+        const normalizeDate = (dateStr?: string): string | undefined => {
+          if (!dateStr) return undefined;
+          
+          // Om datumet redan är ett ISO-format med tid, returnera endast YYYY-MM-DD-delen
+          if (dateStr.includes('T')) {
+            return dateStr.substring(0, 10);
+          }
+          
+          // Om det är bara YYYY-MM-DD, använd det direkt
+          if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            return dateStr;
+          }
+          
+          // För andra format, konvertera via Date-objekt och ta YYYY-MM-DD-delen
+          try {
+            const date = new Date(dateStr);
+            if (!isNaN(date.getTime())) {
+              return date.toISOString().substring(0, 10);
+            }
+          } catch (e) {
+            console.error("Kunde inte normalisera datum för Gantt:", dateStr, e);
+          }
+          
+          // Fallback - returnera ursprungligt värde
+          return dateStr;
+        };
+
         // Omvandla API-formatet till GanttTask-formatet
-        return data.map((task: any) => ({
-          id: task.id,
-          project: currentProjectName,
-          type: task.type === 'milestone' ? 'MILESTONE' : (task.type === 'phase' ? 'PHASE' : 'TASK'),
-          name: task.title,
-          status: task.status === 'todo' || task.status === 'backlog' ? 'New' : 
-                 task.status === 'in_progress' || task.status === 'review' ? 'Ongoing' : 
-                 task.status === 'done' ? 'Completed' : 'Delayed',
-          startDate: task.startDate || task.createdAt.substring(0, 10),
-          endDate: task.endDate || task.startDate || task.createdAt.substring(0, 10),
-          duration: task.duration || 1,
-          parentId: task.parentId,
-          expanded: true,
-          assigneeId: task.assigneeId,
-          assigneeName: task.assignee
-        }));
+        return data.map((task: any) => {
+          // Normalisera datum för att säkerställa konsekvent format YYYY-MM-DD
+          const normalizedStartDate = normalizeDate(task.startDate) || normalizeDate(task.createdAt);
+          const normalizedEndDate = normalizeDate(task.endDate) || normalizedStartDate || normalizeDate(task.createdAt);
+          
+          console.log(`Gantt Task "${task.title}" datum normaliserade:`, {
+            original: {
+              startDate: task.startDate,
+              endDate: task.endDate,
+              createdAt: task.createdAt
+            },
+            normalized: {
+              startDate: normalizedStartDate,
+              endDate: normalizedEndDate
+            }
+          });
+          
+          return {
+            id: task.id,
+            project: currentProjectName,
+            type: task.type === 'milestone' ? 'MILESTONE' : (task.type === 'phase' ? 'PHASE' : 'TASK'),
+            name: task.title,
+            status: task.status === 'todo' || task.status === 'backlog' ? 'New' : 
+                   task.status === 'in_progress' || task.status === 'review' ? 'Ongoing' : 
+                   task.status === 'done' ? 'Completed' : 'Delayed',
+            startDate: normalizedStartDate,
+            endDate: normalizedEndDate,
+            duration: task.duration || 1,
+            parentId: task.parentId,
+            expanded: true,
+            assigneeId: task.assigneeId,
+            assigneeName: task.assignee
+          };
+        });
       } catch (error) {
         console.error('Error fetching tasks:', error);
         return [];
