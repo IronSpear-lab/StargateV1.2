@@ -621,24 +621,38 @@ class DatabaseStorage implements IStorage {
       });
     }
     
-    // Process dependencies as JSON for the frontend
+    // Statuskarta för Gantt-specifika statusvärden
+    const statusMap = {
+      "New": "todo", // Mappa 'New' till todo/backlog
+      "Ongoing": "in_progress", // Mappa 'Ongoing' till in_progress
+      "Completed": "done", // Mappa 'Completed' till done
+      "Delayed": "todo" // Mappa 'Delayed' till backlog/todo
+    };
+    
+    // Process dependencies as JSON for the frontend and standardize status values
     return result.map(task => {
-      // Här konverterar vi Gantt-specifika statusar till generiska API-statusar
-      if (task.dependencies) {
+      let processedTask = { ...task };
+      
+      // Standardisera Gantt-specifika statusvärden
+      if (processedTask.status && statusMap[processedTask.status as keyof typeof statusMap]) {
+        processedTask.status = statusMap[processedTask.status as keyof typeof statusMap];
+        console.log(`Konverterade Gantt-status '${task.status}' till '${processedTask.status}' för uppgift ${task.id}`);
+      }
+      
+      // Parsa dependencies JSON-sträng till array
+      if (processedTask.dependencies) {
         try {
-          const deps = JSON.parse(task.dependencies);
-          return {
-            ...task,
-            dependencies: deps
-          };
+          const deps = JSON.parse(processedTask.dependencies);
+          processedTask.dependencies = deps;
         } catch (e) {
           console.error("Error parsing task dependencies:", e);
+          processedTask.dependencies = [];
         }
+      } else {
+        processedTask.dependencies = [];
       }
-      return {
-        ...task,
-        dependencies: []
-      };
+      
+      return processedTask;
     });
   }
 
