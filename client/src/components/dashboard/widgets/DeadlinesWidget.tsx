@@ -24,7 +24,7 @@ interface DeadlinesWidgetProps {
 
 export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) {
   // Fetch deadlines from API
-  const { data: deadlines, isLoading } = useQuery({
+  const { data: deadlinesData, isLoading } = useQuery({
     queryKey: ['deadlines', projectId],
     queryFn: async () => {
       // Simulate API call - in real implementation, replace with actual API call
@@ -87,6 +87,13 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
       }
     }
   });
+
+  // Sortera deadlines efter datum (tidiga deadlines först)
+  const deadlines = deadlinesData ? [...deadlinesData].sort((a, b) => {
+    const dateA = parseISO(a.dueDate);
+    const dateB = parseISO(b.dueDate);
+    return dateA.getTime() - dateB.getTime();
+  }) : [];
   
   // Check if a deadline is overdue
   const isOverdue = (deadline: Deadline) => {
@@ -151,7 +158,7 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
           </div>
         ) : deadlines && deadlines.length > 0 ? (
           <div className="space-y-1">
-            {deadlines.slice(0, limit).map((deadline: Deadline) => (
+            {deadlines.map((deadline: Deadline) => (
               <div key={deadline.id}>
                 <div className="flex items-center py-2.5 px-3 rounded-md hover:bg-gray-50 transition-colors cursor-pointer group">
                   <div className="flex-1 min-w-0">
