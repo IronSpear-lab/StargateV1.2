@@ -94,6 +94,7 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
   // Hämta traditionella fältuppgifter
   const { data: fieldTasks, isLoading: isLoadingTasks } = useQuery({
     queryKey: ['field-tasks', userId],
+    refetchOnWindowFocus: true, // Uppdatera data när fönstret får fokus
     queryFn: async () => {
       try {
         const response = await fetch(`/api/field-tasks${userId ? `?userId=${userId}` : ''}`);
@@ -110,7 +111,8 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
 
   // Hämta PDF-kommentarer som är tilldelade användaren
   const { data: pdfAnnotations, isLoading: isLoadingAnnotations } = useQuery({
-    queryKey: ['/api/pdf-annotations/assigned'],
+    queryKey: ['field-tasks', 'pdf-annotations/assigned'], // Uppdaterat format för att passa med strukturen för field-tasks
+    refetchOnWindowFocus: true, // Uppdatera data när fönstret får fokus
     queryFn: async () => {
       try {
         console.log("Hämtar PDF-annotationer...");

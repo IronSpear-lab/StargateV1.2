@@ -254,8 +254,9 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
-      // Invalidera också field-tasks för att uppdatera dashboardwidget
-      queryClient.invalidateQueries({ queryKey: ['/api/field-tasks'] });
+      
+      // Invalidera alla field-tasks queries oavsett parameter för att uppdatera dashboardwidgets
+      queryClient.invalidateQueries({ queryKey: ['field-tasks'] });  // Detta matchar alla field-tasks queries
       toast({
         title: "Uppgift borttagen",
         description: "Uppgiften har tagits bort",
