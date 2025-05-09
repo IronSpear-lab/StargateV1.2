@@ -36,6 +36,7 @@ interface FieldTask {
   endDate?: string; // ISO date string
   projectId?: number;
   projectName?: string;
+  createdAt?: string; // ISO date string för skapandedatum
 }
 
 // PDF-kommentarer
