@@ -325,105 +325,12 @@ export default function TimeTrackingPage() {
             </div>
             
             <div className="space-y-6">
-              <Card className="border border-neutral-200">
-                <CardHeader>
-                  <CardTitle className="text-lg font-medium">Registrera tid</CardTitle>
-                  <CardDescription>Lägg till tid för en uppgift</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="date">Datum</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="w-full justify-start text-left font-normal"
-                          >
-                            <Calendar className="mr-2 h-4 w-4" />
-                            {selectedDate ? (
-                              format(selectedDate, "d MMMM yyyy", { locale: sv })
-                            ) : (
-                              "Välj ett datum"
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <CalendarComponent
-                            mode="single"
-                            selected={selectedDate}
-                            onSelect={setSelectedDate}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    
-                    {!projectId && (
-                      <div className="space-y-1.5">
-                        <Label htmlFor="project">Projekt</Label>
-                        <Select>
-                          <SelectTrigger id="project">
-                            <SelectValue placeholder="Välj projekt" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {projects?.map((project: any) => (
-                              <SelectItem key={project.id} value={project.id.toString()}>
-                                {project.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                    
-                    <div className="space-y-1.5">
-                      <Label htmlFor="task">Uppgift</Label>
-                      <Select value={selectedTask} onValueChange={setSelectedTask}>
-                        <SelectTrigger id="task">
-                          <SelectValue placeholder="Välj uppgift" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {tasks?.map((task: any) => (
-                            <SelectItem key={task.id} value={task.id.toString()}>
-                              {task.title}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-1.5">
-                      <Label htmlFor="hours">Antal timmar</Label>
-                      <Input 
-                        id="hours" 
-                        type="number" 
-                        min="0.5" 
-                        step="0.5" 
-                        value={hours} 
-                        onChange={(e) => setHours(e.target.value)}
-                      />
-                    </div>
-                    
-                    <div className="space-y-1.5">
-                      <Label htmlFor="description">Beskrivning (valfritt)</Label>
-                      <Input 
-                        id="description" 
-                        placeholder="Lägg till anteckningar om ditt arbete" 
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                      />
-                    </div>
-                    
-                    <div className="flex justify-center pt-2">
-                      <Button onClick={addTimeEntry}>
-                        <PlusCircle className="mr-2 h-5 w-5" />
-                        Lägg till
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <TimeTracking 
+                projectId={projectId} 
+                tasks={tasks}
+                initialTaskId={selectedTask}
+                className="border border-neutral-200"
+              />
               
               <Card className="border border-neutral-200">
                 <CardHeader>

@@ -11,13 +11,22 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Clock, Play, Pause, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '../lib/utils';
 
+type TaskType = {
+  id: string | number;
+  title: string;
+  description?: string;
+  status?: string;
+  projectId?: number;
+};
+
 type TimeTrackingProps = {
   projectId?: number;
   initialTaskId?: string;
   className?: string;
+  tasks?: TaskType[]; // Lista med tasks från API
 };
 
-export function TimeTracking({ projectId, initialTaskId, className }: TimeTrackingProps) {
+export function TimeTracking({ projectId, initialTaskId, className, tasks = [] }: TimeTrackingProps) {
   const [isTracking, setIsTracking] = useState(false);
   const [timer, setTimer] = useState('00:00:00');
   const [startTime, setStartTime] = useState<Date | null>(null);
@@ -25,13 +34,8 @@ export function TimeTracking({ projectId, initialTaskId, className }: TimeTracki
   const [description, setDescription] = useState<string>('');
   const [date, setDate] = useState<Date | undefined>(new Date());
 
-  // Mock data for tasks
-  const tasks = [
-    { id: '1', title: 'API Documentation' },
-    { id: '2', title: 'Frontend Implementation' },
-    { id: '3', title: 'Database Schema Design' },
-    { id: '4', title: 'Code Review' }
-  ];
+  // Använd tasks från props istället för mockdata
+  const availableTasks = tasks || [];
 
   // Timer logic
   useEffect(() => {
@@ -69,30 +73,55 @@ export function TimeTracking({ projectId, initialTaskId, className }: TimeTracki
     }
   };
 
-  const saveTimeEntry = () => {
+  const saveTimeEntry = async () => {
     if (!startTime) return;
     
     const endTime = new Date();
     const durationMs = endTime.getTime() - startTime.getTime();
     const durationHours = durationMs / (1000 * 60 * 60);
     
-    console.log('Time entry saved:', {
-      taskId: selectedTask,
-      projectId,
-      date: format(date || new Date(), 'yyyy-MM-dd'),
-      startTime: format(startTime, 'HH:mm:ss'),
-      endTime: format(endTime, 'HH:mm:ss'),
-      duration: durationHours.toFixed(2),
-      description: description || null
-    });
+    const hours = parseFloat(durationHours.toFixed(2));
     
-    // Reset timer
-    setTimer('00:00:00');
-    setStartTime(null);
-    
-    // In a real app, here you would:
-    // 1. Send a POST request to your API to save the time entry
-    // 2. Use a mutation with react-query to update the cache
+    try {
+      const response = await fetch("/api/time-entries", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          taskId: selectedTask,
+          projectId: projectId,
+          date: format(date || new Date(), "yyyy-MM-dd"),
+          hours: hours,
+          description: description || null,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Kunde inte spara tidspost");
+      }
+      
+      console.log('Tid sparad:', {
+        taskId: selectedTask,
+        projectId,
+        date: format(date || new Date(), 'yyyy-MM-dd'),
+        hours: hours,
+        description: description || null
+      });
+      
+      // Reset timer och form
+      setTimer('00:00:00');
+      setStartTime(null);
+      setDescription('');
+      
+      // Skulle implementera en TanStack Query mutation här för att uppdatera cache
+      // Men för nu triggar vi bara en omladdning av sidan
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('Fel vid sparande av tidspost:', error);
+      alert('Ett fel uppstod när tiden skulle sparas. Försök igen.');
+    }
   };
 
   return (
@@ -117,8 +146,8 @@ export function TimeTracking({ projectId, initialTaskId, className }: TimeTracki
                   <SelectValue placeholder="Välj uppgift" />
                 </SelectTrigger>
                 <SelectContent>
-                  {tasks.map(task => (
-                    <SelectItem key={task.id} value={task.id}>
+                  {availableTasks.map(task => (
+                    <SelectItem key={task.id} value={String(task.id)}>
                       {task.title}
                     </SelectItem>
                   ))}
