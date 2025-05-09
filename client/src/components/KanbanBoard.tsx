@@ -7,7 +7,9 @@ import {
   User,
   Clock,
   AlertCircle,
-  X
+  X,
+  Trash2,
+  Loader2
 } from "lucide-react";
 import { 
   DndContext, 
