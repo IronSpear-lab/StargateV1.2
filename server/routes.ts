@@ -3198,6 +3198,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Hämta PDF-annotationer som är tilldelade den inloggade användaren
+  app.get(`${apiPrefix}/pdf-annotations/assigned`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const username = req.user.username;
+      
+      // Hämta alla annotationer där användaren är tilldelad
+      const assignedAnnotations = await db.query.pdfAnnotations.findMany({
+        where: eq(pdfAnnotations.assignedTo, username),
+        with: {
+          pdfVersion: {
+            with: {
+              file: true
+            }
+          },
+          createdBy: {
+            columns: {
+              id: true,
+              username: true
+            }
+          },
+          project: true
+        },
+        orderBy: [desc(pdfAnnotations.createdAt)]
+      });
+
+      // Formatera svaret med all nödvändig information
+      const formattedAnnotations = assignedAnnotations.map(annotation => ({
+        id: annotation.id,
+        pdfVersionId: annotation.pdfVersionId,
+        projectId: annotation.projectId,
+        rect: annotation.rect,
+        color: annotation.color,
+        comment: annotation.comment,
+        status: annotation.status,
+        createdAt: annotation.createdAt,
+        createdById: annotation.createdById,
+        createdBy: annotation.createdBy.username,
+        assignedTo: annotation.assignedTo,
+        taskId: annotation.taskId,
+        fileName: annotation.pdfVersion.file.name,
+        filePath: annotation.pdfVersion.filePath,
+        projectName: annotation.project?.name || 'Inget projekt'
+      }));
+
+      res.json(formattedAnnotations);
+    } catch (error) {
+      console.error("Error fetching assigned PDF annotations:", error);
+      res.status(500).json({ error: "Failed to fetch assigned annotations" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
