@@ -52,12 +52,11 @@ export default function PDFViewerPage() {
     setIsSidebarOpen(!isSidebarOpen);
   };
   
-  // Denna funktion används inte längre eftersom tillbaka-knappen nu finns i EnhancedPDFViewer
-  // Vi behåller den för dokumentation och om vi behöver återinföra funktionaliteten senare
-  // const handleBack = () => {
-  //  console.log("Navigerar tillbaka till dashboard");
-  //  setLocation("/");
-  // };
+  // Funktion för att navigera tillbaka till dashboard
+  const handleBack = () => {
+    console.log("Navigerar tillbaka till dashboard");
+    setLocation("/");
+  };
   
   return (
     <div className="flex h-screen overflow-hidden">
@@ -78,6 +77,7 @@ export default function PDFViewerPage() {
                 pdfFile={pdfBlob}
                 versionId={versionId}
                 highlightAnnotationId={annotationId}
+                onClose={handleBack}
               />
             </div>
           ) : (
