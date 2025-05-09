@@ -546,7 +546,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
       description: "",
       status: "todo",
       priority: "medium",
-      type: "",
+      type: "none",
       assigneeId: "",
       projectId: projectId.toString(),
       dueDate: "",
@@ -565,7 +565,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
       description: task.description || "",
       status: task.status,
       priority: task.priority || "",
-      type: task.type || "",
+      type: task.type || "none",
       assigneeId: task.assigneeId ? task.assigneeId.toString() : "",
       projectId: task.projectId.toString(),
       dueDate: task.dueDate || "",
@@ -688,7 +688,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                         description: "",
                         status: column.id,
                         priority: "medium",
-                        type: "",
+                        type: "none",
                         assigneeId: "",
                         projectId: projectId.toString(),
                         dueDate: "",
@@ -876,6 +876,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="none">Ingen typ</SelectItem>
                           <SelectItem value="Feature">Funktion</SelectItem>
                           <SelectItem value="Bug">Bugg</SelectItem>
                           <SelectItem value="Design">Design</SelectItem>
