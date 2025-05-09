@@ -1018,8 +1018,8 @@ export default function EnhancedPDFViewer({
         }
         
         // Invalidera cachen för att uppdatera gränssnittet direkt
-        queryClient.invalidateQueries(['/api/pdf-annotations/assigned']);
-        queryClient.invalidateQueries(['/api/field-tasks']);
+        queryClient.invalidateQueries({queryKey: ['/api/pdf-annotations/assigned']});
+        queryClient.invalidateQueries({queryKey: ['/api/field-tasks']});
       } else if (!useDatabase && fileId) {
         // Only use localStorage if not explicitly using database and fileId exists
         localStorage.setItem(`pdf_annotations_${fileId.toString()}`, JSON.stringify(updatedAnnotations));
@@ -1079,8 +1079,8 @@ export default function EnhancedPDFViewer({
         setSidebarMode('details');
         
         // Invalidera cachen för att uppdatera gränssnittet direkt
-        queryClient.invalidateQueries(['/api/pdf-annotations/assigned']);
-        queryClient.invalidateQueries(['/api/field-tasks']);
+        queryClient.invalidateQueries({queryKey: ['/api/pdf-annotations/assigned']});
+        queryClient.invalidateQueries({queryKey: ['/api/field-tasks']});
       }
     } catch (error) {
       console.error('Fel vid konvertering till uppgift:', error);
