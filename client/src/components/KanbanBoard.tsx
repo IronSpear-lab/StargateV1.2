@@ -113,8 +113,8 @@ const taskFormSchema = z.object({
   description: z.string().optional(),
   status: z.string(),
   priority: z.string().optional(),
-  type: z.string().optional(),
-  assigneeId: z.string().optional().transform(val => val === "" ? null : val),
+  type: z.string().optional().transform(val => val === "none" ? null : val),
+  assigneeId: z.string().optional().transform(val => val === "none" ? null : val),
   projectId: z.string(),
   dueDate: z.string().optional().transform(val => val === "" ? null : val),
   startDate: z.string().optional().transform(val => val === "" ? null : val),
@@ -509,8 +509,8 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
       description: "",
       status: "todo",
       priority: "medium",
-      type: "",
-      assigneeId: "",
+      type: "none",
+      assigneeId: "none",
       projectId: projectId.toString(),
       dueDate: "",
       startDate: "",
@@ -564,7 +564,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
       title: task.title,
       description: task.description || "",
       status: task.status,
-      priority: task.priority || "",
+      priority: task.priority || "medium",
       type: task.type || "none",
       assigneeId: task.assigneeId ? task.assigneeId.toString() : "none",
       projectId: task.projectId.toString(),
@@ -585,7 +585,7 @@ export function KanbanBoard({ projectId = 1 }: KanbanBoardProps) {
         ...values,
         id: Number(selectedTask.id),
         projectId: parseInt(values.projectId),
-        assigneeId: values.assigneeId ? parseInt(values.assigneeId) : null
+        assigneeId: values.assigneeId && values.assigneeId !== "none" ? parseInt(values.assigneeId) : null
       };
       
       updateTaskMutation.mutate(taskData);
