@@ -94,11 +94,18 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
     queryKey: ['pdf-annotations-assigned'],
     queryFn: async () => {
       try {
+        console.log("Hämtar PDF-annotationer...");
         const response = await fetch('/api/pdf-annotations/assigned');
+        console.log("PDF-annotations response status:", response.status);
+        
         if (!response.ok) {
+          console.error("Error response from PDF annotations API:", response.status);
           return [];
         }
-        return await response.json();
+        
+        const data = await response.json();
+        console.log("PDF-annotationer hämtade:", data);
+        return data;
       } catch (error) {
         console.error("Error fetching PDF annotations:", error);
         return [];

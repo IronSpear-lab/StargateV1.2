@@ -3202,10 +3202,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiPrefix}/pdf-annotations/assigned`, async (req, res) => {
     try {
       if (!req.isAuthenticated()) {
+        console.log("PDF-annotations/assigned: Ej autentiserad, returnerar 401");
         return res.status(401).json({ error: "Unauthorized" });
       }
 
       const username = req.user.username;
+      console.log(`PDF-annotations/assigned: Söker efter annotationer för användare: ${username}`);
       
       // Hämta alla annotationer där användaren är tilldelad
       const assignedAnnotations = await db.query.pdfAnnotations.findMany({
@@ -3227,25 +3229,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
         orderBy: [desc(pdfAnnotations.createdAt)]
       });
 
-      // Formatera svaret med all nödvändig information
-      const formattedAnnotations = assignedAnnotations.map(annotation => ({
-        id: annotation.id,
-        pdfVersionId: annotation.pdfVersionId,
-        projectId: annotation.projectId,
-        rect: annotation.rect,
-        color: annotation.color,
-        comment: annotation.comment,
-        status: annotation.status,
-        createdAt: annotation.createdAt,
-        createdById: annotation.createdById,
-        createdBy: annotation.createdBy.username,
-        assignedTo: annotation.assignedTo,
-        taskId: annotation.taskId,
-        fileName: annotation.pdfVersion.file.name,
-        filePath: annotation.pdfVersion.filePath,
-        projectName: annotation.project?.name || 'Inget projekt'
-      }));
+      console.log(`PDF-annotations/assigned: Hittade ${assignedAnnotations.length} annotationer`);
+      
+      if (assignedAnnotations.length > 0) {
+        console.log("PDF-annotations/assigned: Första annotationen:", 
+          JSON.stringify({
+            id: assignedAnnotations[0].id,
+            pdfVersionId: assignedAnnotations[0].pdfVersionId,
+            assignedTo: assignedAnnotations[0].assignedTo
+          })
+        );
+      }
 
+      // Formatera svaret med all nödvändig information
+      const formattedAnnotations = assignedAnnotations.map(annotation => {
+        // Kontrollera att pdfVersion och file finns
+        if (!annotation.pdfVersion) {
+          console.log(`PDF-annotations/assigned: Varning - pdfVersion saknas för annotation ID ${annotation.id}`);
+          return {
+            id: annotation.id,
+            pdfVersionId: annotation.pdfVersionId,
+            projectId: annotation.projectId,
+            rect: annotation.rect,
+            color: annotation.color,
+            comment: annotation.comment,
+            status: annotation.status,
+            createdAt: annotation.createdAt,
+            createdById: annotation.createdById,
+            createdBy: annotation.createdBy?.username || 'Okänd användare',
+            assignedTo: annotation.assignedTo,
+            taskId: annotation.taskId,
+            fileName: 'Okänd fil',
+            filePath: '',
+            projectName: annotation.project?.name || 'Inget projekt'
+          };
+        }
+        
+        if (!annotation.pdfVersion.file) {
+          console.log(`PDF-annotations/assigned: Varning - file saknas för pdfVersion ID ${annotation.pdfVersionId}`);
+          return {
+            id: annotation.id,
+            pdfVersionId: annotation.pdfVersionId,
+            projectId: annotation.projectId,
+            rect: annotation.rect,
+            color: annotation.color,
+            comment: annotation.comment,
+            status: annotation.status,
+            createdAt: annotation.createdAt,
+            createdById: annotation.createdById,
+            createdBy: annotation.createdBy?.username || 'Okänd användare',
+            assignedTo: annotation.assignedTo,
+            taskId: annotation.taskId,
+            fileName: 'Okänd fil',
+            filePath: annotation.pdfVersion.filePath || '',
+            projectName: annotation.project?.name || 'Inget projekt'
+          };
+        }
+        
+        return {
+          id: annotation.id,
+          pdfVersionId: annotation.pdfVersionId,
+          projectId: annotation.projectId,
+          rect: annotation.rect,
+          color: annotation.color,
+          comment: annotation.comment,
+          status: annotation.status,
+          createdAt: annotation.createdAt,
+          createdById: annotation.createdById,
+          createdBy: annotation.createdBy?.username || 'Okänd användare',
+          assignedTo: annotation.assignedTo,
+          taskId: annotation.taskId,
+          fileName: annotation.pdfVersion.file.name,
+          filePath: annotation.pdfVersion.filePath,
+          projectName: annotation.project?.name || 'Inget projekt'
+        };
+      });
+
+      console.log(`PDF-annotations/assigned: Returnerar ${formattedAnnotations.length} annotationer`);
       res.json(formattedAnnotations);
     } catch (error) {
       console.error("Error fetching assigned PDF annotations:", error);
