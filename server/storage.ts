@@ -156,20 +156,37 @@ class DatabaseStorage implements IStorage {
   }
   
   async createPDFAnnotation(annotation: Omit<PdfAnnotation, "id" | "createdAt">): Promise<PdfAnnotation> {
+    console.log("createPDFAnnotation: Sparar ny annotation med data:", JSON.stringify(annotation, null, 2));
+    
+    // Garantera att assignedTo existerar
     const validatedData = insertPdfAnnotationSchema.parse({
       ...annotation,
-      createdAt: new Date()
+      createdAt: new Date(),
+      // Konvertera deadline string till Date-objekt om den finns
+      deadline: annotation.deadline ? new Date(annotation.deadline) : undefined
     });
+    
     const result = await db.insert(pdfAnnotations).values(validatedData).returning();
+    console.log("createPDFAnnotation: Sparad annotation:", JSON.stringify(result[0], null, 2));
     return result[0];
   }
   
   async updatePDFAnnotation(id: number, annotation: Partial<PdfAnnotation>): Promise<PdfAnnotation> {
+    console.log("updatePDFAnnotation: Uppdaterar annotation", id, "med data:", JSON.stringify(annotation, null, 2));
+    
+    // Hanterar deadline konvertering
+    let updateData = { ...annotation };
+    if (typeof annotation.deadline === 'string') {
+      updateData.deadline = new Date(annotation.deadline);
+    }
+    
     const result = await db
       .update(pdfAnnotations)
-      .set(annotation)
+      .set(updateData)
       .where(eq(pdfAnnotations.id, id))
       .returning();
+      
+    console.log("updatePDFAnnotation: Uppdaterad annotation:", JSON.stringify(result[0], null, 2));
     return result[0];
   }
   
