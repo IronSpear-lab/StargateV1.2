@@ -135,15 +135,14 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
       
       // Om det är bara YYYY-MM-DD, konvertera till ISO med tid (midnatt lokal tid)
       try {
-        // Fixa problemet med 9 maj som visas istället för 30 maj
         // Sätt alltid 00:00:00Z tidsstämpel för att undvika skiftningar pga. tidszoner
         const date = new Date(dateStr);
         
-        // Logga och verifiera datumkonvertering
+        // Logga för debugging
         console.log(`Normaliserar '${dateStr}' -> Datum: ${date.toISOString()}, månad: ${date.getMonth() + 1}, dag: ${date.getDate()}`);
         
         if (!isNaN(date.getTime())) {
-          // Justera för att ge en fullständig ISO-sträng med Z (UTC-tid)
+          // Ge en fullständig ISO-sträng med Z (UTC-tid)
           return date.toISOString();
         }
       } catch (e) {
@@ -152,58 +151,53 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
       return dateStr;
     };
     
-    // Logga datum-relaterade fält för uppgifter för att debugga
     if (item.type === "task") {
       const isGanttTask = item.data.taskType === "gantt";
-      const taskInfo = {
-        id: item.data.id,
-        title: item.data.title,
-        type: item.data.taskType, 
-        status: item.data.status,
-        dueDate: item.data.dueDate,
-        endDate: item.data.endDate,
-        startDate: item.data.startDate,
-        scheduledDate: item.data.scheduledDate,
-        isGanttTask
-      };
       
-      console.log("DeadlinesWidget - Task datum:", taskInfo);
-      
-      // För Gantt-uppgifter är det viktigt att prioritera endDate
+      // Prioritera de rätta datumfälten baserat på uppgiftstyp enligt användarinstruktioner
       if (isGanttTask) {
-        // Använd normaliserade datum (med prioritet för endDate i Gantt)
+        // För Gantt-uppgifter, använd endDate som slutdatum (enligt krav)
         const deadlineDate = normalizeDate(item.data.endDate) || 
                             normalizeDate(item.data.dueDate) || 
+                            normalizeDate(item.data.scheduledDate) || 
                             normalizeDate(item.data.startDate) || 
+                            normalizeDate(item.data.createdAt) ||
                             new Date().toISOString();
         
-        console.log(`Gantt-uppgift (${item.data.title}) använder deadline: ${deadlineDate}`);
+        console.log(`Gantt-uppgift (${item.data.title}) använder slutdatum (endDate): ${deadlineDate}`);
         return deadlineDate;
       } else {
-        // För Kanban och andra uppgifter prioritera dueDate, men använd också normalizeDate
+        // För Kanban och andra uppgifter, använd dueDate som slutdatum (enligt krav)
         const deadlineDate = normalizeDate(item.data.dueDate) || 
                              normalizeDate(item.data.endDate) || 
+                             normalizeDate(item.data.scheduledDate) || 
                              normalizeDate(item.data.startDate) || 
+                             normalizeDate(item.data.createdAt) ||
                              new Date().toISOString();
                              
-        console.log(`Kanban-uppgift (${item.data.title}) använder deadline: ${deadlineDate}`);
+        console.log(`Kanban-uppgift (${item.data.title}) använder slutdatum (dueDate): ${deadlineDate}`);
         return deadlineDate;
       }
-    } else {
-      // Om PDF-kommentaren har en egen deadline, använd den
+    } else if (item.type === "pdf_annotation") {
+      // För PDF-annotationer, använd deadline som slutdatum (enligt krav)
       if (item.data.deadline) {
-        return normalizeDate(item.data.deadline) || item.data.deadline;
+        const deadlineDate = normalizeDate(item.data.deadline) || item.data.deadline;
+        console.log(`PDF-kommentar (${item.data.id}) använder deadline: ${deadlineDate}`);
+        return deadlineDate;
       }
       
-      // Annars, använd standarddeadline 14 dagar från skapandedatum
+      // Fallback: om ingen deadline finns, använd standarddeadline 14 dagar från skapandedatum
       const date = new Date(item.data.createdAt);
-      date.setDate(date.getDate() + 14); // Ändrat från 7 till 14 dagar för att matcha EnhancedPDFViewer
+      date.setDate(date.getDate() + 14);
       return date.toISOString();
     }
+    
+    // Fallback om något oväntat inträffar
+    return new Date().toISOString();
   };
 
   // Logga uppgifternas datum för att debugga
-  (tasks || []).forEach((task: FieldTask, index) => {
+  (tasks || []).forEach((task: FieldTask, index: number) => {
     console.log(`DeadlinesWidget Task ${index}:`, {
       id: task.id,
       title: task.title,
@@ -235,10 +229,17 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
   // Sortera deadlines efter datum (tidiga deadlines först) och begränsa till 'limit' poster
   const deadlines = combinedItems
     .sort((a, b) => {
-      const dateA = new Date(getDeadlineDate(a)).getTime();
-      const dateB = new Date(getDeadlineDate(b)).getTime();
-      
-      return dateA - dateB; // Sortera stigande (tidiga deadlines först)
+      try {
+        const dateA = new Date(getDeadlineDate(a)).getTime();
+        const dateB = new Date(getDeadlineDate(b)).getTime();
+        
+        console.log(`Jämför deadlines: ${getItemTitle(a)} (${dateA}) vs ${getItemTitle(b)} (${dateB})`);
+        
+        return dateA - dateB; // Sortera stigande (tidiga deadlines först)
+      } catch (error) {
+        console.error("Fel vid sortering av deadlines:", error);
+        return 0; // Behåll ordningen oförändrad om fel uppstår
+      }
     })
     .slice(0, limit);
 
@@ -428,9 +429,17 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
   const AllDeadlinesDialog = () => {
     // Sortera alla deadlines i kombinerade items (inte bara de första 'limit' antal)
     const sortedDeadlines = combinedItems.sort((a, b) => {
-      const dateA = new Date(getDeadlineDate(a)).getTime();
-      const dateB = new Date(getDeadlineDate(b)).getTime();
-      return dateA - dateB; // Sortera stigande (tidiga deadlines först)
+      try {
+        const dateA = new Date(getDeadlineDate(a)).getTime();
+        const dateB = new Date(getDeadlineDate(b)).getTime();
+        
+        console.log(`Jämför deadlines i dialog: ${getItemTitle(a)} (${dateA}) vs ${getItemTitle(b)} (${dateB})`);
+        
+        return dateA - dateB; // Sortera stigande (tidiga deadlines först)
+      } catch (error) {
+        console.error("Fel vid sortering i dialog:", error);
+        return 0;
+      }
     });
 
     const openDialog = () => {
@@ -543,7 +552,7 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
     };
 
     // Rendera item baserat på typ
-    const renderItem = (item: DeadlineItem, index: number) => {
+    const renderItem = (item: DeadlineItem, index: number): JSX.Element => {
       console.log(`Renderar deadline ${index}:`, item);
       return (
         <div key={`all-${item.type}-${item.data.id}`} className="pt-2">
