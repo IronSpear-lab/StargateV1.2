@@ -1045,7 +1045,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
     if (taskToDelete) {
       console.log("Deleting task:", taskToDelete);
       
-      // Radera från den lokala listan - detta påverkar inte Kanban-uppgifter
+      // Radera från den lokala listan
       setTasks(prev => {
         // Hitta och ta bort alla barn rekursivt
         const taskIds = new Set<number>();
@@ -1067,7 +1067,25 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
         // Beräkna antalet uppgifter som tas bort
         const deletedCount = taskIds.size;
         
-        // Skapa den nya filtrerade listan
+        // För projekt med projektId, radera via API
+        if (projectId) {
+          // Radera huvuduppgiften från databasen med mutation
+          deleteTaskMutation.mutate(taskToDelete.id);
+          
+          // Om det finns barn, radera även dem i databasen
+          if (deletedCount > 1) {
+            // Konvertera Set till Array för att kunna iterera
+            const childrenIds = Array.from(taskIds).filter(id => id !== taskToDelete.id);
+            console.log("Deleting child tasks:", childrenIds);
+            
+            // Radera barnuppgifterna en efter en
+            childrenIds.forEach(childId => {
+              deleteTaskMutation.mutate(childId);
+            });
+          }
+        }
+        
+        // Skapa den nya filtrerade listan för lokal state
         const filteredTasks = prev.filter(t => !taskIds.has(t.id));
         
         console.log("Original tasks:", prev.length);
