@@ -231,14 +231,40 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       toast({
-        title: "Task updated",
-        description: "Task has been updated successfully",
+        title: "Uppgift uppdaterad",
+        description: "Uppgiften har uppdaterats",
       });
     },
     onError: (error) => {
       toast({
-        title: "Failed to update task",
+        title: "Kunde inte uppdatera uppgiften",
         description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Mutation för att radera uppgifter
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => {
+      const response = await apiRequest('DELETE', `/api/tasks/${taskId}`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      // Invalidera också field-tasks för att uppdatera dashboardwidget
+      queryClient.invalidateQueries({ queryKey: ['/api/field-tasks'] });
+      toast({
+        title: "Uppgift borttagen",
+        description: "Uppgiften har tagits bort",
+      });
+      setIsTaskDialogOpen(false);
+    },
+    onError: (error) => {
+      console.error('Fel vid radering av uppgift:', error);
+      toast({
+        title: "Kunde inte ta bort uppgiften",
+        description: "Ett fel uppstod när uppgiften skulle raderas",
         variant: "destructive",
       });
     }
@@ -667,6 +693,13 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
       handleValidationErrors(error);
     }
   };
+  
+  // Hantera radering av en uppgift
+  const handleDeleteTask = () => {
+    if (selectedTask) {
+      deleteTaskMutation.mutate(Number(selectedTask.id));
+    }
+  };
 
   // Use project members data directly
   const projectMembers = projectMembersData || [];
@@ -1036,12 +1069,41 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
                 />
               </div>
               
-              <DialogFooter>
-                <Button variant="outline" type="button" onClick={() => setIsTaskDialogOpen(false)}>
-                  Avbryt
-                </Button>
+              <DialogFooter className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" type="button" onClick={() => setIsTaskDialogOpen(false)}>
+                    Avbryt
+                  </Button>
+                  {selectedTask && (
+                    <Button 
+                      type="button" 
+                      variant="destructive" 
+                      onClick={handleDeleteTask}
+                      disabled={deleteTaskMutation.isPending}
+                    >
+                      {deleteTaskMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Tar bort...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Ta bort
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
                 <Button type="submit" disabled={createTaskMutation.isPending || updateTaskMutation.isPending}>
-                  {selectedTask ? "Uppdatera" : "Skapa"}
+                  {createTaskMutation.isPending || updateTaskMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {selectedTask ? "Uppdaterar..." : "Skapar..."}
+                    </>
+                  ) : (
+                    selectedTask ? "Uppdatera" : "Skapa"
+                  )}
                 </Button>
               </DialogFooter>
             </form>
