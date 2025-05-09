@@ -2153,6 +2153,31 @@ export default function EnhancedPDFViewer({
                         />
                       </div>
                       
+                      <div>
+                        <label className="text-sm font-medium block mb-2">Deadline</label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-full justify-between text-left font-normal"
+                            >
+                              {deadline ? format(deadline, "PPP", { locale: sv }) : "Välj deadline..."}
+                              <CalendarIcon className="ml-2 h-4 w-4 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={deadline}
+                              onSelect={setDeadline}
+                              locale={sv}
+                              initialFocus
+                              disabled={(date) => date < new Date()}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      
                       <div className="flex justify-end">
                         <Button onClick={handleSaveComment}>
                           Spara kommentar
