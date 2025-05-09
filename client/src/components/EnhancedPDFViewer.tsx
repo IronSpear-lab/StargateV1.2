@@ -1270,8 +1270,10 @@ export default function EnhancedPDFViewer({
       setActiveVersionId(newVersion.id);
       setPdfUrl(tempFileUrl);
       
-      // Save to localStorage
-      localStorage.setItem(`pdf_versions_${fileId.toString()}`, JSON.stringify(updatedVersions));
+      // Save to localStorage if we have a valid fileId
+      if (fileId) {
+        localStorage.setItem(`pdf_versions_${fileId.toString()}`, JSON.stringify(updatedVersions));
+      }
     }
   };
   
@@ -1331,6 +1333,13 @@ export default function EnhancedPDFViewer({
     // Om vi inte har projektkontext eller aktiv version, använd localStorage istället
     if (forceLocalStorage || !useDatabase || !currentProject || !activeVersionId) {
       console.log(`[${new Date().toISOString()}] Sparar ${annotations.length} annotationer till localStorage`);
+      
+      // Kontrollera att fileId är definierat
+      if (!fileId) {
+        console.error(`[${new Date().toISOString()}] Inget giltigt fileId, kan inte spara till localStorage`);
+        return;
+      }
+      
       const storageKey = `pdf_annotations_${fileId.toString()}`;
       try {
         localStorage.setItem(storageKey, JSON.stringify(annotations));
@@ -1466,12 +1475,17 @@ export default function EnhancedPDFViewer({
         
         // Om vi inte kan spara till databasen, använd localStorage
         if (!useDatabase || !currentProjectSnapshot || !currentVersionIdSnapshot) {
-          const storageKey = `pdf_annotations_${fileId.toString()}`;
-          try {
-            localStorage.setItem(storageKey, JSON.stringify(annotationsToSave));
-            console.log(`[${new Date().toISOString()}] Annotationer sparade till localStorage vid unmount`);
-          } catch (err) {
-            console.error(`[${new Date().toISOString()}] Fel vid sparande till localStorage vid unmount:`, err);
+          // Kontrollera att fileId är definierat
+          if (fileId) {
+            const storageKey = `pdf_annotations_${fileId.toString()}`;
+            try {
+              localStorage.setItem(storageKey, JSON.stringify(annotationsToSave));
+              console.log(`[${new Date().toISOString()}] Annotationer sparade till localStorage vid unmount`);
+            } catch (err) {
+              console.error(`[${new Date().toISOString()}] Fel vid sparande till localStorage vid unmount:`, err);
+            }
+          } else {
+            console.error(`[${new Date().toISOString()}] Inget giltigt fileId, kan inte spara till localStorage vid unmount`);
           }
         } else {
           // Vi försöker spara även om något saknas, saveAllUnsavedAnnotations har fallback till localStorage
@@ -1505,10 +1519,12 @@ export default function EnhancedPDFViewer({
       
       // Sista försök att spara till localStorage vid error
       try {
-        if (annotations.length > 0) {
+        if (annotations.length > 0 && fileId) {
           const storageKey = `pdf_annotations_${fileId.toString()}`;
           localStorage.setItem(storageKey, JSON.stringify(annotations));
           console.log(`[${new Date().toISOString()}] Annotationer sparade till localStorage som backup vid fel`);
+        } else if (annotations.length > 0) {
+          console.error(`[${new Date().toISOString()}] Inget giltigt fileId, kan inte spara till localStorage vid fel`);
         }
       } catch (backupError) {
         console.error(`[${new Date().toISOString()}] Kunde inte spara till localStorage heller:`, backupError);
