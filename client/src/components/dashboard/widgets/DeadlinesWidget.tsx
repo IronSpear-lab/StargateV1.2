@@ -341,13 +341,13 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
           const projectId = item.data.projectId || knownProjectId;
           
           if (taskTypeData.type === "gantt") {
-            // Gå till projektsidan och aktivera Gantt-fliken
-            console.log(`Navigerar till projektets Gantt-vy: /projects/${projectId}?tab=timeline&taskId=${item.data.id}`);
-            setLocation(`/projects/${projectId}?tab=timeline&taskId=${item.data.id}`);
+            // Gå direkt till Gantt-sidan med rätt projekt och task
+            console.log(`Navigerar direkt till Gantt-vy för projekt ${projectId} och uppgift ${item.data.id}`);
+            setLocation(`/gantt-chart/${projectId}?taskId=${item.data.id}`);
           } else {
-            // För alla andra uppgiftstyper, gå till projektsidan och aktivera Tasks-fliken (Kanban)
-            console.log(`Navigerar till projektets Tasks-vy: /projects/${projectId}?tab=tasks&taskId=${item.data.id}`);
-            setLocation(`/projects/${projectId}?tab=tasks&taskId=${item.data.id}`);
+            // För alla andra uppgiftstyper, gå direkt till Kanban-vyn
+            console.log(`Navigerar direkt till Kanban-vy för projekt ${projectId} och uppgift ${item.data.id}`);
+            setLocation(`/kanban/${projectId}?taskId=${item.data.id}`);
           }
         } else {
           console.error("Kunde inte hämta uppgiftstyp från API:", response.status);
@@ -367,23 +367,24 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
     if (item.type !== "task") return;
     
     const knownProjectId = 6;
+    const projectId = item.data.projectId || knownProjectId;
     
     if (item.data.taskType === "gantt") {
-      // Gå till projektsidan och aktivera Gantt-fliken
-      console.log(`Fallback: Navigerar till projektets Gantt-vy: /projects/${item.data.projectId || knownProjectId}?tab=timeline&taskId=${item.data.id}`);
-      setLocation(`/projects/${item.data.projectId || knownProjectId}?tab=timeline&taskId=${item.data.id}`);
+      // Gå direkt till Gantt-sidan
+      console.log(`Fallback: Navigerar direkt till Gantt-vy: /gantt-chart/${projectId}?taskId=${item.data.id}`);
+      setLocation(`/gantt-chart/${projectId}?taskId=${item.data.id}`);
     } else if (item.data.taskType === "kanban" || item.data.taskType === "Setup" || item.data.taskType === "Research") {
-      // För Kanban-uppgifter, gå till projektsidan och aktivera Tasks-fliken
-      console.log(`Fallback: Navigerar till projektets Tasks-vy: /projects/${item.data.projectId || knownProjectId}?tab=tasks&taskId=${item.data.id}`);
-      setLocation(`/projects/${item.data.projectId || knownProjectId}?tab=tasks&taskId=${item.data.id}`);
+      // För Kanban-uppgifter, gå direkt till Kanban-sidan
+      console.log(`Fallback: Navigerar direkt till Kanban-vy: /kanban/${projectId}?taskId=${item.data.id}`);
+      setLocation(`/kanban/${projectId}?taskId=${item.data.id}`);
     } else if (item.data.projectId) {
-      // För andra uppgiftstyper med projektID, gå till projektets startsida
-      console.log(`Fallback: Navigerar till projektets startsida: /projects/${item.data.projectId}`);
-      setLocation(`/projects/${item.data.projectId}`);
+      // För andra uppgiftstyper med projektID, anta att det är en Kanban-uppgift
+      console.log(`Fallback: Antar Kanban-uppgift, går till Kanban-vy: /kanban/${projectId}?taskId=${item.data.id}`);
+      setLocation(`/kanban/${projectId}?taskId=${item.data.id}`);
     } else {
-      // För uppgifter utan projektID, gå till Test2-projektets Tasks-vy
-      console.log(`Fallback: Ingen projektID eller taskType, navigerar till fallback: /projects/${knownProjectId}?tab=tasks&taskId=${item.data.id}`);
-      setLocation(`/projects/${knownProjectId}?tab=tasks&taskId=${item.data.id}`);
+      // För uppgifter utan projektID, gå till fallback-projektets Kanban-vy
+      console.log(`Fallback: Ingen projektID eller taskType, går till fallback Kanban-vy: /kanban/${knownProjectId}?taskId=${item.data.id}`);
+      setLocation(`/kanban/${knownProjectId}?taskId=${item.data.id}`);
     }
   };
   
