@@ -7,21 +7,25 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
 
-// Traditionella task-objekt
-interface Task {
+// Traditionella field task-objekt (matchande FieldTasksWidget)
+interface FieldTask {
   id: string;
   title: string;
-  description?: string;
+  location: string;
+  address: string;
+  assignee: string;
+  assigneeId: string;
+  assigneeAvatar?: string;
   status: "pending" | "in_progress" | "completed" | "cancelled";
+  scheduledDate: string;
+  priority: "high" | "medium" | "low";
+  taskType: string;
+  description?: string;
   dueDate?: string; // ISO date string
   startDate?: string; // ISO date string
   endDate?: string; // ISO date string
-  projectId: number;
-  projectName: string;
-  priority?: "high" | "medium" | "low";
-  assignee?: string;
-  assigneeId?: string;
-  taskType?: string;
+  projectId?: number;
+  projectName?: string;
 }
 
 // PDF-kommentarer
@@ -52,7 +56,7 @@ interface PdfAnnotation {
 
 // Kombinerad typ för deadline-items
 type DeadlineItem = 
-  | { type: "task"; data: Task } 
+  | { type: "task"; data: FieldTask } 
   | { type: "pdf_annotation"; data: PdfAnnotation };
 
 interface DeadlinesWidgetProps {
@@ -63,16 +67,16 @@ interface DeadlinesWidgetProps {
 export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) {
   const [, setLocation] = useLocation();
   
-  // Hämta uppgifter från API
+  // Hämta uppgifter från API med samma queryKey-format som i FieldTasksWidget
   const { data: tasks, isLoading: isLoadingTasks } = useQuery({
-    queryKey: ['field-tasks'],
+    queryKey: ['field-tasks', null], // Null för att hämta alla tasks (inte begränsa till userId)
     queryFn: async () => {
       try {
         console.log("DeadlinesWidget: Hämtar field tasks...");
         const response = await fetch('/api/field-tasks');
         if (!response.ok) {
           console.error("Error fetching tasks for deadlines:", response.status);
-          return [] as Task[];
+          return [] as FieldTask[];
         }
         const data = await response.json();
         console.log("DeadlinesWidget: Tasks hämtade:", data);
@@ -86,7 +90,7 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
 
   // Hämta PDF-kommentarer som är tilldelade användaren
   const { data: pdfAnnotations, isLoading: isLoadingAnnotations } = useQuery({
-    queryKey: ['/api/pdf-annotations/assigned'],
+    queryKey: ['field-tasks', 'pdf-annotations/assigned'], // Uppdaterat format för att matcha övriga i systemet
     queryFn: async () => {
       try {
         console.log("DeadlinesWidget: Hämtar PDF-annotationer...");
@@ -130,8 +134,8 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
   // Kombinera uppgifter och PDF-kommentarer till deadline-items
   const combinedItems: DeadlineItem[] = [
     ...(tasks || [])
-      .filter((task: Task) => task.dueDate || task.endDate) // Endast inkludera tasks med deadline
-      .map((task: Task) => ({
+      .filter((task: FieldTask) => task.dueDate || task.endDate) // Endast inkludera tasks med deadline
+      .map((task: FieldTask) => ({
         type: "task" as const,
         data: task
       })),
