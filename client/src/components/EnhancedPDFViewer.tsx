@@ -905,8 +905,8 @@ export default function EnhancedPDFViewer({
               setActiveAnnotation(updatedAnnotations[index]);
               
               // Invalidera cachen för att uppdatera gränssnittet direkt
-              queryClient.invalidateQueries(['/api/pdf-annotations/assigned']);
-              queryClient.invalidateQueries(['/api/field-tasks']);
+              queryClient.invalidateQueries({queryKey: ['/api/pdf-annotations/assigned']});
+              queryClient.invalidateQueries({queryKey: ['field-tasks']});
             }
           }
         }
@@ -1190,8 +1190,8 @@ export default function EnhancedPDFViewer({
       }
       
       // Invalidera cachen för att uppdatera gränssnittet direkt
-      queryClient.invalidateQueries(['/api/pdf-annotations/assigned']);
-      queryClient.invalidateQueries(['/api/field-tasks']);
+      queryClient.invalidateQueries({queryKey: ['/api/pdf-annotations/assigned']});
+      queryClient.invalidateQueries({queryKey: ['field-tasks']});
     } catch (error) {
       console.error('Error updating annotation status:', error);
       

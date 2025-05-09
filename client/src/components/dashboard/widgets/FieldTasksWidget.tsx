@@ -101,7 +101,7 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
 
   // Hämta PDF-kommentarer som är tilldelade användaren
   const { data: pdfAnnotations, isLoading: isLoadingAnnotations } = useQuery({
-    queryKey: ['pdf-annotations-assigned'],
+    queryKey: ['/api/pdf-annotations/assigned'],
     queryFn: async () => {
       try {
         console.log("Hämtar PDF-annotationer...");
