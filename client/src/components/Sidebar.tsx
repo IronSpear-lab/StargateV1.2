@@ -1181,6 +1181,13 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       badge: "New"
     }] : []),
     {
+      href: "/time-tracking",
+      label: "Tidsrapportering",
+      icon: <Clock className="w-5 h-5" />,
+      active: location.startsWith("/time-tracking"),
+      type: "link",
+    },
+    {
       href: "#", // No direct planning page
       label: "Projektplanering",
       icon: <Briefcase className="w-5 h-5" />,
