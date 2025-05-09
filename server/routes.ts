@@ -1023,6 +1023,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
+      const taskType = req.query.type as string | undefined;
       
       if (!projectId) {
         return res.status(400).json({ error: "Project ID is required" });
@@ -1041,7 +1042,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'You do not have access to this project' });
       }
       
-      const taskList = await storage.getTasks(projectId);
+      let taskQuery = db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.projectId, projectId));
+        
+      // Lägg till typ-filtrering om typ specificeras
+      if (taskType) {
+        console.log(`Filtrerar uppgifter för projektId=${projectId} med typ="${taskType}"`);
+        taskQuery = taskQuery.where(eq(tasks.type, taskType));
+      } else {
+        console.log(`Hämtar alla uppgifter för projektId=${projectId} utan typfiltrering`);
+      }
+      
+      const taskResults = await taskQuery;
+      console.log(`Hittade ${taskResults.length} uppgifter med typen ${taskType || 'alla'}`);
+      
+      // Process dependencies as JSON for the frontend
+      const taskList = taskResults.map(task => {
+        if (task.dependencies) {
+          try {
+            // Parse the dependencies JSON string into an array
+            const deps = typeof task.dependencies === 'string' 
+              ? JSON.parse(task.dependencies)
+              : task.dependencies;
+            return { ...task, dependencies: deps };
+          } catch (e) {
+            console.error(`Error parsing dependencies for task ${task.id}:`, e);
+            return { ...task, dependencies: [] };
+          }
+        }
+        return task;
+      });
+      
       res.json(taskList);
     } catch (error) {
       console.error("Error fetching tasks:", error);

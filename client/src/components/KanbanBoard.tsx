@@ -172,14 +172,16 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
 
   // Query to fetch tasks
   const { data: tasksData, isLoading: isTasksLoading } = useQuery({
-    queryKey: ['/api/tasks', { projectId }],
+    queryKey: ['/api/tasks', { projectId, type: 'kanban' }],
     queryFn: async () => {
       try {
-        const response = await apiRequest('GET', `/api/tasks?projectId=${projectId}`);
+        // Lägg till type=kanban i sökningen för att bara hämta Kanban-uppgifter
+        const response = await apiRequest('GET', `/api/tasks?projectId=${projectId}&type=kanban`);
         const data = await response.json();
+        console.log(`Kanban: Hittade ${data.length} kanban-uppgifter för projekt ${projectId}`);
         return data;
       } catch (error) {
-        console.error("Error fetching tasks:", error);
+        console.error("Error fetching kanban tasks:", error);
         return [];
       }
     }
