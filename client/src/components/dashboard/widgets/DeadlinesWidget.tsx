@@ -310,11 +310,19 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
   // Klicka på en uppgift för att gå till detaljvyn
   const handleItemClick = (item: DeadlineItem) => {
     if (item.type === "pdf_annotation") {
-      // Gå till PDF-visare med annotation ID
+      // Gå till PDF-visare med annotation ID för att markera och fokusera på rätt kommentar
       setLocation(`/files/pdf/${item.data.pdfVersionId}?annotationId=${item.data.id}`);
+    } else if (item.data.taskType === "gantt") {
+      // Gå till Gantt-schemat och fokusera på uppgiften
+      setLocation(`/projects/${item.data.projectId}/gantt?taskId=${item.data.id}`);
     } else {
-      // Gå till kanban-tavlan eller uppgiftsvyn
-      setLocation(`/tasks/${item.data.id}`);
+      // För Kanban-tavlan, gå till rätt projekt och markera kortet
+      if (item.data.projectId) {
+        setLocation(`/projects/${item.data.projectId}/kanban?taskId=${item.data.id}`);
+      } else {
+        // Fallback om ingen projektID finns
+        setLocation(`/tasks/${item.data.id}`);
+      }
     }
   };
   

@@ -150,8 +150,8 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
   console.log("Kombinerade uppgifter:", combinedItems);
 
   // Funktion för att normalisera datum (matchar andra komponenter)
-  const normalizeDate = (dateStr?: string): string | undefined => {
-    if (!dateStr) return undefined;
+  const normalizeDate = (dateStr?: string): string => {
+    if (!dateStr) return new Date().toISOString();
     
     // Om datumet redan är ett ISO-format med tid, använd det direkt
     if (dateStr.includes('T')) return dateStr;
@@ -165,26 +165,33 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
     } catch (e) {
       console.error("Kunde inte normalisera datum:", dateStr, e);
     }
-    return dateStr;
+    return dateStr || new Date().toISOString();
   };
   
   // Få säkert datum från en item (för sortering, etc.)
   const getItemDate = (item: FieldTaskItem): Date => {
+    let dateStr: string;
+    
     if (item.type === "field_task") {
       // För field tasks, prioritera scheduledDate, sen dueDate, endDate, startDate
-      const dateStr = normalizeDate(item.data.scheduledDate) || 
-                     normalizeDate(item.data.dueDate) || 
-                     normalizeDate(item.data.endDate) || 
-                     normalizeDate(item.data.startDate) || 
-                     item.data.createdAt;
+      dateStr = normalizeDate(item.data.scheduledDate) || 
+               normalizeDate(item.data.dueDate) || 
+               normalizeDate(item.data.endDate) || 
+               normalizeDate(item.data.startDate) || 
+               normalizeDate(item.data.createdAt) ||
+               new Date().toISOString(); // Fallback till aktuellt datum
+               
       console.log(`Field task ${item.data.title} datum: ${dateStr}`);
-      return new Date(dateStr);
     } else {
       // För PDF annotationer, använd deadline om det finns, annars createdAt
-      const dateStr = normalizeDate(item.data.deadline) || item.data.createdAt;
+      dateStr = normalizeDate(item.data.deadline) || 
+               normalizeDate(item.data.createdAt) ||
+               new Date().toISOString(); // Fallback till aktuellt datum
+               
       console.log(`PDF Annotation ${item.data.id} datum: ${dateStr}`);
-      return new Date(dateStr);
     }
+    
+    return new Date(dateStr);
   };
   
   // Sortera efter datum - nyast först
@@ -245,6 +252,23 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
     "resolved": "Löst"
   };
 
+  // Hanterare för klick på en fältuppgift
+  const handleFieldTaskClick = (task: FieldTask) => {
+    // Navigera till rätt vy baserat på typ av uppgift
+    if (task.taskType === "gantt") {
+      // Gå till Gantt-schemat och fokusera på uppgiften
+      setLocation(`/projects/${task.projectId}/gantt?taskId=${task.id}`);
+    } else {
+      // För Kanban-tavlan, gå till rätt projekt och markera kortet
+      if (task.projectId) {
+        setLocation(`/projects/${task.projectId}/kanban?taskId=${task.id}`);
+      } else {
+        // Fallback om ingen projektID finns
+        setLocation(`/tasks/${task.id}`);
+      }
+    }
+  };
+
   // Hanterare för klick på en PDF-kommentar
   const handlePdfAnnotationClick = (annotation: PdfAnnotation) => {
     // Navigera till PDF-visaren med annotation ID
@@ -283,7 +307,9 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
       const task = item.data;
       return (
         <div key={`task-${task.id}`}>
-          <div className="flex py-2.5 px-3 rounded-md hover:bg-gray-50 transition-colors cursor-pointer group">
+          <div 
+            className="flex py-2.5 px-3 rounded-md hover:bg-gray-50 transition-colors cursor-pointer group"
+            onClick={() => handleFieldTaskClick(task)}>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
