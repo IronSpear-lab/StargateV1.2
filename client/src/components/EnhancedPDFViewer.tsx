@@ -903,6 +903,10 @@ export default function EnhancedPDFViewer({
               };
               setAnnotations(updatedAnnotations);
               setActiveAnnotation(updatedAnnotations[index]);
+              
+              // Invalidera cachen för att uppdatera gränssnittet direkt
+              queryClient.invalidateQueries(['/api/pdf-annotations/assigned']);
+              queryClient.invalidateQueries(['/api/field-tasks']);
             }
           }
         }
@@ -1012,6 +1016,10 @@ export default function EnhancedPDFViewer({
             setActiveAnnotation(newUpdatedAnnotations[index]);
           }
         }
+        
+        // Invalidera cachen för att uppdatera gränssnittet direkt
+        queryClient.invalidateQueries(['/api/pdf-annotations/assigned']);
+        queryClient.invalidateQueries(['/api/field-tasks']);
       } else if (!useDatabase && fileId) {
         // Only use localStorage if not explicitly using database and fileId exists
         localStorage.setItem(`pdf_annotations_${fileId.toString()}`, JSON.stringify(updatedAnnotations));
@@ -1069,6 +1077,10 @@ export default function EnhancedPDFViewer({
         
         // Visa bekräftelse
         setSidebarMode('details');
+        
+        // Invalidera cachen för att uppdatera gränssnittet direkt
+        queryClient.invalidateQueries(['/api/pdf-annotations/assigned']);
+        queryClient.invalidateQueries(['/api/field-tasks']);
       }
     } catch (error) {
       console.error('Fel vid konvertering till uppgift:', error);
@@ -1176,6 +1188,10 @@ export default function EnhancedPDFViewer({
         // Only use localStorage if not explicitly using database
         localStorage.setItem(`pdf_annotations_${fileId.toString()}`, JSON.stringify(updatedAnnotations));
       }
+      
+      // Invalidera cachen för att uppdatera gränssnittet direkt
+      queryClient.invalidateQueries(['/api/pdf-annotations/assigned']);
+      queryClient.invalidateQueries(['/api/field-tasks']);
     } catch (error) {
       console.error('Error updating annotation status:', error);
       
