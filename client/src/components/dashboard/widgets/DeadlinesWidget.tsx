@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, parse, addDays } from "date-fns";
 import { useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -129,58 +129,68 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
 
   // Få ett datum att visa för deadlines beroende på typ
   const getDeadlineDate = (item: DeadlineItem): string => {
-    // Funktion för att normalisera datum (flyttad till yttre scope för att kunna användas överallt)
+    // Förbättrad funktion för att normalisera datum
     const normalizeDate = (dateStr?: string): string | undefined => {
       if (!dateStr) return undefined;
       
-      // Om datumet redan är ett ISO-format med tid, använd det direkt
-      if (dateStr.includes('T')) return dateStr;
-      
-      // Om det är bara YYYY-MM-DD, konvertera till ISO med tid (midnatt lokal tid)
       try {
-        // Sätt alltid 00:00:00Z tidsstämpel för att undvika skiftningar pga. tidszoner
-        const date = new Date(dateStr);
+        // Använd parseISO from date-fns istället för new Date() för konsekvent parsning
+        let date;
         
-        // Logga för debugging
-        console.log(`Normaliserar '${dateStr}' -> Datum: ${date.toISOString()}, månad: ${date.getMonth() + 1}, dag: ${date.getDate()}`);
+        // Om datumet redan är i ISO-format eller innehåller tid
+        if (dateStr.includes('T')) {
+          date = parseISO(dateStr);
+        } else {
+          // Om det bara är YYYY-MM-DD, lägg till tid 00:00:00
+          date = parse(dateStr, 'yyyy-MM-dd', new Date());
+        }
         
+        // Kontrollera om parsningen lyckades
         if (!isNaN(date.getTime())) {
-          // Ge en fullständig ISO-sträng med Z (UTC-tid)
+          // Logga detaljerad info för debugging
+          console.log(`Normaliserar '${dateStr}' -> ${format(date, 'yyyy-MM-dd HH:mm:ss')}`);
+          
+          // Returnera konsekvent ISO-sträng
           return date.toISOString();
+        } else {
+          console.error(`Misslyckades med att tolka datum: ${dateStr}`);
         }
       } catch (e) {
         console.error("Kunde inte normalisera datum:", dateStr, e);
       }
+      
+      // Sista utväg - returnera ursprunglig sträng
       return dateStr;
     };
     
     if (item.type === "task") {
       const isGanttTask = item.data.taskType === "gantt";
+      let deadlineDate;
       
       // Prioritera de rätta datumfälten baserat på uppgiftstyp enligt användarinstruktioner
       if (isGanttTask) {
         // För Gantt-uppgifter, använd endDate som slutdatum (enligt krav)
-        const deadlineDate = normalizeDate(item.data.endDate) || 
-                            normalizeDate(item.data.dueDate) || 
-                            normalizeDate(item.data.scheduledDate) || 
-                            normalizeDate(item.data.startDate) || 
-                            normalizeDate(item.data.createdAt) ||
-                            new Date().toISOString();
+        deadlineDate = normalizeDate(item.data.endDate) || 
+                       normalizeDate(item.data.dueDate) || 
+                       normalizeDate(item.data.scheduledDate) || 
+                       normalizeDate(item.data.startDate) || 
+                       normalizeDate(item.data.createdAt) ||
+                       new Date().toISOString();
         
         console.log(`Gantt-uppgift (${item.data.title}) använder slutdatum (endDate): ${deadlineDate}`);
-        return deadlineDate;
       } else {
         // För Kanban och andra uppgifter, använd dueDate som slutdatum (enligt krav)
-        const deadlineDate = normalizeDate(item.data.dueDate) || 
-                             normalizeDate(item.data.endDate) || 
-                             normalizeDate(item.data.scheduledDate) || 
-                             normalizeDate(item.data.startDate) || 
-                             normalizeDate(item.data.createdAt) ||
-                             new Date().toISOString();
+        deadlineDate = normalizeDate(item.data.dueDate) || 
+                       normalizeDate(item.data.endDate) || 
+                       normalizeDate(item.data.scheduledDate) || 
+                       normalizeDate(item.data.startDate) || 
+                       normalizeDate(item.data.createdAt) ||
+                       new Date().toISOString();
                              
         console.log(`Kanban-uppgift (${item.data.title}) använder slutdatum (dueDate): ${deadlineDate}`);
-        return deadlineDate;
       }
+      
+      return deadlineDate;
     } else if (item.type === "pdf_annotation") {
       // För PDF-annotationer, använd deadline som slutdatum (enligt krav)
       if (item.data.deadline) {
@@ -190,9 +200,9 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
       }
       
       // Fallback: om ingen deadline finns, använd standarddeadline 14 dagar från skapandedatum
-      const date = new Date(item.data.createdAt);
-      date.setDate(date.getDate() + 14);
-      return date.toISOString();
+      const createdDate = parseISO(item.data.createdAt);
+      const deadlineDate = addDays(createdDate, 14);
+      return deadlineDate.toISOString();
     }
     
     // Fallback om något oväntat inträffar
@@ -510,8 +520,8 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
 
   // Visa alla deadlines dialog
   const AllDeadlinesDialog = () => {
-    // Sortera alla deadlines i kombinerade items (inte bara de första 'limit' antal)
-    const sortedDeadlines = combinedItems.sort((a, b) => {
+    // Skapa en ny kopia av listan för att inte påverka originalets sortering
+    const sortedDeadlines = [...combinedItems].sort((a, b) => {
       try {
         const dateStrA = getDeadlineDate(a);
         const dateStrB = getDeadlineDate(b);
