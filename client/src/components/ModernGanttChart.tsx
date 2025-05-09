@@ -6,10 +6,18 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ZoomIn, ZoomOut, Filter, Plus, FileDown, ChevronDown, ChevronRight, CircleDashed, CheckCircle2, Clock, AlertTriangle, Trash2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, Filter, Plus, FileDown, ChevronDown, ChevronRight, CircleDashed, CheckCircle2, Clock, AlertTriangle, Trash2, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
+
+// Interface för projektmedlemmar
+interface ProjectMember {
+  id: number;
+  username: string;
+  role: string;
+}
 
 // Interface för uppgifter i Gantt-diagrammet
 export interface GanttTask {
@@ -26,6 +34,8 @@ export interface GanttTask {
   expanded?: boolean;
   parentId?: number;
   level?: number;
+  assigneeId?: number | null;
+  assigneeName?: string;
 }
 
 // Demo-data för Gantt-diagrammet - helt separerad från tasks API
@@ -248,6 +258,12 @@ interface ModernGanttChartProps {
 const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
   const { toast } = useToast();
   
+  // Hämtar projektmedlemmar från API
+  const { data: projectMembers = [], isLoading: membersLoading } = useQuery<ProjectMember[]>({
+    queryKey: [projectId ? `/api/projects/${projectId}/members` : null],
+    enabled: !!projectId, // Endast aktivera om det finns ett projektId
+  });
+  
   // Generera ett projektnamn baserat på projektid
   const currentProjectName = useMemo(() => {
     if (!projectId) return "Default Project";
@@ -307,7 +323,9 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
     name: '',
     startDate: '',
     endDate: '',
-    duration: 0
+    duration: 0,
+    assigneeId: null,
+    assigneeName: ''
   });
   
   // Hantera expandering/kollapsning av faser
