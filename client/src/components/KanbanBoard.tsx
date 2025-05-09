@@ -597,6 +597,7 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
     try {
       const taskData = {
         ...values,
+        type: "kanban", // Explicit sätta typen till "kanban" för uppgifter i Kanban-vyn
         projectId: parseInt(values.projectId),
         assigneeId: values.assigneeId && values.assigneeId !== "none" ? parseInt(values.assigneeId) : null,
       };
@@ -654,6 +655,7 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
       const taskData = {
         ...values,
         id: Number(selectedTask.id),
+        type: "kanban", // Behåll typen som "kanban" även vid uppdatering
         projectId: parseInt(values.projectId),
         assigneeId: values.assigneeId && values.assigneeId !== "none" ? parseInt(values.assigneeId) : null
       };
