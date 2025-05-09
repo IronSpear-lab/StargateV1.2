@@ -3010,7 +3010,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const versionId = parseInt(req.params.versionId);
-      const { rect, color, comment, status, id } = req.body;
+      const { rect, color, comment, status, id, assignedTo, projectId, deadline } = req.body;
+      
+      console.log("Mottog annotation-förfrågan:", {
+        versionId,
+        rect,
+        color,
+        comment,
+        status,
+        assignedTo,
+        projectId,
+        deadline,
+        userId: req.user!.id,
+        username: req.user!.username
+      });
       
       // Validera indata
       if (!rect || typeof rect !== 'object') {
@@ -3037,7 +3050,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rect,
           color,
           comment,
-          status
+          status,
+          assignedTo,
+          deadline
         });
         
         return res.json(updatedAnnotation);
@@ -3045,10 +3060,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Skapa ny annotation
         const newAnnotation = await storage.createPDFAnnotation({
           pdfVersionId: versionId,
+          projectId: projectId || null,
           rect,
           color,
           comment: comment || '',
-          status: status || 'open',
+          status: status || 'new_comment',
+          assignedTo: assignedTo,
+          deadline: deadline,
           createdById: req.user!.id
         });
         

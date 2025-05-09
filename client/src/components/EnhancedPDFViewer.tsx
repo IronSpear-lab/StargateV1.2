@@ -854,19 +854,30 @@ export default function EnhancedPDFViewer({
             annotation: newAnnotation
           });
           
-          // Save to database via API - använd versionId-variabeln från tidigare
-          const savedAnnotation = await savePDFAnnotation(numericFileId, {
-            // Använd versionId vi redan har definierat ovan
+          // Kontrollera först att versionId är ett giltigt värde
+          if (!versionId || versionId === 0) {
+            console.error(`Ogiltigt versionId: ${versionId}, kan inte spara annotation. Lagrar i localStorage istället.`);
+            localStorage.setItem(`pdf_annotations_${fileId}`, JSON.stringify([...annotations, newAnnotation]));
+            return;
+          }
+          
+          // Skapa en kopia med korrekt attribut
+          const annotationToSave = {
             pdfVersionId: versionId,
-            projectId: currentProject.id, // Add project ID from context
+            projectId: currentProject.id, 
             rect: newAnnotation.rect,
             color: newAnnotation.color,
             comment: newAnnotation.comment,
             status: newAnnotation.status,
             createdAt: newAnnotation.createdAt,
             createdBy: newAnnotation.createdBy,
-            assignedTo: user?.username // Tilldela kommentaren till inloggad användare
-          });
+            assignedTo: assignTo || user?.username // Använd tilldelad användare eller inloggad som fallback
+          };
+          
+          console.log("Skickar annotation till servern:", annotationToSave);
+          
+          // Save to database via API - använd versionId-variabeln från tidigare
+          const savedAnnotation = await savePDFAnnotation(numericFileId, annotationToSave);
           
           if (savedAnnotation && savedAnnotation.id) {
             // Update local annotation with server-assigned ID

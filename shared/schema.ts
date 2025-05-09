@@ -291,6 +291,7 @@ export const pdfAnnotations = pgTable("pdf_annotations", {
   createdById: integer("created_by_id").references(() => users.id).notNull(),
   assignedTo: text("assigned_to"), // Tilldelad användare (username)
   taskId: integer("task_id").references(() => tasks.id), // Relaterad uppgift (om konverterad)
+  deadline: timestamp("deadline"), // Deadline för annotationen
 });
 
 // PDF version relations
