@@ -515,6 +515,119 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
     );
   };
 
+  // Renderar PDF-annotation kompakt
+  const renderCompactAnnotation = (annotation: PdfAnnotation) => {
+    const status = getItemStatus({ type: "pdf_annotation", data: annotation });
+    
+    return (
+      <div 
+        className="flex py-2.5 px-3 rounded-md hover:bg-gray-50 transition-colors cursor-pointer group"
+        onClick={() => handleItemClick({ type: "pdf_annotation", data: annotation })}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className={cn(
+                "px-2 py-0.5 rounded text-xs",
+                statusStyles[status].bg,
+                statusStyles[status].text
+              )}>
+                <div className="flex items-center">
+                  {statusStyles[status].icon}
+                  <span>{pdfStatusLabels[annotation.status]}</span>
+                </div>
+              </div>
+              <div className="text-xs text-gray-500">PDF</div>
+            </div>
+            
+            <Avatar className="h-6 w-6">
+              <AvatarImage src="" alt={annotation.createdBy} />
+              <AvatarFallback className={getAvatarColor(annotation.createdBy)}>
+                {getInitials(annotation.createdBy)}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+          
+          <div className="text-sm font-medium mt-0.5 text-gray-900">
+            {annotation.comment || "PDF-kommentar"}
+          </div>
+          
+          <div className="mt-1.5 flex items-center space-x-4">
+            <div className="text-xs text-gray-500 flex items-center">
+              <FileText className="h-3 w-3 mr-1 text-[#727cf5]" />
+              <span className="truncate">{annotation.fileName}</span>
+            </div>
+            
+            <div className="text-xs text-gray-500 flex items-center">
+              <Clock className="h-3 w-3 mr-1 text-[#ffc35a]" />
+              {format(new Date(getDeadlineDate({ type: "pdf_annotation", data: annotation })), "dd MMM yyyy")}
+            </div>
+          </div>
+        </div>
+        <ChevronRight className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
+    );
+  };
+
+  // Renderar Task kompakt
+  const renderCompactTask = (task: FieldTask) => {
+    return (
+      <div 
+        className="flex py-2.5 px-3 rounded-md hover:bg-gray-50 transition-colors cursor-pointer group"
+        onClick={() => handleItemClick({ type: "task", data: task })}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className={cn(
+                "px-2 py-0.5 rounded text-xs",
+                statusStyles[task.status].bg,
+                statusStyles[task.status].text
+              )}>
+                <div className="flex items-center">
+                  {statusStyles[task.status].icon}
+                  <span>{task.status.replace('_', ' ')}</span>
+                </div>
+              </div>
+              <div className="text-xs text-gray-500">{task.taskType}</div>
+            </div>
+            
+            <Avatar className="h-6 w-6">
+              <AvatarImage src={task.assigneeAvatar} alt={task.assignee} />
+              <AvatarFallback className={getAvatarColor(task.assignee)}>
+                {getInitials(task.assignee)}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+          
+          <div className="text-sm font-medium mt-0.5 text-gray-900">{task.title}</div>
+          
+          <div className="mt-1.5 flex items-center space-x-4">
+            <div className="text-xs text-gray-500 flex items-center">
+              <MapPin className="h-3 w-3 mr-1 text-[#727cf5]" />
+              <span className="truncate">{task.location}</span>
+            </div>
+            
+            <div className="text-xs text-gray-500 flex items-center">
+              <Clock className="h-3 w-3 mr-1 text-[#ffc35a]" />
+              {format(new Date(getDeadlineDate({ type: "task", data: task })), "dd MMM yyyy")}
+            </div>
+          </div>
+        </div>
+        <ChevronRight className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
+    );
+  };
+
+  // Generisk renderItem funktion som används i huvudvyn
+  const renderItem = (item: DeadlineItem) => {
+    if (item.type === "task") {
+      return renderCompactTask(item.data);
+    } else {
+      return renderCompactAnnotation(item.data);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-3">
@@ -532,46 +645,13 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
             <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
             <span className="ml-2 text-sm text-gray-500">Laddar deadlines...</span>
           </div>
-        ) : deadlines && deadlines.length > 0 ? (
-          <div className="space-y-1">
-            {deadlines.map((item: DeadlineItem) => (
-              <div key={`${item.type}-${item.type === 'task' ? item.data.id : item.data.id}`}>
-                <div 
-                  className="flex items-center py-2.5 px-3 rounded-md hover:bg-gray-50 transition-colors cursor-pointer group"
-                  onClick={() => handleItemClick(item)}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-gray-500">{getItemCategory(item)}</div>
-                      <div className={cn(
-                        "px-2 py-0.5 rounded-full text-xs",
-                        getDeadlineBadgeStyle(item)
-                      )}>
-                        {getDeadlineStatusText(item)}
-                      </div>
-                    </div>
-                    
-                    <div className="text-sm font-medium mt-0.5 text-gray-900">
-                      {getItemTitle(item)}
-                    </div>
-                    
-                    <div className="mt-1.5 flex items-center space-x-4">
-                      <div className="text-xs text-gray-500 flex items-center">
-                        <MapPin className="h-3 w-3 mr-1 text-[#727cf5]" />
-                        <span className="truncate">{getItemProjectName(item)}</span>
-                      </div>
-                      
-                      <div className="text-xs text-gray-500 flex items-center">
-                        <Clock className="h-3 w-3 mr-1 text-[#ffc35a]" />
-                        {format(new Date(getDeadlineDate(item)), "dd MMM yyyy")}
-                      </div>
-                    </div>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-                <Separator className="my-1" />
+        ) : combinedItems.length > 0 ? (
+          <div className="space-y-1.5 divide-y">
+            {combinedItems.slice(0, Math.max(8, limit)).map(item => 
+              <div key={`item-${item.type}-${item.data.id}`} className="pt-1.5">
+                {renderItem(item)}
               </div>
-            ))}
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-[200px] text-center p-4">
