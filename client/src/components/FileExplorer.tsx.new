@@ -1,12 +1,15 @@
-import { useState, useRef, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useEffect, useRef, useState } from "react";
 import { 
-  Plus, 
-  Folder, 
-  File as FileIcon, 
-  ChevronDown, 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle
+} from "@/components/ui/card";
+import { 
   ChevronRight, 
+  ChevronDown, 
+  FileIcon, 
+  Folder, 
   Upload, 
   Loader2, 
   FolderPlus,
@@ -70,6 +73,24 @@ interface FolderFormData {
   parentId: number | null;
 }
 
+// Definiera gränssnittet för folder-data för att undvika 'any' typer
+interface FolderData {
+  id: number | string;
+  name: string;
+  projectId: number | string;
+  parentId?: number | string | null;
+  children?: FolderData[];
+}
+
+// Definiera gränssnittet för file-data för att undvika 'any' typer
+interface FileData {
+  id: number | string;
+  name: string;
+  projectId: number | string;
+  folderId?: number | string | null;
+  size?: number;
+}
+
 export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -94,6 +115,9 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     uploadProgress: 0
   });
   
+  // Expanderade mappar
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
+  
   // Uppdatera projektID när current project ändras
   useEffect(() => {
     if (currentProject?.id) {
@@ -103,25 +127,6 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       }));
     }
   }, [currentProject?.id]);
-  
-  // Auto-expandera alla mappar när de laddas för att visa dem direkt
-  useEffect(() => {
-    if (foldersData && foldersData.length > 0) {
-      console.log("Auto-expanderar alla mappar för bättre synlighet");
-      const newExpandedState: Record<string, boolean> = {};
-      
-      foldersData.forEach((folder: any) => {
-        newExpandedState[`folder_${folder.id}`] = true;
-      });
-      
-      setExpandedFolders(prev => ({
-        ...prev,
-        ...newExpandedState
-      }));
-    }
-  }, [foldersData]);
-
-  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
   
   // Fetch all available projects
   const { data: projectsData } = useQuery({
@@ -201,6 +206,23 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     staleTime: 0, // Uppdatera varje gång (deaktivera caching)
     retry: 0 // Försök inte igen om det misslyckas
   });
+  
+  // Auto-expandera alla mappar när de laddas för att visa dem direkt
+  useEffect(() => {
+    if (foldersData && foldersData.length > 0) {
+      console.log("Auto-expanderar alla mappar för bättre synlighet");
+      const newExpandedState: Record<string, boolean> = {};
+      
+      foldersData.forEach((folder: any) => {
+        newExpandedState[`folder_${folder.id}`] = true;
+      });
+      
+      setExpandedFolders(prev => ({
+        ...prev,
+        ...newExpandedState
+      }));
+    }
+  }, [foldersData]);
   
   // Fetch files
   const { 
@@ -486,24 +508,6 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     console.log("Skickar mappdata:", folderData);
     createFolderMutation.mutate(folderData);
   };
-  
-  // Definiera gränssnittet för folder-data för att undvika 'any' typer
-  interface FolderData {
-    id: number | string;
-    name: string;
-    projectId: number | string;
-    parentId?: number | string | null;
-    children?: FolderData[];
-  }
-
-  // Definiera gränssnittet för file-data för att undvika 'any' typer
-  interface FileData {
-    id: number | string;
-    name: string;
-    projectId: number | string;
-    folderId?: number | string | null;
-    size?: number;
-  }
 
   // KOMPLETT OMARBETAD buildFileTree funktion med DEBUG-loggning
   const buildFileTree = () => {
@@ -545,14 +549,15 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       folder && folder.projectId && folder.projectId.toString() === currentProject.id.toString()
     );
     
-    // Lägg till testmappar för felsökning
+    // Lägg till testmappar för felsökning om inga mappar hittades
+    let workingFolders = [...projectFolders];
     if (projectFolders.length === 0) {
       console.warn("🔴 INGA MAPPAR HITTADES - LÄGGER TILL TESTMAPPAR FÖR DEBUGGING");
-      projectFolders.push(...debugFolders as any);
+      workingFolders = [...debugFolders as any];
     }
     
-    console.log(`FileExplorer: ${projectFolders.length} mappar tillhör projekt ${currentProject.id}`);
-    console.log("PROJEKTMAPPAR:", JSON.stringify(projectFolders, null, 2));
+    console.log(`FileExplorer: ${workingFolders.length} mappar tillhör projekt ${currentProject.id}`);
+    console.log("PROJEKTMAPPAR:", JSON.stringify(workingFolders, null, 2));
     
     // Filtrera och se till att vi bara använder filer från aktuellt projekt
     const projectFiles = filesData.filter((file: FileData) => 
@@ -561,7 +566,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     console.log(`FileExplorer: ${projectFiles.length} filer tillhör projekt ${currentProject.id}`);
     
     // STEG 2: Skapa alla mappnoder och spara dem i folderMap för enkel åtkomst via ID
-    projectFolders.forEach((folder: FolderData) => {
+    workingFolders.forEach((folder: FolderData) => {
       const folderNode: FileNode = {
         id: `folder_${folder.id}`,
         name: folder.name,
@@ -577,7 +582,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     console.log("Alla registrerade mappar i folderMap:", Object.keys(folderMap).join(", "));
     
     // STEG 3: Organisera mappar i en hierarki baserat på parent-child relationer
-    projectFolders.forEach((folder: FolderData) => {
+    workingFolders.forEach((folder: FolderData) => {
       if (folder.parentId) {
         // Denna mapp har en förälder
         const parentKey = `folder_${folder.parentId}`;
@@ -634,6 +639,24 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         console.log(`FileExplorer: Rotfil "${file.name}" (${file.id}) läggs i trädets rot`);
       }
     });
+    
+    // STEG 5: Inspektera och logga fullständig trädstruktur för FELSÖKNING
+    const inspectTree = (nodes: FileNode[], level = 0, path = '') => {
+      nodes.forEach(node => {
+        const indent = ' '.repeat(level * 2);
+        const newPath = path ? `${path} > ${node.name}` : node.name;
+        console.log(`${indent}${node.type}: ${node.name} (${node.id}) PATH: ${newPath}`);
+        
+        if (node.children && node.children.length > 0) {
+          console.log(`${indent}Barn till ${node.name}:`);
+          inspectTree(node.children, level + 1, newPath);
+        }
+      });
+    };
+    
+    console.log(`--- FULLSTÄNDIG TRÄDINSPEKTION START ---`);
+    inspectTree(tree);
+    console.log(`--- FULLSTÄNDIG TRÄDINSPEKTION SLUT ---`);
     
     console.log(`FileExplorer: Trädbyggnad slutförd, totalt ${tree.length} objekt i root`);
     return tree;
