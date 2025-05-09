@@ -1070,6 +1070,7 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                 <TableHead className="py-2 w-24">Start Date</TableHead>
                 <TableHead className="py-2 w-24">End Date</TableHead>
                 <TableHead className="py-2 w-20">Duration</TableHead>
+                <TableHead className="py-2 w-24">Ansvarig</TableHead>
                 <TableHead className="py-2 w-10">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -1128,6 +1129,16 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                   <TableCell className="py-2">{format(parseISO(task.endDate), 'yyyy-MM-dd')}</TableCell>
                   <TableCell className="py-2">
                     {task.type === 'MILESTONE' ? '-' : `${task.duration} dagar`}
+                  </TableCell>
+                  <TableCell className="py-2">
+                    {task.assigneeName ? (
+                      <div className="flex items-center gap-1">
+                        <User className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-xs">{task.assigneeName}</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">Ej tilldelad</span>
+                    )}
                   </TableCell>
                   <TableCell className="py-2">
                     <Button
@@ -1372,6 +1383,41 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                 disabled={newTask.type === 'MILESTONE'}
               />
             </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="task-assignee" className="text-right text-sm">Tilldela</label>
+              <Select
+                value={newTask.assigneeId?.toString() || ""}
+                onValueChange={(value) => {
+                  if (value === "") {
+                    setNewTask({ 
+                      ...newTask, 
+                      assigneeId: null, 
+                      assigneeName: "" 
+                    });
+                  } else {
+                    const selectedMember = projectMembers.find(m => m.id.toString() === value);
+                    setNewTask({ 
+                      ...newTask, 
+                      assigneeId: parseInt(value), 
+                      assigneeName: selectedMember?.username || "" 
+                    });
+                  }
+                }}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Välj ansvarig person" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Ingen tilldelad</SelectItem>
+                  {projectMembers.map(member => (
+                    <SelectItem key={member.id} value={member.id.toString()}>
+                      {member.username} ({member.role})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           
           <DialogFooter>
@@ -1444,6 +1490,13 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId }) => {
                 <p><span className="font-medium">Type:</span> {taskToDelete.type}</p>
                 <p><span className="font-medium">Status:</span> {taskToDelete.status}</p>
                 <p><span className="font-medium">Project:</span> {taskToDelete.project}</p>
+                <p>
+                  <span className="font-medium">Ansvarig:</span> {' '}
+                  {taskToDelete.assigneeName 
+                    ? taskToDelete.assigneeName 
+                    : <span className="text-muted-foreground italic">Ej tilldelad</span>
+                  }
+                </p>
               </div>
             )}
           </div>
