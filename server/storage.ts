@@ -97,9 +97,6 @@ export interface IStorage {
   deleteTimeEntry(id: number): Promise<void>;
   getProjectTimeEntries(projectId: number): Promise<TimeEntry[]>;
   
-  // Project Permissions
-  hasProjectPermission(userId: number, projectId: number): Promise<boolean>;
-  
   // User Projects (Roles)
   assignUserToProject(userProject: Omit<UserProject, "id">): Promise<UserProject>;
   getProjectMembers(projectId: number): Promise<{ id: number; username: string }[]>;
@@ -890,22 +887,6 @@ class DatabaseStorage implements IStorage {
       .from(taskTimeEntries)
       .where(eq(taskTimeEntries.projectId, projectId))
       .orderBy(desc(taskTimeEntries.reportDate));
-  }
-  
-  // Project Permissions methods
-  async hasProjectPermission(userId: number, projectId: number): Promise<boolean> {
-    const result = await db
-      .select()
-      .from(userProjects)
-      .where(
-        and(
-          eq(userProjects.userId, userId),
-          eq(userProjects.projectId, projectId)
-        )
-      )
-      .limit(1);
-    
-    return result.length > 0;
   }
 
   // User Projects (Roles) methods

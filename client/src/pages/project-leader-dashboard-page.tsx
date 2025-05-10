@@ -308,7 +308,7 @@ export default function ProjectLeaderDashboardPage() {
       case "budget-cost":
         return <BudgetCostWidget projectId={projectId} />;
       case "revenue-overview":
-        return <RevenueOverviewWidget projectId={projectId || 0} />;
+        return <RevenueOverviewWidget />;
       case "kpi-metrics":
         return <KpiMetricsWidget projectId={projectId} />;
       case "ai-forecast":
