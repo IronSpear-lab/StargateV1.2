@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { 
@@ -7,7 +7,10 @@ import {
   eachDayOfInterval
 } from "date-fns";
 import { sv } from "date-fns/locale";
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { 
+  Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, 
+  CartesianGrid, Area, ComposedChart
+} from "recharts";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Widget, WidthType, HeightType } from "../../Widget";
@@ -54,89 +57,122 @@ export function TaskHoursWidget({
   });
 
   // Beräkna tidsintervall baserat på aktuell vy och offset
-  const currentDate = new Date();
-  
-  // Beräkna datumintervall baserat på vald vy
-  let activeStartDate: Date;
-  let activeEndDate: Date;
-  
-  if (viewMode === 'week') {
-    const baseStart = startOfWeek(currentDate, { locale: sv });
-    const baseEnd = endOfWeek(currentDate, { locale: sv });
+  const { activeStartDate, activeEndDate } = useMemo(() => {
+    const currentDate = new Date();
+    let startDate: Date;
+    let endDate: Date;
     
-    if (currentOffset < 0) {
-      // Tidigare veckor
-      activeStartDate = subWeeks(baseStart, Math.abs(currentOffset));
-      activeEndDate = subWeeks(baseEnd, Math.abs(currentOffset));
-    } else if (currentOffset > 0) {
-      // Kommande veckor
-      activeStartDate = addWeeks(baseStart, currentOffset);
-      activeEndDate = addWeeks(baseEnd, currentOffset);
+    if (viewMode === 'week') {
+      const baseStart = startOfWeek(currentDate, { locale: sv });
+      const baseEnd = endOfWeek(currentDate, { locale: sv });
+      
+      if (currentOffset < 0) {
+        // Tidigare veckor
+        startDate = subWeeks(baseStart, Math.abs(currentOffset));
+        endDate = subWeeks(baseEnd, Math.abs(currentOffset));
+      } else if (currentOffset > 0) {
+        // Kommande veckor
+        startDate = addWeeks(baseStart, currentOffset);
+        endDate = addWeeks(baseEnd, currentOffset);
+      } else {
+        // Nuvarande vecka
+        startDate = baseStart;
+        endDate = baseEnd;
+      }
     } else {
-      // Nuvarande vecka
-      activeStartDate = baseStart;
-      activeEndDate = baseEnd;
+      // Månadsvy
+      const baseStart = startOfMonth(currentDate);
+      const baseEnd = endOfMonth(currentDate);
+      
+      if (currentOffset < 0) {
+        // Tidigare månader
+        startDate = subMonths(baseStart, Math.abs(currentOffset));
+        endDate = endOfMonth(startDate);
+      } else if (currentOffset > 0) {
+        // Kommande månader
+        startDate = addMonths(baseStart, currentOffset);
+        endDate = endOfMonth(startDate);
+      } else {
+        // Nuvarande månad
+        startDate = baseStart;
+        endDate = baseEnd;
+      }
     }
-  } else {
-    // Månadsvy
-    const baseStart = startOfMonth(currentDate);
-    const baseEnd = endOfMonth(currentDate);
     
-    if (currentOffset < 0) {
-      // Tidigare månader
-      activeStartDate = subMonths(baseStart, Math.abs(currentOffset));
-      activeEndDate = endOfMonth(activeStartDate);
-    } else if (currentOffset > 0) {
-      // Kommande månader
-      activeStartDate = addMonths(baseStart, currentOffset);
-      activeEndDate = endOfMonth(activeStartDate);
-    } else {
-      // Nuvarande månad
-      activeStartDate = baseStart;
-      activeEndDate = baseEnd;
-    }
-  }
+    return { activeStartDate: startDate, activeEndDate: endDate };
+  }, [viewMode, currentOffset]);
 
   // Formatera data för grafen
-  const days = eachDayOfInterval({ start: activeStartDate, end: activeEndDate });
-  
-  // Formatera API-data eller skapa tomma data om det saknas
-  const chartData = days.map(day => {
-    const formattedDay = format(day, 'yyyy-MM-dd');
-    const dayData = taskHoursData?.find((d) => d.date === formattedDay) || {
-      date: formattedDay,
-      estimatedHours: 0,
-      actualHours: 0
-    };
+  const chartData = useMemo(() => {
+    const days = eachDayOfInterval({ start: activeStartDate, end: activeEndDate });
     
-    return {
-      name: viewMode === 'week' ? format(day, 'EEE', { locale: sv }) : format(day, 'd', { locale: sv }),
-      estimatedHours: Number(dayData.estimatedHours) || 0,
-      actualHours: Number(dayData.actualHours) || 0,
-      fullDate: formattedDay
-    };
-  });
+    // Formatera API-data eller skapa tomma data om det saknas
+    return days.map(day => {
+      const formattedDay = format(day, 'yyyy-MM-dd');
+      const dayData = taskHoursData?.find((d) => d.date === formattedDay) || {
+        date: formattedDay,
+        estimatedHours: 0,
+        actualHours: 0
+      };
+      
+      return {
+        name: viewMode === 'week' ? format(day, 'EEE', { locale: sv }) : format(day, 'd', { locale: sv }),
+        estimatedHours: Number(dayData.estimatedHours).toFixed(1),
+        actualHours: Number(dayData.actualHours).toFixed(1),
+        fullDate: formattedDay
+      };
+    });
+  }, [activeStartDate, activeEndDate, taskHoursData, viewMode]);
 
   // Beräkna totala timmar för båda typer
-  const totalEstimatedHours = chartData.reduce((acc, curr) => acc + curr.estimatedHours, 0);
-  const totalActualHours = chartData.reduce((acc, curr) => acc + curr.actualHours, 0);
-  const hoursDiff = totalActualHours - totalEstimatedHours;
-  const diffPercentage = totalEstimatedHours ? ((hoursDiff / totalEstimatedHours) * 100).toFixed(1) : "0.0";
-  const isOverBudget = hoursDiff > 0;
+  const { totalEstimatedHours, totalActualHours, hoursDiff, diffPercentage, isOverBudget } = useMemo(() => {
+    const totalEstimated = chartData.reduce((acc, curr) => acc + parseFloat(curr.estimatedHours), 0);
+    const totalActual = chartData.reduce((acc, curr) => acc + parseFloat(curr.actualHours), 0);
+    const diff = totalActual - totalEstimated;
+    const percentage = totalEstimated ? ((diff / totalEstimated) * 100).toFixed(1) : "0.0";
+    
+    return {
+      totalEstimatedHours: totalEstimated,
+      totalActualHours: totalActual,
+      hoursDiff: diff,
+      diffPercentage: percentage,
+      isOverBudget: diff > 0
+    };
+  }, [chartData]);
 
   // Formatera perioden för visning i UI
-  const getFormattedPeriod = () => {
+  const formattedPeriod = useMemo(() => {
     if (viewMode === 'week') {
       return `${format(activeStartDate, 'd MMM', { locale: sv })} - ${format(activeEndDate, 'd MMM', { locale: sv })}`;
     } else {
       return format(activeStartDate, 'MMMM yyyy', { locale: sv });
     }
-  };
+  }, [activeStartDate, activeEndDate, viewMode]);
 
   // Navigera mellan tidsperioder
   const navigatePrevious = () => setCurrentOffset(prev => prev - 1);
   const navigateNext = () => setCurrentOffset(prev => prev + 1);
   const navigateToday = () => setCurrentOffset(0);
+
+  // Anpassad tooltip för grafen
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload?.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="rounded-lg border bg-background p-3 shadow-md text-xs">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="font-medium">Datum:</div>
+            <div>{format(new Date(data.fullDate), 'yyyy-MM-dd')}</div>
+            <div className="font-medium">Planerat:</div>
+            <div>{data.estimatedHours} tim</div>
+            <div className="font-medium">Faktiskt:</div>
+            <div>{data.actualHours} tim</div>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
 
   // Huvudsakligt innehåll för widgeten
   const renderContent = () => (
@@ -194,25 +230,36 @@ export function TaskHoursWidget({
             </Button>
           </div>
         </div>
-        <div className="text-center text-sm font-medium">{getFormattedPeriod()}</div>
+        <div className="text-center text-sm font-medium">{formattedPeriod}</div>
       </div>
 
       <div className="h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart
+          <ComposedChart
             data={chartData}
             margin={{
-              top: 5,
-              right: 5,
-              left: 0,
+              top: 10,
+              right: 10,
+              left: 5,
               bottom: 5,
             }}
           >
+            <defs>
+              <linearGradient id="colorEstimated" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#8884d8" stopOpacity={0.25}/>
+                <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+              </linearGradient>
+              <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#4ade80" stopOpacity={0.25}/>
+                <stop offset="95%" stopColor="#4ade80" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" opacity={0.15} vertical={false} />
             <XAxis
               dataKey="name"
               tickLine={false}
               axisLine={false}
-              tickMargin={10}
+              tickMargin={8}
               tick={{ fontSize: 12 }}
             />
             <YAxis
@@ -221,31 +268,29 @@ export function TaskHoursWidget({
               tickFormatter={(value) => `${value}`}
               tick={{ fontSize: 12 }}
             />
-            <Tooltip
-              content={({ active, payload }) => {
-                if (active && payload?.length) {
-                  const data = payload[0].payload;
-                  return (
-                    <div className="rounded-lg border bg-background p-2 shadow-sm text-xs">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="font-medium">Datum:</div>
-                        <div>{format(new Date(data.fullDate), 'yyyy-MM-dd')}</div>
-                        <div className="font-medium">Planerat:</div>
-                        <div>{data.estimatedHours} tim</div>
-                        <div className="font-medium">Faktiskt:</div>
-                        <div>{data.actualHours} tim</div>
-                      </div>
-                    </div>
-                  );
-                }
-                return null;
-              }}
+            <Tooltip content={<CustomTooltip />} />
+            <Area 
+              type="monotone" 
+              dataKey="estimatedHours" 
+              fill="url(#colorEstimated)" 
+              stroke="#8884d8" 
+              strokeWidth={0}
+              activeDot={false}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="actualHours" 
+              fill="url(#colorActual)" 
+              stroke="#4ade80" 
+              strokeWidth={0}
+              activeDot={false}
             />
             <Line
               type="monotone"
               dataKey="estimatedHours"
               stroke="#8884d8"
-              strokeWidth={2}
+              strokeWidth={3}
+              dot={{ r: 3 }}
               activeDot={{ r: 6 }}
               name="Uppskattade timmar"
             />
@@ -253,21 +298,22 @@ export function TaskHoursWidget({
               type="monotone"
               dataKey="actualHours"
               stroke="#4ade80"
-              strokeWidth={2}
+              strokeWidth={3}
+              dot={{ r: 3 }}
               activeDot={{ r: 6 }}
               name="Faktiska timmar"
             />
-          </LineChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
 
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-1 text-xs">
-          <div className="h-2 w-2 rounded-full bg-[#8884d8]" />
+        <div className="flex items-center space-x-2 text-xs">
+          <div className="h-3 w-3 rounded-full bg-[#8884d8]" />
           <div>Uppskattade timmar</div>
         </div>
-        <div className="flex items-center space-x-1 text-xs">
-          <div className="h-2 w-2 rounded-full bg-[#4ade80]" />
+        <div className="flex items-center space-x-2 text-xs">
+          <div className="h-3 w-3 rounded-full bg-[#4ade80]" />
           <div>Faktiska timmar</div>
         </div>
       </div>

@@ -1332,63 +1332,153 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Access denied to this project" });
       }
       
-      // Datumintervall (standardvärde nuvarande vecka)
-      const dateRangeType = req.query.dateRange || 'current'; // 'current' eller 'previous'
+      // Nya parametrar för att stödja vecka/månad och offset
+      const viewMode = req.query.viewMode || 'week'; // 'week' eller 'month'
+      const offset = parseInt(req.query.offset as string) || 0;
       
-      // Hämta tidsdata för uppgifter och faktiska tidrapporter
-      const result = await db.execute(sql`
-        WITH date_range AS (
-          SELECT 
-            CASE 
-              WHEN ${dateRangeType} = 'previous' 
-              THEN date_trunc('week', current_date - interval '1 week')::date
-              ELSE date_trunc('week', current_date)::date
-            END as start_date,
-            CASE 
-              WHEN ${dateRangeType} = 'previous'
-              THEN (date_trunc('week', current_date - interval '1 week') + interval '6 day')::date
-              ELSE (date_trunc('week', current_date) + interval '6 day')::date
-            END as end_date
-        ),
-        dates AS (
-          SELECT generate_series(
-            (SELECT start_date FROM date_range),
-            (SELECT end_date FROM date_range),
-            '1 day'::interval
-          )::date as date
-        ),
-        task_estimated_hours AS (
-          SELECT 
-            date_trunc('day', tasks.created_at)::date as date,
-            sum(tasks.estimated_hours) as estimated_hours
-          FROM tasks
-          WHERE 
-            tasks.project_id = ${projectId} AND
-            tasks.created_at BETWEEN (SELECT start_date FROM date_range) AND (SELECT end_date FROM date_range)
-          GROUP BY date_trunc('day', tasks.created_at)::date
-        ),
-        task_actual_hours AS (
-          SELECT 
-            date_trunc('day', tte.report_date)::date as date,
-            sum(tte.hours) as actual_hours
-          FROM task_time_entries tte
-          JOIN tasks t ON tte.task_id = t.id
-          WHERE 
-            t.project_id = ${projectId} AND
-            tte.report_date BETWEEN (SELECT start_date FROM date_range) AND (SELECT end_date FROM date_range)
-          GROUP BY date_trunc('day', tte.report_date)::date
-        )
+      // Beräkna datumintervall baserat på viewMode och offset
+      const currentDate = new Date();
+      let startDate, endDate;
+      
+      if (viewMode === 'week') {
+        // Veckovis vy
+        const baseStartDate = new Date(currentDate);
+        baseStartDate.setDate(baseStartDate.getDate() - baseStartDate.getDay() + 1); // Måndag
+        baseStartDate.setHours(0, 0, 0, 0);
+        
+        startDate = new Date(baseStartDate);
+        startDate.setDate(startDate.getDate() + (offset * 7));
+        
+        endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 6);
+      } else {
+        // Månadsvis vy
+        const baseStartDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        startDate = new Date(baseStartDate);
+        startDate.setMonth(startDate.getMonth() + offset);
+        
+        endDate = new Date(startDate);
+        endDate.setMonth(endDate.getMonth() + 1);
+        endDate.setDate(0); // Sista dagen i månaden
+      }
+      
+      // Konvertera till ISO-format för SQL
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+      
+      // Hämta alla uppgifter i projektet som har början- och slutdatum
+      // som överlappar med det begärda datumintervallet
+      const projectTasks = await db.select({
+          id: tasks.id,
+          title: tasks.title,
+          estimatedHours: tasks.estimatedHours,
+          startDate: tasks.startDate,
+          endDate: tasks.endDate,
+          dueDate: tasks.dueDate
+        })
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.projectId, projectId),
+            sql`(
+              (tasks.start_date IS NOT NULL AND tasks.end_date IS NOT NULL) OR 
+              (tasks.start_date IS NOT NULL AND tasks.due_date IS NOT NULL) OR
+              tasks.due_date IS NOT NULL
+            )`
+          )
+        );
+      
+      // Hämta faktiska tidsrapporter för datumintervallet
+      const actualHours = await db.execute(sql`
         SELECT 
-          d.date::text as date,
-          COALESCE(teh.estimated_hours, 0) as estimated_hours,
-          COALESCE(tah.actual_hours, 0) as actual_hours
-        FROM dates d
-        LEFT JOIN task_estimated_hours teh ON d.date = teh.date
-        LEFT JOIN task_actual_hours tah ON d.date = tah.date
-        ORDER BY d.date ASC
+          date_trunc('day', tte.report_date)::date as date,
+          sum(tte.hours) as actual_hours
+        FROM task_time_entries tte
+        JOIN tasks t ON tte.task_id = t.id
+        WHERE 
+          t.project_id = ${projectId} AND
+          tte.report_date BETWEEN ${startDateStr} AND ${endDateStr}
+        GROUP BY date_trunc('day', tte.report_date)::date
       `);
       
-      res.json(result.rows);
+      // Generera alla dagar i intervallet
+      const dates = [];
+      const currentDateIterator = new Date(startDate);
+      while (currentDateIterator <= endDate) {
+        dates.push(new Date(currentDateIterator));
+        currentDateIterator.setDate(currentDateIterator.getDate() + 1);
+      }
+      
+      // Fördela estimerade timmar jämnt över taskens varaktighet
+      const estimatedHoursByDate: Record<string, number> = {};
+      dates.forEach(date => {
+        const dateStr = date.toISOString().split('T')[0];
+        estimatedHoursByDate[dateStr] = 0;
+      });
+      
+      // För varje uppgift, beräkna varaktighet och fördela timmar jämnt
+      projectTasks.forEach(task => {
+        if (!task.estimatedHours) return;
+        
+        let taskStartDate: Date, taskEndDate: Date;
+        
+        // Bestäm start- och slutdatum för uppgiften
+        if (task.startDate && task.endDate) {
+          taskStartDate = new Date(task.startDate);
+          taskEndDate = new Date(task.endDate);
+        } else if (task.startDate && task.dueDate) {
+          taskStartDate = new Date(task.startDate);
+          taskEndDate = new Date(task.dueDate);
+        } else if (task.dueDate) {
+          // Om bara dueDate finns, anta att uppgiften börjar 5 dagar innan
+          taskEndDate = new Date(task.dueDate);
+          taskStartDate = new Date(taskEndDate);
+          taskStartDate.setDate(taskStartDate.getDate() - 5);
+        } else {
+          // Hoppa över uppgifter utan datum
+          return;
+        }
+        
+        // Räkna antal dagar i uppgiftens varaktighet
+        const taskDurationMs = taskEndDate.getTime() - taskStartDate.getTime();
+        const taskDurationDays = Math.max(1, Math.ceil(taskDurationMs / (1000 * 60 * 60 * 24)));
+        
+        // Räkna ut daglig tidsfördelning (timmar per dag)
+        const dailyHours = task.estimatedHours / taskDurationDays;
+        
+        // För varje dag i uppgiftens varaktighet
+        const currentDateIterator = new Date(taskStartDate);
+        while (currentDateIterator <= taskEndDate) {
+          const dateStr = currentDateIterator.toISOString().split('T')[0];
+          
+          // Om dagen är inom vårt datumintervall, lägg till timmar
+          if (dateStr in estimatedHoursByDate) {
+            estimatedHoursByDate[dateStr] += dailyHours;
+          }
+          
+          currentDateIterator.setDate(currentDateIterator.getDate() + 1);
+        }
+      });
+      
+      // Skapa faktisk timdata-hashmap
+      const actualHoursByDate: Record<string, number> = {};
+      actualHours.rows.forEach(row => {
+        if (typeof row.date === 'string' && typeof row.actual_hours === 'string') {
+          actualHoursByDate[row.date] = parseFloat(row.actual_hours);
+        }
+      });
+      
+      // Kombinera data för respons
+      const responseData = dates.map(date => {
+        const dateStr = date.toISOString().split('T')[0];
+        return {
+          date: dateStr,
+          estimatedHours: parseFloat((estimatedHoursByDate[dateStr] || 0).toFixed(2)),
+          actualHours: actualHoursByDate[dateStr] || 0
+        };
+      });
+      
+      res.json(responseData);
     } catch (error) {
       console.error("Error fetching task hours data:", error);
       res.status(500).json({ error: "Failed to fetch task hours data" });
