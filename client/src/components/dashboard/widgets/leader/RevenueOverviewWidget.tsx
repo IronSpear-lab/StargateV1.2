@@ -68,7 +68,6 @@ export function RevenueOverviewWidget({
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [currentOffset, setCurrentOffset] = useState<number>(0);
   const [previewHourlyRate, setPreviewHourlyRate] = useState<number | null>(null);
-  const [previewTotalBudget, setPreviewTotalBudget] = useState<number | null>(null);
   
   // Hämta budget, timpris och intäktsdata
   const { 
@@ -169,19 +168,7 @@ export function RevenueOverviewWidget({
   
   // Formatera data för grafen
   const chartData = useMemo(() => {
-    // Om ingen data finns, returnera minst en datapunkt för att grafen ska visas
-    if (!revenueData?.revenueData || revenueData.revenueData.length === 0) {
-      const days = eachDayOfInterval({ start: activeStartDate, end: activeEndDate });
-      return days.map(day => {
-        return {
-          name: viewMode === 'week' ? format(day, 'EEE', { locale: sv }) : format(day, 'd', { locale: sv }),
-          fullDate: format(day, 'yyyy-MM-dd'),
-          estimatedCost: "0",
-          actualCost: "0",
-          hourlyRate: previewHourlyRate !== null ? previewHourlyRate : (revenueData?.hourlyRate || 0)
-        };
-      });
-    }
+    if (!revenueData?.revenueData) return [];
     
     const days = eachDayOfInterval({ start: activeStartDate, end: activeEndDate });
     
@@ -241,12 +228,8 @@ export function RevenueOverviewWidget({
     const totalActual = chartData.reduce((acc, curr) => acc + parseFloat(curr.actualCost), 0);
     const diff = totalEstimated - totalActual;
     const percentage = totalEstimated ? ((diff / totalEstimated) * 100).toFixed(1) : "0.0";
-    // Använd antingen preview budget eller faktisk budget
-    const effectiveTotalBudget = previewTotalBudget !== null 
-      ? previewTotalBudget 
-      : (revenueData?.totalBudget || 0);
-    
-    const budgetPercentage = effectiveTotalBudget ? ((totalActual / effectiveTotalBudget) * 100).toFixed(1) : "0.0";
+    const totalBudget = revenueData?.totalBudget || 0;
+    const budgetPercentage = totalBudget ? ((totalActual / totalBudget) * 100).toFixed(1) : "0.0";
     
     return {
       totalEstimatedCost: totalEstimated,
@@ -286,33 +269,14 @@ export function RevenueOverviewWidget({
     if (revenueData) {
       form.setValue("totalBudget", revenueData.totalBudget?.toString() || "0");
       form.setValue("hourlyRate", revenueData.hourlyRate?.toString() || "0");
-      // Återställ preview-värden när faktisk data laddas
+      // Återställ preview-värdet när faktisk data laddas
       setPreviewHourlyRate(null);
-      setPreviewTotalBudget(null);
     }
   }, [revenueData, form]);
   
   // Hantera formulärinsändning
   const onSubmit = (data: BudgetFormValues) => {
-    // Konvertera strängvärden till tal för korrekt hantering
-    const hourlyRateValue = parseInt(data.hourlyRate || "0");
-    const totalBudgetValue = parseInt(data.totalBudget || "0");
-    
-    // Uppdatera preview-värdena direkt
-    setPreviewHourlyRate(hourlyRateValue);
-    
-    // Logga för felsökning
-    console.log("Uppdaterar budget:", {
-      hourlyRate: hourlyRateValue,
-      totalBudget: totalBudgetValue,
-      projectId
-    });
-    
-    // Spara budgeten till API med mutation
-    updateBudgetMutation.mutate({
-      hourlyRate: hourlyRateValue.toString(),
-      totalBudget: totalBudgetValue.toString()
-    });
+    updateBudgetMutation.mutate(data);
   };
   
   // Tooltip för grafen
@@ -429,7 +393,7 @@ export function RevenueOverviewWidget({
             <div className="grid grid-cols-2 gap-4 mt-2">
               <div className="border rounded-lg p-3">
                 <div className="text-sm text-muted-foreground">Total Budget</div>
-                <div className="text-lg font-bold">{formatCurrency(previewTotalBudget !== null ? previewTotalBudget : (revenueData?.totalBudget || 0))}</div>
+                <div className="text-lg font-bold">{formatCurrency(revenueData?.totalBudget || 0)}</div>
                 <div className="flex items-center space-x-2 mt-1">
                   <div className="text-xs text-muted-foreground">Timpris:</div>
                   <div className="relative flex-1">
