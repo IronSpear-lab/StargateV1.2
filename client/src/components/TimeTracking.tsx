@@ -181,6 +181,7 @@ export function TimeTracking({
               selectedDate={date || null}
               onSelectDate={(newDate) => setDate(newDate)}
               timeEntries={projectTimeEntries as any[]}
+              tasks={availableTasks as any[]}
               className="mb-4"
             />
             
