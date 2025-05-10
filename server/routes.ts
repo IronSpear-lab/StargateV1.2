@@ -1172,6 +1172,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`Creating task with explicit type: ${taskData.type}`);
       }
       
+      // Validera estimatedHours-fältet
+      if (taskData.estimatedHours !== undefined) {
+        // Konvertera estimatedHours från sträng till nummer om det behövs
+        if (typeof taskData.estimatedHours === 'string') {
+          taskData.estimatedHours = parseFloat(taskData.estimatedHours);
+        }
+        
+        // Logga för att felsöka att estimatedHours faktiskt sparas
+        console.log(`Task created with estimatedHours: ${taskData.estimatedHours}`);
+      } else {
+        console.log("Warning: Task created without estimatedHours");
+      }
+      
       const task = await storage.createTask({
         ...taskData,
         createdById: req.user?.id || taskData.createdById || 1
@@ -1195,6 +1208,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (taskData.dueDate === '') taskData.dueDate = null;
       if (taskData.startDate === '') taskData.startDate = null;
       if (taskData.endDate === '') taskData.endDate = null;
+      
+      // Validera estimatedHours-fältet
+      if (taskData.estimatedHours !== undefined) {
+        // Konvertera estimatedHours från sträng till nummer om det behövs
+        if (typeof taskData.estimatedHours === 'string') {
+          taskData.estimatedHours = parseFloat(taskData.estimatedHours);
+        }
+        
+        // Logga för att felsöka att estimatedHours faktiskt sparas
+        console.log(`Task updated with estimatedHours: ${taskData.estimatedHours}`);
+      }
       
       // Om taskData.type är satt till explicit "" (tom sträng), ersätt med null
       if (taskData.type === '') {

@@ -1091,7 +1091,10 @@ export function GanttChart({ projectId = 1, focusTaskId = null }: { projectId?: 
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="estimatedHours">Uppskattat antal timmar</Label>
+                  <Label htmlFor="estimatedHours" className="flex items-center">
+                    <span className="font-bold text-primary">Uppskattat antal timmar</span>
+                    <span className="ml-1 text-xs text-muted-foreground">(viktig för tidsrapportering)</span>
+                  </Label>
                   <Input
                     id="estimatedHours"
                     name="estimatedHours"
@@ -1100,6 +1103,7 @@ export function GanttChart({ projectId = 1, focusTaskId = null }: { projectId?: 
                     step="0.5"
                     placeholder="Uppskatta antal timmar för uppgiften"
                     defaultValue={editingTask?.estimatedHours?.toString() || ""}
+                    className="border-primary focus:ring-2 focus:ring-primary"
                   />
                 </div>
               </div>
