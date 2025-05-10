@@ -40,7 +40,16 @@ export function MonthCalendarGrid({ className }: MonthCalendarGridProps) {
   const queryClient = useQueryClient();
   
   // Hämta användarens uppgifter från API
-  const { data: tasks = [], isLoading: tasksLoading, error: tasksError } = useQuery<Task[]>({
+  // Notera att field-tasks returnerar ett annat format än Task-typen
+  interface FieldTask {
+    id: string;
+    title: string;
+    location: string; // Detta är projektnamnet
+    status: string;
+    assigneeId: string;
+  }
+  
+  const { data: tasks = [], isLoading: tasksLoading, error: tasksError } = useQuery<FieldTask[]>({
     queryKey: ['/api/field-tasks'],
     staleTime: 60 * 1000,
     onError: (error) => {
@@ -111,9 +120,14 @@ export function MonthCalendarGrid({ className }: MonthCalendarGridProps) {
   const handleTaskSelect = (taskId: string) => {
     setSelectedTask(taskId);
     
-    const selectedTaskObj = tasks.find(t => t.id.toString() === taskId);
+    // Sätt projekt baserat på location som är projektnamnet
+    // Eftersom vi inte har projektId i field-tasks sätter vi ett hårdkodat värde för nu
+    // Detta kan behöva förbättras senare om det krävs korrekt projektId
+    const selectedTaskObj = tasks.find(t => t.id === taskId);
     if (selectedTaskObj) {
-      setSelectedProjectId(selectedTaskObj.projectId);
+      // Sätt ett temporärt projekt-ID (nuvarande aktiva projekt)
+      // Bör hämtas från context eller URL-parametrar i en komplett lösning
+      setSelectedProjectId(1); // Hardcoded for now
     }
   };
   
@@ -219,7 +233,7 @@ export function MonthCalendarGrid({ className }: MonthCalendarGridProps) {
                   <div className="mt-1 space-y-1">
                     {dayEntries.slice(0, 2).map((entry, i) => {
                       // Hitta uppgiftens namn från tasks-arrayen
-                      const task = tasks.find(t => t.id === entry.taskId);
+                      const task = tasks.find(t => parseInt(t.id) === entry.taskId);
                       const taskName = task ? task.title : 'Uppgift';
                       
                       return (
@@ -274,11 +288,15 @@ export function MonthCalendarGrid({ className }: MonthCalendarGridProps) {
                   <SelectValue placeholder="Välj en uppgift" />
                 </SelectTrigger>
                 <SelectContent>
-                  {tasks.map(task => (
-                    <SelectItem key={task.id} value={task.id.toString()}>
-                      {task.title}
-                    </SelectItem>
-                  ))}
+                  {tasks.length > 0 ? (
+                    tasks.map(task => (
+                      <SelectItem key={task.id} value={task.id}>
+                        {task.title} - {task.location}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no_tasks">Inga uppgifter tillgängliga</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
