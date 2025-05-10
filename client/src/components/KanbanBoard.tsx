@@ -122,7 +122,11 @@ const taskFormSchema = z.object({
   dueDate: z.string().optional().transform(val => val === "" ? null : val),
   startDate: z.string().optional().transform(val => val === "" ? null : val),
   endDate: z.string().optional().transform(val => val === "" ? null : val),
-  estimatedHours: z.string().optional().transform(val => val === "" ? null : parseInt(val)),
+  estimatedHours: z.string().optional().transform(val => {
+    if (!val || val === "") return null;
+    const parsed = parseFloat(val);
+    return isNaN(parsed) ? null : parsed;
+  }),
 });
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
