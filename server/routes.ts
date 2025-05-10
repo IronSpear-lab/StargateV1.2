@@ -1337,7 +1337,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Hämta aggregerad tidsdata för projekt (för dashboard-grafer)
-  app.get(`${apiPrefix}/projects/:projectId/task-hours`, async (req, res) => {
+  // Uppdatera projektets budget och timpris
+app.patch(`${apiPrefix}/projects/:projectId/budget`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const projectId = parseInt(req.params.projectId);
+      const { totalBudget, hourlyRate } = req.body;
+      
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project ID" });
+      }
+      
+      // Kontrollera om användaren har behörighet att uppdatera projektet
+      const hasPermission = await storage.hasProjectPermission(
+        req.user!.id,
+        projectId,
+        ['admin', 'project_leader']
+      );
+      
+      if (!hasPermission) {
+        return res.status(403).json({ error: "Insufficient permissions" });
+      }
+      
+      // Uppdatera projektet
+      const updatedProject = await db.update(projects)
+        .set({
+          totalBudget: totalBudget !== undefined ? parseInt(totalBudget) : undefined,
+          hourlyRate: hourlyRate !== undefined ? parseInt(hourlyRate) : undefined
+        })
+        .where(eq(projects.id, projectId))
+        .returning();
+      
+      if (!updatedProject.length) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      res.status(200).json(updatedProject[0]);
+    } catch (error) {
+      console.error("Error updating project budget:", error);
+      res.status(500).json({ error: "Failed to update project budget" });
+    }
+});
+
+// Hämta projektets revenue data baserat på arbetade timmar och timpris
+app.get(`${apiPrefix}/projects/:projectId/revenue`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const projectId = parseInt(req.params.projectId);
+      const viewMode = req.query.viewMode as string || 'week';
+      const offset = parseInt(req.query.offset as string) || 0;
+      
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project ID" });
+      }
+      
+      // Hämta projektet för att få budget och timpris
+      const projectData = await db.query.projects.findFirst({
+        where: eq(projects.id, projectId)
+      });
+      
+      if (!projectData) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const hourlyRate = projectData.hourlyRate || 0;
+      const totalBudget = projectData.totalBudget || 0;
+      
+      // Hämta tidsrapporter från samma API som används i TaskHoursWidget
+      // Detta anropar samma logik för att beräkna tidsperioden
+      const timeEntriesResponse = await fetch(`http://localhost:${process.env.PORT || 5000}/api/projects/${projectId}/task-hours?viewMode=${viewMode}&offset=${offset}`);
+      
+      if (!timeEntriesResponse.ok) {
+        return res.status(500).json({ error: "Failed to fetch time entries" });
+      }
+      
+      const timeData = await timeEntriesResponse.json();
+      
+      // Konvertera timeData till revenue data (timmar × timpris)
+      const revenueData = timeData.map((entry: any) => ({
+        date: entry.date,
+        actualCost: parseFloat(entry.actualHours) * hourlyRate,
+        estimatedCost: parseFloat(entry.estimatedHours) * hourlyRate,
+        fullDate: entry.date
+      }));
+      
+      // Lägg till budget och timpris i responsen
+      const response = {
+        revenueData,
+        hourlyRate,
+        totalBudget
+      };
+      
+      res.status(200).json(response);
+    } catch (error) {
+      console.error("Error fetching project revenue data:", error);
+      res.status(500).json({ error: "Failed to fetch project revenue data" });
+    }
+});
+
+app.get(`${apiPrefix}/projects/:projectId/task-hours`, async (req, res) => {
     try {
       // Temporärt inaktiverad autentisering för testning
       // if (!req.isAuthenticated()) {
