@@ -1424,7 +1424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Bestäm start- och slutdatum för uppgiften baserat på uppgiftstyp
         if (task.startDate && task.endDate) {
-          // Om båda finns, använd dem
+          // Om båda finns, använd dem (vanligt för Gantt-uppgifter)
           taskStartDate = new Date(task.startDate);
           taskEndDate = new Date(task.endDate);
         } else if (task.startDate && task.dueDate) {
@@ -1432,23 +1432,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           taskStartDate = new Date(task.startDate);
           taskEndDate = new Date(task.dueDate);
         } else if (task.dueDate) {
-          // Om bara dueDate finns
+          // Om bara dueDate finns (vanligt för Kanban-uppgifter)
           taskEndDate = new Date(task.dueDate);
           
           // För Kanban-uppgifter, anta en 7-dagars period
           if (task.type === 'kanban') {
             taskStartDate = new Date(taskEndDate);
             taskStartDate.setDate(taskStartDate.getDate() - 7);
+          } else if (task.type === 'gantt') {
+            // För Gantt-uppgifter utan startdatum, anta en 10-dagars period före slutdatum
+            // eftersom Gantt-uppgifter vanligtvis har längre varaktighet
+            taskStartDate = new Date(taskEndDate);
+            taskStartDate.setDate(taskStartDate.getDate() - 10);
           } else {
             // För andra uppgiftstyper, anta en 5-dagars period
             taskStartDate = new Date(taskEndDate);
             taskStartDate.setDate(taskStartDate.getDate() - 5);
           }
         } else {
-          // Om inga datum finns alls, använd createdAt som startdatum och en vecka framåt som slutdatum
+          // Om inga datum finns alls, använd createdAt som startdatum
           taskStartDate = new Date(task.createdAt);
-          taskEndDate = new Date(taskStartDate);
-          taskEndDate.setDate(taskEndDate.getDate() + 7);
+          
+          // Beroende på uppgiftstyp, bestäm varaktighet
+          if (task.type === 'gantt') {
+            // För Gantt-uppgifter, anta en 2-veckors period
+            taskEndDate = new Date(taskStartDate);
+            taskEndDate.setDate(taskEndDate.getDate() + 14);
+          } else {
+            // För Kanban och andra uppgifter, anta en vecka
+            taskEndDate = new Date(taskStartDate);
+            taskEndDate.setDate(taskEndDate.getDate() + 7);
+          }
           
           // Om slutdatumet är i framtiden, använd dagens datum istället
           if (taskEndDate > today) {
