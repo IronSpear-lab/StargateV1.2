@@ -1383,6 +1383,56 @@ app.patch(`${apiPrefix}/projects/:projectId/budget`, async (req, res) => {
 });
 
 // Hämta projektets revenue data baserat på arbetade timmar och timpris
+// PATCH endpoint för att uppdatera budget och timpris för ett projekt
+app.patch(`${apiPrefix}/projects/:projectId/budget`, async (req, res) => {
+  try {
+    // Verifiera användarautentisering
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    const projectId = parseInt(req.params.projectId);
+    
+    if (isNaN(projectId)) {
+      return res.status(400).json({ error: "Invalid project ID" });
+    }
+    
+    // Kontrollera användarens behörighet (endast projektledare och admin kan ändra budget)
+    const hasAccess = await storage.hasProjectPermission(req.user!.id, projectId);
+    if ((!hasAccess || req.user!.role !== 'project_leader') && req.user!.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied to modify project budget" });
+    }
+    
+    // Hämta data från request body
+    const { totalBudget, hourlyRate } = req.body;
+    
+    // Validera indata
+    if ((totalBudget !== undefined && (isNaN(totalBudget) || totalBudget < 0)) || 
+        (hourlyRate !== undefined && (isNaN(hourlyRate) || hourlyRate < 0))) {
+      return res.status(400).json({ error: "Invalid budget or hourly rate values" });
+    }
+    
+    // Uppdatera projektet i databasen
+    const updatedProject = await db.update(projects)
+      .set({
+        totalBudget: totalBudget === undefined ? undefined : totalBudget,
+        hourlyRate: hourlyRate === undefined ? undefined : hourlyRate
+      })
+      .where(eq(projects.id, projectId))
+      .returning();
+    
+    if (!updatedProject || updatedProject.length === 0) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+    
+    // Returnera det uppdaterade projektet
+    res.status(200).json(updatedProject[0]);
+  } catch (error) {
+    console.error("Error updating project budget:", error);
+    res.status(500).json({ error: "Failed to update project budget" });
+  }
+});
+
 app.get(`${apiPrefix}/projects/:projectId/revenue`, async (req, res) => {
     try {
       // Verifiera användarautentisering
@@ -1442,8 +1492,8 @@ app.get(`${apiPrefix}/projects/:projectId/revenue`, async (req, res) => {
       .where(
         and(
           eq(taskTimeEntries.projectId, projectId),
-          gte(taskTimeEntries.reportDate, startDate.toISOString().split('T')[0]),
-          lte(taskTimeEntries.reportDate, endDate.toISOString().split('T')[0])
+          sql`${taskTimeEntries.reportDate} >= ${startDate.toISOString().split('T')[0]}`,
+          sql`${taskTimeEntries.reportDate} <= ${endDate.toISOString().split('T')[0]}`
         )
       );
       
