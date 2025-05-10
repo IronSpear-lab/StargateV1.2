@@ -463,6 +463,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         todayRevenue += entry.hours * hourlyRate;
       }
       
+      // Logga tidsrapporterna för felsökning
+      console.log('Time entries:', timeEntries.map(entry => ({
+        reportDate: entry.reportDate,
+        hours: entry.hours,
+        formattedDate: new Date(entry.reportDate).toISOString().split('T')[0]
+      })));
+      
       // Gruppera timmar per dag
       const dailyHours: Record<string, { actual: number }> = {};
       const days: string[] = [];
