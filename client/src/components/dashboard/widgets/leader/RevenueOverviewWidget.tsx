@@ -3,17 +3,16 @@ import { Button } from "@/components/ui/button";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { 
   format, startOfWeek, endOfWeek, subWeeks, addWeeks, 
-  startOfMonth, endOfMonth, subMonths, addMonths, 
-  eachDayOfInterval
+  startOfMonth, endOfMonth, subMonths, addMonths
 } from "date-fns";
 import { sv } from "date-fns/locale";
 import { 
-  Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, 
+  Line, ResponsiveContainer, Tooltip, XAxis, YAxis, 
   CartesianGrid, Area, ComposedChart
 } from "recharts";
 import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Widget, WidthType, HeightType } from "../../Widget";
+import { WidthType, HeightType } from "../../Widget";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -49,18 +48,10 @@ interface ProjectBudgetData {
   hourlyRate?: number | null;
 }
 
-// Tidsperiodtyper och navigeringslogik
 type ViewMode = 'week' | 'month';
 
 export function RevenueOverviewWidget({ 
-  id = 'revenue-overview', 
-  projectId, 
-  type = 'revenue-overview', 
-  title = 'INTÄKTSÖVERSIKT', 
-  onRemove,
-  className,
-  width,
-  height
+  projectId
 }: RevenueWidgetProps) {
   // Tidsperiod inställningar
   const [viewMode, setViewMode] = useState<ViewMode>('week');
@@ -227,9 +218,6 @@ export function RevenueOverviewWidget({
     return apiResponse.dailyData;
   }, [apiResponse]);
   
-  // Beräkna viktiga mätvärden
-  const todayRevenue = apiResponse?.todayRevenue || 0;
-  
   // Beräkna veckototaler och jämförelser
   const { currentWeekTotal, previousWeekTotal, percentChange } = useMemo(() => {
     let currentWeekTotal = 0;
@@ -261,47 +249,57 @@ export function RevenueOverviewWidget({
     const maxValue = Math.max(...allValues, 100); // Säkerställ minst 100 för att undvika 0
     return Math.ceil(maxValue * 1.2); // Lägg till 20% extra för bättre layout
   }, [data]);
-  
-  // Huvudsakligt innehåll för widgeten
-  const renderContent = () => (
-    <div className="space-y-4">
-      <div className="flex flex-col space-y-3">
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
         <div className="text-2xl font-bold">
           {isLoading ? "..." : formatCurrency(currentWeekTotal)}
         </div>
-        <p className="text-xs text-muted-foreground">
-          {hourlyRate 
-            ? `Aktuellt timpris: ${formatCurrency(hourlyRate)}/tim`
-            : 'Inget timpris inställt. Klicka på "Inställningar" för att lägga till.'
-          }
-          {totalBudget 
-            ? ` • Total budget: ${formatCurrency(totalBudget)}`
-            : ''
-          }
-        </p>
-        <div className="flex items-baseline space-x-2">
-          <div className="flex items-center">
-            <div className={cn(
-              "mr-1 text-sm font-medium",
-              percentChange < 0 ? "text-destructive" : "text-emerald-500"
-            )}>
-              {percentChange >= 0 ? "+" : ""}{formatCurrency(currentWeekTotal - previousWeekTotal)}
-            </div>
-            <span className={cn(
-              "text-xs",
-              percentChange < 0 ? "text-destructive" : "text-emerald-500"
-            )}>
-              ({percentChange >= 0 ? "+" : ""}{percentChange.toFixed(1)}%)
-            </span>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="ml-auto h-8 gap-1"
+          onClick={() => setIsBudgetDialogOpen(true)}
+        >
+          <Settings className="h-4 w-4" />
+          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Inställningar</span>
+        </Button>
+      </div>
+
+      <p className="text-xs text-muted-foreground mb-2">
+        {hourlyRate 
+          ? `Aktuellt timpris: ${formatCurrency(hourlyRate)}/tim`
+          : 'Inget timpris inställt. Klicka på "Inställningar" för att lägga till.'
+        }
+        {totalBudget 
+          ? ` • Total budget: ${formatCurrency(totalBudget)}`
+          : ''
+        }
+      </p>
+      
+      <div className="flex items-baseline space-x-2 mb-4">
+        <div className="flex items-center">
+          <div className={cn(
+            "mr-1 text-sm font-medium",
+            percentChange < 0 ? "text-destructive" : "text-emerald-500"
+          )}>
+            {percentChange >= 0 ? "+" : ""}{formatCurrency(currentWeekTotal - previousWeekTotal)}
           </div>
-          <div className="text-xs text-muted-foreground">
-            jämfört med föregående period
-          </div>
+          <span className={cn(
+            "text-xs",
+            percentChange < 0 ? "text-destructive" : "text-emerald-500"
+          )}>
+            ({percentChange >= 0 ? "+" : ""}{percentChange.toFixed(1)}%)
+          </span>
+        </div>
+        <div className="text-xs text-muted-foreground">
+          jämfört med föregående period
         </div>
       </div>
 
       {/* Navigeringskontroller */}
-      <div className="space-y-2">
+      <div className="space-y-2 mb-4">
         <div className="flex items-center justify-between">
           <ToggleGroup type="single" value={viewMode} onValueChange={(value) => {
             if (value) {
@@ -428,31 +426,6 @@ export function RevenueOverviewWidget({
           </ResponsiveContainer>
         )}
       </div>
-    </div>
-  );
-
-  return (
-    <Widget 
-      id={id}
-      title={title}
-      type={type}
-      onRemove={onRemove} 
-      className={className}
-      width={width}
-      height={height}
-      titleButton={
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="ml-auto h-8 gap-1"
-          onClick={() => setIsBudgetDialogOpen(true)}
-        >
-          <Settings className="h-4 w-4" />
-          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Inställningar</span>
-        </Button>
-      }
-    >
-      {renderContent()}
 
       <Dialog open={isBudgetDialogOpen} onOpenChange={setIsBudgetDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
@@ -491,16 +464,12 @@ export function RevenueOverviewWidget({
             </div>
           </div>
           <DialogFooter>
-            <Button 
-              type="submit" 
-              onClick={handleSubmitBudgetSettings}
-              disabled={updateBudgetMutation.isPending}
-            >
+            <Button type="submit" onClick={handleSubmitBudgetSettings} disabled={updateBudgetMutation.isPending}>
               {updateBudgetMutation.isPending ? 'Sparar...' : 'Spara ändringar'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Widget>
+    </div>
   );
 }
