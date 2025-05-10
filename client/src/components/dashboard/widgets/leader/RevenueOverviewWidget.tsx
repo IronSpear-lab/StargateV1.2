@@ -67,7 +67,6 @@ export function RevenueOverviewWidget({
 }: RevenueOverviewWidgetProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [currentOffset, setCurrentOffset] = useState<number>(0);
-  // State för att spara temporärt timpris för direkt preview av kostnad
   const [previewHourlyRate, setPreviewHourlyRate] = useState<number | null>(null);
   
   // Hämta budget, timpris och intäktsdata
@@ -273,7 +272,7 @@ export function RevenueOverviewWidget({
       // Återställ preview-värdet när faktisk data laddas
       setPreviewHourlyRate(null);
     }
-  }, [revenueData, form, setPreviewHourlyRate]);
+  }, [revenueData, form]);
   
   // Hantera formulärinsändning
   const onSubmit = (data: BudgetFormValues) => {
