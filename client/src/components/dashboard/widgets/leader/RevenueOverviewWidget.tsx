@@ -35,6 +35,11 @@ interface RevenueData {
   budget?: number;
 }
 
+interface RevenueApiResponse {
+  dailyData: RevenueData[];
+  todayRevenue: number;
+}
+
 interface ProjectBudgetData {
   totalBudget?: number | null;
   hourlyRate?: number | null;
@@ -153,10 +158,10 @@ export function RevenueOverviewWidget({ projectId }: { projectId: number }) {
   }, [viewMode, currentOffset]);
   
   // Fetch data for estimated hours vs actual hours per day
-  const { data: revenueData } = useQuery<RevenueData[]>({
+  const { data: apiResponse } = useQuery<RevenueApiResponse>({
     queryKey: ['/api/projects', projectId, 'revenue', viewMode, currentOffset, hourlyRate],
     enabled: !!projectId && !!hourlyRate,
-    placeholderData: [],
+    placeholderData: { dailyData: [], todayRevenue: 0 },
     queryFn: async ({ queryKey }) => {
       const response = await fetch(
         `/api/projects/${projectId}/revenue?viewMode=${viewMode}&offset=${currentOffset}&hourlyRate=${hourlyRate || 0}`
@@ -172,8 +177,10 @@ export function RevenueOverviewWidget({ projectId }: { projectId: number }) {
   
   useEffect(() => {
     // If we have real API data, use it, otherwise fallback to mock data
-    if (revenueData && revenueData.length > 0) {
+    if (apiResponse && apiResponse.dailyData && apiResponse.dailyData.length > 0) {
+      const revenueData = apiResponse.dailyData;
       setData(revenueData);
+      setTodayRevenue(apiResponse.todayRevenue || 0);
       
       // Calculate totals
       const currentTotal = revenueData.reduce((sum, item) => sum + item.current, 0);
@@ -187,32 +194,14 @@ export function RevenueOverviewWidget({ projectId }: { projectId: number }) {
       setPercentChange(change);
       setIsLoading(false);
     } else {
-      // Fallback mock data until API is ready
-      const mockData: RevenueData[] = [
-        { day: 'Mon', current: 9000, previous: 5000 },
-        { day: 'Tue', current: 18000, previous: 12000 },
-        { day: 'Wed', current: 9000, previous: 16000 },
-        { day: 'Thu', current: 27000, previous: 14000 },
-        { day: 'Fri', current: 18000, previous: 22000 },
-        { day: 'Sat', current: 36000, previous: 28000 },
-        { day: 'Sun', current: 27000, previous: 22000 },
-      ];
-
-      setData(mockData);
-      
-      // Calculate totals
-      const currentTotal = mockData.reduce((sum, item) => sum + item.current, 0);
-      const previousTotal = mockData.reduce((sum, item) => sum + item.previous, 0);
-      
-      setCurrentWeekTotal(currentTotal);
-      setPreviousWeekTotal(previousTotal);
-      
-      // Calculate percent change
-      const change = ((currentTotal - previousTotal) / previousTotal) * 100;
-      setPercentChange(change);
+      // No data available
+      setData([]);
+      setCurrentWeekTotal(0);
+      setPreviousWeekTotal(0);
+      setPercentChange(0);
       setIsLoading(false);
     }
-  }, [revenueData]);
+  }, [apiResponse]);
   
   // Handle budget setting submission
   const handleSubmitBudgetSettings = () => {
@@ -250,7 +239,7 @@ export function RevenueOverviewWidget({ projectId }: { projectId: number }) {
         <div className="p-4">
           <div className="flex justify-between items-start mb-3">
             <div>
-              <h3 className="text-xl font-semibold text-foreground dark:text-foreground">Dagens Intäkter: {formatCurrency(2562.30)}</h3>
+              <h3 className="text-xl font-semibold text-foreground dark:text-foreground">Dagens Intäkter: {formatCurrency(todayRevenue)}</h3>
               <p className="text-sm text-foreground/70 dark:text-foreground/70 mt-1 max-w-[300px]">
                 {hourlyRate 
                   ? `Aktuellt timpris: ${formatCurrency(hourlyRate)}/tim`
