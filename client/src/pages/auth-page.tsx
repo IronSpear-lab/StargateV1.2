@@ -218,39 +218,46 @@ export default function AuthPage() {
         </Card>
       </div>
       
-      <div className="hidden md:flex flex-col justify-center p-12 bg-primary-600 text-white">
-        <div className="max-w-md">
-          <h1 className="text-4xl font-bold mb-4">Project Management Platform</h1>
-          <p className="text-lg mb-6">A comprehensive solution for file management, task tracking, and team collaboration.</p>
-          
-          <div className="space-y-4">
-            <div className="flex items-start gap-2">
-              <svg className="w-6 h-6 text-primary-200 mt-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <div>
-                <h3 className="font-semibold text-white">File Management</h3>
-                <p className="text-primary-100">Tree-view file system with PDF annotation capabilities</p>
-              </div>
-            </div>
+      <div className="hidden md:block relative h-full w-full">
+        <img 
+          src="/Stadshusljus.webp" 
+          alt="Stockholm stadshus" 
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-black bg-opacity-30 flex flex-col justify-center p-12 text-white">
+          <div className="max-w-md">
+            <h1 className="text-4xl font-bold mb-4">Project Management Platform</h1>
+            <p className="text-lg mb-6">A comprehensive solution for file management, task tracking, and team collaboration.</p>
             
-            <div className="flex items-start gap-2">
-              <svg className="w-6 h-6 text-primary-200 mt-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <div>
-                <h3 className="font-semibold text-white">Task Management</h3>
-                <p className="text-primary-100">Kanban boards and Gantt charts for effective project planning</p>
+            <div className="space-y-4">
+              <div className="flex items-start gap-2">
+                <svg className="w-6 h-6 text-primary-200 mt-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <div>
+                  <h3 className="font-semibold text-white">File Management</h3>
+                  <p className="text-primary-100">Tree-view file system with PDF annotation capabilities</p>
+                </div>
               </div>
-            </div>
-            
-            <div className="flex items-start gap-2">
-              <svg className="w-6 h-6 text-primary-200 mt-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <div>
-                <h3 className="font-semibold text-white">Collaboration</h3>
-                <p className="text-primary-100">Wiki module, commenting system, and role-based permissions</p>
+              
+              <div className="flex items-start gap-2">
+                <svg className="w-6 h-6 text-primary-200 mt-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <div>
+                  <h3 className="font-semibold text-white">Task Management</h3>
+                  <p className="text-primary-100">Kanban boards and Gantt charts for effective project planning</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-2">
+                <svg className="w-6 h-6 text-primary-200 mt-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <div>
+                  <h3 className="font-semibold text-white">Collaboration</h3>
+                  <p className="text-primary-100">Wiki module, commenting system, and role-based permissions</p>
+                </div>
               </div>
             </div>
           </div>
