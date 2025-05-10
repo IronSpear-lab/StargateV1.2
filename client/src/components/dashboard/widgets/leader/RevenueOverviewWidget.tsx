@@ -3,14 +3,14 @@ import { Button } from "@/components/ui/button";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { 
   format, startOfWeek, endOfWeek, subWeeks, addWeeks, 
-  startOfMonth, endOfMonth, subMonths, addMonths
+  startOfMonth, endOfMonth, subMonths, addMonths, parseISO
 } from "date-fns";
 import { sv } from "date-fns/locale";
 import { 
   Line, ResponsiveContainer, Tooltip, XAxis, YAxis, 
   CartesianGrid, Area, ComposedChart
 } from "recharts";
-import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings, Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WidthType, HeightType } from "../../Widget";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -18,6 +18,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { queryClient } from "@/lib/queryClient";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 interface RevenueWidgetProps {
   id?: string;
@@ -41,11 +43,18 @@ interface RevenueData {
 interface RevenueApiResponse {
   dailyData: RevenueData[];
   todayRevenue: number;
+  project?: {
+    totalBudget: number;
+    startDate: string | null;
+    endDate: string | null;
+  };
 }
 
 interface ProjectBudgetData {
   totalBudget?: number | null;
   hourlyRate?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
 }
 
 type ViewMode = 'week' | 'month';
@@ -61,6 +70,8 @@ export function RevenueOverviewWidget({
   const [isBudgetDialogOpen, setIsBudgetDialogOpen] = useState(false);
   const [hourlyRate, setHourlyRate] = useState<number | undefined>();
   const [totalBudget, setTotalBudget] = useState<number | undefined>();
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
   
   // Hämta budgetinställningar för projektet
   const { data: budgetData } = useQuery<ProjectBudgetData>({
@@ -72,6 +83,8 @@ export function RevenueOverviewWidget({
     if (budgetData) {
       setHourlyRate(budgetData.hourlyRate || undefined);
       setTotalBudget(budgetData.totalBudget || undefined);
+      setStartDate(budgetData.startDate ? new Date(budgetData.startDate) : undefined);
+      setEndDate(budgetData.endDate ? new Date(budgetData.endDate) : undefined);
     }
   }, [budgetData]);
   
@@ -100,11 +113,19 @@ export function RevenueOverviewWidget({
     }
   });
   
+  // Formatera datum för API-anrop
+  const formatDateForAPI = (date?: Date): string | null => {
+    if (!date) return null;
+    return date.toISOString().split('T')[0];
+  };
+  
   // Hantera budget formulär submission
   const handleSubmitBudgetSettings = () => {
     updateBudgetMutation.mutate({
       hourlyRate: hourlyRate ?? null,
       totalBudget: totalBudget ?? null,
+      startDate: formatDateForAPI(startDate),
+      endDate: formatDateForAPI(endDate)
     });
   };
   
@@ -462,6 +483,77 @@ export function RevenueOverviewWidget({
                 className="col-span-3"
               />
             </div>
+            
+            {/* Startdatum */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Startdatum</Label>
+              <div className="col-span-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, 'yyyy-MM-dd') : "Välj startdatum"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            
+            {/* Slutdatum */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Slutdatum</Label>
+              <div className="col-span-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !endDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, 'yyyy-MM-dd') : "Välj slutdatum"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      initialFocus
+                      disabled={(date) => startDate ? date < startDate : false}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            
+            {startDate && endDate && (
+              <div className="text-xs text-muted-foreground text-center">
+                <p>Projektperiod: {format(startDate, 'yyyy-MM-dd')} — {format(endDate, 'yyyy-MM-dd')}</p>
+                <p>Antal dagar: {Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1}</p>
+                {totalBudget && (
+                  <p>
+                    Daglig budget: {formatCurrency(totalBudget / (Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1))}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button type="submit" onClick={handleSubmitBudgetSettings} disabled={updateBudgetMutation.isPending}>
