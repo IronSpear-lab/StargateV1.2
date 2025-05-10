@@ -98,6 +98,7 @@ interface KanbanTask {
   borderColor: string;
   startDate: string | null;
   endDate: string | null;
+  estimatedHours: number | null;
   projectId: number;
   createdAt: string;
 }
@@ -1106,6 +1107,27 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
                   )}
                 />
               </div>
+              
+              <FormField
+                control={taskForm.control}
+                name="estimatedHours"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Uppskattat antal timmar</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min="0"
+                        step="0.5"
+                        placeholder="Uppskatta antal timmar för uppgiften" 
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
               <DialogFooter className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

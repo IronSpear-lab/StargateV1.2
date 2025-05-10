@@ -53,6 +53,7 @@ interface GanttTask {
   assigneeName?: string;
   type?: string;
   priority?: string;
+  estimatedHours?: number | null;
   dependencies?: number[] | null;
   dependents?: number[] | null;
   color: string;
@@ -72,6 +73,7 @@ interface TaskFormValues {
   assigneeId: string;
   priority: string;
   type: string;
+  estimatedHours: string;
   dependencies: string[];
 }
 
