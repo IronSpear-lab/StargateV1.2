@@ -77,12 +77,7 @@ export function RevenueOverviewWidget({
     queryKey: ['/api/projects', projectId, 'revenue', viewMode, currentOffset],
     enabled: !!projectId,
     
-    // Standardvärden om API inte svarar
-    placeholderData: {
-      revenueData: [],
-      hourlyRate: 0,
-      totalBudget: 0
-    },
+    // Inga placeholderData, vi vill att laddningsstatus visas korrekt
     
     queryFn: async ({ queryKey }) => {
       const response = await fetch(`/api/projects/${projectId}/revenue?viewMode=${viewMode}&offset=${currentOffset}`);
