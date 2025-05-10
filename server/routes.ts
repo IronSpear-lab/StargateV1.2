@@ -440,6 +440,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hämta tiden för enbart dagens datum för beräkning av daglig intäkt
       const todayStr = new Date().toISOString().split('T')[0];
       
+      console.log('Söker tidsrapporter för projektId:', projectId);
+      console.log('Datumintervall:', startDateStr, 'till', endDateStr);
+      
       // Konvertera datum till ISO-format för att säkerställa korrekt jämförelse
       const timeEntries = await db.query.taskTimeEntries.findMany({
         where: and(
