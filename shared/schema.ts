@@ -31,6 +31,8 @@ export const projects = pgTable("projects", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   totalBudget: integer("total_budget"), // Total budget for the project
   hourlyRate: integer("hourly_rate"), // Hourly rate for the project
+  startDate: date("start_date"), // Project start date for budget calculations
+  endDate: date("end_date"), // Project end date for budget calculations
 });
 
 // User to Projects many-to-many relationship with roles
