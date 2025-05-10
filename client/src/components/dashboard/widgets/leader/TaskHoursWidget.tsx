@@ -1,15 +1,14 @@
 import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { 
   format, startOfWeek, endOfWeek, subWeeks, addWeeks, 
   startOfMonth, endOfMonth, subMonths, addMonths, 
-  eachDayOfInterval, isSameDay
+  eachDayOfInterval
 } from "date-fns";
 import { sv } from "date-fns/locale";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { ChevronLeft, ChevronRight, CircleHelp } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Widget, WidthType, HeightType } from "../../Widget";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -86,11 +85,11 @@ export function TaskHoursWidget({
     if (currentOffset < 0) {
       // Tidigare månader
       activeStartDate = subMonths(baseStart, Math.abs(currentOffset));
-      activeEndDate = endOfMonth(subMonths(baseEnd, Math.abs(currentOffset)));
+      activeEndDate = endOfMonth(activeStartDate);
     } else if (currentOffset > 0) {
       // Kommande månader
       activeStartDate = addMonths(baseStart, currentOffset);
-      activeEndDate = endOfMonth(addMonths(baseEnd, currentOffset));
+      activeEndDate = endOfMonth(activeStartDate);
     } else {
       // Nuvarande månad
       activeStartDate = baseStart;
@@ -135,34 +134,9 @@ export function TaskHoursWidget({
   };
 
   // Navigera mellan tidsperioder
-  const navigatePrevious = () => setCurrentOffset(currentOffset - 1);
-  const navigateNext = () => setCurrentOffset(currentOffset + 1);
+  const navigatePrevious = () => setCurrentOffset(prev => prev - 1);
+  const navigateNext = () => setCurrentOffset(prev => prev + 1);
   const navigateToday = () => setCurrentOffset(0);
-
-  // Navigeringskontroller
-  const renderControls = () => (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as ViewMode)}>
-          <ToggleGroupItem value="week">Vecka</ToggleGroupItem>
-          <ToggleGroupItem value="month">Månad</ToggleGroupItem>
-        </ToggleGroup>
-        
-        <div className="flex items-center space-x-1">
-          <Button variant="outline" size="icon" onClick={navigatePrevious} title="Föregående period">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={navigateToday}>
-            Idag
-          </Button>
-          <Button variant="outline" size="icon" onClick={navigateNext} title="Nästa period">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-      <div className="text-center text-sm font-medium">{getFormattedPeriod()}</div>
-    </div>
-  );
 
   // Huvudsakligt innehåll för widgeten
   const renderContent = () => (
@@ -195,7 +169,33 @@ export function TaskHoursWidget({
         </div>
       </div>
 
-      {renderControls()}
+      {/* Navigeringskontroller */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <ToggleGroup type="single" value={viewMode} onValueChange={(value) => {
+            if (value) {
+              setViewMode(value as ViewMode);
+              setCurrentOffset(0); // Återställ offset när vytyp ändras
+            }
+          }}>
+            <ToggleGroupItem value="week">Vecka</ToggleGroupItem>
+            <ToggleGroupItem value="month">Månad</ToggleGroupItem>
+          </ToggleGroup>
+          
+          <div className="flex items-center space-x-1">
+            <Button variant="outline" size="icon" onClick={navigatePrevious} title="Föregående period">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={navigateToday}>
+              Idag
+            </Button>
+            <Button variant="outline" size="icon" onClick={navigateNext} title="Nästa period">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        <div className="text-center text-sm font-medium">{getFormattedPeriod()}</div>
+      </div>
 
       <div className="h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
@@ -287,7 +287,7 @@ export function TaskHoursWidget({
         id={id}
         title={title}
         type={type}
-        onRemove={onRemove || (() => {})}
+        onRemove={onRemove}
         className={className}
         width="half"
         height="medium"
