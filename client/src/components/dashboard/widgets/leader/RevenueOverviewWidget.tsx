@@ -177,10 +177,10 @@ export function RevenueOverviewWidget({
   
   // Fetch data for estimated revenue vs actual revenue per day
   const { data: apiResponse, isLoading } = useQuery<RevenueApiResponse>({
-    queryKey: ['/api/projects', projectId, 'revenue', viewMode, currentOffset, hourlyRate],
+    queryKey: ['/api/projects', projectId, 'revenue', viewMode, currentOffset],
     enabled: !!projectId,
     queryFn: () => fetch(
-      `/api/projects/${projectId}/revenue?viewMode=${viewMode}&offset=${currentOffset}&hourlyRate=${hourlyRate || 10}`
+      `/api/projects/${projectId}/revenue?viewMode=${viewMode}&offset=${currentOffset}`
     ).then(res => res.json())
   });
   
