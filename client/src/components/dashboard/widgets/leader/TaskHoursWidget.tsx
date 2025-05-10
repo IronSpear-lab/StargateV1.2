@@ -310,6 +310,8 @@ export function TaskHoursWidget({
               axisLine={false}
               tickFormatter={(value) => `${value}`}
               tick={{ fontSize: 12 }}
+              domain={[0, 'auto']}
+              allowDecimals={false}
             />
             <Tooltip content={<CustomTooltip />} />
             <Area 
@@ -332,18 +334,18 @@ export function TaskHoursWidget({
               type="monotone"
               dataKey="estimatedHours"
               stroke="#8884d8"
-              strokeWidth={3}
-              dot={{ r: 3 }}
-              activeDot={{ r: 6 }}
+              strokeWidth={2}
+              dot={{ r: 2, strokeWidth: 1 }}
+              activeDot={{ r: 5 }}
               name="Uppskattade timmar"
             />
             <Line
               type="monotone"
               dataKey="actualHours"
               stroke="#4ade80"
-              strokeWidth={3}
-              dot={{ r: 3 }}
-              activeDot={{ r: 6 }}
+              strokeWidth={2}
+              dot={{ r: 2, strokeWidth: 1 }}
+              activeDot={{ r: 5 }}
               name="Faktiska timmar"
             />
           </ComposedChart>
