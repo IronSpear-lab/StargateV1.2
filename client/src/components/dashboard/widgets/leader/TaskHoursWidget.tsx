@@ -51,10 +51,20 @@ export function TaskHoursWidget({
   const [currentOffset, setCurrentOffset] = useState<number>(0);
   
   // Hämta data för uppskattade timmar vs faktiska timmar per dag
-  const { data: taskHoursData, isLoading } = useQuery<TaskHoursDataPoint[]>({
+  const { data: taskHoursData, isLoading, error } = useQuery<TaskHoursDataPoint[]>({
     queryKey: ['/api/projects', projectId, 'task-hours', viewMode, currentOffset],
-    enabled: !!projectId
+    enabled: !!projectId,
+    
+    // Lägg till en stabil tom datastruktur om API-anropet misslyckas
+    placeholderData: []
   });
+  
+  // För debugging - logga eventuella laddningsfel
+  React.useEffect(() => {
+    if (error) {
+      console.error("Fel vid laddning av uppgiftstimmar:", error);
+    }
+  }, [error]);
 
   // Beräkna tidsintervall baserat på aktuell vy och offset
   const { activeStartDate, activeEndDate } = useMemo(() => {
