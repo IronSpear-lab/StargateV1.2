@@ -1082,7 +1082,8 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
           startDate: newTask.startDate,
           endDate: endDate,
           parentId: null, // Kan läggas till senare för hierarkistöd
-          assigneeId: newTask.assigneeId
+          assigneeId: newTask.assigneeId,
+          estimatedHours: newTask.estimatedHours
         };
         
         // Anropa uppdateringsmutation
@@ -1122,7 +1123,8 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
           endDate: endDate!,
           duration,
           assigneeId: newTask.assigneeId,
-          assigneeName: newTask.assigneeName
+          assigneeName: newTask.assigneeName,
+          estimatedHours: newTask.estimatedHours
         };
         
         setTasks(prev => [...prev, newTaskItem]);
@@ -1138,7 +1140,8 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
           startDate: newTask.startDate,
           endDate: endDate,
           parentId: null,
-          assigneeId: newTask.assigneeId
+          assigneeId: newTask.assigneeId,
+          estimatedHours: newTask.estimatedHours
         };
         
         // Skapa uppgiften via API
