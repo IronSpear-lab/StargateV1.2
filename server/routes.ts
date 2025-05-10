@@ -425,6 +425,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
       
+      // Hämta tiden för enbart dagens datum för beräkning av daglig intäkt
+      const todayStr = new Date().toISOString().split('T')[0];
+      
       const timeEntries = await db.query.taskTimeEntries.findMany({
         where: and(
           eq(taskTimeEntries.projectId, projectId),
@@ -432,6 +435,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sql`${taskTimeEntries.reportDate} <= ${endDateStr}`
         )
       });
+      
+      // Hämta tidsrapporter för dagens datum
+      const todayEntries = await db.query.taskTimeEntries.findMany({
+        where: and(
+          eq(taskTimeEntries.projectId, projectId),
+          sql`${taskTimeEntries.reportDate} = ${todayStr}`
+        )
+      });
+      
+      // Beräkna dagens intäkt (timmar × timpris)
+      let todayRevenue = 0;
+      for (const entry of todayEntries) {
+        todayRevenue += entry.hours * hourlyRate;
+      }
       
       // Gruppera timmar per dag
       const dailyHours: Record<string, { actual: number }> = {};
