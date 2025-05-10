@@ -249,6 +249,7 @@ export function GanttChart({ projectId = 1, focusTaskId = null }: { projectId?: 
           assigneeId: task.assigneeId,
           type: task.type,
           priority: task.priority,
+          estimatedHours: task.estimatedHours,
           dependencies: task.dependencies || [],
           dependents: task.dependents || [],
           color,
@@ -1079,6 +1080,19 @@ export function GanttChart({ projectId = 1, focusTaskId = null }: { projectId?: 
                       <SelectItem value="setup">Setup</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="estimatedHours">Uppskattat antal timmar</Label>
+                  <Input
+                    id="estimatedHours"
+                    name="estimatedHours"
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    placeholder="Uppskatta antal timmar för uppgiften"
+                    defaultValue={editingTask?.estimatedHours?.toString() || ""}
+                  />
                 </div>
               </div>
               
