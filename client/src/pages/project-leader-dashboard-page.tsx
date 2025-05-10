@@ -51,7 +51,8 @@ import {
   RevenueOverviewWidget,
   KpiMetricsWidget,
   AiForecastWidget,
-  FolderManagementWidget
+  FolderManagementWidget,
+  TaskHoursWidget
 } from "@/components/dashboard/widgets/leader";
 
 // Define a widget instance type for state management

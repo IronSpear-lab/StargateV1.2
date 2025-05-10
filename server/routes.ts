@@ -1310,6 +1310,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch project time entries" });
     }
   });
+  
+  // Hämta aggregerad tidsdata för projekt (för dashboard-grafer)
+  app.get(`${apiPrefix}/projects/:projectId/task-hours`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      const projectId = parseInt(req.params.projectId);
+      
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project ID" });
+      }
+      
+      // Kontrollera att användaren har tillgång till projektet
+      const userProjects = await storage.getUserProjects(req.user!.id);
+      const canAccess = userProjects.some(p => p.id === projectId);
+      
+      if (!canAccess && req.user!.role !== 'admin' && req.user!.role !== 'project_leader') {
+        return res.status(403).json({ error: "Access denied to this project" });
+      }
+      
+      // Datumintervall (standardvärde nuvarande vecka)
+      const dateRangeType = req.query.dateRange || 'current'; // 'current' eller 'previous'
+      
+      // Hämta tidsdata för uppgifter och faktiska tidrapporter
+      const result = await db.execute(sql`
+        WITH date_range AS (
+          SELECT 
+            CASE 
+              WHEN ${dateRangeType} = 'previous' 
+              THEN date_trunc('week', current_date - interval '1 week')::date
+              ELSE date_trunc('week', current_date)::date
+            END as start_date,
+            CASE 
+              WHEN ${dateRangeType} = 'previous'
+              THEN (date_trunc('week', current_date - interval '1 week') + interval '6 day')::date
+              ELSE (date_trunc('week', current_date) + interval '6 day')::date
+            END as end_date
+        ),
+        dates AS (
+          SELECT generate_series(
+            (SELECT start_date FROM date_range),
+            (SELECT end_date FROM date_range),
+            '1 day'::interval
+          )::date as date
+        ),
+        task_estimated_hours AS (
+          SELECT 
+            date_trunc('day', tasks.created_at)::date as date,
+            sum(tasks.estimated_hours) as estimated_hours
+          FROM tasks
+          WHERE 
+            tasks.project_id = ${projectId} AND
+            tasks.created_at BETWEEN (SELECT start_date FROM date_range) AND (SELECT end_date FROM date_range)
+          GROUP BY date_trunc('day', tasks.created_at)::date
+        ),
+        task_actual_hours AS (
+          SELECT 
+            date_trunc('day', tte.report_date)::date as date,
+            sum(tte.hours) as actual_hours
+          FROM task_time_entries tte
+          JOIN tasks t ON tte.task_id = t.id
+          WHERE 
+            t.project_id = ${projectId} AND
+            tte.report_date BETWEEN (SELECT start_date FROM date_range) AND (SELECT end_date FROM date_range)
+          GROUP BY date_trunc('day', tte.report_date)::date
+        )
+        SELECT 
+          d.date::text as date,
+          COALESCE(teh.estimated_hours, 0) as estimated_hours,
+          COALESCE(tah.actual_hours, 0) as actual_hours
+        FROM dates d
+        LEFT JOIN task_estimated_hours teh ON d.date = teh.date
+        LEFT JOIN task_actual_hours tah ON d.date = tah.date
+        ORDER BY d.date ASC
+      `);
+      
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching task hours data:", error);
+      res.status(500).json({ error: "Failed to fetch task hours data" });
+    }
+  });
 
   // Skapa ny tidsrapport
   app.post(`${apiPrefix}/time-entries`, async (req, res) => {
