@@ -674,6 +674,7 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
         type: "kanban", // Explicit sätta typen till "kanban" för uppgifter i Kanban-vyn
         projectId: parseInt(values.projectId),
         assigneeId: values.assigneeId && values.assigneeId !== "none" ? parseInt(values.assigneeId) : null,
+        // estimatedHours kommer automatiskt konverteras med Zod-transformationer
       };
       
       createTaskMutation.mutate(taskData);
