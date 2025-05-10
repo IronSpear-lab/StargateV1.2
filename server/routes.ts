@@ -481,6 +481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Datumintervall:', startDateStr, 'till', endDateStr);
       
       // Konvertera datum till ISO-format för att säkerställa korrekt jämförelse
+      // Hämta bara tidsrapporter för detta projekt och datum
       const timeEntries = await db.query.taskTimeEntries.findMany({
         where: and(
           eq(taskTimeEntries.projectId, projectId),
@@ -488,6 +489,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sql`DATE(${taskTimeEntries.reportDate}) <= DATE(${endDateStr})`
         )
       });
+      
+      console.log(`Hittade ${timeEntries.length} tidsrapporter för projekt ${projectId} mellan ${startDateStr} och ${endDateStr}`);
+      
       
       // Hämta tidsrapporter för dagens datum med DATE-funktion
       const todayEntries = await db.query.taskTimeEntries.findMany({
@@ -534,15 +538,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Summera faktiska timmar per dag
+      // Summera timmar per dag och beräkna intäkter
+      let totalHours = 0;
+      let totalRevenue = 0;
+        
       for (const entry of timeEntries) {
         const reportDate = entry.reportDate instanceof Date 
           ? entry.reportDate 
           : new Date(entry.reportDate);
         const dayKey = reportDate.toISOString().split('T')[0];
+        
         if (dailyHours[dayKey]) {
+          // Lägg till timmar för dagen
           dailyHours[dayKey].actual += entry.hours;
+          
+          // Summera totala timmar och intäkter
+          totalHours += entry.hours;
+          const entryRevenue = entry.hours * hourlyRate;
+          totalRevenue += entryRevenue;
+          
+          console.log(`Entry för dag ${dayKey}: ${entry.hours} timmar × ${hourlyRate} kr/h = ${entryRevenue} kr (Total intäkt hittills: ${totalRevenue} kr)`);
         }
       }
+      
+      console.log(`Totalt för perioden: ${totalHours} timmar × ${hourlyRate} kr/h = ${totalRevenue} kr`);
+      
       
       // Skapa föregående periods data (förskjut med 1 period)
       const previousPeriodDays = [];
@@ -606,6 +626,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Logg för total intäkt och budget
+      console.log(`Projektets budget: ${project.totalBudget || 0} kr, Intäkt hittills: ${totalRevenue} kr, Timpris: ${hourlyRate} kr/h`);
+      
       // Formatera data för diagram
       const formattedData = days.map((dayKey, index) => {
         const date = new Date(dayKey);
@@ -647,6 +670,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json({
         dailyData: formattedData,
         todayRevenue: Math.round(todayRevenue),
+        totalRevenue: Math.round(totalRevenue),
+        totalHours: totalHours,
         project: projectData
       });
     } catch (error) {

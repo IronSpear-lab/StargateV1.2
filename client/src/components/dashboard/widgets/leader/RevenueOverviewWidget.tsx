@@ -43,6 +43,8 @@ interface RevenueData {
 interface RevenueApiResponse {
   dailyData: RevenueData[];
   todayRevenue: number;
+  totalRevenue: number;
+  totalHours: number;
   project?: {
     totalBudget: number;
     hourlyRate: number;
