@@ -429,7 +429,7 @@ export function RevenueOverviewWidget({
             <div className="grid grid-cols-2 gap-4 mt-2">
               <div className="border rounded-lg p-3">
                 <div className="text-sm text-muted-foreground">Total Budget</div>
-                <div className="text-lg font-bold">{formatCurrency(revenueData?.totalBudget || 0)}</div>
+                <div className="text-lg font-bold">{formatCurrency(previewTotalBudget !== null ? previewTotalBudget : (revenueData?.totalBudget || 0))}</div>
                 <div className="flex items-center space-x-2 mt-1">
                   <div className="text-xs text-muted-foreground">Timpris:</div>
                   <div className="relative flex-1">
