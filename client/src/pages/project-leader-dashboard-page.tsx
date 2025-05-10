@@ -316,7 +316,7 @@ export default function ProjectLeaderDashboardPage() {
       case "folder-management":
         return <FolderManagementWidget />;
       case "task-hours":
-        return <TaskHoursWidget projectId={projectId} />;
+        return <TaskHoursWidget projectId={projectId || 0} width="half" height="medium" />;
       case "custom-text":
         return <CustomTextWidget id={widget.id} />;
       case "calendar":

@@ -276,18 +276,15 @@ export function TaskHoursWidget({
 
   // I projektledardashboarden ska inte Widget-komponenten användas här,
   // eftersom den redan wrappar denna komponent i renderWidget-funktionen
-  if (width && height) {
-    // Innehåll för widgeten när den används i dashboarden  
-    return renderContent();
-  } else {
-    // Om komponenten används fristående utan width och height, returnera
-    // Widget-komponenten för att ge korrekt styling och layout
+  if (!projectId || projectId === 0) {
+    // Om ingen projektId finns, är det troligtvis en fristående widget
+    // och behöver sin egen Widget-wrapper
     return (
       <Widget 
         id={id}
         title={title}
         type={type}
-        onRemove={onRemove}
+        onRemove={onRemove || (() => {})}
         className={className}
         width="half"
         height="medium"
@@ -295,5 +292,9 @@ export function TaskHoursWidget({
         {renderContent()}
       </Widget>
     );
+  } else {
+    // Om projektId finns, antar vi att den renderas från dashboard
+    // och returnerar bara innehållet utan Widget-wrapper
+    return renderContent();
   }
 }
