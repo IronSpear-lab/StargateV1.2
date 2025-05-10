@@ -76,6 +76,7 @@ export const tasks = pgTable("tasks", {
   dueDate: date("due_date"),
   startDate: date("start_date"),
   endDate: date("end_date"),
+  estimatedHours: integer("estimated_hours"), // Uppskattat antal timmar för uppgiften
   dependencies: text("dependencies"), // JSON string array of task IDs this task depends on
 });
 

@@ -121,6 +121,7 @@ const taskFormSchema = z.object({
   dueDate: z.string().optional().transform(val => val === "" ? null : val),
   startDate: z.string().optional().transform(val => val === "" ? null : val),
   endDate: z.string().optional().transform(val => val === "" ? null : val),
+  estimatedHours: z.string().optional().transform(val => val === "" ? null : parseInt(val)),
 });
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -688,7 +689,8 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
       projectId: projectId.toString(),
       dueDate: "",
       startDate: "",
-      endDate: ""
+      endDate: "",
+      estimatedHours: ""
     });
     setIsTaskDialogOpen(true);
   };
@@ -707,7 +709,8 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
       projectId: task.projectId.toString(),
       dueDate: task.dueDate || "",
       startDate: task.startDate || "",
-      endDate: task.endDate || ""
+      endDate: task.endDate || "",
+      estimatedHours: task.estimatedHours?.toString() || ""
     });
     
     setIsTaskDialogOpen(true);
