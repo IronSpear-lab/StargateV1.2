@@ -364,6 +364,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { totalBudget, hourlyRate, startDate, endDate } = req.body;
       
+      console.log('Updating project budget:', { 
+        projectId, 
+        totalBudget, 
+        hourlyRate, 
+        startDate, 
+        endDate 
+      });
+      
       // Uppdatera projektet
       const [updatedProject] = await db.update(projects)
         .set({
@@ -374,6 +382,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .where(eq(projects.id, projectId))
         .returning();
+      
+      console.log('Project budget updated successfully:', {
+        projectId,
+        totalBudget: updatedProject.totalBudget,
+        hourlyRate: updatedProject.hourlyRate,
+        startDate: updatedProject.startDate,
+        endDate: updatedProject.endDate
+      });
       
       return res.status(200).json({
         totalBudget: updatedProject.totalBudget,
@@ -396,7 +412,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const projectId = parseInt(req.params.projectId);
     const viewMode = req.query.viewMode as string || 'week';
     const offset = parseInt(req.query.offset as string || '0');
-    const hourlyRate = parseFloat(req.query.hourlyRate as string || '0');
     
     if (isNaN(projectId)) {
       return res.status(400).json({ error: 'Invalid project ID' });
@@ -408,9 +423,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         where: eq(projects.id, projectId),
         columns: {
           totalBudget: true,
+          hourlyRate: true,
           startDate: true,
           endDate: true
         }
+      });
+      
+      console.log('Fetched project budget info for revenue:', {
+        projectId,
+        totalBudget: project?.totalBudget,
+        hourlyRate: project?.hourlyRate,
+        startDate: project?.startDate,
+        endDate: project?.endDate
       });
       
       if (!project) {
