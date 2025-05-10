@@ -62,14 +62,16 @@ export function RevenueOverviewWidget({ projectId }: { projectId: number }) {
   // Fetch budget data from the API
   const { data: budgetData, isLoading: isBudgetLoading } = useQuery<ProjectBudgetData>({
     queryKey: ['/api/projects', projectId, 'budget'],
-    enabled: !!projectId,
-    onSuccess: (data) => {
-      if (data) {
-        setTotalBudget(data.totalBudget || undefined);
-        setHourlyRate(data.hourlyRate || undefined);
-      }
-    }
+    enabled: !!projectId
   });
+  
+  // Uppdatera state när budgetdata laddas
+  useEffect(() => {
+    if (budgetData) {
+      setTotalBudget(budgetData.totalBudget || undefined);
+      setHourlyRate(budgetData.hourlyRate || undefined);
+    }
+  }, [budgetData]);
   
   // Update budget and hourly rate
   const updateBudgetMutation = useMutation({
