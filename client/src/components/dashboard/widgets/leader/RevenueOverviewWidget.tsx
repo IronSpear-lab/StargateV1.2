@@ -67,7 +67,6 @@ export function RevenueOverviewWidget({
 }: RevenueOverviewWidgetProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [currentOffset, setCurrentOffset] = useState<number>(0);
-  const [previewHourlyRate, setPreviewHourlyRate] = useState<number | null>(null);
   
   // Hämta budget, timpris och intäktsdata
   const { 
@@ -172,11 +171,6 @@ export function RevenueOverviewWidget({
     
     const days = eachDayOfInterval({ start: activeStartDate, end: activeEndDate });
     
-    // Använd antingen det temporära timpriset eller det faktiska från API
-    const effectiveHourlyRate = previewHourlyRate !== null 
-      ? previewHourlyRate 
-      : (revenueData.hourlyRate || 0);
-    
     return days.map(day => {
       const formattedDay = format(day, 'yyyy-MM-dd');
       const dayData = revenueData.revenueData.find((d: RevenueDataPoint) => d.date === formattedDay) || {
@@ -185,26 +179,14 @@ export function RevenueOverviewWidget({
         actualCost: 0
       };
       
-      // Om vi använder preview-timpris, beräkna om kostnaderna baserat på timfaktor
-      let estCost = Number(dayData.estimatedCost);
-      let actCost = Number(dayData.actualCost);
-      
-      // Om det finns ett preview-timpris, skala om kostnaderna
-      if (previewHourlyRate !== null && revenueData.hourlyRate && revenueData.hourlyRate > 0) {
-        const scaleFactor = previewHourlyRate / revenueData.hourlyRate;
-        estCost = estCost * scaleFactor;
-        actCost = actCost * scaleFactor;
-      }
-      
       return {
         name: viewMode === 'week' ? format(day, 'EEE', { locale: sv }) : format(day, 'd', { locale: sv }),
         fullDate: formattedDay,
-        estimatedCost: estCost.toFixed(0),
-        actualCost: actCost.toFixed(0),
-        hourlyRate: effectiveHourlyRate
+        estimatedCost: Number(dayData.estimatedCost).toFixed(0),
+        actualCost: Number(dayData.actualCost).toFixed(0)
       };
     });
-  }, [activeStartDate, activeEndDate, revenueData, viewMode, previewHourlyRate]);
+  }, [activeStartDate, activeEndDate, revenueData, viewMode]);
   
   // Formatera kostnad i kronor
   const formatCurrency = useCallback((value: number) => {
@@ -259,8 +241,8 @@ export function RevenueOverviewWidget({
   const form = useForm<BudgetFormValues>({
     resolver: zodResolver(budgetFormSchema),
     defaultValues: {
-      totalBudget: "0",
-      hourlyRate: "0"
+      totalBudget: revenueData?.totalBudget?.toString() || "0",
+      hourlyRate: revenueData?.hourlyRate?.toString() || "0"
     }
   });
   
@@ -269,8 +251,6 @@ export function RevenueOverviewWidget({
     if (revenueData) {
       form.setValue("totalBudget", revenueData.totalBudget?.toString() || "0");
       form.setValue("hourlyRate", revenueData.hourlyRate?.toString() || "0");
-      // Återställ preview-värdet när faktisk data laddas
-      setPreviewHourlyRate(null);
     }
   }, [revenueData, form]);
   
@@ -394,34 +374,8 @@ export function RevenueOverviewWidget({
               <div className="border rounded-lg p-3">
                 <div className="text-sm text-muted-foreground">Total Budget</div>
                 <div className="text-lg font-bold">{formatCurrency(revenueData?.totalBudget || 0)}</div>
-                <div className="flex items-center space-x-2 mt-1">
-                  <div className="text-xs text-muted-foreground">Timpris:</div>
-                  <div className="relative flex-1">
-                    <input
-                      type="number"
-                      value={previewHourlyRate !== null ? previewHourlyRate : revenueData?.hourlyRate || 0}
-                      min={0}
-                      className="w-full h-6 px-2 text-xs border rounded-md"
-                      onChange={(e) => {
-                        const value = parseInt(e.target.value);
-                        if (!isNaN(value)) {
-                          setPreviewHourlyRate(value);
-                        } else {
-                          setPreviewHourlyRate(null);
-                        }
-                      }}
-                      onBlur={() => {
-                        if (previewHourlyRate !== null) {
-                          form.setValue("hourlyRate", previewHourlyRate.toString());
-                          updateBudgetMutation.mutate({ 
-                            totalBudget: form.getValues("totalBudget"), 
-                            hourlyRate: previewHourlyRate.toString() 
-                          });
-                        }
-                      }}
-                    />
-                    <span className="absolute right-2 top-1 text-xs">kr</span>
-                  </div>
+                <div className="text-xs text-muted-foreground">
+                  Timpris: {formatCurrency(revenueData?.hourlyRate || 0)}
                 </div>
               </div>
               <div className="border rounded-lg p-3">
