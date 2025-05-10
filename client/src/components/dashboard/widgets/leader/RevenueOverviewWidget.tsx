@@ -182,12 +182,22 @@ export function RevenueOverviewWidget({
   }, [viewMode, currentOffset]);
   
   // Fetch data for estimated revenue vs actual revenue per day
+  // Formatera datum till ISO-format för API-anrop
+  const formatDateParam = (date: Date) => {
+    return date.toISOString().split('T')[0];
+  }
+  
   const { data: apiResponse, isLoading } = useQuery<RevenueApiResponse>({
-    queryKey: ['/api/projects', projectId, 'revenue', viewMode, currentOffset],
+    queryKey: ['/api/projects', projectId, 'revenue', viewMode, currentOffset, 
+               formatDateParam(activeStartDate), formatDateParam(activeEndDate)],
     enabled: !!projectId,
     queryFn: () => fetch(
-      `/api/projects/${projectId}/revenue?viewMode=${viewMode}&offset=${currentOffset}`
+      `/api/projects/${projectId}/revenue?viewMode=${viewMode}&offset=${currentOffset}&startDate=${formatDateParam(activeStartDate)}&endDate=${formatDateParam(activeEndDate)}`
     ).then(res => res.json())
+      .then(data => {
+        console.log('Revenue data from API:', data);
+        return data;
+      })
   });
   
   // Uppdatera timpris från API-responsen om det finns
@@ -309,6 +319,14 @@ export function RevenueOverviewWidget({
         }
         {totalBudget 
           ? ` • Total budget: ${formatCurrency(totalBudget)}`
+          : ''
+        }
+        {apiResponse?.totalRevenue !== undefined 
+          ? ` • Total intäkt: ${formatCurrency(apiResponse.totalRevenue)}`
+          : ''
+        }
+        {apiResponse?.totalHours !== undefined 
+          ? ` • Totalt antal timmar: ${apiResponse.totalHours}`
           : ''
         }
       </p>
