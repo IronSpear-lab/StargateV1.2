@@ -316,7 +316,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         where: eq(projects.id, projectId),
         columns: {
           totalBudget: true,
-          hourlyRate: true
+          hourlyRate: true,
+          startDate: true,
+          endDate: true
         }
       });
       
@@ -326,7 +328,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       return res.status(200).json({
         totalBudget: project.totalBudget,
-        hourlyRate: project.hourlyRate
+        hourlyRate: project.hourlyRate,
+        startDate: project.startDate,
+        endDate: project.endDate
       });
     } catch (error) {
       console.error('Error fetching project budget:', error);
@@ -358,20 +362,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'Insufficient permissions' });
       }
       
-      const { totalBudget, hourlyRate } = req.body;
+      const { totalBudget, hourlyRate, startDate, endDate } = req.body;
       
       // Uppdatera projektet
       const [updatedProject] = await db.update(projects)
         .set({
           totalBudget: totalBudget === undefined ? null : totalBudget,
-          hourlyRate: hourlyRate === undefined ? null : hourlyRate
+          hourlyRate: hourlyRate === undefined ? null : hourlyRate,
+          startDate: startDate === undefined ? null : startDate,
+          endDate: endDate === undefined ? null : endDate
         })
         .where(eq(projects.id, projectId))
         .returning();
       
       return res.status(200).json({
         totalBudget: updatedProject.totalBudget,
-        hourlyRate: updatedProject.hourlyRate
+        hourlyRate: updatedProject.hourlyRate,
+        startDate: updatedProject.startDate,
+        endDate: updatedProject.endDate
       });
     } catch (error) {
       console.error('Error updating project budget:', error);
