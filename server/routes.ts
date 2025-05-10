@@ -500,10 +500,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Beräkna dagens intäkt (timmar × timpris)
       let todayRevenue = 0;
       for (const entry of todayEntries) {
+        console.log(`Adding revenue for today: ${entry.hours} hours * ${hourlyRate} kr/h = ${entry.hours * hourlyRate} kr`);
         todayRevenue += entry.hours * hourlyRate;
       }
       
       console.log('Calculating revenue with hourly rate:', hourlyRate);
+      console.log('Today revenue total:', todayRevenue);
       
       // Logga tidsrapporterna för felsökning
       console.log('Time entries:', timeEntries.map(entry => ({
@@ -511,6 +513,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hours: entry.hours,
         formattedDate: new Date(entry.reportDate).toISOString().split('T')[0]
       })));
+      
+      // Logga alla tidsrapporter med detaljerad information
+      console.log('Detailed time entries for debugging:');
+      timeEntries.forEach(entry => {
+        console.log(`Entry ID: ${entry.id}, Task ID: ${entry.taskId}, Project ID: ${entry.projectId}, Hours: ${entry.hours}, Date: ${new Date(entry.reportDate).toISOString().split('T')[0]}`);
+      });
       
       // Gruppera timmar per dag
       const dailyHours: Record<string, { actual: number }> = {};
@@ -609,13 +617,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const prevDayKey = previousPeriodDays[index % previousPeriodDays.length];
         const prevHours = previousDailyHours[prevDayKey] || 0;
         
+        // Beräkna faktiska timmar och intäkter
+        const actualHours = dailyHours[dayKey].actual;
+        const actualRevenue = Math.round(actualHours * hourlyRate);
+        const previousRevenue = Math.round(prevHours * hourlyRate);
+        
+        console.log(`Revenue calculation for ${dayName} (${dayKey}): ${actualHours} hours * ${hourlyRate} kr/h = ${actualRevenue} kr`);
+        
         return {
           day: dayName,
           fullDate: dayKey,
           // Faktiska intäkter (timmar × timpris)
-          current: Math.round(dailyHours[dayKey].actual * hourlyRate),
+          current: actualRevenue,
           // Föregående periods intäkter
-          previous: Math.round(prevHours * hourlyRate),
+          previous: previousRevenue,
           // Budget per dag
           budget: dailyBudget > 0 ? Math.round(dailyBudget) : undefined
         };
