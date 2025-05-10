@@ -328,6 +328,7 @@ export default function TimeTrackingPage() {
               <TimeTracking 
                 projectId={projectId} 
                 tasks={tasks}
+                timeEntries={timeEntries}
                 initialTaskId={selectedTask}
                 className="border border-neutral-200"
               />
