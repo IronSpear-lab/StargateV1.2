@@ -134,9 +134,10 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen grid md:grid-cols-2 gap-0">
-      <div className="flex items-center justify-center p-4 bg-white">
-        <Card className="w-full max-w-md">
+    <div className="min-h-screen grid md:grid-cols-2 gap-0 relative dark:bg-gray-950">
+      <ThemeToggle />
+      <div className="flex items-center justify-center p-4 bg-white dark:bg-gray-900">
+        <Card className="w-full max-w-md dark:border-gray-700">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold">ValvXlstart</CardTitle>
             <CardDescription>
