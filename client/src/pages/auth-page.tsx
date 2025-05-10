@@ -15,8 +15,9 @@ import { Moon, Sun } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-// Importera bilden direkt
-import stockholmImage from "../assets/Stadshusljus.webp";
+// Importera bilderna för light/dark mode
+import stockholmLightImage from "../assets/Stadshusljus.webp";
+import stockholmDarkImage from "../assets/Stadshusmörk.jpg";
 
 // Theme toggle komponent
 function ThemeToggle() {
@@ -66,6 +67,7 @@ export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { theme } = useTheme();
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -253,7 +255,7 @@ export default function AuthPage() {
       
       <div className="hidden md:block relative h-full w-full">
         <img 
-          src={stockholmImage} 
+          src={theme === "dark" ? stockholmDarkImage : stockholmLightImage} 
           alt="Stockholm stadshus" 
           className="absolute inset-0 w-full h-full object-cover"
         />
