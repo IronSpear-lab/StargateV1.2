@@ -422,17 +422,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Hämta tidsrapporter för projektet inom tidsintervallet
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+      
       const timeEntries = await db.query.taskTimeEntries.findMany({
         where: and(
           eq(taskTimeEntries.projectId, projectId),
-          gte(taskTimeEntries.reportDate, startDate),
-          lte(taskTimeEntries.reportDate, endDate)
+          sql`${taskTimeEntries.reportDate} >= ${startDateStr}`,
+          sql`${taskTimeEntries.reportDate} <= ${endDateStr}`
         )
       });
       
       // Gruppera timmar per dag
       const dailyHours: Record<string, { actual: number }> = {};
-      const days = [];
+      const days: string[] = [];
       
       // Skapa dagar i intervallet
       let currentDay = new Date(startDate);
@@ -445,9 +448,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Summera faktiska timmar per dag
       for (const entry of timeEntries) {
-        const dayKey = entry.reportDate.toISOString().split('T')[0];
-        if (dailyHours[dayKey]) {
-          dailyHours[dayKey].actual += entry.hours;
+        // Konvertera reportDate till string om det är en Date
+        let reportDateStr: string;
+        if (typeof entry.reportDate === 'string') {
+          reportDateStr = entry.reportDate;
+        } else {
+          reportDateStr = new Date(entry.reportDate as Date).toISOString().split('T')[0];
+        }
+        
+        if (dailyHours[reportDateStr]) {
+          dailyHours[reportDateStr].actual += entry.hours;
         }
       }
       
@@ -471,11 +481,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Hämta tidsrapporter för föregående period
+      const prevStartDateStr = previousPeriodDays[0];
+      const prevEndDateStr = previousPeriodDays[previousPeriodDays.length - 1];
+      
       const previousTimeEntries = await db.query.taskTimeEntries.findMany({
         where: and(
           eq(taskTimeEntries.projectId, projectId),
-          gte(taskTimeEntries.reportDate, new Date(previousPeriodDays[0])),
-          lte(taskTimeEntries.reportDate, new Date(previousPeriodDays[previousPeriodDays.length - 1]))
+          sql`${taskTimeEntries.reportDate} >= ${prevStartDateStr}`,
+          sql`${taskTimeEntries.reportDate} <= ${prevEndDateStr}`
         )
       });
       
@@ -486,9 +499,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       for (const entry of previousTimeEntries) {
-        const dayKey = entry.reportDate.toISOString().split('T')[0];
-        if (previousDailyHours[dayKey] !== undefined) {
-          previousDailyHours[dayKey] += entry.hours;
+        // Konvertera reportDate till string om det är en Date
+        let reportDateStr: string;
+        if (typeof entry.reportDate === 'string') {
+          reportDateStr = entry.reportDate;
+        } else {
+          reportDateStr = new Date(entry.reportDate as Date).toISOString().split('T')[0];
+        }
+        
+        if (previousDailyHours[reportDateStr] !== undefined) {
+          previousDailyHours[reportDateStr] += entry.hours;
         }
       }
       
