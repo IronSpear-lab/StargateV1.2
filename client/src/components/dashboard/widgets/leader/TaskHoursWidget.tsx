@@ -88,17 +88,6 @@ export function TaskHoursWidget({
     }
   });
   
-  // För debugging - logga eventuella laddningsfel och data
-  React.useEffect(() => {
-    if (error) {
-      console.error("Fel vid laddning av uppgiftstimmar:", error);
-    }
-    if (taskHoursData) {
-      console.log("Laddade uppgiftstimmar:", taskHoursData);
-      console.log("Formatterade grafdatum:", chartData);
-    }
-  }, [error, taskHoursData, chartData]);
-
   // Beräkna tidsintervall baserat på aktuell vy och offset
   const { activeStartDate, activeEndDate } = useMemo(() => {
     const currentDate = new Date();
@@ -166,6 +155,17 @@ export function TaskHoursWidget({
       };
     });
   }, [activeStartDate, activeEndDate, taskHoursData, viewMode]);
+  
+  // För debugging - logga eventuella laddningsfel och data
+  React.useEffect(() => {
+    if (error) {
+      console.error("Fel vid laddning av uppgiftstimmar:", error);
+    }
+    if (taskHoursData && chartData) {
+      console.log("Laddade uppgiftstimmar:", taskHoursData);
+      console.log("Formatterade grafdatum:", chartData);
+    }
+  }, [error, taskHoursData, chartData]);
 
   // Beräkna totala timmar för båda typer
   const { totalEstimatedHours, totalActualHours, hoursDiff, diffPercentage, isOverBudget } = useMemo(() => {
