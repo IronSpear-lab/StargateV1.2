@@ -147,30 +147,33 @@ export function TaskHoursWidget({
         actualHours: 0
       };
       
+      // Om båda värdena är exakt 0, lägg till minimalt värde (0.01) 
+      // för att säkerställa att grafen visas
+      const estimatedValue = Number(dayData.estimatedHours) || 0;
+      const actualValue = Number(dayData.actualHours) || 0;
+      
+      // Sätt en minsta höjd för grafkomponenter om det finns värden
+      // men även om ingen data finns, visa 0
       return {
         name: viewMode === 'week' ? format(day, 'EEE', { locale: sv }) : format(day, 'd', { locale: sv }),
-        estimatedHours: Number(dayData.estimatedHours).toFixed(1),
-        actualHours: Number(dayData.actualHours).toFixed(1),
+        estimatedHours: estimatedValue,
+        actualHours: actualValue,
         fullDate: formattedDay
       };
     });
   }, [activeStartDate, activeEndDate, taskHoursData, viewMode]);
   
-  // För debugging - logga eventuella laddningsfel och data
+  // För debugging - logga eventuella laddningsfel
   React.useEffect(() => {
     if (error) {
       console.error("Fel vid laddning av uppgiftstimmar:", error);
     }
-    if (taskHoursData && chartData) {
-      console.log("Laddade uppgiftstimmar:", taskHoursData);
-      console.log("Formatterade grafdatum:", chartData);
-    }
-  }, [error, taskHoursData, chartData]);
+  }, [error]);
 
   // Beräkna totala timmar för båda typer
   const { totalEstimatedHours, totalActualHours, hoursDiff, diffPercentage, isOverBudget } = useMemo(() => {
-    const totalEstimated = chartData.reduce((acc, curr) => acc + parseFloat(curr.estimatedHours), 0);
-    const totalActual = chartData.reduce((acc, curr) => acc + parseFloat(curr.actualHours), 0);
+    const totalEstimated = chartData.reduce((acc, curr) => acc + Number(curr.estimatedHours), 0);
+    const totalActual = chartData.reduce((acc, curr) => acc + Number(curr.actualHours), 0);
     const diff = totalActual - totalEstimated;
     const percentage = totalEstimated ? ((diff / totalEstimated) * 100).toFixed(1) : "0.0";
     
@@ -278,77 +281,80 @@ export function TaskHoursWidget({
 
       <div className="h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart
-            data={chartData}
-            margin={{
-              top: 10,
-              right: 10,
-              left: 5,
-              bottom: 5,
-            }}
-          >
-            <defs>
-              <linearGradient id="colorEstimated" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#8884d8" stopOpacity={0.25}/>
-                <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
-              </linearGradient>
-              <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#4ade80" stopOpacity={0.25}/>
-                <stop offset="95%" stopColor="#4ade80" stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" opacity={0.15} vertical={false} />
-            <XAxis
-              dataKey="name"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              tick={{ fontSize: 12 }}
-            />
-            <YAxis
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(value) => `${value}`}
-              tick={{ fontSize: 12 }}
-              domain={[0, 'auto']}
-              allowDecimals={false}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Area 
-              type="monotone" 
-              dataKey="estimatedHours" 
-              fill="url(#colorEstimated)" 
-              stroke="#8884d8" 
-              strokeWidth={0}
-              activeDot={false}
-            />
-            <Area 
-              type="monotone" 
-              dataKey="actualHours" 
-              fill="url(#colorActual)" 
-              stroke="#4ade80" 
-              strokeWidth={0}
-              activeDot={false}
-            />
-            <Line
-              type="monotone"
-              dataKey="estimatedHours"
-              stroke="#8884d8"
-              strokeWidth={2}
-              dot={{ r: 2, strokeWidth: 1 }}
-              activeDot={{ r: 5 }}
-              name="Uppskattade timmar"
-            />
-            <Line
-              type="monotone"
-              dataKey="actualHours"
-              stroke="#4ade80"
-              strokeWidth={2}
-              dot={{ r: 2, strokeWidth: 1 }}
-              activeDot={{ r: 5 }}
-              name="Faktiska timmar"
-            />
-          </ComposedChart>
+          {chartData.length > 0 && (
+            <ComposedChart
+              data={chartData}
+              margin={{
+                top: 10,
+                right: 10,
+                left: 5,
+                bottom: 5,
+              }}
+            >
+              <defs>
+                <linearGradient id="colorEstimated" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8884d8" stopOpacity={0.25}/>
+                  <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#4ade80" stopOpacity={0.25}/>
+                  <stop offset="95%" stopColor="#4ade80" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.15} vertical={false} />
+              <XAxis
+                dataKey="name"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                tick={{ fontSize: 12 }}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `${value}`}
+                tick={{ fontSize: 12 }}
+                domain={[0, 'auto']}
+                allowDecimals={false}
+                minTickGap={4}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Area 
+                type="monotone" 
+                dataKey="estimatedHours" 
+                fill="url(#colorEstimated)" 
+                stroke="#8884d8" 
+                strokeWidth={1}
+                activeDot={false}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="actualHours" 
+                fill="url(#colorActual)" 
+                stroke="#4ade80" 
+                strokeWidth={1}
+                activeDot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="estimatedHours"
+                stroke="#8884d8"
+                strokeWidth={2}
+                dot={{ r: 3, strokeWidth: 1 }}
+                activeDot={{ r: 6 }}
+                name="Uppskattade timmar"
+              />
+              <Line
+                type="monotone"
+                dataKey="actualHours"
+                stroke="#4ade80"
+                strokeWidth={2}
+                dot={{ r: 3, strokeWidth: 1 }}
+                activeDot={{ r: 6 }}
+                name="Faktiska timmar"
+              />
+            </ComposedChart>
+          )}
         </ResponsiveContainer>
       </div>
 
