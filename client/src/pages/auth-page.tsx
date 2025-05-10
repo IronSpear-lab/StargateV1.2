@@ -220,11 +220,11 @@ export default function AuthPage() {
       
       <div className="hidden md:block relative h-full w-full">
         <img 
-          src="/Stadshusljus.webp" 
+          src="/stockholm.jpg" 
           alt="Stockholm stadshus" 
           className="absolute inset-0 w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-black bg-opacity-30 flex flex-col justify-center p-12 text-white">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-900/50 to-transparent flex flex-col justify-center p-12 text-white">
           <div className="max-w-md">
             <h1 className="text-4xl font-bold mb-4">Project Management Platform</h1>
             <p className="text-lg mb-6">A comprehensive solution for file management, task tracking, and team collaboration.</p>
