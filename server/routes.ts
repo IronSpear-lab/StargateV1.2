@@ -471,31 +471,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log('Felaktiga datum från klienten, använder automatisk beräkning istället');
           // Fallback till standardberäkning
           if (viewMode === 'week') {
-            startDate = new Date(now);
-            startDate.setDate(now.getDate() - now.getDay() + (offset * 7));
+            // Veckovis vy
+            const baseStartDate = new Date(now);
+            baseStartDate.setDate(baseStartDate.getDate() - baseStartDate.getDay() + 1); // Måndag
+            baseStartDate.setHours(0, 0, 0, 0);
+            
+            startDate = new Date(baseStartDate);
+            startDate.setDate(startDate.getDate() + (offset * 7));
+            
             endDate = new Date(startDate);
-            endDate.setDate(startDate.getDate() + 6);
-          } else { // month
-            startDate = new Date(now.getFullYear(), now.getMonth() + offset, 1);
-            endDate = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0);
+            endDate.setDate(endDate.getDate() + 6);
+          } else {
+            // Månadsvis vy
+            const baseStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            startDate = new Date(baseStartDate);
+            startDate.setMonth(startDate.getMonth() + offset);
+            
+            endDate = new Date(startDate);
+            endDate.setMonth(endDate.getMonth() + 1);
+            endDate.setDate(0); // Sista dagen i månaden
           }
         }
       } else {
         // Ingen klientparameter, använd standardberäkning
         if (viewMode === 'week') {
-          // Börja med söndag som första dag i veckan (0)
-          startDate = new Date(now);
-          // now.getDay() ger 0 för söndag, 1 för måndag, osv.
-          startDate.setDate(now.getDate() - now.getDay() + (offset * 7));
+          // Veckovis vy
+          const baseStartDate = new Date(now);
+          baseStartDate.setDate(baseStartDate.getDate() - baseStartDate.getDay() + 1); // Måndag
+          baseStartDate.setHours(0, 0, 0, 0);
+          
+          startDate = new Date(baseStartDate);
+          startDate.setDate(startDate.getDate() + (offset * 7));
+          
           endDate = new Date(startDate);
-          endDate.setDate(startDate.getDate() + 6); // 6 dagar framåt = hela veckan
-        } else { // month
-          startDate = new Date(now.getFullYear(), now.getMonth() + offset, 1);
-          endDate = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0);
+          endDate.setDate(endDate.getDate() + 6);
+        } else {
+          // Månadsvis vy
+          const baseStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          startDate = new Date(baseStartDate);
+          startDate.setMonth(startDate.getMonth() + offset);
+          
+          endDate = new Date(startDate);
+          endDate.setMonth(endDate.getMonth() + 1);
+          endDate.setDate(0); // Sista dagen i månaden
         }
       }
       
-      // Hämta tidsrapporter för projektet inom tidsintervallet
+      // Konvertera till ISO-format för SQL
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
       
@@ -524,67 +546,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }));
       
-      // Extra sökning för specifikt maj 2023 för att hitta den rapport användaren hänvisar till
-      // från 13:e maj
-      const mayEntries = await db.query.taskTimeEntries.findMany({
-        where: and(
-          eq(taskTimeEntries.projectId, projectId),
-          sql`DATE_PART('month', ${taskTimeEntries.reportDate}) = 5`,
-          sql`DATE_PART('year', ${taskTimeEntries.reportDate}) = 2023`
-        )
-      });
+      // Hämta faktiska tidsrapporter för datumintervallet på samma sätt som i task-hours endpoint
+      const actualHours = await db.execute(sql`
+        SELECT 
+          date_trunc('day', tte.report_date)::date as date,
+          sum(tte.hours) as actual_hours
+        FROM task_time_entries tte
+        JOIN tasks t ON tte.task_id = t.id
+        WHERE 
+          t.project_id = ${projectId} AND
+          tte.report_date BETWEEN ${startDateStr} AND ${endDateStr}
+        GROUP BY date_trunc('day', tte.report_date)::date
+      `);
       
-      console.log('Specifik sökning för maj 2023:', mayEntries.map(entry => {
-        const date = entry.reportDate instanceof Date 
-          ? entry.reportDate 
-          : new Date(entry.reportDate);
-        return {
-          id: entry.id,
-          taskId: entry.taskId,
-          hours: entry.hours,
-          date: date.toISOString().split('T')[0]
-        };
-      }));
-      
-      // Och specifikt för 13 maj
-      const may13Entries = await db.query.taskTimeEntries.findMany({
-        where: and(
-          eq(taskTimeEntries.projectId, projectId),
-          sql`DATE(${taskTimeEntries.reportDate}) = '2023-05-13'`
-        )
-      });
-      
-      console.log('Specifik sökning för 13 maj 2023:', may13Entries.map(entry => {
-        const date = entry.reportDate instanceof Date 
-          ? entry.reportDate 
-          : new Date(entry.reportDate);
-        return {
-          id: entry.id,
-          taskId: entry.taskId,
-          hours: entry.hours,
-          date: date.toISOString().split('T')[0]
-        };
-      }));
-      
-      // Nu hämta enbart för intervallet
-      let timeEntries = await db.query.taskTimeEntries.findMany({
-        where: and(
-          eq(taskTimeEntries.projectId, projectId),
-          sql`DATE(${taskTimeEntries.reportDate}) >= DATE(${startDateStr})`,
-          sql`DATE(${taskTimeEntries.reportDate}) <= DATE(${endDateStr})`
-        )
-      });
-      
-      // VIKTIGT: Om vi specifikt letar efter maj 2023 data men inte hittar något i intervallet,
-      // och vi har hittat något från maj 13, 2023 i vår specifika sökning,
-      // så lägger vi till den data manuellt för att säkerställa att intäkten beräknas rätt
-      if (timeEntries.length === 0 && may13Entries.length > 0) {
-        console.log('VIKTIGT: Lägger till specifika tidsrapporter från 13 maj manuellt!');
-        timeEntries = may13Entries;
+      // Generera alla dagar i intervallet
+      const dates = [];
+      const currentDateIterator = new Date(startDate);
+      while (currentDateIterator <= endDate) {
+        dates.push(new Date(currentDateIterator));
+        currentDateIterator.setDate(currentDateIterator.getDate() + 1);
       }
       
-      console.log(`Hittade ${timeEntries.length} tidsrapporter för projekt ${projectId} mellan ${startDateStr} och ${endDateStr}`);
+      // Skapa faktisk timdata-hashmap baserat på SQL-resultatet
+      const actualHoursByDate: Record<string, number> = {};
+      actualHours.rows.forEach(row => {
+        if (typeof row.date === 'string' && typeof row.actual_hours === 'string') {
+          actualHoursByDate[row.date] = parseFloat(row.actual_hours);
+        }
+      });
       
+      // Beräkna totala timmar för perioden
+      let totalHours = 0;
+      Object.values(actualHoursByDate).forEach(hours => {
+        totalHours += hours;
+      });
+      
+      // Beräkna total intäkt (timmar × timpris)
+      const totalRevenue = totalHours * hourlyRate;
+      
+      console.log(`Totalt för perioden: ${totalHours} timmar × ${hourlyRate} kr/h = ${totalRevenue} kr`);
       
       // Hämta tidsrapporter för dagens datum med DATE-funktion
       const todayEntries = await db.query.taskTimeEntries.findMany({
@@ -597,109 +597,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Beräkna dagens intäkt (timmar × timpris)
       let todayRevenue = 0;
       for (const entry of todayEntries) {
-        console.log(`Adding revenue for today: ${entry.hours} hours * ${hourlyRate} kr/h = ${entry.hours * hourlyRate} kr`);
         todayRevenue += entry.hours * hourlyRate;
       }
       
-      console.log('Calculating revenue with hourly rate:', hourlyRate);
-      console.log('Today revenue total:', todayRevenue);
-      
-      // Logga tidsrapporterna för felsökning
-      console.log('Time entries:', timeEntries.map(entry => ({
-        reportDate: entry.reportDate,
-        hours: entry.hours,
-        formattedDate: new Date(entry.reportDate).toISOString().split('T')[0]
-      })));
-      
-      // Logga alla tidsrapporter med detaljerad information
-      console.log('Detailed time entries for debugging:');
-      timeEntries.forEach(entry => {
-        console.log(`Entry ID: ${entry.id}, Task ID: ${entry.taskId}, Project ID: ${entry.projectId}, Hours: ${entry.hours}, Date: ${new Date(entry.reportDate).toISOString().split('T')[0]}`);
-      });
-      
-      // Gruppera timmar per dag
-      const dailyHours: Record<string, { actual: number }> = {};
-      const days: string[] = [];
-      
-      // Skapa dagar i intervallet
-      let currentDay = new Date(startDate);
-      while (currentDay <= endDate) {
-        const dayKey = currentDay.toISOString().split('T')[0];
-        days.push(dayKey);
-        dailyHours[dayKey] = { actual: 0 };
-        currentDay.setDate(currentDay.getDate() + 1);
-      }
-      
-      // Summera faktiska timmar per dag
-      // Summera timmar per dag och beräkna intäkter
-      let totalHours = 0;
-      let totalRevenue = 0;
-        
-      for (const entry of timeEntries) {
-        const reportDate = entry.reportDate instanceof Date 
-          ? entry.reportDate 
-          : new Date(entry.reportDate);
-        const dayKey = reportDate.toISOString().split('T')[0];
-        
-        if (dailyHours[dayKey]) {
-          // Lägg till timmar för dagen
-          dailyHours[dayKey].actual += entry.hours;
-          
-          // Summera totala timmar och intäkter
-          totalHours += entry.hours;
-          const entryRevenue = entry.hours * hourlyRate;
-          totalRevenue += entryRevenue;
-          
-          console.log(`Entry för dag ${dayKey}: ${entry.hours} timmar × ${hourlyRate} kr/h = ${entryRevenue} kr (Total intäkt hittills: ${totalRevenue} kr)`);
-        }
-      }
-      
-      console.log(`Totalt för perioden: ${totalHours} timmar × ${hourlyRate} kr/h = ${totalRevenue} kr`);
-      
-      
       // Skapa föregående periods data (förskjut med 1 period)
-      const previousPeriodDays = [];
+      let previousPeriodStart, previousPeriodEnd;
       if (viewMode === 'week') {
-        currentDay = new Date(startDate);
-        currentDay.setDate(currentDay.getDate() - 7);
-        for (let i = 0; i < 7; i++) {
-          previousPeriodDays.push(currentDay.toISOString().split('T')[0]);
-          currentDay.setDate(currentDay.getDate() + 1);
-        }
+        previousPeriodStart = new Date(startDate);
+        previousPeriodStart.setDate(previousPeriodStart.getDate() - 7);
+        
+        previousPeriodEnd = new Date(endDate);
+        previousPeriodEnd.setDate(previousPeriodEnd.getDate() - 7);
       } else { // month
-        const prevMonthStart = new Date(startDate.getFullYear(), startDate.getMonth() - 1, 1);
-        const prevMonthEnd = new Date(startDate.getFullYear(), startDate.getMonth(), 0);
-        currentDay = new Date(prevMonthStart);
-        while (currentDay <= prevMonthEnd) {
-          previousPeriodDays.push(currentDay.toISOString().split('T')[0]);
-          currentDay.setDate(currentDay.getDate() + 1);
-        }
+        previousPeriodStart = new Date(startDate);
+        previousPeriodStart.setMonth(previousPeriodStart.getMonth() - 1);
+        
+        previousPeriodEnd = new Date(previousPeriodStart);
+        previousPeriodEnd.setMonth(previousPeriodEnd.getMonth() + 1);
+        previousPeriodEnd.setDate(0); // Sista dagen i föregående månad
       }
       
-      // Hämta tidsrapporter för föregående period med förbättrad datumhantering
-      const previousTimeEntries = await db.query.taskTimeEntries.findMany({
-        where: and(
-          eq(taskTimeEntries.projectId, projectId),
-          sql`DATE(${taskTimeEntries.reportDate}) >= DATE(${previousPeriodDays[0]})`,
-          sql`DATE(${taskTimeEntries.reportDate}) <= DATE(${previousPeriodDays[previousPeriodDays.length - 1]})`
-        )
-      });
+      // Konvertera till ISO-format för SQL
+      const prevStartDateStr = previousPeriodStart.toISOString().split('T')[0];
+      const prevEndDateStr = previousPeriodEnd.toISOString().split('T')[0];
       
-      // Summera föregående periods timmar
+      // Hämta föregående periods tidsrapporter
+      const previousHours = await db.execute(sql`
+        SELECT 
+          date_trunc('day', tte.report_date)::date as date,
+          sum(tte.hours) as actual_hours
+        FROM task_time_entries tte
+        JOIN tasks t ON tte.task_id = t.id
+        WHERE 
+          t.project_id = ${projectId} AND
+          tte.report_date BETWEEN ${prevStartDateStr} AND ${prevEndDateStr}
+        GROUP BY date_trunc('day', tte.report_date)::date
+      `);
+      
+      // Skapa föregående periods hashmap
       const previousDailyHours: Record<string, number> = {};
-      for (const dayKey of previousPeriodDays) {
-        previousDailyHours[dayKey] = 0;
-      }
-      
-      for (const entry of previousTimeEntries) {
-        const reportDate = entry.reportDate instanceof Date 
-          ? entry.reportDate 
-          : new Date(entry.reportDate);
-        const dayKey = reportDate.toISOString().split('T')[0];
-        if (previousDailyHours[dayKey] !== undefined) {
-          previousDailyHours[dayKey] += entry.hours;
+      previousHours.rows.forEach(row => {
+        if (typeof row.date === 'string' && typeof row.actual_hours === 'string') {
+          previousDailyHours[row.date] = parseFloat(row.actual_hours);
         }
-      }
+      });
       
       // Beräkna totala budgeten per dag baserat på projektets start- och slutdatum (jämnt fördelat)
       let dailyBudget = 0;
@@ -714,40 +655,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dailyBudget = project.totalBudget / projectDays;
         } else {
           // Fallback: Använd nuvarande periodlängd som bas
-          const totalDays = days.length;
+          const totalDays = dates.length;
           dailyBudget = project.totalBudget / totalDays;
         }
       }
       
-      // Logg för total intäkt och budget
-      console.log(`Projektets budget: ${project.totalBudget || 0} kr, Intäkt hittills: ${totalRevenue} kr, Timpris: ${hourlyRate} kr/h`);
-      
       // Formatera data för diagram
-      const formattedData = days.map((dayKey, index) => {
-        const date = new Date(dayKey);
+      const formattedData = dates.map(date => {
+        const dateStr = date.toISOString().split('T')[0];
         const dayName = viewMode === 'week' 
           ? ['Sön', 'Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör'][date.getDay()]
           : date.getDate().toString();
         
+        // Beräkna dagens timmar och intäkt
+        const hours = actualHoursByDate[dateStr] || 0;
+        const revenue = hours * hourlyRate;
+        
         // Hitta motsvarande dag från föregående period
-        const prevDayKey = previousPeriodDays[index % previousPeriodDays.length];
-        const prevHours = previousDailyHours[prevDayKey] || 0;
+        // För att matcha vecko-dag eller månads-dag
+        let previousDateStr;
+        if (viewMode === 'week') {
+          const previousDate = new Date(date);
+          previousDate.setDate(previousDate.getDate() - 7);
+          previousDateStr = previousDate.toISOString().split('T')[0];
+        } else {
+          const previousDate = new Date(date);
+          previousDate.setMonth(previousDate.getMonth() - 1);
+          previousDateStr = previousDate.toISOString().split('T')[0];
+        }
         
-        // Beräkna faktiska timmar och intäkter
-        const actualHours = dailyHours[dayKey].actual;
-        const actualRevenue = Math.round(actualHours * hourlyRate);
-        const previousRevenue = Math.round(prevHours * hourlyRate);
-        
-        console.log(`Revenue calculation for ${dayName} (${dayKey}): ${actualHours} hours * ${hourlyRate} kr/h = ${actualRevenue} kr`);
+        const previousHours = previousDailyHours[previousDateStr] || 0;
+        const previousRevenue = previousHours * hourlyRate;
         
         return {
           day: dayName,
-          fullDate: dayKey,
-          // Faktiska intäkter (timmar × timpris)
-          current: actualRevenue,
-          // Föregående periods intäkter
-          previous: previousRevenue,
-          // Budget per dag
+          fullDate: dateStr,
+          current: Math.round(revenue),
+          previous: Math.round(previousRevenue),
           budget: dailyBudget > 0 ? Math.round(dailyBudget) : undefined
         };
       });
