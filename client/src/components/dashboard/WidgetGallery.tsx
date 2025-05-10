@@ -65,6 +65,17 @@ export function WidgetGallery({
   // Define all possible widgets
   const widgetTypes: WidgetType[] = [
     {
+      id: "task-hours",
+      name: "Timförbrukning",
+      description: "Jämför planerade timmar med faktisk tidsförbrukning",
+      icon: <BarChart2 className="h-6 w-6" />,
+      category: "time",
+      defaultWidth: "half",
+      defaultHeight: "medium",
+      roles: ["admin", "project_leader"],
+      available: true,
+    },
+    {
       id: "folder-management",
       name: "Mapphantering",
       description: "Hantera projektets mappstruktur och skapa nya mappar",

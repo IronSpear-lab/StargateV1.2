@@ -315,6 +315,8 @@ export default function ProjectLeaderDashboardPage() {
         return <AiForecastWidget projectId={projectId} />;
       case "folder-management":
         return <FolderManagementWidget />;
+      case "task-hours":
+        return <TaskHoursWidget projectId={projectId} />;
       case "custom-text":
         return <CustomTextWidget id={widget.id} />;
       case "calendar":
