@@ -90,13 +90,7 @@ export function RevenueOverviewWidget({
     }
   }, [budgetData]);
   
-  // Uppdatera timpris från API-responsen om det finns
-  React.useEffect(() => {
-    if (apiResponse?.project?.hourlyRate) {
-      console.log('Updating hourly rate from revenue API:', apiResponse.project.hourlyRate);
-      setHourlyRate(apiResponse.project.hourlyRate);
-    }
-  }, [apiResponse]);
+  // Inga deklarationer här - vi använder bara en apiResponse deklaration längre ner
   
   // Uppdatera budgetinställningar
   const updateBudgetMutation = useMutation({
@@ -193,6 +187,14 @@ export function RevenueOverviewWidget({
       `/api/projects/${projectId}/revenue?viewMode=${viewMode}&offset=${currentOffset}`
     ).then(res => res.json())
   });
+  
+  // Uppdatera timpris från API-responsen om det finns
+  React.useEffect(() => {
+    if (apiResponse?.project?.hourlyRate) {
+      console.log('Updating hourly rate from revenue API:', apiResponse.project.hourlyRate);
+      setHourlyRate(apiResponse.project.hourlyRate);
+    }
+  }, [apiResponse]);
   
   // Navigering mellan tidsperioder
   const navigatePrevious = () => setCurrentOffset(prev => prev - 1);

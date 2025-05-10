@@ -372,14 +372,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         endDate 
       });
       
-      // Uppdatera projektet
+      // Uppdatera projektet 
+      // Viktigt: Se till att inte använda null/undefined fel med SQL-parametrar
+      const updateData: {
+        totalBudget?: number | null,
+        hourlyRate?: number | null,
+        startDate?: string | null,
+        endDate?: string | null
+      } = {};
+      
+      if (totalBudget !== undefined) updateData.totalBudget = totalBudget;
+      if (hourlyRate !== undefined) updateData.hourlyRate = hourlyRate;
+      if (startDate !== undefined) updateData.startDate = startDate;
+      if (endDate !== undefined) updateData.endDate = endDate;
+      
+      console.log('Update data being applied:', updateData);
+      
       const [updatedProject] = await db.update(projects)
-        .set({
-          totalBudget: totalBudget === undefined ? null : totalBudget,
-          hourlyRate: hourlyRate === undefined ? null : hourlyRate,
-          startDate: startDate === undefined ? null : startDate,
-          endDate: endDate === undefined ? null : endDate
-        })
+        .set(updateData)
         .where(eq(projects.id, projectId))
         .returning();
       
