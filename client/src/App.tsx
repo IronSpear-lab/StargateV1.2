@@ -17,7 +17,7 @@ import ProjectDetailPage from "@/pages/project-detail-page";
 import GanttPage from "@/pages/gantt-page";
 import GanttChartPage from "@/pages/gantt-chart-page";
 import AnalyticsPage from "@/pages/analytics-page";
-import TimeTrackingPage from "@/pages/time-tracking-page";
+import TimeTrackingPage from "@/pages/time-tracking-page-fixed";
 import MonthCalendarPage from "@/pages/month-calendar-page";
 import NotificationsPage from "@/pages/notifications-page";
 import TeamPage from "@/pages/team-page";

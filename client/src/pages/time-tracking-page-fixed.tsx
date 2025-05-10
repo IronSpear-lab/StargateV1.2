@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, Play, Calendar, PlusCircle, Pause, BarChart2, User, CheckSquare } from "lucide-react";
+import { Clock, Play, Calendar, PlusCircle, Pause, BarChart2, User, CheckSquare, ChevronLeft, ChevronRight } from "lucide-react";
+import { MonthCalendarGrid } from "@/components/MonthCalendarGrid";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -279,10 +280,13 @@ export default function TimeTrackingPage() {
                 </CardContent>
               </Card>
               
+              {/* Kalendervyn som visar hela månaden */}
+              <MonthCalendarGrid className="mb-6" />
+              
               <Card className="border border-neutral-200">
                 <CardHeader>
-                  <CardTitle className="text-lg font-medium">Recent Projects</CardTitle>
-                  <CardDescription>Your activity by project</CardDescription>
+                  <CardTitle className="text-lg font-medium">Aktivitet per projekt</CardTitle>
+                  <CardDescription>Din tidsrapportering fördelat på projekt</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
