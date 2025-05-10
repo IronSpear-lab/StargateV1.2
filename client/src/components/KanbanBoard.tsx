@@ -380,6 +380,7 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
           borderColor: colors.borderColor,
           startDate: focusedTask.startDate,
           endDate: focusedTask.endDate,
+          estimatedHours: focusedTask.estimatedHours,
           projectId: focusedTask.projectId,
           createdAt: focusedTask.createdAt
         };
@@ -444,6 +445,7 @@ export function KanbanBoard({ projectId = 1, focusTaskId = null }: KanbanBoardPr
           borderColor: colors.borderColor,
           startDate: task.startDate,
           endDate: task.endDate,
+          estimatedHours: task.estimatedHours,
           projectId: task.projectId,
           createdAt: task.createdAt
         };
