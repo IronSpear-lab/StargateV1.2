@@ -118,38 +118,38 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen grid md:grid-cols-2 gap-0 relative dark:bg-gray-950">
+    <div className="min-h-screen grid md:grid-cols-2 gap-0 relative dark:bg-gray-950 transition-colors duration-500">
       {/* Vänster sida med formulär */}
-      <div className="flex items-center justify-center p-4 bg-white dark:bg-gray-900 relative">
-        {/* Theme toggle i övre högra hörnet av formulärfältet */}
+      <div className="flex items-center justify-center p-4 bg-white dark:bg-gray-900 relative transition-colors duration-500">
+        {/* Theme toggle i övre högra hörnet av formulärfältet med transition-effekt */}
         <div className="absolute top-4 right-4 z-50">
           <Button 
-            variant="ghost" 
+            variant="outline" 
             size="icon" 
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="h-8 w-8 rounded-full bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300"
           >
             {theme === "dark" ? (
-              <Sun className="h-[1.2rem] w-[1.2rem]" />
+              <Sun className="h-[1.2rem] w-[1.2rem] text-yellow-400 transition-transform duration-500 rotate-0" />
             ) : (
-              <Moon className="h-[1.2rem] w-[1.2rem]" />
+              <Moon className="h-[1.2rem] w-[1.2rem] text-blue-600 transition-transform duration-500 rotate-0" />
             )}
             <span className="sr-only">Växla tema</span>
           </Button>
         </div>
         
-        <Card className="w-full max-w-md dark:border-gray-700">
+        <Card className="w-full max-w-md dark:border-gray-700 transition-all duration-500 shadow-md dark:shadow-lg dark:shadow-gray-900/30">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold">ValvXlstart</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-2xl font-bold transition-colors duration-500">ValvXlstart</CardTitle>
+            <CardDescription className="transition-colors duration-500">
               Sign in to your account or create a new one
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="transition-colors duration-500">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 mb-6 transition-colors duration-500">
+                <TabsTrigger value="login" className="transition-colors duration-300">Login</TabsTrigger>
+                <TabsTrigger value="register" className="transition-colors duration-300">Register</TabsTrigger>
               </TabsList>
               
               <TabsContent value="login">
@@ -159,12 +159,16 @@ export default function AuthPage() {
                       control={loginForm.control}
                       name="username"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Username</FormLabel>
+                        <FormItem className="transition-colors duration-500">
+                          <FormLabel className="transition-colors duration-500">Username</FormLabel>
                           <FormControl>
-                            <Input placeholder="johndoe" {...field} />
+                            <Input 
+                              placeholder="johndoe" 
+                              {...field} 
+                              className="transition-all duration-500 border-gray-200 dark:border-gray-700 focus:ring-blue-500 dark:focus:ring-blue-400" 
+                            />
                           </FormControl>
-                          <FormMessage />
+                          <FormMessage className="transition-colors duration-500" />
                         </FormItem>
                       )}
                     />
@@ -173,19 +177,24 @@ export default function AuthPage() {
                       control={loginForm.control}
                       name="password"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
+                        <FormItem className="transition-colors duration-500">
+                          <FormLabel className="transition-colors duration-500">Password</FormLabel>
                           <FormControl>
-                            <Input type="password" placeholder="••••••••" {...field} />
+                            <Input 
+                              type="password" 
+                              placeholder="••••••••" 
+                              {...field} 
+                              className="transition-all duration-500 border-gray-200 dark:border-gray-700 focus:ring-blue-500 dark:focus:ring-blue-400" 
+                            />
                           </FormControl>
-                          <FormMessage />
+                          <FormMessage className="transition-colors duration-500" />
                         </FormItem>
                       )}
                     />
                     
                     <Button 
                       type="submit" 
-                      className="w-full" 
+                      className="w-full transition-all duration-300 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600" 
                       disabled={loginMutation.isPending}
                     >
                       {loginMutation.isPending ? "Logging in..." : "Login"}
@@ -201,12 +210,16 @@ export default function AuthPage() {
                       control={registerForm.control}
                       name="username"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Username</FormLabel>
+                        <FormItem className="transition-colors duration-500">
+                          <FormLabel className="transition-colors duration-500">Username</FormLabel>
                           <FormControl>
-                            <Input placeholder="johndoe" {...field} />
+                            <Input 
+                              placeholder="johndoe" 
+                              {...field} 
+                              className="transition-all duration-500 border-gray-200 dark:border-gray-700 focus:ring-blue-500 dark:focus:ring-blue-400" 
+                            />
                           </FormControl>
-                          <FormMessage />
+                          <FormMessage className="transition-colors duration-500" />
                         </FormItem>
                       )}
                     />
@@ -215,12 +228,17 @@ export default function AuthPage() {
                       control={registerForm.control}
                       name="password"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
+                        <FormItem className="transition-colors duration-500">
+                          <FormLabel className="transition-colors duration-500">Password</FormLabel>
                           <FormControl>
-                            <Input type="password" placeholder="••••••••" {...field} />
+                            <Input 
+                              type="password" 
+                              placeholder="••••••••" 
+                              {...field} 
+                              className="transition-all duration-500 border-gray-200 dark:border-gray-700 focus:ring-blue-500 dark:focus:ring-blue-400" 
+                            />
                           </FormControl>
-                          <FormMessage />
+                          <FormMessage className="transition-colors duration-500" />
                         </FormItem>
                       )}
                     />
@@ -229,19 +247,24 @@ export default function AuthPage() {
                       control={registerForm.control}
                       name="confirmPassword"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Confirm Password</FormLabel>
+                        <FormItem className="transition-colors duration-500">
+                          <FormLabel className="transition-colors duration-500">Confirm Password</FormLabel>
                           <FormControl>
-                            <Input type="password" placeholder="••••••••" {...field} />
+                            <Input 
+                              type="password" 
+                              placeholder="••••••••" 
+                              {...field} 
+                              className="transition-all duration-500 border-gray-200 dark:border-gray-700 focus:ring-blue-500 dark:focus:ring-blue-400" 
+                            />
                           </FormControl>
-                          <FormMessage />
+                          <FormMessage className="transition-colors duration-500" />
                         </FormItem>
                       )}
                     />
                     
                     <Button 
                       type="submit" 
-                      className="w-full" 
+                      className="w-full transition-all duration-300 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600" 
                       disabled={registerMutation.isPending}
                     >
                       {registerMutation.isPending ? "Creating account..." : "Create Account"}
@@ -254,51 +277,24 @@ export default function AuthPage() {
         </Card>
       </div>
       
-      {/* Höger sida med bild */}
-      <div className="hidden md:block relative h-full w-full">
+      {/* Höger sida med bild - med transition-effekter */}
+      <div className="hidden md:block relative h-full w-full overflow-hidden">
+        {/* Ljus bild */}
         <img 
-          src={theme === "dark" ? stockholmDarkImage : stockholmLightImage} 
-          alt="Stockholm stadshus" 
-          className="absolute inset-0 w-full h-full object-cover"
+          src={stockholmLightImage} 
+          alt="Stockholm stadshus (ljus)" 
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ease-in-out ${theme === 'dark' ? 'opacity-0' : 'opacity-100'}`}
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-900/60 to-blue-900/20 flex flex-col justify-center p-12 text-white shadow-inner">
-          <div className="max-w-md">
-            <h1 className="text-4xl font-bold mb-4 drop-shadow-md">Project Management Platform</h1>
-            <p className="text-lg mb-6 drop-shadow">A comprehensive solution for file management, task tracking, and team collaboration.</p>
-            
-            <div className="space-y-4">
-              <div className="flex items-start gap-2">
-                <svg className="w-6 h-6 text-white drop-shadow mt-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <div>
-                  <h3 className="text-lg font-medium">File Management</h3>
-                  <p className="text-sm text-gray-100">Upload, organize, and share files securely with your team.</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-2">
-                <svg className="w-6 h-6 text-white drop-shadow mt-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <div>
-                  <h3 className="text-lg font-medium">Task Tracking</h3>
-                  <p className="text-sm text-gray-100">Monitor progress with Gantt charts, kanban boards, and task lists.</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-2">
-                <svg className="w-6 h-6 text-white drop-shadow mt-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <div>
-                  <h3 className="text-lg font-medium">Team Collaboration</h3>
-                  <p className="text-sm text-gray-100">Work together in real-time with messaging and document annotation.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        
+        {/* Mörk bild */}
+        <img 
+          src={stockholmDarkImage} 
+          alt="Stockholm stadshus (mörk)" 
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ease-in-out ${theme === 'dark' ? 'opacity-100' : 'opacity-0'}`}
+        />
+        
+        {/* Bakgrundseffekt utan text */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-900/40 to-transparent"></div>
       </div>
     </div>
   );
