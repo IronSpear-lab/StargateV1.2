@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { format, parseISO, startOfDay, endOfDay, subDays } from "date-fns";
+import { format, parseISO, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths } from "date-fns";
 import { sv } from "date-fns/locale";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Clock, Play, Calendar, PlusCircle, Pause, BarChart2, CheckSquare } from "lucide-react";
+import { Clock, Play, Calendar, PlusCircle, Pause, BarChart2, CheckSquare, ChevronLeft, ChevronRight } from "lucide-react";
 import { Progress } from "../components/ui/progress";
 import { Separator } from "../components/ui/separator";
 import { Input } from "../components/ui/input";
@@ -32,6 +32,7 @@ export default function TimeTrackingPage() {
   const [isTracking, setIsTracking] = useState(false);
   const [timer, setTimer] = useState("00:00:00");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedTask, setSelectedTask] = useState<string>("");
   const [description, setDescription] = useState<string>("");
@@ -327,22 +328,99 @@ export default function TimeTrackingPage() {
             </div>
             
             <div className="space-y-6">
-              {/* Enkel kalender som visar alla månadens dagar */}
-              <SimpleMonthCalendar />
-              
-              {/* Den mer avancerade komponenten (som inte syns för tillfället) */}
-              <Card className="border border-neutral-200 mb-6 mt-6">
-                <CardHeader>
-                  <CardTitle className="text-lg font-medium">Månadskalender</CardTitle>
-                  <CardDescription>Kalendervy för tidsrapportering</CardDescription>
+              {/* Inbäddad månadskalender */}
+              <Card className="border border-neutral-200 mb-6">
+                <CardHeader className="bg-neutral-900 text-white p-3 flex flex-row justify-between items-center space-y-0">
+                  <CardTitle className="text-lg font-medium">
+                    Månadskalender för tidsrapportering
+                  </CardTitle>
+                  
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" className="h-8 px-2 text-white hover:bg-white/10" onClick={() => setSelectedMonth(subMonths(selectedMonth || new Date(), 1))}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm font-medium">
+                      {selectedMonth ? format(selectedMonth, "MMMM yyyy", { locale: sv }) : ""}
+                    </span>
+                    <Button variant="ghost" size="sm" className="h-8 px-2 text-white hover:bg-white/10" onClick={() => setSelectedMonth(addMonths(selectedMonth || new Date(), 1))}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <MonthCalendar 
-                    selectedDate={selectedDate || null}
-                    onSelectDate={(date) => setSelectedDate(date)}
-                    timeEntries={timeEntries || []}
-                    tasks={tasks || []}
-                  />
+                
+                <CardContent className="p-0">
+                  {selectedMonth && (
+                    <div>
+                      <div className="grid grid-cols-7 border-b border-neutral-200">
+                        {["Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön"].map((name) => (
+                          <div key={name} className="py-2 text-center text-xs font-medium border-r last:border-r-0 border-neutral-200">
+                            {name}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="grid grid-cols-7 auto-rows-[minmax(80px,_auto)]">
+                        {/* Genererar kalendervyn */}
+                        {(() => {
+                          const monthStart = startOfMonth(selectedMonth);
+                          const monthEnd = endOfMonth(selectedMonth);
+                          const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+                          const getAdjustedDay = (day: number) => (day === 0 ? 6 : day - 1);
+                          const firstDayOfMonth = getAdjustedDay(monthStart.getDay());
+                          
+                          // Renderar tomma celler före månadens första dag
+                          const emptyCells = Array.from({ length: firstDayOfMonth }).map((_, i) => (
+                            <div key={`empty-${i}`} className="p-0 border-r border-b border-neutral-200"></div>
+                          ));
+                          
+                          // Renderar dagarna i månaden
+                          const dayCells = days.map((day, index) => {
+                            const dayNumber = (index + firstDayOfMonth) % 7;
+                            const isWeekend = dayNumber === 5 || dayNumber === 6; // Lördag eller söndag
+                            const isSelected = selectedDate ? format(day, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd') : false;
+                            
+                            // Hitta time entries för denna dag
+                            const entriesForDay = timeEntries && Array.isArray(timeEntries) 
+                              ? timeEntries.filter(entry => {
+                                  const entryDate = entry.date ? new Date(entry.date) : null;
+                                  return entryDate && format(entryDate, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd');
+                                })
+                              : [];
+                              
+                            const hasEntries = entriesForDay.length > 0;
+                            
+                            return (
+                              <button
+                                key={day.toString()}
+                                onClick={() => setSelectedDate(day)}
+                                className={cn(
+                                  "min-h-[80px] p-1 border-r border-b border-neutral-200 relative text-left",
+                                  isToday(day) && "bg-blue-50",
+                                  isWeekend && "bg-neutral-50",
+                                  isSelected && "ring-2 ring-inset ring-primary",
+                                  hasEntries && "after:absolute after:bottom-1 after:right-1 after:w-2 after:h-2 after:bg-green-500 after:rounded-full"
+                                )}
+                              >
+                                <div className="flex justify-between items-start h-6">
+                                  <span className={cn("text-sm p-1", isToday(day) && "font-bold")}>
+                                    {format(day, "d")}
+                                  </span>
+                                </div>
+                                
+                                {hasEntries && (
+                                  <div className="px-1 text-xs text-green-700 font-medium">
+                                    {entriesForDay.reduce((total, entry) => total + (entry.hours || 0), 0)}h loggad tid
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          });
+                          
+                          return [...emptyCells, ...dayCells];
+                        })()}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
               

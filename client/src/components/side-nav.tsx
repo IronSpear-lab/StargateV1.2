@@ -129,6 +129,16 @@ export function SideNav({ projectId, projectName }: SideNavProps) {
                   Tidsrapportering
                 </Link>
               </Button>
+              <Button
+                asChild
+                variant={location === `/month-calendar` ? "secondary" : "ghost"}
+                className="w-full justify-start"
+              >
+                <Link href="/month-calendar">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Månadskalender
+                </Link>
+              </Button>
             </div>
           </div>
           
