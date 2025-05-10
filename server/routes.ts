@@ -448,16 +448,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Summera faktiska timmar per dag
       for (const entry of timeEntries) {
-        // Konvertera reportDate till string om det är en Date
-        let reportDateStr: string;
-        if (typeof entry.reportDate === 'string') {
-          reportDateStr = entry.reportDate;
-        } else {
-          reportDateStr = new Date(entry.reportDate as Date).toISOString().split('T')[0];
-        }
-        
-        if (dailyHours[reportDateStr]) {
-          dailyHours[reportDateStr].actual += entry.hours;
+        const reportDate = entry.reportDate instanceof Date 
+          ? entry.reportDate 
+          : new Date(entry.reportDate);
+        const dayKey = reportDate.toISOString().split('T')[0];
+        if (dailyHours[dayKey]) {
+          dailyHours[dayKey].actual += entry.hours;
         }
       }
       
@@ -481,14 +477,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Hämta tidsrapporter för föregående period
-      const prevStartDateStr = previousPeriodDays[0];
-      const prevEndDateStr = previousPeriodDays[previousPeriodDays.length - 1];
-      
       const previousTimeEntries = await db.query.taskTimeEntries.findMany({
         where: and(
           eq(taskTimeEntries.projectId, projectId),
-          sql`${taskTimeEntries.reportDate} >= ${prevStartDateStr}`,
-          sql`${taskTimeEntries.reportDate} <= ${prevEndDateStr}`
+          gte(taskTimeEntries.reportDate, new Date(previousPeriodDays[0])),
+          lte(taskTimeEntries.reportDate, new Date(previousPeriodDays[previousPeriodDays.length - 1]))
         )
       });
       
@@ -499,16 +492,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       for (const entry of previousTimeEntries) {
-        // Konvertera reportDate till string om det är en Date
-        let reportDateStr: string;
-        if (typeof entry.reportDate === 'string') {
-          reportDateStr = entry.reportDate;
-        } else {
-          reportDateStr = new Date(entry.reportDate as Date).toISOString().split('T')[0];
-        }
-        
-        if (previousDailyHours[reportDateStr] !== undefined) {
-          previousDailyHours[reportDateStr] += entry.hours;
+        const reportDate = entry.reportDate instanceof Date 
+          ? entry.reportDate 
+          : new Date(entry.reportDate);
+        const dayKey = reportDate.toISOString().split('T')[0];
+        if (previousDailyHours[dayKey] !== undefined) {
+          previousDailyHours[dayKey] += entry.hours;
         }
       }
       
