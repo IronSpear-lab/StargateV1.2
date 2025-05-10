@@ -2,7 +2,7 @@ import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { eq, and, desc, asc, inArray, ne, sql } from "drizzle-orm";
+import { eq, and, desc, asc, inArray, ne, sql, gte, lte } from "drizzle-orm";
 import { db } from "../db";
 import { users } from "@shared/schema";
 import multer from "multer";
@@ -296,6 +296,236 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error adding user to project:', error);
       res.status(500).json({ error: 'Failed to add user to project' });
+    }
+  });
+  
+  // Hantera budget och timpris för projekt
+  app.get('/api/projects/:projectId/budget', async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    const projectId = parseInt(req.params.projectId);
+    
+    if (isNaN(projectId)) {
+      return res.status(400).json({ error: 'Invalid project ID' });
+    }
+    
+    try {
+      const project = await db.query.projects.findFirst({
+        where: eq(projects.id, projectId),
+        columns: {
+          totalBudget: true,
+          hourlyRate: true
+        }
+      });
+      
+      if (!project) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+      
+      return res.status(200).json({
+        totalBudget: project.totalBudget,
+        hourlyRate: project.hourlyRate
+      });
+    } catch (error) {
+      console.error('Error fetching project budget:', error);
+      res.status(500).json({ error: 'Failed to fetch budget information' });
+    }
+  });
+  
+  app.patch('/api/projects/:projectId/budget', async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    const projectId = parseInt(req.params.projectId);
+    
+    if (isNaN(projectId)) {
+      return res.status(400).json({ error: 'Invalid project ID' });
+    }
+    
+    try {
+      // Kontrollera att användaren har behörighet (bör vara admin eller project_leader)
+      const userProject = await db.query.userProjects.findFirst({
+        where: and(
+          eq(userProjects.projectId, projectId),
+          eq(userProjects.userId, req.user!.id)
+        )
+      });
+      
+      if (!userProject || (userProject.role !== 'admin' && userProject.role !== 'project_leader')) {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+      
+      const { totalBudget, hourlyRate } = req.body;
+      
+      // Uppdatera projektet
+      const [updatedProject] = await db.update(projects)
+        .set({
+          totalBudget: totalBudget === undefined ? null : totalBudget,
+          hourlyRate: hourlyRate === undefined ? null : hourlyRate
+        })
+        .where(eq(projects.id, projectId))
+        .returning();
+      
+      return res.status(200).json({
+        totalBudget: updatedProject.totalBudget,
+        hourlyRate: updatedProject.hourlyRate
+      });
+    } catch (error) {
+      console.error('Error updating project budget:', error);
+      res.status(500).json({ error: 'Failed to update budget information' });
+    }
+  });
+  
+  // API för att hämta intäktsdata baserat på registrerade timmar och timpris
+  app.get('/api/projects/:projectId/revenue', async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    const projectId = parseInt(req.params.projectId);
+    const viewMode = req.query.viewMode as string || 'week';
+    const offset = parseInt(req.query.offset as string || '0');
+    const hourlyRate = parseFloat(req.query.hourlyRate as string || '0');
+    
+    if (isNaN(projectId)) {
+      return res.status(400).json({ error: 'Invalid project ID' });
+    }
+    
+    try {
+      // Hämta projektet för att få budget
+      const project = await db.query.projects.findFirst({
+        where: eq(projects.id, projectId),
+        columns: {
+          totalBudget: true
+        }
+      });
+      
+      if (!project) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+      
+      // Beräkna tidsintervall baserat på viewMode och offset
+      const now = new Date();
+      let startDate, endDate;
+      
+      if (viewMode === 'week') {
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - now.getDay() + (offset * 7));
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 6);
+      } else { // month
+        startDate = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0);
+      }
+      
+      // Hämta tidsrapporter för projektet inom tidsintervallet
+      const timeEntries = await db.query.taskTimeEntries.findMany({
+        where: and(
+          eq(taskTimeEntries.projectId, projectId),
+          gte(taskTimeEntries.reportDate, startDate),
+          lte(taskTimeEntries.reportDate, endDate)
+        )
+      });
+      
+      // Gruppera timmar per dag
+      const dailyHours: Record<string, { actual: number }> = {};
+      const days = [];
+      
+      // Skapa dagar i intervallet
+      let currentDay = new Date(startDate);
+      while (currentDay <= endDate) {
+        const dayKey = currentDay.toISOString().split('T')[0];
+        days.push(dayKey);
+        dailyHours[dayKey] = { actual: 0 };
+        currentDay.setDate(currentDay.getDate() + 1);
+      }
+      
+      // Summera faktiska timmar per dag
+      for (const entry of timeEntries) {
+        const dayKey = entry.reportDate.toISOString().split('T')[0];
+        if (dailyHours[dayKey]) {
+          dailyHours[dayKey].actual += entry.hours;
+        }
+      }
+      
+      // Skapa föregående periods data (förskjut med 1 period)
+      const previousPeriodDays = [];
+      if (viewMode === 'week') {
+        currentDay = new Date(startDate);
+        currentDay.setDate(currentDay.getDate() - 7);
+        for (let i = 0; i < 7; i++) {
+          previousPeriodDays.push(currentDay.toISOString().split('T')[0]);
+          currentDay.setDate(currentDay.getDate() + 1);
+        }
+      } else { // month
+        const prevMonthStart = new Date(startDate.getFullYear(), startDate.getMonth() - 1, 1);
+        const prevMonthEnd = new Date(startDate.getFullYear(), startDate.getMonth(), 0);
+        currentDay = new Date(prevMonthStart);
+        while (currentDay <= prevMonthEnd) {
+          previousPeriodDays.push(currentDay.toISOString().split('T')[0]);
+          currentDay.setDate(currentDay.getDate() + 1);
+        }
+      }
+      
+      // Hämta tidsrapporter för föregående period
+      const previousTimeEntries = await db.query.taskTimeEntries.findMany({
+        where: and(
+          eq(taskTimeEntries.projectId, projectId),
+          gte(taskTimeEntries.reportDate, new Date(previousPeriodDays[0])),
+          lte(taskTimeEntries.reportDate, new Date(previousPeriodDays[previousPeriodDays.length - 1]))
+        )
+      });
+      
+      // Summera föregående periods timmar
+      const previousDailyHours: Record<string, number> = {};
+      for (const dayKey of previousPeriodDays) {
+        previousDailyHours[dayKey] = 0;
+      }
+      
+      for (const entry of previousTimeEntries) {
+        const dayKey = entry.reportDate.toISOString().split('T')[0];
+        if (previousDailyHours[dayKey] !== undefined) {
+          previousDailyHours[dayKey] += entry.hours;
+        }
+      }
+      
+      // Beräkna totala budgeten per dag (jämnt fördelat)
+      let dailyBudget = 0;
+      if (project.totalBudget) {
+        const totalDays = days.length;
+        dailyBudget = project.totalBudget / totalDays;
+      }
+      
+      // Formatera data för diagram
+      const formattedData = days.map((dayKey, index) => {
+        const date = new Date(dayKey);
+        const dayName = viewMode === 'week' 
+          ? ['Sön', 'Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör'][date.getDay()]
+          : date.getDate().toString();
+        
+        // Hitta motsvarande dag från föregående period
+        const prevDayKey = previousPeriodDays[index % previousPeriodDays.length];
+        const prevHours = previousDailyHours[prevDayKey] || 0;
+        
+        return {
+          day: dayName,
+          fullDate: dayKey,
+          // Faktiska intäkter (timmar × timpris)
+          current: Math.round(dailyHours[dayKey].actual * hourlyRate),
+          // Föregående periods intäkter
+          previous: Math.round(prevHours * hourlyRate),
+          // Budget per dag
+          budget: dailyBudget > 0 ? Math.round(dailyBudget) : undefined
+        };
+      });
+      
+      return res.json(formattedData);
+    } catch (error) {
+      console.error('Error fetching revenue data:', error);
+      res.status(500).json({ error: 'Failed to fetch revenue data' });
     }
   });
   
