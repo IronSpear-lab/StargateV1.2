@@ -40,9 +40,15 @@ export function MonthCalendarGrid({ className }: MonthCalendarGridProps) {
   const queryClient = useQueryClient();
   
   // Hämta användarens uppgifter från API
-  const { data: tasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
-    queryKey: ['/api/tasks/assigned'],
+  const { data: tasks = [], isLoading: tasksLoading, error: tasksError } = useQuery<Task[]>({
+    queryKey: ['/api/field-tasks'],
     staleTime: 60 * 1000,
+    onError: (error) => {
+      console.error("Fel vid hämtning av uppgifter:", error);
+    },
+    onSuccess: (data) => {
+      console.log("Hämtade uppgifter:", data);
+    }
   });
   
   // Hämta användarens tidsregistreringar från API
