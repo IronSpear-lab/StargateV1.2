@@ -19,6 +19,7 @@ import { MainNav } from "../components/main-nav";
 import { SideNav } from "../components/side-nav";
 import { useAuth } from "../hooks/use-auth";
 import { TimeTracking } from "../components/TimeTracking";
+import { MonthCalendar } from "../components/MonthCalendar";
 import { cn } from "../lib/utils";
 
 export default function TimeTrackingPage() {
@@ -325,6 +326,22 @@ export default function TimeTrackingPage() {
             </div>
             
             <div className="space-y-6">
+              {/* Visa månadskalendern direkt på sidan */}
+              <Card className="border border-neutral-200 mb-6">
+                <CardHeader>
+                  <CardTitle className="text-lg font-medium">Månadskalender</CardTitle>
+                  <CardDescription>Kalendervy för tidsrapportering</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <MonthCalendar 
+                    selectedDate={selectedDate || null}
+                    onSelectDate={(date) => setSelectedDate(date)}
+                    timeEntries={timeEntries || []}
+                    tasks={tasks || []}
+                  />
+                </CardContent>
+              </Card>
+              
               <TimeTracking 
                 projectId={projectId} 
                 tasks={tasks}
