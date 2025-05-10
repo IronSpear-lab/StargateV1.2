@@ -412,10 +412,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let startDate, endDate;
       
       if (viewMode === 'week') {
+        // Börja med söndag som första dag i veckan (0)
         startDate = new Date(now);
+        // now.getDay() ger 0 för söndag, 1 för måndag, osv.
         startDate.setDate(now.getDate() - now.getDay() + (offset * 7));
         endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + 6);
+        endDate.setDate(startDate.getDate() + 6); // 6 dagar framåt = hela veckan
       } else { // month
         startDate = new Date(now.getFullYear(), now.getMonth() + offset, 1);
         endDate = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0);
@@ -428,19 +430,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hämta tiden för enbart dagens datum för beräkning av daglig intäkt
       const todayStr = new Date().toISOString().split('T')[0];
       
+      // Konvertera datum till ISO-format för att säkerställa korrekt jämförelse
       const timeEntries = await db.query.taskTimeEntries.findMany({
         where: and(
           eq(taskTimeEntries.projectId, projectId),
-          sql`${taskTimeEntries.reportDate} >= ${startDateStr}`,
-          sql`${taskTimeEntries.reportDate} <= ${endDateStr}`
+          sql`DATE(${taskTimeEntries.reportDate}) >= DATE(${startDateStr})`,
+          sql`DATE(${taskTimeEntries.reportDate}) <= DATE(${endDateStr})`
         )
       });
       
-      // Hämta tidsrapporter för dagens datum
+      // Hämta tidsrapporter för dagens datum med DATE-funktion
       const todayEntries = await db.query.taskTimeEntries.findMany({
         where: and(
           eq(taskTimeEntries.projectId, projectId),
-          sql`${taskTimeEntries.reportDate} = ${todayStr}`
+          sql`DATE(${taskTimeEntries.reportDate}) = DATE(${todayStr})`
         )
       });
       
@@ -493,12 +496,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Hämta tidsrapporter för föregående period
+      // Hämta tidsrapporter för föregående period med förbättrad datumhantering
       const previousTimeEntries = await db.query.taskTimeEntries.findMany({
         where: and(
           eq(taskTimeEntries.projectId, projectId),
-          gte(taskTimeEntries.reportDate, new Date(previousPeriodDays[0])),
-          lte(taskTimeEntries.reportDate, new Date(previousPeriodDays[previousPeriodDays.length - 1]))
+          sql`DATE(${taskTimeEntries.reportDate}) >= DATE(${previousPeriodDays[0]})`,
+          sql`DATE(${taskTimeEntries.reportDate}) <= DATE(${previousPeriodDays[previousPeriodDays.length - 1]})`
         )
       });
       
