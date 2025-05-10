@@ -84,23 +84,8 @@ export function RevenueOverviewWidget({
       
       if (!response.ok) {
         try {
-          // Försök att logga in automatiskt (för testsyfte)
-          const loginResponse = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: 'admin', password: 'admin123' }),
-            credentials: 'include'
-          });
-          
-          if (loginResponse.ok) {
-            const retryResponse = await fetch(`/api/projects/${projectId}/revenue?viewMode=${viewMode}&offset=${currentOffset}`, {
-              credentials: 'include'
-            });
-            
-            if (retryResponse.ok) {
-              return await retryResponse.json();
-            }
-          }
+          // Användaren behöver logga in manuellt
+          console.error('Användaren är inte inloggad eller saknar behörighet');
         } catch (err) {
           console.error("Login retry failed:", err);
         }

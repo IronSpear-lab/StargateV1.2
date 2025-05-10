@@ -1385,6 +1385,7 @@ app.patch(`${apiPrefix}/projects/:projectId/budget`, async (req, res) => {
 // Hämta projektets revenue data baserat på arbetade timmar och timpris
 app.get(`${apiPrefix}/projects/:projectId/revenue`, async (req, res) => {
     try {
+      // Verifiera användarautentisering
       if (!req.isAuthenticated()) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -1395,6 +1396,12 @@ app.get(`${apiPrefix}/projects/:projectId/revenue`, async (req, res) => {
       
       if (isNaN(projectId)) {
         return res.status(400).json({ error: "Invalid project ID" });
+      }
+      
+      // Kontrollera användarens behörighet till projektet med den nya metoden
+      const hasAccess = await storage.hasProjectPermission(req.user!.id, projectId);
+      if (!hasAccess && req.user!.role !== 'admin' && req.user!.role !== 'project_leader') {
+        return res.status(403).json({ error: "Access denied to this project" });
       }
       
       // Hämta projektet för att få budget och timpris
@@ -1409,23 +1416,86 @@ app.get(`${apiPrefix}/projects/:projectId/revenue`, async (req, res) => {
       const hourlyRate = projectData.hourlyRate || 0;
       const totalBudget = projectData.totalBudget || 0;
       
-      // Hämta tidsrapporter från samma API som används i TaskHoursWidget
-      // Detta anropar samma logik för att beräkna tidsperioden
-      const timeEntriesResponse = await fetch(`http://localhost:${process.env.PORT || 5000}/api/projects/${projectId}/task-hours?viewMode=${viewMode}&offset=${offset}`);
+      // Beräkna tidsperioden baserat på nuvarande datum och offset
+      let startDate: Date, endDate: Date;
+      const today = new Date();
       
-      if (!timeEntriesResponse.ok) {
-        return res.status(500).json({ error: "Failed to fetch time entries" });
+      if (viewMode === 'week') {
+        // Veckovisning
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - today.getDay() + (offset * 7));
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 6);
+      } else {
+        // Månadsvisning
+        startDate = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+        endDate = new Date(today.getFullYear(), today.getMonth() + offset + 1, 0);
       }
       
-      const timeData = await timeEntriesResponse.json();
+      // Hämta tidsrapporter för denna period
+      const timeEntries = await db.select({
+        date: taskTimeEntries.reportDate,
+        taskId: taskTimeEntries.taskId,
+        hours: taskTimeEntries.hours
+      })
+      .from(taskTimeEntries)
+      .where(
+        and(
+          eq(taskTimeEntries.projectId, projectId),
+          gte(taskTimeEntries.reportDate, startDate.toISOString().split('T')[0]),
+          lte(taskTimeEntries.reportDate, endDate.toISOString().split('T')[0])
+        )
+      );
       
-      // Konvertera timeData till revenue data (timmar × timpris)
-      const revenueData = timeData.map((entry: any) => ({
-        date: entry.date,
-        actualCost: parseFloat(entry.actualHours) * hourlyRate,
-        estimatedCost: parseFloat(entry.estimatedHours) * hourlyRate,
-        fullDate: entry.date
-      }));
+      // Hämta uppgifter för att få uppskattade timmar
+      const projectTasks = await db.select({
+        id: tasks.id,
+        estimatedHours: tasks.estimatedHours
+      })
+      .from(tasks)
+      .where(eq(tasks.projectId, projectId));
+      
+      // Skapa en map över tasks för snabb uppslagning
+      const taskMap = new Map();
+      projectTasks.forEach(task => {
+        taskMap.set(task.id, task.estimatedHours || 0);
+      });
+      
+      // Aggregera faktiska timmar per dag
+      const dailyHours = new Map();
+      timeEntries.forEach(entry => {
+        const dateStr = entry.date;
+        if (!dailyHours.has(dateStr)) {
+          dailyHours.set(dateStr, { actualHours: 0, estimatedHours: 0 });
+        }
+        
+        const currentData = dailyHours.get(dateStr);
+        currentData.actualHours += parseFloat(entry.hours.toString());
+        
+        // Lägg till uppskattade timmar för uppgiften (dividerat med antal dagar i perioden)
+        const estHours = taskMap.get(entry.taskId) || 0;
+        const daysInPeriod = (viewMode === 'week') ? 7 : 30;
+        currentData.estimatedHours += estHours / daysInPeriod;
+      });
+      
+      // Skapa revenueData array med alla dagar i perioden
+      const revenueData = [];
+      const dayDiff = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      for (let i = 0; i <= dayDiff; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        const dailyData = dailyHours.get(dateStr) || { actualHours: 0, estimatedHours: 0 };
+        
+        revenueData.push({
+          date: dateStr,
+          actualCost: dailyData.actualHours * hourlyRate,
+          estimatedCost: dailyData.estimatedHours * hourlyRate,
+          fullDate: dateStr
+        });
+      }
       
       // Lägg till budget och timpris i responsen
       const response = {
