@@ -619,6 +619,12 @@ export function GanttChart({ projectId = 1, focusTaskId = null }: { projectId?: 
     if (endDate) taskData.endDate = endDate;
     if (dueDate) taskData.dueDate = dueDate;
     
+    // Handle estimated hours
+    const estimatedHours = formData.get('estimatedHours') as string;
+    if (estimatedHours && estimatedHours.trim() !== '') {
+      taskData.estimatedHours = Number(estimatedHours);
+    }
+    
     // Handle assignee
     const assigneeId = formData.get('assigneeId');
     if (assigneeId && assigneeId !== 'unassigned') {
@@ -927,6 +933,8 @@ export function GanttChart({ projectId = 1, focusTaskId = null }: { projectId?: 
                                 {task.description && <p className="text-xs max-w-xs">{task.description}</p>}
                                 <p className="text-xs">Status: {task.status}</p>
                                 {task.assigneeName && <p className="text-xs">Assigned to: {task.assigneeName}</p>}
+                                {task.estimatedHours !== null && task.estimatedHours !== undefined && 
+                                  <p className="text-xs">Uppskattat antal timmar: {task.estimatedHours}</p>}
                               </div>
                             </TooltipContent>
                           </Tooltip>
