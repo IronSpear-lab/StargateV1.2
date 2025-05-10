@@ -218,14 +218,7 @@ export default function AuthPage() {
         </Card>
       </div>
       
-      <div 
-        className="hidden md:block relative h-full w-full"
-        style={{
-          backgroundImage: 'url(/attached_assets/Stadshusljus.webp)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center'
-        }}
-      >
+      <div className="hidden md:block relative h-full w-full auth-background">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-900/30 to-transparent flex flex-col justify-center p-12 text-white shadow-inner">
           <div className="max-w-md">
             <h1 className="text-4xl font-bold mb-4 drop-shadow-md">Project Management Platform</h1>

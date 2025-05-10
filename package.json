@@ -54,6 +54,7 @@
     "@types/uuid": "^10.0.0",
     "@xeokit/xeokit-sdk": "^2.6.75",
     "axios": "^1.9.0",
+    "base64-img": "^1.0.4",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
