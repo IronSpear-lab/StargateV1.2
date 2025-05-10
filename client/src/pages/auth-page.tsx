@@ -21,28 +21,26 @@ import stockholmImage from "../assets/Stadshusljus.webp";
 // Theme toggle komponent
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
+  
+  const toggleTheme = () => {
+    // Växla direkt mellan ljust och mörkt läge
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" className="rounded-full absolute top-4 right-4 bg-white/30 backdrop-blur-sm dark:bg-gray-800/30 hover:bg-white/50 dark:hover:bg-gray-800/50 z-50">
-          <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <span className="sr-only">Växla tema</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>
-          Ljust
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>
-          Mörkt
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>
-          System
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Button 
+      variant="ghost" 
+      size="icon" 
+      onClick={toggleTheme}
+      className="absolute top-4 right-4 h-8 w-8 rounded-full bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 z-50"
+    >
+      {theme === "dark" ? (
+        <Sun className="h-[1.2rem] w-[1.2rem]" />
+      ) : (
+        <Moon className="h-[1.2rem] w-[1.2rem]" />
+      )}
+      <span className="sr-only">Växla tema</span>
+    </Button>
   );
 }
 
@@ -135,8 +133,8 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen grid md:grid-cols-2 gap-0 relative dark:bg-gray-950">
-      <ThemeToggle />
-      <div className="flex items-center justify-center p-4 bg-white dark:bg-gray-900">
+      <div className="flex items-center justify-center p-4 bg-white dark:bg-gray-900 relative">
+        <ThemeToggle />
         <Card className="w-full max-w-md dark:border-gray-700">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold">ValvXlstart</CardTitle>
