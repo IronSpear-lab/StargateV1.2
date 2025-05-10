@@ -399,7 +399,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const project = await db.query.projects.findFirst({
         where: eq(projects.id, projectId),
         columns: {
-          totalBudget: true
+          totalBudget: true,
+          startDate: true,
+          endDate: true
         }
       });
       
@@ -521,11 +523,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Beräkna totala budgeten per dag (jämnt fördelat)
+      // Beräkna totala budgeten per dag baserat på projektets start- och slutdatum (jämnt fördelat)
       let dailyBudget = 0;
       if (project.totalBudget) {
-        const totalDays = days.length;
-        dailyBudget = project.totalBudget / totalDays;
+        // Om projektet har start- och slutdatum, använd dessa för att beräkna daglig budget
+        if (project.startDate && project.endDate) {
+          const projectStartDate = new Date(project.startDate);
+          const projectEndDate = new Date(project.endDate);
+          
+          // Beräkna antal dagar i projektet
+          const projectDays = Math.max(1, Math.ceil((projectEndDate.getTime() - projectStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+          dailyBudget = project.totalBudget / projectDays;
+        } else {
+          // Fallback: Använd nuvarande periodlängd som bas
+          const totalDays = days.length;
+          dailyBudget = project.totalBudget / totalDays;
+        }
       }
       
       // Formatera data för diagram
@@ -551,9 +564,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       });
       
+      // Skicka med projektdata, inklusive start- och slutdatum
+      const projectData = {
+        totalBudget: project.totalBudget || 0,
+        startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : null,
+        endDate: project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : null
+      };
+      
       return res.json({
         dailyData: formattedData,
-        todayRevenue: Math.round(todayRevenue)
+        todayRevenue: Math.round(todayRevenue),
+        project: projectData
       });
     } catch (error) {
       console.error('Error fetching revenue data:', error);
