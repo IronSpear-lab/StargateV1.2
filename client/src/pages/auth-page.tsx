@@ -12,6 +12,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
+// Importera bilden direkt
+import stockholmImage from "../assets/Stadshusljus.webp";
+
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
@@ -218,8 +221,13 @@ export default function AuthPage() {
         </Card>
       </div>
       
-      <div className="hidden md:block relative h-full w-full auth-background">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-900/30 to-transparent flex flex-col justify-center p-12 text-white shadow-inner">
+      <div className="hidden md:block relative h-full w-full">
+        <img 
+          src={stockholmImage} 
+          alt="Stockholm stadshus" 
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-900/60 to-blue-900/20 flex flex-col justify-center p-12 text-white shadow-inner">
           <div className="max-w-md">
             <h1 className="text-4xl font-bold mb-4 drop-shadow-md">Project Management Platform</h1>
             <p className="text-lg mb-6 drop-shadow">A comprehensive solution for file management, task tracking, and team collaboration.</p>
