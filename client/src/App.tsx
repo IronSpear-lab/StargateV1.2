@@ -17,7 +17,8 @@ import ProjectDetailPage from "@/pages/project-detail-page";
 import GanttPage from "@/pages/gantt-page";
 import GanttChartPage from "@/pages/gantt-chart-page";
 import AnalyticsPage from "@/pages/analytics-page";
-import TimeTrackingPage from "@/pages/time-tracking-page-fixed";
+import TimeTrackingPage from "@/pages/time-tracking-page";
+import MonthCalendarPage from "@/pages/month-calendar-page";
 import NotificationsPage from "@/pages/notifications-page";
 import TeamPage from "@/pages/team-page";
 import HelpPage from "@/pages/help-page";
@@ -81,6 +82,7 @@ function Router() {
       <ProtectedRoute path="/wiki" component={WikiPage} />
       <ProtectedRoute path="/time-tracking" component={TimeTrackingPage} />
       <ProtectedRoute path="/time-tracking/:projectId" component={TimeTrackingPage} />
+      <ProtectedRoute path="/month-calendar" component={MonthCalendarPage} />
       <ProtectedRoute path="/notifications" component={NotificationsPage} />
       <ProtectedRoute path="/team" component={TeamPage} />
       <ProtectedRoute path="/help" component={HelpPage} />
