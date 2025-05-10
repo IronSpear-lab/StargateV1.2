@@ -30,6 +30,7 @@ export interface GanttTask {
   level?: number;
   assigneeId?: number | null;
   assigneeName?: string | null;
+  estimatedHours?: number | null;
 }
 
 // Demo-data för Gantt-diagrammet - helt separerad från tasks API
@@ -511,7 +512,8 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
     endDate: '',
     duration: 0,
     assigneeId: null, // Null betyder att ingen har tilldelats uppgiften
-    assigneeName: null // Kommer att sättas baserat på assigneeId
+    assigneeName: null, // Kommer att sättas baserat på assigneeId
+    estimatedHours: null // Uppskattat antal timmar för uppgiften
   });
   
   // Hantera expandering/kollapsning av faser
@@ -1763,6 +1765,27 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Uppskattat antal timmar */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="estimated-hours" className="text-right text-sm">
+                <Clock className="h-4 w-4 inline mr-1" />
+                Uppskattat antal timmar
+              </label>
+              <Input
+                id="estimated-hours"
+                type="number"
+                min="0"
+                step="0.5"
+                placeholder="0"
+                value={newTask.estimatedHours === null ? '' : newTask.estimatedHours}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                  setNewTask({ ...newTask, estimatedHours: value });
+                }}
+                className="col-span-3"
+              />
             </div>
           </div>
           
