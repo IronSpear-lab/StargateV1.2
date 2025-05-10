@@ -1,6 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, ComposedChart } from 'recharts';
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, TrendingUp, TrendingDown, Edit, Settings } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -12,6 +11,9 @@ import {
 import { sv } from "date-fns/locale";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Widget, WidthType, HeightType } from "../../Widget";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Dialog imports
 import {
@@ -25,11 +27,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+
+interface RevenueWidgetProps {
+  id?: string;
+  projectId: number;
+  type?: string;
+  title?: string;
+  onRemove?: (id: string) => void;
+  className?: string;
+  width?: WidthType;
+  height?: HeightType;
+}
 
 interface RevenueData {
   day: string;
+  fullDate: string;
   current: number;
   previous: number;
   budget?: number;
@@ -45,11 +57,20 @@ interface ProjectBudgetData {
   hourlyRate?: number | null;
 }
 
+// Tidsperiodtyper och navigeringslogik
 type ViewMode = 'week' | 'month';
 
-export function RevenueOverviewWidget({ projectId }: { projectId: number }) {
+export function RevenueOverviewWidget({ 
+  id = 'revenue-overview', 
+  projectId, 
+  type = 'revenue-overview', 
+  title = 'INTÄKTSÖVERSIKT', 
+  onRemove,
+  className,
+  width,
+  height
+}: RevenueWidgetProps) {
   const { toast } = useToast();
-  const [data, setData] = useState<RevenueData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentWeekTotal, setCurrentWeekTotal] = useState(0);
   const [previousWeekTotal, setPreviousWeekTotal] = useState(0);
@@ -61,7 +82,7 @@ export function RevenueOverviewWidget({ projectId }: { projectId: number }) {
   const [totalBudget, setTotalBudget] = useState<number | undefined>(undefined);
   const [hourlyRate, setHourlyRate] = useState<number | undefined>(undefined);
   
-  // View mode and time period state
+  // Tidsperiod inställningar
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [currentOffset, setCurrentOffset] = useState<number>(0);
   
