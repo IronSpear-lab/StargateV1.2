@@ -13,37 +13,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 // Importera bilderna för light/dark mode
 import stockholmLightImage from "../assets/Stadshusljus.webp";
 import stockholmDarkImage from "../assets/Stadshusmörk.jpg";
-
-// Theme toggle komponent som exporteras separat om vi behöver återanvända den
-export function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
-  
-  const toggleTheme = () => {
-    // Växla direkt mellan ljust och mörkt läge
-    setTheme(theme === "dark" ? "light" : "dark");
-  };
-
-  return (
-    <Button 
-      variant="ghost" 
-      size="icon" 
-      onClick={toggleTheme}
-      className="absolute top-4 right-4 h-8 w-8 rounded-full bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 z-50"
-    >
-      {theme === "dark" ? (
-        <Sun className="h-[1.2rem] w-[1.2rem]" />
-      ) : (
-        <Moon className="h-[1.2rem] w-[1.2rem]" />
-      )}
-      <span className="sr-only">Växla tema</span>
-    </Button>
-  );
-}
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -67,7 +40,7 @@ export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { theme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -86,22 +59,20 @@ export default function AuthPage() {
     },
   });
 
-  useEffect(() => {
-    if (user) {
-      navigate("/");
-    }
-  }, [user, navigate]);
-
   const onLoginSubmit = (data: LoginFormValues) => {
     loginMutation.mutate(data, {
-      onSuccess: async () => {
-        // Efter lyckad inloggning, gör ett extra API-anrop för att hämta projekt
-        // Detta för att fixa cachningsproblem
+      onSuccess: () => {
+        toast({
+          title: "Welcome back!",
+          description: "You have been logged in successfully.",
+        });
+        
+        // Efter en lyckad inloggning, manuellt hämta projektdata
+        // medan React Query uppdaterar cache i bakgrunden
         try {
           console.log("Manuellt hämtar projekt efter login...");
-          const response = await fetch('/api/user-projects');
-          const projects = await response.json();
-          console.log("Manuell projekthämtning efter login:", projects);
+          const response = fetch('/api/user-projects');
+          console.log("Manuell projekthämtning efter login:", response);
         } catch (e) {
           console.error("Error vid manuell projekthämtning:", e);
         }
@@ -119,6 +90,12 @@ export default function AuthPage() {
   const onRegisterSubmit = (data: RegisterFormValues) => {
     const { confirmPassword, ...userData } = data;
     registerMutation.mutate(userData, {
+      onSuccess: () => {
+        toast({
+          title: "Account created!",
+          description: "Your account has been created successfully.",
+        });
+      },
       onError: (error) => {
         toast({
           title: "Registration failed",
@@ -129,14 +106,38 @@ export default function AuthPage() {
     });
   };
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate("/");
+    }
+  }, [user, navigate]);
+
   if (user) {
     return null; // Will be redirected
   }
 
   return (
     <div className="min-h-screen grid md:grid-cols-2 gap-0 relative dark:bg-gray-950">
+      {/* Vänster sida med formulär */}
       <div className="flex items-center justify-center p-4 bg-white dark:bg-gray-900 relative">
-        <ThemeToggle />
+        {/* Theme toggle i övre högra hörnet av formulärfältet */}
+        <div className="absolute top-4 right-4 z-50">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="h-8 w-8 rounded-full bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            {theme === "dark" ? (
+              <Sun className="h-[1.2rem] w-[1.2rem]" />
+            ) : (
+              <Moon className="h-[1.2rem] w-[1.2rem]" />
+            )}
+            <span className="sr-only">Växla tema</span>
+          </Button>
+        </div>
+        
         <Card className="w-full max-w-md dark:border-gray-700">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold">ValvXlstart</CardTitle>
@@ -253,6 +254,7 @@ export default function AuthPage() {
         </Card>
       </div>
       
+      {/* Höger sida med bild */}
       <div className="hidden md:block relative h-full w-full">
         <img 
           src={theme === "dark" ? stockholmDarkImage : stockholmLightImage} 
@@ -270,8 +272,8 @@ export default function AuthPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <div>
-                  <h3 className="font-semibold text-white drop-shadow-md">File Management</h3>
-                  <p className="text-white drop-shadow">Tree-view file system with PDF annotation capabilities</p>
+                  <h3 className="text-lg font-medium">File Management</h3>
+                  <p className="text-sm text-gray-100">Upload, organize, and share files securely with your team.</p>
                 </div>
               </div>
               
@@ -280,8 +282,8 @@ export default function AuthPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <div>
-                  <h3 className="font-semibold text-white drop-shadow-md">Task Management</h3>
-                  <p className="text-white drop-shadow">Kanban boards and Gantt charts for effective project planning</p>
+                  <h3 className="text-lg font-medium">Task Tracking</h3>
+                  <p className="text-sm text-gray-100">Monitor progress with Gantt charts, kanban boards, and task lists.</p>
                 </div>
               </div>
               
@@ -290,8 +292,8 @@ export default function AuthPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <div>
-                  <h3 className="font-semibold text-white drop-shadow-md">Collaboration</h3>
-                  <p className="text-white drop-shadow">Wiki module, commenting system, and role-based permissions</p>
+                  <h3 className="text-lg font-medium">Team Collaboration</h3>
+                  <p className="text-sm text-gray-100">Work together in real-time with messaging and document annotation.</p>
                 </div>
               </div>
             </div>
