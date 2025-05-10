@@ -20,6 +20,7 @@ import { SideNav } from "../components/side-nav";
 import { useAuth } from "../hooks/use-auth";
 import { TimeTracking } from "../components/TimeTracking";
 import { MonthCalendar } from "../components/MonthCalendar";
+import { SimpleMonthCalendar } from "../components/SimpleMonthCalendar";
 import { cn } from "../lib/utils";
 
 export default function TimeTrackingPage() {
@@ -326,8 +327,11 @@ export default function TimeTrackingPage() {
             </div>
             
             <div className="space-y-6">
-              {/* Visa månadskalendern direkt på sidan */}
-              <Card className="border border-neutral-200 mb-6">
+              {/* Enkel kalender som visar alla månadens dagar */}
+              <SimpleMonthCalendar />
+              
+              {/* Den mer avancerade komponenten (som inte syns för tillfället) */}
+              <Card className="border border-neutral-200 mb-6 mt-6">
                 <CardHeader>
                   <CardTitle className="text-lg font-medium">Månadskalender</CardTitle>
                   <CardDescription>Kalendervy för tidsrapportering</CardDescription>
