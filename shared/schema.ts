@@ -12,6 +12,8 @@ export const userRoleEnum = pgEnum('user_role', ['admin', 'project_leader', 'use
 // Define task status enum
 export const taskStatusEnum = pgEnum('task_status', ['backlog', 'todo', 'in_progress', 'review', 'done']);
 
+
+
 // Users table
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -510,3 +512,5 @@ export type InsertConversationParticipant = z.infer<typeof insertConversationPar
 
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+

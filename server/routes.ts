@@ -16,6 +16,7 @@ import {
   projects, 
   wikiPages,
   taskTimeEntries,
+  timeEntries,
   conversations,
   conversationParticipants,
   pdfVersions,
