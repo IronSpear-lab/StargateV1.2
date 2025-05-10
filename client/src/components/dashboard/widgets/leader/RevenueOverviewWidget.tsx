@@ -82,12 +82,21 @@ export function RevenueOverviewWidget({
   // Uppdatera state när budgetdata har hämtats
   React.useEffect(() => {
     if (budgetData) {
+      console.log('Budget data fetched:', budgetData);
       setHourlyRate(budgetData.hourlyRate || undefined);
       setTotalBudget(budgetData.totalBudget || undefined);
       setStartDate(budgetData.startDate ? new Date(budgetData.startDate) : undefined);
       setEndDate(budgetData.endDate ? new Date(budgetData.endDate) : undefined);
     }
   }, [budgetData]);
+  
+  // Uppdatera timpris från API-responsen om det finns
+  React.useEffect(() => {
+    if (apiResponse?.project?.hourlyRate) {
+      console.log('Updating hourly rate from revenue API:', apiResponse.project.hourlyRate);
+      setHourlyRate(apiResponse.project.hourlyRate);
+    }
+  }, [apiResponse]);
   
   // Uppdatera budgetinställningar
   const updateBudgetMutation = useMutation({
