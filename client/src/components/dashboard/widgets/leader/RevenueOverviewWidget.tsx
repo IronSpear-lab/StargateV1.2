@@ -45,6 +45,7 @@ interface RevenueApiResponse {
   todayRevenue: number;
   project?: {
     totalBudget: number;
+    hourlyRate: number;
     startDate: string | null;
     endDate: string | null;
   };

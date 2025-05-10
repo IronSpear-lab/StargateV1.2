@@ -418,7 +418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     try {
-      // Hämta projektet för att få budget
+      // Hämta projektet för att få budget och timpris
       const project = await db.query.projects.findFirst({
         where: eq(projects.id, projectId),
         columns: {
@@ -440,6 +440,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!project) {
         return res.status(404).json({ error: 'Project not found' });
       }
+      
+      // Använd projektets timpris från databasen, om det inte finns, använd standardvärde 0
+      const hourlyRate = project.hourlyRate || 0;
       
       // Beräkna tidsintervall baserat på viewMode och offset
       const now = new Date();
@@ -489,6 +492,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const entry of todayEntries) {
         todayRevenue += entry.hours * hourlyRate;
       }
+      
+      console.log('Calculating revenue with hourly rate:', hourlyRate);
       
       // Logga tidsrapporterna för felsökning
       console.log('Time entries:', timeEntries.map(entry => ({
@@ -606,9 +611,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       });
       
-      // Skicka med projektdata, inklusive start- och slutdatum
+      // Skicka med projektdata, inklusive start- och slutdatum och timpris
       const projectData = {
         totalBudget: project.totalBudget || 0,
+        hourlyRate: project.hourlyRate || 0,
         startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : null,
         endDate: project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : null
       };
