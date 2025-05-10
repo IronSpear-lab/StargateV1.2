@@ -97,6 +97,9 @@ export interface IStorage {
   deleteTimeEntry(id: number): Promise<void>;
   getProjectTimeEntries(projectId: number): Promise<TimeEntry[]>;
   
+  // Project Permissions
+  hasProjectPermission(userId: number, projectId: number): Promise<boolean>;
+  
   // User Projects (Roles)
   assignUserToProject(userProject: Omit<UserProject, "id">): Promise<UserProject>;
   getProjectMembers(projectId: number): Promise<{ id: number; username: string }[]>;
