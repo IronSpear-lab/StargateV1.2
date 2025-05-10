@@ -29,6 +29,8 @@ export const projects = pgTable("projects", {
   description: text("description"),
   createdById: integer("created_by_id").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  totalBudget: integer("total_budget"), // Total budget for the project
+  hourlyRate: integer("hourly_rate"), // Hourly rate for the project
 });
 
 // User to Projects many-to-many relationship with roles
