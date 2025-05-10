@@ -548,7 +548,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       });
       
-      return res.json(formattedData);
+      return res.json({
+        dailyData: formattedData,
+        todayRevenue: Math.round(todayRevenue)
+      });
     } catch (error) {
       console.error('Error fetching revenue data:', error);
       res.status(500).json({ error: 'Failed to fetch revenue data' });

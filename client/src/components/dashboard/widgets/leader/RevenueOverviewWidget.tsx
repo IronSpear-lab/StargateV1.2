@@ -49,6 +49,7 @@ export function RevenueOverviewWidget({ projectId }: { projectId: number }) {
   const [currentWeekTotal, setCurrentWeekTotal] = useState(0);
   const [previousWeekTotal, setPreviousWeekTotal] = useState(0);
   const [percentChange, setPercentChange] = useState(0);
+  const [todayRevenue, setTodayRevenue] = useState(0);
   
   // Budget settings dialog
   const [isBudgetDialogOpen, setIsBudgetDialogOpen] = useState(false);
