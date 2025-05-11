@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Home } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useProject } from "@/contexts/ProjectContext";
+import { useProjectContext } from "@/contexts/project-context";
 import { Link } from "wouter";
 import type { WidgetType } from "@/components/dashboard/WidgetGallery";
 
@@ -87,7 +87,7 @@ export default function DashboardPage() {
   const [isWidgetGalleryOpen, setIsWidgetGalleryOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
-  const { projects, currentProject, changeProject } = useProject();
+  const { projects, currentProject, setCurrentProject } = useProjectContext();
   
   // Convert to the local project format used by dashboard
   const userProjects = projects.map(p => ({ id: p.id, name: p.name }));
