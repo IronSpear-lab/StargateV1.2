@@ -1726,18 +1726,20 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       )}
                       
                       {/* Plustecken för mappar - visas alltid för alla mappar */}
-                      {item.type === "folder" && item.onAddClick && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (item.onAddClick) item.onAddClick();
-                          }}
-                          className="mr-1 p-1 rounded-sm hover:bg-accent hover:text-accent-foreground absolute -right-6"
-                          aria-label="Lägg till ny mapp"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      )}
+                      <div className="absolute right-2">
+                        {item.type === "folder" && item.onAddClick && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (item.onAddClick) item.onAddClick();
+                            }}
+                            className="p-1 hover:bg-accent hover:text-accent-foreground"
+                            aria-label="Lägg till ny mapp"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
                       
                       <ChevronRight className={cn(
                         "h-4 w-4 transition-transform duration-200",
