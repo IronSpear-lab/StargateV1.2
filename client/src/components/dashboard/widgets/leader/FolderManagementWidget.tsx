@@ -116,12 +116,26 @@ export function FolderManagementWidget() {
       return await res.json();
     },
     onSuccess: (data) => {
+      // Använd föräldermappens namn i meddelandetexten
+      const parentInfo = selectedParentFolder ? 
+        `under "${foldersData.find(f => f.id.toString() === selectedParentFolder)?.name || 'vald'} mappen"` : 
+        "i rotkatalogen";
+      
       toast({
         title: "Mapp skapad",
-        description: "Mappen har skapats under Files-sektionen",
+        description: `Mappen "${data.name}" har skapats ${parentInfo}`,
       });
+      
       setNewFolderName("");
       setSelectedParentFolder(null);
+      
+      // Säkerställ att expandState uppdateras för att visa den nya undermappen
+      if (selectedParentFolder) {
+        setExpandedFolders(prev => ({
+          ...prev,
+          [selectedParentFolder]: true // Expandera föräldermappen
+        }));
+      }
       
       // Uppdatera queries för att återspegla ändringar
       queryClient.invalidateQueries({ queryKey: ['/api/folders', currentProject?.id] });
@@ -330,6 +344,9 @@ export function FolderManagementWidget() {
       folder.projectId === currentProject?.id
     );
     
+    // Logga mapparna för felsökning
+    console.log("Filtered folders for tree building:", filteredFolders);
+    
     const folderMap: Record<string, FolderNode> = {};
     const tree: FolderNode[] = [];
     
@@ -338,7 +355,8 @@ export function FolderManagementWidget() {
       folderMap[folder.id.toString()] = {
         id: folder.id.toString(),
         name: folder.name,
-        original: folder
+        original: folder,
+        children: [] // Initializera alltid children-array
       };
     });
     
@@ -347,20 +365,22 @@ export function FolderManagementWidget() {
       if (folder.parentId) {
         const parentId = folder.parentId.toString();
         if (folderMap[parentId]) {
-          // If parent exists in our map, add to parent's children
-          if (!folderMap[parentId].children) {
-            folderMap[parentId].children = [];
-          }
+          // Om föräldermappen existerar, lägg till som barn till den
           folderMap[parentId].children?.push(folderMap[folder.id.toString()]);
+          console.log(`Added folder ${folder.name} as child of ${folderMap[parentId].name}`);
         } else {
-          // If parent doesn't exist, add to the root level
+          // Om föräldermappen inte finns, lägg till på rotnivå
+          console.log(`Parent folder ID ${parentId} for ${folder.name} not found, adding to root`);
           tree.push(folderMap[folder.id.toString()]);
         }
       } else {
-        // Folder has no parent, add to the root level
+        // Mapp utan förälder, lägg till på rotnivå
         tree.push(folderMap[folder.id.toString()]);
       }
     });
+    
+    // Logga det slutliga trädet för felsökning
+    console.log("Final folder tree:", JSON.stringify(tree, null, 2));
     
     return tree;
   };
@@ -371,27 +391,24 @@ export function FolderManagementWidget() {
     
     if (!foldersData || !Array.isArray(foldersData)) return options;
     
-    // Filter folders for current project
-    const filteredFolders = foldersData.filter((folder: FolderData) => 
-      folder.projectId === currentProject?.id
-    );
-    
-    const addFoldersToOptions = (folders: FolderData[], depth = 0) => {
-      folders.forEach((folder: FolderData) => {
+    // Använd folderTree som redan är organiserad i en hierarki
+    const addFolderNodesToOptions = (nodes: FolderNode[], depth = 0) => {
+      nodes.forEach((node) => {
         const prefix = depth > 0 ? "└─ ".padStart(depth * 2 + 2, "  ") : "";
         options.push({
-          value: folder.id.toString(),
-          label: `${prefix}${folder.name}`
+          value: node.id,
+          label: `${prefix}${node.name}`
         });
         
-        if (folder.children && folder.children.length > 0) {
-          addFoldersToOptions(folder.children, depth + 1);
+        // Rekursivt lägg till alla barn
+        if (node.children && node.children.length > 0) {
+          addFolderNodesToOptions(node.children, depth + 1);
         }
       });
     };
     
-    // Use filtered folders without parents to build the tree
-    addFoldersToOptions(filteredFolders.filter((f: FolderData) => !f.parentId));
+    // Använd den redan byggda trästrukturen
+    addFolderNodesToOptions(buildFolderTree());
     
     return options;
   };
