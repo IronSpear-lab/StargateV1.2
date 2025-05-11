@@ -48,6 +48,8 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
         return [];
       }
       
+      console.log(`Laddar filer för projekt ${projectId}`);
+      
       const allFiles: File[] = [];
       
       // 1. Först hämta alla uppladdade filer från ritningar-sidan via localStorage
@@ -55,6 +57,7 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
       if (savedRitningar) {
         try {
           const ritningar = JSON.parse(savedRitningar);
+          console.log("Ritningar från localStorage:", ritningar);
           
           // Filtrera bara de ritningar som tillhör det aktuella projektet
           ritningar.forEach((ritning: any) => {
@@ -72,24 +75,37 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
               });
             }
           });
+          console.log(`Hittade ${allFiles.length} ritningar i localStorage för projektId=${projectId}`);
         } catch (error) {
           console.error('Failed to parse saved ritningar:', error);
         }
+      } else {
+        console.log("Inga sparade ritningar hittades i localStorage");
       }
       
       // 2. Hämta filer från API:et för det aktuella projektet
       try {
         // Hämta alla filer för projektet från API:et
+        console.log(`Anropar API: /api/files/recent?projectId=${projectId}`);
+        
         const response = await fetch(`/api/files/recent?projectId=${projectId}`);
+        console.log("API-svar status:", response.status);
+        
         if (response.ok) {
           const recentFilesFromAPI = await response.json();
+          console.log("API-svar innehåll:", recentFilesFromAPI);
+          
           if (Array.isArray(recentFilesFromAPI) && recentFilesFromAPI.length > 0) {
             // Lägg till API-filerna i vår lista
             allFiles.push(...recentFilesFromAPI);
-            console.log("Successfully loaded files from API:", recentFilesFromAPI);
+            console.log(`Successfully loaded ${recentFilesFromAPI.length} files from API`);
+          } else {
+            console.log("API returnerade ingen eller tom array");
           }
         } else {
           console.warn(`API call failed for files with status ${response.status}`);
+          const errorText = await response.text();
+          console.warn("API error response:", errorText);
         }
       } catch (error) {
         console.error("Error fetching recent files from API:", error);
@@ -102,7 +118,11 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
         return dateB - dateA; // Fallande ordning (senaste först)
       });
       
-      console.log("Combined files for display:", allFiles);
+      console.log(`Totalt antal filer att visa: ${allFiles.length}`);
+      if (allFiles.length > 0) {
+        console.log("Första filen:", allFiles[0]);
+      }
+      
       return allFiles;
     }
   });
