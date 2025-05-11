@@ -2583,31 +2583,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Recent files API
-  app.get(`${apiPrefix}/files/recent`, (req, res) => {
-    // Return sample files to avoid errors
-    const sampleFiles = [
-      {
-        id: "101",
-        name: "System Architecture.pdf",
-        fileType: "pdf",
-        fileSize: 3450000,
-        lastModified: new Date().toISOString(),
-        folder: "Documentation",
-        uploadedBy: "System",
-        uploadedById: "system"
-      },
-      {
-        id: "102",
-        name: "Project Timeline.xlsx",
-        fileType: "xlsx", 
-        fileSize: 1250000,
-        lastModified: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // Yesterday
-        folder: "Planning",
-        uploadedBy: "System",
-        uploadedById: "system"
+  app.get(`${apiPrefix}/files/recent`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+
+    try {
+      const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
+      
+      if (!projectId) {
+        return res.status(400).json({ error: "Project ID is required" });
       }
-    ];
-    return res.json(sampleFiles);
+      
+      // Kontrollera att användaren har tillgång till projektet
+      const userProject = await db.select()
+        .from(userProjects)
+        .where(and(
+          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.projectId, projectId)
+        ))
+        .limit(1);
+      
+      if (userProject.length === 0) {
+        return res.status(403).json({ error: 'You do not have access to this project' });
+      }
+      
+      // Hämta de senaste filerna för detta projekt
+      const recentFiles = await db.select({
+        id: files.id,
+        name: files.name,
+        fileType: files.fileType,
+        fileSize: files.fileSize,
+        lastModified: files.uploadDate,
+        uploadedById: files.uploadedById,
+        folderId: files.folderId,
+        filePath: files.filePath,
+        projectId: files.projectId
+      })
+      .from(files)
+      .where(eq(files.projectId, projectId))
+      .orderBy(desc(files.uploadDate))
+      .limit(10);
+      
+      // Hämta användarnamn för uppladdare och mappnamn för filerna
+      const enhancedFiles = await Promise.all(recentFiles.map(async (file) => {
+        // Hämta användarnamn för uppladdaren
+        const uploader = await db.select()
+          .from(users)
+          .where(eq(users.id, file.uploadedById))
+          .limit(1);
+          
+        // Hämta mappnamn om filen är i en mapp
+        let folderName = "Vault";
+        if (file.folderId) {
+          const folder = await db.select()
+            .from(folders)
+            .where(eq(folders.id, file.folderId))
+            .limit(1);
+            
+          if (folder.length > 0) {
+            folderName = folder[0].name;
+          }
+        }
+        
+        return {
+          id: file.id.toString(),
+          name: file.name,
+          fileType: file.fileType,
+          fileSize: file.fileSize,
+          lastModified: file.lastModified.toISOString(),
+          folder: folderName,
+          uploadedBy: uploader.length > 0 ? uploader[0].username : "Unknown",
+          uploadedById: file.uploadedById.toString(),
+          fileId: file.id.toString()
+        };
+      }));
+      
+      return res.json(enhancedFiles);
+    } catch (error) {
+      console.error("Error fetching recent files:", error);
+      return res.status(500).json({ error: "Failed to fetch recent files" });
+    }
   });
   
   // Keep the test-files endpoint as an alternative

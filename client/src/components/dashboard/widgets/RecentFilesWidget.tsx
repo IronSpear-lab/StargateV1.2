@@ -48,28 +48,27 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
         return [];
       }
       
-      // Först hämta alla uppladdade filer från ritningar-sidan via localStorage, men bara om vi har ett giltigt projekt
-      const savedRitningar = localStorage.getItem('saved_ritningar');
-      const uploadedFiles: File[] = [];
+      const allFiles: File[] = [];
       
+      // 1. Först hämta alla uppladdade filer från ritningar-sidan via localStorage
+      const savedRitningar = localStorage.getItem('saved_ritningar');
       if (savedRitningar) {
         try {
           const ritningar = JSON.parse(savedRitningar);
           
           // Filtrera bara de ritningar som tillhör det aktuella projektet
-          // Om projektId information saknas i filen, inkludera den inte
           ritningar.forEach((ritning: any) => {
             if (ritning.filename && ritning.projectId === projectId) {
-              uploadedFiles.push({
+              allFiles.push({
                 id: ritning.id.toString(),
                 name: ritning.filename,
                 fileType: "pdf",
-                fileSize: 2450000, // Kan inte veta exakt storlek utan att lagra det
+                fileSize: 2450000, // Uppskattat storlek
                 lastModified: new Date().toISOString(),
                 folder: "Ritningar",
                 uploadedBy: ritning.uploadedBy || "Du",
                 uploadedById: "currentUser",
-                fileId: ritning.fileId // Inkludera fileId om den finns
+                fileId: ritning.fileId // För att kunna öppna filen direkt
               });
             }
           });
@@ -78,25 +77,33 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
         }
       }
       
-      // Sedan försök hämta från API - men endast för aktiva projekt (inte "No Project")
+      // 2. Hämta filer från API:et för det aktuella projektet
       try {
-        // Lägg till projektId som query parameter för att filservern ska kunna filtrera
+        // Hämta alla filer för projektet från API:et
         const response = await fetch(`/api/files/recent?projectId=${projectId}`);
-        if (!response.ok) {
+        if (response.ok) {
+          const recentFilesFromAPI = await response.json();
+          if (Array.isArray(recentFilesFromAPI) && recentFilesFromAPI.length > 0) {
+            // Lägg till API-filerna i vår lista
+            allFiles.push(...recentFilesFromAPI);
+            console.log("Successfully loaded files from API:", recentFilesFromAPI);
+          }
+        } else {
           console.warn(`API call failed for files with status ${response.status}`);
-          // Returnera bara uppladdade filer utan mockdata när API-anropet misslyckas
-          return uploadedFiles;
         }
-        
-        // Om API-anropet lyckas, kombinera API-resultatet med uppladdade filer
-        const apiFiles = await response.json();
-        console.log("Successfully loaded files:", { uploadedFiles, apiFiles });
-        return [...uploadedFiles, ...apiFiles];
       } catch (error) {
-        console.error("Error fetching recent files:", error);
-        // Returnera bara uppladdade filer utan mockdata vid fel
-        return uploadedFiles;
+        console.error("Error fetching recent files from API:", error);
       }
+      
+      // 3. Sortera alla filer efter uppladdningsdatum (senaste först)
+      allFiles.sort((a, b) => {
+        const dateA = new Date(a.lastModified).getTime();
+        const dateB = new Date(b.lastModified).getTime();
+        return dateB - dateA; // Fallande ordning (senaste först)
+      });
+      
+      console.log("Combined files for display:", allFiles);
+      return allFiles;
     }
   });
 
@@ -188,7 +195,7 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
       <div className="flex items-center justify-between mb-3">
         <div className="text-sm font-medium flex items-center space-x-1.5">
           <FolderOpen className="h-4 w-4 text-[#727cf5]" />
-          <span>Recent Files in Vault</span>
+          <span>Senaste filer i Arkivet</span>
         </div>
         <Button 
           variant="ghost" 
@@ -196,7 +203,7 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
           className="h-7 px-2 text-blue-600 dark:text-blue-400 text-xs font-normal"
           onClick={() => window.location.href = "/vault"}
         >
-          View Vault
+          Visa Arkivet
         </Button>
       </div>
       
