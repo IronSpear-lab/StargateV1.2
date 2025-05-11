@@ -330,4 +330,21 @@
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-muted-foreground;
   }
+  
+  /* Förbättra scrollning i sidofältet */
+  .sidebar-folder-container {
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  
+  /* Markera horisontell scrollbar när innehållet överskrider containern */
+  .sidebar-folder-container::-webkit-scrollbar-track-horizontal {
+    background-color: rgba(217, 217, 217, 0.3);
+    border-radius: 6px;
+  }
+  
+  .dark .sidebar-folder-container::-webkit-scrollbar-track-horizontal {
+    background-color: rgba(55, 55, 55, 0.3);
+  }
 }
