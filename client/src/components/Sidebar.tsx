@@ -1534,7 +1534,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     } else {
       // Standard positionering för alla andra mappar
       return (
-        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+        <div className={item.folderId === "files_root" ? "inline-flex items-center mx-2" : "absolute right-2 top-1/2 transform -translate-y-1/2"}>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -1746,7 +1746,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       
                       {/* Plustecken för mappar - visas endast vid hover, positionerat till höger om allt annat innehåll */}
                       {item.type === "folder" && item.onAddClick && (
-                        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                        <div className={item.folderId === "files_root" ? "inline-flex items-center mx-2" : "absolute right-2 top-1/2 transform -translate-y-1/2"}>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1805,7 +1805,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       
                       {/* Plustecken för mappar - visas endast vid hover, positionerat till höger om allt annat innehåll */}
                       {item.type === "folder" && item.onAddClick && (
-                        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                        <div className={item.folderId === "files_root" ? "inline-flex items-center mx-2" : "absolute right-2 top-1/2 transform -translate-y-1/2"}>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
