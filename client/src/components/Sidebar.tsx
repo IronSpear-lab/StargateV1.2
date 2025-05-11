@@ -1502,7 +1502,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           label: folder.name,
           active: location === `/vault/files/${encodeURIComponent(folder.name)}`,
           indent: baseIndent, // Kommer justeras senare baserat på hierarkinivå
-          icon: <FolderClosed className="w-4 h-4" />,
+          icon: <FolderClosed className="w-4 h-4 text-blue-500" />,
           type: "folder",
           onAddClick: () => handleAddFolder(folder.name),
           folderId: folder.id,
