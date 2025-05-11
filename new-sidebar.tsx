@@ -1806,20 +1806,6 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       )} />
                       
                       {/* Plustecken för vanliga mappar (inte files_root) fortsätter vara till höger */}
-                      {item.type === "folder" && item.onAddClick && item.folderId !== "files_root" && (
-                        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (item.onAddClick) item.onAddClick();
-                            }}
-                            className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                            aria-label="Lägg till ny mapp"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
                     </div>
                   </button>
                 ) : (
@@ -1894,20 +1880,6 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                             <Plus className="h-4 w-4" />
                           </button>
                         </div>
-                      )}
-                    </div>
-                  </button>
-                )}
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="mt-1 mb-1">
-                  {renderNavItems(item.children!, itemKey)}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          ) : (
-            <div className={cn(
-              "flex items-center justify-between px-3 py-2 rounded-md transition-colors duration-150 group",
               item.active
                 ? "bg-primary/10" 
                 : "hover:bg-muted",
