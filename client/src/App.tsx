@@ -30,7 +30,6 @@ import DwgIfcViewerPage from "@/pages/dwg-ifc-viewer-page";
 import SimpleViewerPage from "@/pages/simple-viewer-page";
 import MessagesPage from "@/pages/messages-page";
 import PDFViewerPage from "@/pages/pdf-viewer-page";
-import FolderHierarchyPage from "@/pages/folder-hierarchy-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -103,7 +102,6 @@ function Router() {
       <ProtectedRoute path="/messages" component={MessagesPage} />
       <ProtectedRoute path="/communication/messages" component={MessagesPage} />
       <ProtectedRoute path="/files/pdf/:versionId" component={PDFViewerPage} />
-      <ProtectedRoute path="/folder-hierarchy" component={FolderHierarchyPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
