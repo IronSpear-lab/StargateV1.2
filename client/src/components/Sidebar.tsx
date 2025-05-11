@@ -911,6 +911,8 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   // Funktion för att hantera "Lägg till mapp" i olika mappar
   // Kontrollera behörighet för att endast tillåta project_leader, admin och superuser
   const handleAddFolder = (parentName: string) => {
+    console.log(`handleAddFolder: Initierar mappläggning under '${parentName}'`);
+    
     // Om användaren inte har rätt roll, visa en toast med felmeddelande
     if (!user || !(user.role === "project_leader" || user.role === "admin" || user.role === "superuser")) {
       toast({
@@ -942,12 +944,38 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         return;
       }
       
+      // Kontrollera om parentName är en befintlig mappnamn (dvs inte "Files", "Dokument", etc)
+      // och sätt parentId korrekt
+      let parentId = null;
+      
+      // Om parentName inte är "Files" (som är root för mappar i sidebaren), 
+      // då måste vi hitta föräldermappens ID
+      if (parentName !== "Files") {
+        console.log(`createFolder: Letar efter föräldermappens ID för '${parentName}'`);
+        
+        // Hämta alla befintliga mappar från localStorage
+        const allUserFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
+        
+        // Filtrera mappar för aktuellt projekt
+        const projectFolders = allUserFolders.filter((f: any) => 
+          f.projectId && f.projectId === currentProjectId
+        );
+        
+        // Hitta föräldermappen
+        const parentFolder = projectFolders.find((f: any) => f.name === parentName);
+        
+        if (parentFolder) {
+          parentId = Number(parentFolder.id);
+          console.log(`createFolder: Hittade föräldermapp med ID ${parentId}`);
+        }
+      }
+      
       // Skapa mappen via API först, för att synka med Mapphantering
       // Modifierar parent för att säkerställa att nya mappar hamnar under Files-sektionen
       const folderData = {
         name: folderName,
         projectId: Number(currentProjectId),
-        parentId: null, // För närvarande lägger vi bara till rotmappar från sidomenyn
+        parentId: parentId, // Sätt parentId korrekt baserat på föräldermappen
         sidebarParent: 'Files'
       };
       
