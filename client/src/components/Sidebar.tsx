@@ -716,7 +716,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   const { toast } = useToast();
   
   // State för att lagra mappar som användaren har skapat
-  const [userCreatedFolders, setUserCreatedFolders] = useState<{name: string; parent: string; id: string}[]>(() => {
+  const [userCreatedFolders, setUserCreatedFolders] = useState<{name: string; parent: string; id: string; parentId?: string}[]>(() => {
     // Försök att hämta sparade mappar från localStorage vid initialisering
     if (typeof window !== 'undefined') {
       const savedFolders = localStorage.getItem('userCreatedFolders');
@@ -1502,9 +1502,10 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       });
       
       // Identifiera rotmappar (mappar utan förälder, med förälder "Files", eller utan parentId)
-      const rootFolders = userCreatedFolders.filter(folder => 
-        (!folder.parent || folder.parent === "Files") && !folder.parentId
-      );
+      const rootFolders = userCreatedFolders.filter(folder => {
+        const hasParentId = 'parentId' in folder && folder.parentId;
+        return (!folder.parent || folder.parent === "Files") && !hasParentId;
+      });
       
       // Lägg till rotmapparna direkt till Files-sektionen
       rootFolders.forEach(folder => {
@@ -1528,7 +1529,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         let parentFolder = null;
         
         // Om mappen har en parentId, använd den först
-        if (folder.parentId) {
+        if ('parentId' in folder && folder.parentId) {
           parentFolder = userCreatedFolders.find(p => p.id.toString() === folder.parentId);
           if (parentFolder) {
             console.log(`Hittade förälder via parentId ${folder.parentId} för mappen ${folder.name}`);
