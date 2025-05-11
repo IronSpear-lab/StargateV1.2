@@ -2660,10 +2660,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           // Förbättrad loggning för felsökning
+          if (!file.id) {
+            console.error(`API /files/recent - Fil saknar ID:`, file);
+            return {
+              id: "unknown",
+              name: file.name || "Unnamed file",
+              fileType: file.fileType || "unknown",
+              fileSize: file.fileSize || 0,
+              lastModified: file.uploadDate ? file.uploadDate.toISOString() : new Date().toISOString(),
+              folder: folderName,
+              uploadedBy: uploaderName,
+              uploadedById: file.uploadedById ? file.uploadedById.toString() : "unknown",
+              fileId: "unknown"
+            };
+          }
+          
           console.log(`API /files/recent - Förberedder fil ${file.id} (${file.name}) för svar`);
           
           return {
-            id: file.id ? file.id.toString() : "",
+            id: file.id.toString(),
             name: file.name || "Unnamed file",
             fileType: file.fileType || "unknown",
             fileSize: file.fileSize || 0,
@@ -2671,7 +2686,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             folder: folderName,
             uploadedBy: uploaderName,
             uploadedById: file.uploadedById ? file.uploadedById.toString() : "unknown",
-            fileId: file.id ? file.id.toString() : ""
+            fileId: file.id.toString()
           };
         } catch (error) {
           console.error(`Fel vid bearbetning av fil:`, error);
