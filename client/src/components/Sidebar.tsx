@@ -1570,7 +1570,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                           e.stopPropagation();
                           item.onAddClick?.();
                         }}
-                        className="ml-3 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                        className="ml-3 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 cursor-pointer z-10"
                         title="Lägg till ny mapp"
                       >
                         <Plus className="h-3 w-3" />
@@ -1583,7 +1583,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                             e.stopPropagation();
                             item.onDeleteAll?.();
                           }}
-                          className="ml-1 p-1 rounded-sm text-muted-foreground hover:text-destructive hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                          className="ml-1 p-1 rounded-sm text-muted-foreground hover:text-destructive hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 cursor-pointer z-10"
                           title="Rensa alla mappar"
                         >
                           <Trash2 className="h-3 w-3" />
@@ -1644,7 +1644,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 {item.type === "folder" && item.folderId ? (
                   <button 
                     className={cn(
-                      "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150 group",
+                      "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150 group relative",
                       item.active
                         ? "bg-primary/10 text-primary font-medium" 
                         : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -1691,7 +1691,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 ) : (
                   <button 
                     className={cn(
-                      "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150 group",
+                      "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150 group relative",
                       item.active
                         ? "bg-primary/10 text-primary font-medium" 
                         : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -1732,7 +1732,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                             e.stopPropagation();
                             if (item.onAddClick) item.onAddClick();
                           }}
-                          className="mr-1 p-1 rounded-sm hover:bg-background/90 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="mr-1 p-1 rounded-sm hover:bg-background/90 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
                           aria-label="Lägg till ny mapp"
                         >
                           <Plus className="h-4 w-4" />
