@@ -18,14 +18,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { Home, PlusSquare, CheckSquare, MessageSquare, Calendar, BarChart2, LayoutDashboard, Clock, Users, Settings, LogOut, Moon, FileText, ChevronRight, ChevronDown, Plus, Trash2, Folder, FolderOpen, X, Edit2 } from 'lucide-react';
 import { ModeToggle } from '@/components/mode-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useProfile } from '@/hooks/use-profile';
-import { useFolders } from '@/hooks/use-folders';
+import { useProfile } from '../hooks/use-profile';
+import { useFolders } from '../hooks/use-folders';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useProjectContext } from '@/contexts/project-context';
+import { useProjectContext } from '../contexts/project-context';
 
-import AddFolderDialog from '@/components/AddFolderDialog';
-import UserProfileDialog from '@/components/UserProfileDialog';
-import RemoveFolderDialog from '@/components/RemoveFolderDialog';
+import AddFolderDialog from './AddFolderDialog';
+import UserProfileDialog from './UserProfileDialog';
+import RemoveFolderDialog from './RemoveFolderDialog';
 
 export type NavItemType = {
   href?: string;
@@ -580,11 +580,11 @@ export function Sidebar({ className }: { className?: string }) {
       // Skapa en unik nyckel för varje objekt
       const itemKey = `${parentKey}_${index}`;
       
-      // Kontrollera om Chevron-pilen ska visas (bara om det är en mapp med undermappar)
+      // Kontrollera om Chevron-pilen ska visas (bara för objekt med undermappar)
       const shouldShowChevron = 
-        // Endast visa pil för expanderbara objekt
-        ((item.type === "folder" && item.children && item.children.length > 0) || 
-         (item.type !== "folder" && item.children && item.children.length > 0)) && 
+        // Endast visa pil för objekt som har barn OCH onToggle-funktion
+        item.children && 
+        item.children.length > 0 && 
         item.onToggle !== undefined;
       
       // Avgör om objektet är "öppet" baserat på dess isOpen-egenskap
