@@ -50,7 +50,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { Label } from "@/components/ui/label";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { 
   ContextMenu,
   ContextMenuContent,
@@ -846,8 +846,8 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     }
   }, [user?.username]);
   
-  // Import queryClient vid toppen av filen
-  const queryClient = useQueryClient();
+  // Använd båda query client metoderna
+  const localQueryClient = useQueryClient();
 
   // Fetch unread message count
   const { data: unreadData } = useQuery<{ count: number }>({
@@ -1050,13 +1050,9 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       // VIKTIGT: Invalidera React Query cache för att uppdatera FolderManagementWidget
       // Detta är nyckeln till att lösa synkroniseringsproblemet mellan sidebaren och widgeten
       try {
-        if (window.queryClient) {
-          console.log(`Invaliderar React Query cache för mappar i projekt ${currentProjectId}`);
-          window.queryClient.invalidateQueries({ queryKey: ['/api/folders', Number(currentProjectId)] });
-          window.queryClient.invalidateQueries({ queryKey: ['/api/files', Number(currentProjectId), 'all=true'] });
-        } else {
-          console.log('QueryClient inte tillgänglig i window-objektet');
-        }
+        console.log(`Invaliderar React Query cache för mappar i projekt ${currentProjectId}`);
+        localQueryClient.invalidateQueries({ queryKey: ['/api/folders', Number(currentProjectId)] });
+        localQueryClient.invalidateQueries({ queryKey: ['/api/files', Number(currentProjectId), 'all=true'] });
       } catch (error) {
         console.error('Fel vid invalidering av React Query cache:', error);
       }
