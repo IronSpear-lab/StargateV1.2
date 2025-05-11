@@ -530,7 +530,7 @@ class DatabaseStorage implements IStorage {
       if (allProjectFiles) {
         // Om allProjectFiles är true, hämta alla filer för projektet oavsett mapp
         return this.getFilesByProject(projectId);
-      } else if (folderId) {
+      } else if (folderId !== undefined) {
         // Om folderId är angivet, hämta bara filer för den specifika mappen
         return this.getFilesByFolder(projectId, folderId);
       } else {
