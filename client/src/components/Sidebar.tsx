@@ -1835,7 +1835,19 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 )}
               </Link>
               
-              {/* Plus-ikon för mappar - temporärt borttagen */}
+              {/* Plus-ikon för mappar */}
+              {item.type === "folder" && item.onAddClick && userHasFolderPermissions && (
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    item.onAddClick && item.onAddClick();
+                  }}
+                  className="ml-2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                  title="Lägg till undermapp"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </span>
+              )}
             </div>
           )}
         </div>
