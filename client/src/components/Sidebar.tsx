@@ -1006,7 +1006,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         name: folderName, 
         parent: parentName, 
         id: folderId,
-        parentId: null, // Denna sätts bara när mappen skapas under en annan mapp
+        parentId: parentId ? parentId.toString() : null, // Viktigt att sätta parentId korrekt för hierarkin
         projectId: currentProjectId, // Lägg till projektId för korrekt filtrering
         label: folderName, // Samma som name, men enklare att använda i andra delar av koden
         href: `/vault/files/${encodeURIComponent(folderName)}` // Länk till den dynamiska sidan
