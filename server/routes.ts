@@ -2623,39 +2623,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Hämta användarnamn för uppladdare och mappnamn för filerna
       const enhancedFiles = await Promise.all(recentFiles.map(async (file) => {
-        // Hämta användarnamn för uppladdaren
-        const uploader = await db.select()
-          .from(users)
-          .where(eq(users.id, file.uploadedById))
-          .limit(1);
-          
-        // Hämta mappnamn om filen är i en mapp
-        let folderName = "Vault";
-        if (file.folderId) {
-          const folder = await db.select()
-            .from(folders)
-            .where(eq(folders.id, file.folderId))
-            .limit(1);
-            
-          if (folder.length > 0) {
-            folderName = folder[0].name;
+        try {
+          // Hämta användarnamn för uppladdaren om uploadedById finns
+          let uploaderName = "Unknown";
+          if (file.uploadedById) {
+            const uploader = await db.select()
+              .from(users)
+              .where(eq(users.id, file.uploadedById))
+              .limit(1);
+              
+            if (uploader.length > 0) {
+              uploaderName = uploader[0].username;
+            }
           }
+            
+          // Hämta mappnamn om filen är i en mapp
+          let folderName = "Vault";
+          if (file.folderId) {
+            try {
+              const folder = await db.select()
+                .from(folders)
+                .where(eq(folders.id, file.folderId))
+                .limit(1);
+                
+              if (folder.length > 0) {
+                folderName = folder[0].name;
+              }
+            } catch (folderError) {
+              console.error(`Kunde inte hämta mapp för fil ${file.id}:`, folderError);
+            }
+          }
+          
+          // Förbättrad loggning för felsökning
+          console.log(`API /files/recent - Förberedder fil ${file.id} (${file.name}) för svar`);
+          
+          return {
+            id: file.id ? file.id.toString() : "",
+            name: file.name || "Unnamed file",
+            fileType: file.fileType || "unknown",
+            fileSize: file.fileSize || 0,
+            lastModified: file.uploadDate ? file.uploadDate.toISOString() : new Date().toISOString(),
+            folder: folderName,
+            uploadedBy: uploaderName,
+            uploadedById: file.uploadedById ? file.uploadedById.toString() : "unknown",
+            fileId: file.id ? file.id.toString() : ""
+          };
+        } catch (error) {
+          console.error(`Fel vid bearbetning av fil:`, error);
+          // Returnera ett default-objekt om det blir fel
+          return {
+            id: "error",
+            name: "Error processing file",
+            fileType: "unknown",
+            fileSize: 0,
+            lastModified: new Date().toISOString(),
+            folder: "Unknown",
+            uploadedBy: "Unknown",
+            uploadedById: "unknown",
+            fileId: ""
+          };
         }
-        
-        // Förbättrad loggning för felsökning
-        console.log(`API /files/recent - Förberedder fil ${file.id} (${file.name}) för svar`);
-        
-        return {
-          id: file.id.toString(),
-          name: file.name,
-          fileType: file.fileType,
-          fileSize: file.fileSize,
-          lastModified: file.uploadDate.toISOString(),
-          folder: folderName,
-          uploadedBy: uploader.length > 0 ? uploader[0].username : "Unknown",
-          uploadedById: file.uploadedById.toString(),
-          fileId: file.id.toString()
-        };
       }));
       
       console.log(`API /files/recent - Svarar med ${enhancedFiles.length} förbättrade filer`);
