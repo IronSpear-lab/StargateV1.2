@@ -48,7 +48,6 @@ import { Switch } from "@/components/ui/switch";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
 import { Label } from "@/components/ui/label";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { 
@@ -846,8 +845,8 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     }
   }, [user?.username]);
   
-  // Använd båda query client metoderna
-  const localQueryClient = useQueryClient();
+  // Import queryClient vid toppen av filen
+  const queryClient = useQueryClient();
 
   // Fetch unread message count
   const { data: unreadData } = useQuery<{ count: number }>({
@@ -911,8 +910,6 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   // Funktion för att hantera "Lägg till mapp" i olika mappar
   // Kontrollera behörighet för att endast tillåta project_leader, admin och superuser
   const handleAddFolder = (parentName: string) => {
-    console.log(`handleAddFolder: Initierar mappläggning under '${parentName}'`);
-    
     // Om användaren inte har rätt roll, visa en toast med felmeddelande
     if (!user || !(user.role === "project_leader" || user.role === "admin" || user.role === "superuser")) {
       toast({
@@ -944,29 +941,21 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         return;
       }
       
-      // Kontrollera om parentName är en befintlig mappnamn (dvs inte "Files", "Dokument", etc)
-      // och sätt parentId korrekt
-      let parentId = null;
-      
-      // Om parentName inte är "Files" (som är root för mappar i sidebaren), 
-      // då måste vi hitta föräldermappens ID
-      if (parentName !== "Files") {
-        console.log(`createFolder: Letar efter föräldermappens ID för '${parentName}'`);
-        
-        // Hämta alla befintliga mappar från localStorage
-        const allUserFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
-        
+      // Hitta parentId om mappen skapas under en annan mapp än "Files"
+      let parentFolderId = null;
+      if (parentName && parentName !== "Files") {
+        // Hämta alla befintliga mappar
+        const allFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
         // Filtrera mappar för aktuellt projekt
-        const projectFolders = allUserFolders.filter((f: any) => 
+        const projectFolders = allFolders.filter((f: any) => 
           f.projectId && f.projectId === currentProjectId
         );
-        
         // Hitta föräldermappen
         const parentFolder = projectFolders.find((f: any) => f.name === parentName);
         
         if (parentFolder) {
-          parentId = Number(parentFolder.id);
-          console.log(`createFolder: Hittade föräldermapp med ID ${parentId}`);
+          parentFolderId = parentFolder.id;
+          console.log(`Skapar mapp under förälder: ${parentName} (ID: ${parentFolderId})`);
         }
       }
       
@@ -975,7 +964,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       const folderData = {
         name: folderName,
         projectId: Number(currentProjectId),
-        parentId: parentId, // Sätt parentId korrekt baserat på föräldermappen
+        parentId: parentFolderId, // Sätt förälder-ID om det finns
         sidebarParent: 'Files'
       };
       
@@ -1065,19 +1054,14 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       
       localStorage.setItem('user_created_folders', JSON.stringify(updatedFoldersForApp));
       
+      // Säkerställ att Vault-sektionen är öppen
+      if (!openSections.includes("vault")) {
+        toggleSection("vault");
+      }
+      
       // Säkerställ att Files-sektionen är öppen
       if (!openItems["file_folders"]) {
         toggleItem("file_folders");
-      }
-      
-      // VIKTIGT: Invalidera React Query cache för att uppdatera FolderManagementWidget
-      // Detta är nyckeln till att lösa synkroniseringsproblemet mellan sidebaren och widgeten
-      try {
-        console.log(`Invaliderar React Query cache för mappar i projekt ${currentProjectId}`);
-        localQueryClient.invalidateQueries({ queryKey: ['/api/folders', Number(currentProjectId)] });
-        localQueryClient.invalidateQueries({ queryKey: ['/api/files', Number(currentProjectId), 'all=true'] });
-      } catch (error) {
-        console.error('Fel vid invalidering av React Query cache:', error);
       }
       
       // Utlös en uppdatering av sidofältet (måste ske innan toast för korrekt timing)
@@ -1526,8 +1510,24 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       userCreatedFolders.forEach(folder => {
         // Om denna mapp har en förälder som INTE är "Files"
         if (folder.parent && folder.parent !== "Files") {
-          // Hitta föräldermappen baserat på namn
-          const parentFolder = userCreatedFolders.find(p => p.name === folder.parent);
+          // Hitta föräldermappen baserat på namn och ID
+          let parentFolder = null;
+          
+          // Först försöker hitta mappen baserat på ID om det finns i databasen
+          if (folder.parentId) {
+            parentFolder = userCreatedFolders.find(p => p.id === folder.parentId);
+            if (parentFolder) {
+              console.log(`Hittade föräldermapp med ID ${folder.parentId} för ${folder.name}`);
+            }
+          }
+          
+          // Fallback: Hitta föräldermapp baserat på namn
+          if (!parentFolder) {
+            parentFolder = userCreatedFolders.find(p => p.name === folder.parent);
+            if (parentFolder) {
+              console.log(`Hittade föräldermapp ${folder.parent} baserat på namn för ${folder.name}`);
+            }
+          }
           
           if (parentFolder && folderMap[parentFolder.id]) {
             // Hitta förälderns NavItem objekt
@@ -1564,6 +1564,13 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       // Säkerställ att Files-sektionen är öppen om den har mappar
       if (filesSection.children && filesSection.children.length > 0) {
         filesSection.isOpen = true;
+        // Öppna även Vault-sektionen
+        if (vaultSection) {
+          vaultSection.isOpen = true;
+          if (!openSections.includes("vault")) {
+            toggleSection("vault");
+          }
+        }
       }
     } else {
       console.warn("Kunde inte hitta Files-sektionen i navigationsobjektet!");
@@ -1813,7 +1820,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       )}
                       
                       {/* Plustecken för files_root - nu till höger FÖRE chevron-pilen */}
-                      {item.type === "folder" && item.onAddClick &&  (
+                      {item.type === "folder" && item.onAddClick && item.folderId === "files_root" && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1832,6 +1839,21 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         isItemOpen ? "rotate-90" : ""
                       )} />
                       
+                      {/* Plustecken för vanliga mappar (inte files_root) fortsätter vara till höger */}
+                      {item.type === "folder" && item.onAddClick && item.folderId !== "files_root" && (
+                        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (item.onAddClick) item.onAddClick();
+                            }}
+                            className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                            aria-label="Lägg till ny mapp"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </button>
                 ) : (
