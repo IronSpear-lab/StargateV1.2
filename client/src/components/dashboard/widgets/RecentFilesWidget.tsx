@@ -88,7 +88,6 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
         // Hämta alla filer för projektet från API:et
         console.log(`Anropar API: /api/files/recent?projectId=${projectId}`);
         
-        // Försök med reguljära API:et först
         const response = await fetch(`/api/files/recent?projectId=${projectId}`);
         console.log("API-svar status:", response.status);
         
@@ -102,38 +101,14 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
             console.log(`Successfully loaded ${recentFilesFromAPI.length} files from API`);
           } else {
             console.log("API returnerade ingen eller tom array");
-            // Använd test API som fallback
-            await fetchTestFiles(allFiles);
           }
         } else {
           console.warn(`API call failed for files with status ${response.status}`);
           const errorText = await response.text();
           console.warn("API error response:", errorText);
-          
-          // Använd test API som fallback om huvudanropet misslyckades
-          await fetchTestFiles(allFiles);
         }
       } catch (error) {
         console.error("Error fetching recent files from API:", error);
-        // Använd test API som fallback vid exceptionfel
-        await fetchTestFiles(allFiles);
-      }
-      
-      // Hjälpfunktion för att hämta test-filer
-      async function fetchTestFiles(targetArray: File[]) {
-        try {
-          console.log("Anropar test-API som fallback");
-          const testResponse = await fetch('/api/test-files');
-          if (testResponse.ok) {
-            const testFiles = await testResponse.json();
-            if (Array.isArray(testFiles) && testFiles.length > 0) {
-              targetArray.push(...testFiles);
-              console.log(`Successfully loaded ${testFiles.length} test files`);
-            }
-          }
-        } catch (testError) {
-          console.error("Error fetching test files:", testError);
-        }
       }
       
       // 3. Sortera alla filer efter uppladdningsdatum (senaste först)
@@ -149,7 +124,9 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
       }
       
       return allFiles;
-    }
+    },
+    // Uppdatera widgeten automatiskt efter 5 sekunder för att fånga nya filer
+    refetchInterval: 5000
   });
 
   // Format file size to human readable format
