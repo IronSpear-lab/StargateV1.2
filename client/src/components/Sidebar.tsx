@@ -1592,7 +1592,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                           e.stopPropagation();
                           item.onAddClick?.();
                         }}
-                        className="ml-3 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 cursor-pointer z-10"
+                        className={`p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 cursor-pointer z-10 ${item.folderId === "files_root" ? "ml-1" : "ml-3"}`}
                         title="Lägg till ny mapp"
                       >
                         <Plus className="h-3 w-3" />
