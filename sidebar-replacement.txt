@@ -1,0 +1,29 @@
+// Här är den nya implementeringen som ska ersätta båda förekomsterna
+
+Gammal implementering för files_root (att spara):
+{item.type === "folder" && item.onAddClick && item.folderId === "files_root" && (
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      if (item.onAddClick) item.onAddClick();
+    }}
+    className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 mr-1 text-muted-foreground"
+    aria-label="Lägg till ny mapp"
+  >
+    <Plus className="h-4 w-4" />
+  </button>
+)}
+
+Ny implementering för ALLA mappar (att använda istället för både files_root OCH vanliga mappar):
+{item.type === "folder" && item.onAddClick && (
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      if (item.onAddClick) item.onAddClick();
+    }}
+    className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 mr-1 text-muted-foreground"
+    aria-label="Lägg till ny mapp"
+  >
+    <Plus className="h-4 w-4" />
+  </button>
+)}
