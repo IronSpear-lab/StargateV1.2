@@ -1513,6 +1513,43 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   }
 
   // Recursive function to render navigation items
+  // Hjälpfunktion för att rendera plus-knapp med korrekt positionering
+  const renderAddFolderButton = (item: NavItemType, isFilesRoot: boolean) => {
+    if (!item.onAddClick) return null;
+    
+    if (isFilesRoot) {
+      // Särskild hantering för Files-mappen, positionera plus-ikonen till vänster
+      return (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            item.onAddClick?.();
+          }}
+          className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 mx-2"
+          aria-label="Lägg till ny mapp"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+      );
+    } else {
+      // Standard positionering för alla andra mappar
+      return (
+        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              item.onAddClick?.();
+            }}
+            className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            aria-label="Lägg till ny mapp"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+      );
+    }
+  };
+  
   const renderNavItems = (items: NavItemType[], parentKey: string = '') => {
     return items.map((item, index) => {
       const itemKey = `${parentKey}-${item.label}`;
