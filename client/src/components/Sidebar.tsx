@@ -1710,7 +1710,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       indentClass
                     )}
                   >
-                    <div className="flex items-center">
+                    <div className="flex items-center flex-grow">
                       {/* Ta bort-knapp för användarskapade mappar - temporärt borttagen */}
                       <span className={cn(
                         "flex items-center justify-center mr-3",
@@ -1718,6 +1718,21 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       )}>
                         {item.icon}
                       </span>
+                      
+                      {/* Plustecken för mappar - nu till vänster, endast för files_root */}
+                      {item.type === "folder" && item.onAddClick && item.folderId === "files_root" && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (item.onAddClick) item.onAddClick();
+                          }}
+                          className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 mr-2"
+                          aria-label="Lägg till ny mapp"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      )}
+                      
                       <span className={cn(
                         "text-sm",
                         item.active ? "text-primary" : "text-muted-foreground"
@@ -1737,16 +1752,15 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         </Badge>
                       )}
                       
-                      {/* Borttagningsknappen har flyttats till vänster om mappikonen */}
-                      
+                      {/* Chevron-pil - alltid till höger */}
                       <ChevronRight className={cn(
                         "h-4 w-4 transition-transform duration-200",
                         isItemOpen ? "rotate-90" : ""
                       )} />
                       
-                      {/* Plustecken för mappar - visas endast vid hover, positionerat till höger om allt annat innehåll */}
-                      {item.type === "folder" && item.onAddClick && (
-                        <div className={item.folderId === "files_root" ? "inline-flex items-center mx-2" : "absolute right-2 top-1/2 transform -translate-y-1/2"}>
+                      {/* Plustecken för vanliga mappar (inte files_root) fortsätter vara till höger */}
+                      {item.type === "folder" && item.onAddClick && item.folderId !== "files_root" && (
+                        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1771,7 +1785,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       indentClass
                     )}
                   >
-                    <div className="flex items-center">
+                    <div className="flex items-center flex-grow">
                       {/* Ta bort-knapp för alla mappar - temporärt borttagen */}
                       <span className={cn(
                         "flex items-center justify-center mr-3",
@@ -1779,6 +1793,21 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       )}>
                         {item.icon}
                       </span>
+                      
+                      {/* Plustecken för mappar - nu till vänster, endast för files_root */}
+                      {item.type === "folder" && item.onAddClick && item.folderId === "files_root" && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (item.onAddClick) item.onAddClick();
+                          }}
+                          className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 mr-2"
+                          aria-label="Lägg till ny mapp"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      )}
+                      
                       <span className={cn(
                         "text-sm",
                         item.active ? "text-primary" : "text-muted-foreground"
@@ -1798,14 +1827,15 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         </Badge>
                       )}
                       
+                      {/* Chevron-pil - alltid till höger */}
                       <ChevronRight className={cn(
                         "h-4 w-4 transition-transform duration-200",
                         isItemOpen ? "rotate-90" : ""
                       )} />
                       
-                      {/* Plustecken för mappar - visas endast vid hover, positionerat till höger om allt annat innehåll */}
-                      {item.type === "folder" && item.onAddClick && (
-                        <div className={item.folderId === "files_root" ? "inline-flex items-center mx-2" : "absolute right-2 top-1/2 transform -translate-y-1/2"}>
+                      {/* Plustecken för vanliga mappar (inte files_root) fortsätter vara till höger */}
+                      {item.type === "folder" && item.onAddClick && item.folderId !== "files_root" && (
+                        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
