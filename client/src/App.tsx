@@ -33,7 +33,7 @@ import PDFViewerPage from "@/pages/pdf-viewer-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
-import { ProjectProvider } from "./contexts/project-context";
+import { ProjectProvider } from "./contexts/ProjectContext";
 import { useEffect, useState } from "react";
 import { configurePdfWorker } from "@/lib/pdf-worker-config";
 
