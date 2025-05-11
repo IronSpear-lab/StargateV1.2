@@ -1307,11 +1307,9 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           icon: <FileText className="w-4 h-4" />,
           type: "folder", // För att kunna visa mappar under Files-sektionen
           folderId: "files_root", // Unikt ID för rotkatalogen
-          onAddClick: user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") ? 
-            () => handleAddFolder("Files") : undefined, // För att lägga till mappar under Files
+          onAddClick: () => handleAddFolder("Files"), // För att lägga till mappar under Files
           isOpen: openItems["file_folders"] || false, // För att hålla mappen öppen/stängd
           onToggle: () => toggleItem("file_folders"), // För att toggla öppen/stängd status
-          sectionId: "files", // För att markera detta som Files-sektionen
           children: [
             // Dynamiska undermappar kommer att läggas till i useEffect nedan
             // tillsammans med userCreatedFolders
@@ -1392,9 +1390,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           indent: (filesSection!.indent || 0) + 1, // Standardvärde, justeras senare
           icon: <FolderClosed className="w-4 h-4" />,
           type: "folder",
-          // Säkerställ att onAddClick alltid inkluderas för mappar för användare med rätt roller
-          onAddClick: user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") ? 
-            () => handleAddFolder(folder.name) : undefined,
+          onAddClick: () => handleAddFolder(folder.name),
           folderId: folder.id,
           children: []
         };
@@ -1729,18 +1725,17 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         </Badge>
                       )}
                       
-                      {/* Plustecken för mappar - sidan om chevron, mycket tydligt nu */}
-                      {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && 
-                        item.type === "folder" && (
+                      {/* Plustecken för mappar - sidan om chevron */}
+                      {item.type === "folder" && item.onAddClick && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleAddFolder(item.label as string);
+                            if (item.onAddClick) item.onAddClick();
                           }}
-                          className="p-1 bg-primary/20 hover:bg-accent hover:text-accent-foreground mr-1 border border-primary rounded-sm"
+                          className="p-1 hover:bg-accent hover:text-accent-foreground mr-1"
                           aria-label="Lägg till ny mapp"
                         >
-                          <Plus className="h-4 w-4 text-primary" />
+                          <Plus className="h-4 w-4" />
                         </button>
                       )}
                       
