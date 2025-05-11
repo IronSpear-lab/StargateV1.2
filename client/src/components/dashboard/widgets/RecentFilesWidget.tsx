@@ -266,15 +266,15 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
         ) : (
           <div className="flex flex-col items-center justify-center h-[200px] text-center p-4">
             <FolderOpen className="h-8 w-8 text-gray-300 dark:text-gray-600 mb-2" />
-            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300">No recent files</h3>
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300">Inga senaste filer</h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              There are no recent files in the vault.
+              Det finns inga senaste filer i arkivet.
               <Button 
                 variant="link" 
                 className="h-auto p-0 text-xs text-blue-600 dark:text-blue-400 ml-1"
                 onClick={() => window.location.href = "/ritningar"}
               >
-                Upload a file
+                Ladda upp en fil
               </Button>
             </p>
           </div>
