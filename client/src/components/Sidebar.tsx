@@ -1836,7 +1836,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               </Link>
               
               {/* Plus-ikon för mappar */}
-              {item.type === "folder" && item.onAddClick && userHasFolderPermissions && (
+              {item.type === "folder" && item.onAddClick && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
                 <span
                   onClick={(e) => {
                     e.stopPropagation();
