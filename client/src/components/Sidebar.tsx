@@ -1307,7 +1307,8 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           icon: <FileText className="w-4 h-4" />,
           type: "folder", // För att kunna visa mappar under Files-sektionen
           folderId: "files_root", // Unikt ID för rotkatalogen
-          onAddClick: () => handleAddFolder("Files"), // För att lägga till mappar under Files
+          onAddClick: user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") ? 
+            () => handleAddFolder("Files") : undefined, // För att lägga till mappar under Files
           isOpen: openItems["file_folders"] || false, // För att hålla mappen öppen/stängd
           onToggle: () => toggleItem("file_folders"), // För att toggla öppen/stängd status
           sectionId: "files", // För att markera detta som Files-sektionen
@@ -1391,7 +1392,9 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           indent: (filesSection!.indent || 0) + 1, // Standardvärde, justeras senare
           icon: <FolderClosed className="w-4 h-4" />,
           type: "folder",
-          onAddClick: () => handleAddFolder(folder.name),
+          // Säkerställ att onAddClick alltid inkluderas för mappar för användare med rätt roller
+          onAddClick: user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") ? 
+            () => handleAddFolder(folder.name) : undefined,
           folderId: folder.id,
           children: []
         };
@@ -1726,7 +1729,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         </Badge>
                       )}
                       
-                      {/* Plustecken för mappar - sidan om chevron */}
+                      {/* Plustecken för mappar - sidan om chevron, mycket tydligt nu */}
                       {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && 
                         item.type === "folder" && (
                         <button
@@ -1734,10 +1737,10 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                             e.stopPropagation();
                             handleAddFolder(item.label as string);
                           }}
-                          className="p-1 hover:bg-accent hover:text-accent-foreground mr-1 border border-border rounded-sm"
+                          className="p-1 bg-primary/20 hover:bg-accent hover:text-accent-foreground mr-1 border border-primary rounded-sm"
                           aria-label="Lägg till ny mapp"
                         >
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-4 w-4 text-primary" />
                         </button>
                       )}
                       
