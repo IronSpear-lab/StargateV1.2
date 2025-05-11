@@ -1725,21 +1725,19 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         </Badge>
                       )}
                       
-                      {/* Plustecken för mappar - visas alltid för alla mappar */}
-                      <div className="absolute right-2">
-                        {item.type === "folder" && item.onAddClick && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (item.onAddClick) item.onAddClick();
-                            }}
-                            className="p-1 hover:bg-accent hover:text-accent-foreground"
-                            aria-label="Lägg till ny mapp"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
+                      {/* Plustecken för mappar - sidan om chevron */}
+                      {item.type === "folder" && item.onAddClick && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (item.onAddClick) item.onAddClick();
+                          }}
+                          className="p-1 hover:bg-accent hover:text-accent-foreground mr-1"
+                          aria-label="Lägg till ny mapp"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      )}
                       
                       <ChevronRight className={cn(
                         "h-4 w-4 transition-transform duration-200",
