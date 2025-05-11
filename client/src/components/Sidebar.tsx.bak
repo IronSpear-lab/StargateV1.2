@@ -30,7 +30,10 @@ import {
   Box,
   Plus,
   Shield,
-  Trash2
+  Trash2,
+  Package,
+  Hammer,
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
@@ -76,9 +79,13 @@ type NavItemType = {
   active?: boolean;
   indent?: number;
   children?: NavItemType[];
-  type?: 'folder' | 'file' | 'link' | string; // För att kunna identifiera mappar och visa plustecken
+  type?: 'folder' | 'file' | 'link' | 'section' | string; // För att kunna identifiera mappar, sektioner och visa plustecken
   onAddClick?: () => void;
+  onDeleteAll?: () => void; // Funktion för att radera alla mappar
   folderId?: string; // ID för mappen, används för borttagning
+  sectionId?: string; // ID för sektioner som ska kunna öppnas/stängas
+  isOpen?: boolean; // Om en sektion är öppen eller stängd
+  onToggle?: () => void; // Funktion för att toggla öppna/stängda sektioner
 };
 
 interface NavGroupProps {
@@ -687,10 +694,18 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   const [location] = useLocation();
   const isMobile = useMobile();
   const [isOpen, setIsOpen] = useState(!isMobile);
+  const [openSections, setOpenSections] = useState<string[]>(() => {
+    // Retrieve open sections from localStorage if available
+    if (typeof window !== 'undefined') {
+      const savedSections = localStorage.getItem('openSections');
+      return savedSections ? JSON.parse(savedSections) : [];
+    }
+    return [];
+  });
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({
     "-Planning": false,
-    "-Vault": true,
-    "-Vault-Files": true
+    "-Vault": false,
+    "-Vault-Files": false
   });
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [selectedParentFolder, setSelectedParentFolder] = useState("");
@@ -708,6 +723,109 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     }
     return [];
   });
+  
+  // Uppdatera mappar när användaren ändras eller loggar in, eller när komponenten renderas
+  useEffect(() => {
+    if (user) {
+      // Hämta och uppdatera mappar från localStorage varje gång komponenten renderas
+      const savedFolders = localStorage.getItem('userCreatedFolders');
+      if (savedFolders) {
+        try {
+          const parsedFolders = JSON.parse(savedFolders);
+          setUserCreatedFolders(parsedFolders);
+          
+          // Säkerställ att user_created_folders också är synkroniserat för App.tsx
+          const simplifiedFolders = parsedFolders.map((folder: any) => ({
+            label: folder.name,
+            parent: folder.parent
+          }));
+          localStorage.setItem('user_created_folders', JSON.stringify(simplifiedFolders));
+        } catch (e) {
+          console.error("Fel vid parsning av mappar från localStorage:", e);
+        }
+      }
+    }
+  }, [user]);
+  
+  // Lägg till en periodisk kontroll för uppdateringar av localStorage
+  // och lyssna på custom events från FolderManagementWidget
+  useEffect(() => {
+    // Funktionen som kontrollerar localStorage för förändringar
+    const checkForFolderUpdates = () => {
+      if (typeof window !== 'undefined') {
+        const savedFolders = localStorage.getItem('userCreatedFolders');
+        if (savedFolders) {
+          try {
+            const parsedFolders = JSON.parse(savedFolders);
+            
+            // Hämta aktuellt project-ID
+            const projectId = localStorage.getItem('currentProjectId');
+            
+            // Filtrera mappar baserat på aktuellt projekt, om ett projekt är valt
+            const filteredFolders = projectId
+              ? parsedFolders.filter((folder: any) => {
+                  // Inkludera mappar som saknar projektId och mappar som tillhör aktuellt projekt
+                  const matchesProject = !folder.projectId || folder.projectId === projectId;
+                  console.log(`Sidebar: Kontrollerar mapp ${folder.name}, projectId=${folder.projectId}, match=${matchesProject}`);
+                  return matchesProject;
+                })
+              : parsedFolders;
+              
+            // Loggning av mappinformation
+            console.log(`Sidebar: Hittade ${filteredFolders.length} mappar för projekt ${projectId || 'inget projekt'}`);
+            console.log("Mappar:", filteredFolders.map((f: any) => `${f.name} (${f.projectId || 'ingen projektId'})`));
+            
+            // Jämför med aktuell state för att undvika onödiga renderingar - med strikt jämförelse
+            const currentFolderIds = userCreatedFolders.map((f: any) => f.id).sort().join(',');
+            const newFolderIds = filteredFolders.map((f: any) => f.id).sort().join(',');
+            
+            if (currentFolderIds !== newFolderIds) {
+              console.log("Sidebar: Uppdaterar mapplistan från localStorage", {
+                gammalt: currentFolderIds,
+                nytt: newFolderIds,
+                antal: filteredFolders.length
+              });
+              
+              // Uppdatera state med de filtrerade mapparna
+              setUserCreatedFolders(filteredFolders);
+              
+              // Öppna Files-sektionen automatiskt om det finns mappar
+              // Ta bort automatisk öppning av Vault och Files när det finns mappar
+              // Om användaren vill se mapparna får de öppna Vault manuellt
+              if (filteredFolders.length > 0) {
+                console.log("Det finns mappar, men vi öppnar inte Vault automatiskt längre");
+                // Kommentera bort automatisk öppning av Vault och Files
+                // Låt användaren öppna dessa sektioner själv
+              }
+            }
+          } catch (e) {
+            console.error("Fel vid periodisk kontroll av mappar i localStorage:", e);
+          }
+        }
+      }
+    };
+    
+    // Eventlyssnare för manuell refresh av mappar (utlöst av FolderManagementWidget)
+    const handleFolderStructureChanged = (event: CustomEvent) => {
+      console.log("Sidebar: Mottog folder-structure-changed-event", event.detail);
+      checkForFolderUpdates();
+    };
+    
+    // Lägg till lyssnare för den anpassade händelsen
+    window.addEventListener('folder-structure-changed', handleFolderStructureChanged as EventListener);
+    
+    // Kör direkt och sätt sedan intervall
+    checkForFolderUpdates();
+    
+    // Sätt ett intervall för att kontrollera var 2:a sekund istället för var 3:e
+    const intervalId = setInterval(checkForFolderUpdates, 2000);
+    
+    // Städa upp intervall och event listener vid unmount
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('folder-structure-changed', handleFolderStructureChanged as EventListener);
+    };
+  }, [userCreatedFolders]);
   
   // State för användarens profilbild med lagring i localStorage
   const [userAvatar, setUserAvatar] = useState<string | null>(() => {
@@ -759,6 +877,21 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       [itemName]: !prev[itemName]
     }));
   };
+  
+  const toggleSection = (sectionId: string) => {
+    setOpenSections(prev => {
+      const newOpenSections = prev.includes(sectionId)
+        ? prev.filter(id => id !== sectionId)
+        : [...prev, sectionId];
+        
+      // Save to localStorage whenever the open sections change
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('openSections', JSON.stringify(newOpenSections));
+      }
+      
+      return newOpenSections;
+    });
+  };
 
   const getInitials = (username: string) => {
     // Om användarnamnet innehåller mellanslag, använd första bokstaven i varje ord
@@ -793,18 +926,71 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   
   // Funktion för att skapa en ny mapp
   const createFolder = (folderName: string, parentName: string) => {
+    // Hämta aktuellt project-ID för att knyta mappen till rätt projekt
+    const currentProjectId = localStorage.getItem('currentProjectId');
+    
+    console.log(`createFolder: Skapar mapp '${folderName}' under '${parentName}' för projekt ${currentProjectId || 'inget projekt'}`);
+    
     // Skapa ett unikt ID för mappen
     const folderId = `folder_${Date.now()}`;
     
-    // Skapa den nya mappen med unik ID
-    const newFolder = { name: folderName, parent: parentName, id: folderId };
+    // Skapa den nya mappen med unik ID och projektID
+    const newFolder = { 
+      name: folderName, 
+      parent: parentName, 
+      id: folderId,
+      parentId: null, // Denna sätts bara när mappen skapas under en annan mapp
+      projectId: currentProjectId, // Lägg till projektId för korrekt filtrering
+      label: folderName, // Samma som name, men enklare att använda i andra delar av koden
+      href: `/vault/files/${encodeURIComponent(folderName)}` // Länk till den dynamiska sidan
+    };
+    
+    // Hämta alla befintliga mappar från localStorage
+    const allUserFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
+    console.log(`createFolder: Hittade ${allUserFolders.length} existerande mappar i localStorage`);
+    
+    // Filtrera ut mappar från andra projekt så vi inte skriver över dem
+    const otherProjectFolders = allUserFolders.filter((f: any) => {
+      return !f.projectId || f.projectId !== currentProjectId;
+    });
+    console.log(`createFolder: Behåller ${otherProjectFolders.length} mappar från andra projekt`);
+    
+    // Kombinera mappar från andra projekt med den nya mappen
+    const updatedFolders = [...otherProjectFolders, newFolder];
     
     // Uppdatera state
-    const updatedFolders = [...userCreatedFolders, newFolder];
     setUserCreatedFolders(updatedFolders);
+    console.log(`createFolder: State uppdaterad med ${updatedFolders.length} mappar`);
     
     // Spara i localStorage
     localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
+    
+    // Spara även i user_created_folders för App.tsx som behöver känna till mappnamnen
+    // Detta behövs för den dynamiska routern
+    const existingFoldersForApp = localStorage.getItem('user_created_folders');
+    const foldersForApp = existingFoldersForApp ? JSON.parse(existingFoldersForApp) : [];
+    const updatedFoldersForApp = [...foldersForApp, { 
+      label: folderName,
+      parent: parentName,
+      projectId: currentProjectId // Lägg till projektId för korrekt filtrering
+    }];
+    localStorage.setItem('user_created_folders', JSON.stringify(updatedFoldersForApp));
+    
+    // Säkerställ att Vault-sektionen är öppen
+    if (!openSections.includes("vault")) {
+      toggleSection("vault");
+    }
+    
+    // Säkerställ att Files-sektionen är öppen
+    if (!openItems["file_folders"]) {
+      toggleItem("file_folders");
+    }
+    
+    // Utlös en uppdatering av sidofältet
+    console.log("createFolder: Utlöser folder-structure-changed event");
+    window.dispatchEvent(new CustomEvent('folder-structure-changed', { 
+      detail: { projectId: currentProjectId } 
+    }));
     
     // Visa meddelande om att mappen har skapats
     toast({
@@ -855,6 +1041,16 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     // Spara i localStorage
     localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
     
+    // Ta även bort från user_created_folders listan som App.tsx använder
+    const existingFoldersForApp = localStorage.getItem('user_created_folders');
+    if (existingFoldersForApp) {
+      const foldersForApp = JSON.parse(existingFoldersForApp);
+      const updatedFoldersForApp = foldersForApp.filter((folder: any) => 
+        folder.label !== folderToDelete.name
+      );
+      localStorage.setItem('user_created_folders', JSON.stringify(updatedFoldersForApp));
+    }
+    
     // Visa meddelande om att mappen har tagits bort
     toast({
       title: "Mapp borttagen",
@@ -866,24 +1062,77 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     setDeleteDialogOpen(false);
   };
   
+  // Funktion för att ta bort alla mappar
+  const deleteAllFolders = () => {
+    // Kontrollera behörighet för att endast tillåta project_leader, admin och superuser
+    if (!user || !(user.role === "project_leader" || user.role === "admin" || user.role === "superuser")) {
+      toast({
+        title: "Behörighet saknas",
+        description: "Du har inte behörighet att ta bort mappar",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Rensa alla sparade mappar
+    localStorage.setItem('userCreatedFolders', '[]');
+    localStorage.setItem('user_created_folders', '[]');
+    
+    // Uppdatera state
+    setUserCreatedFolders([]);
+    
+    // Visa ett meddelande
+    toast({
+      title: "Alla mappar borttagna",
+      description: "Alla mappar har tagits bort från systemet",
+    });
+    
+    // Utlös en uppdatering av sidofältet
+    window.dispatchEvent(new CustomEvent('folder-structure-changed'));
+  };
+  
   // Funktion för att hitta den rätta föräldern för en nyskapad mapp och uppdatera den
   const findParentAndAddFolder = (
     items: NavItemType[], 
     parentName: string, 
-    newFolder: { name: string, parent: string, id: string }
+    newFolder: { name: string, parent: string, id: string, parentId?: string | null }
   ): NavItemType[] => {
     return items.map(item => {
-      // Om denna mapp är föräldern, lägg till den nya mappen som ett barn
-      if (item.label === parentName && item.type === "folder") {
+      // Extra loggutskrift för att hjälpa debug
+      console.log(`Checking item ${item.label}, parent=${parentName}, type=${item.type}, folderId=${item.folderId}`);
+      
+      // STRIKT MATCHNING: Kontrollera om denna mapp är föräldern
+      // Vi matchar nu med striktare regler för att undvika dubletter
+      const isParentMatch = 
+        // Om förälder är "Files" (huvudmappen), matcha på exakt namn 
+        // OCH kontrollera att "Files" finns under Vault-sektionen
+        (item.label === "Files" && parentName === "Files" && item.folderId === "files_root") ||
+        // ELLER om vi har en användarskapad mapp som förälder, matcha strikt på ID
+        (item.folderId && newFolder.parentId && item.folderId === newFolder.parentId);
+        
+      if (isParentMatch) {
+        console.log(`✅ STRIKT MATCH! Tilldelar mapp ${newFolder.name} ENDAST till ${item.label} (ID: ${item.folderId})`);
+        
+        // Kontrollera om mappen redan finns för att undvika dubletter
+        const folderAlreadyExists = (item.children || []).some(
+          child => child.folderId === newFolder.id || child.label === newFolder.name
+        );
+        
+        if (folderAlreadyExists) {
+          console.log(`⚠️ Mappen ${newFolder.name} (ID: ${newFolder.id}) finns redan i ${item.label}, hoppar över`);
+          return item; // Returnera oförändrad om mappen redan finns
+        }
+        
         // Skapa en kopia med den nya mappen
         return {
           ...item,
+          type: "folder", // Säkerställ att typen är folder för att visa undermappar
           children: [
             ...(item.children || []),
             {
-              href: "#",
+              href: `/vault/files/${encodeURIComponent(newFolder.name)}`,
               label: newFolder.name,
-              active: false,
+              active: location === `/vault/files/${encodeURIComponent(newFolder.name)}`,
               indent: (item.indent || 0) + 1,
               icon: <FolderClosed className={`w-4 h-4`} />,
               type: "folder",
@@ -895,8 +1144,9 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         };
       }
       
-      // Om detta objekt har barn, sök rekursivt
-      if (item.children && item.children.length > 0) {
+      // Om detta objekt har barn, sök rekursivt, men BARA om det är en mapp
+      // Detta eliminerar rekursion genom alla typer av element
+      if (item.type === "folder" && item.children && item.children.length > 0) {
         return {
           ...item,
           children: findParentAndAddFolder(item.children, parentName, newFolder)
@@ -927,11 +1177,22 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       badge: "New"
     }] : []),
     {
+      href: "/time-tracking",
+      label: "Tidsrapportering",
+      icon: <Clock className="w-5 h-5" />,
+      active: location.startsWith("/time-tracking"),
+      type: "link",
+    },
+    {
       href: "#", // No direct planning page
-      label: "Planning",
+      label: "Projektplanering",
       icon: <Briefcase className="w-5 h-5" />,
       active: location === "/kanban" || location === "/gantt" || 
               location === "/planning/kanban" || location === "/planning/gantt-chart",
+      type: "section",
+      sectionId: "project-planning",
+      isOpen: openSections.includes("project-planning"),
+      onToggle: () => toggleSection("project-planning"),
       children: [
         {
           href: "/kanban", // Match the route in App.tsx
@@ -951,14 +1212,18 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     },
     {
       href: "#",
-      label: "Communication",
+      label: "Kommunikation",
       icon: <MessageSquare className="w-5 h-5" />,
       active: location === "/communication" || location === "/messages" || location.startsWith("/communication/"),
       badge: unreadData?.count && unreadData.count > 0 ? String(unreadData.count) : undefined,
+      type: "section",
+      sectionId: "communication",
+      isOpen: openSections.includes("communication"),
+      onToggle: () => toggleSection("communication"),
       children: [
         {
           href: "/messages",
-          label: "Messages",
+          label: "Meddelanden",
           icon: <Mail className="w-4 h-4" />,
           active: location === "/messages" || location === "/communication/messages",
           indent: 1,
@@ -967,16 +1232,49 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       ]
     },
     {
-      href: "/3d-viewer",
+      href: "#",
       label: "3D Viewer",
       icon: <Box className="w-5 h-5" />,
-      active: location === "/3d-viewer",
+      active: location === "/3d-viewer" || 
+              location === "/3d-viewer/design" || 
+              location === "/3d-viewer/byggarbetsplats",
+      type: "section",
+      sectionId: "3d-viewer",
+      isOpen: openSections.includes("3d-viewer"),
+      onToggle: () => toggleSection("3d-viewer"),
+      children: [
+        {
+          href: "/3d-viewer",
+          label: "3D Översikt",
+          icon: <Box className="w-4 h-4" />,
+          active: location === "/3d-viewer",
+          indent: 1
+        },
+        {
+          href: "/3d-viewer/design",
+          label: "Design",
+          icon: <Package className="w-4 h-4" />,
+          active: location === "/3d-viewer/design",
+          indent: 1
+        },
+        {
+          href: "/3d-viewer/byggarbetsplats",
+          label: "Byggarbetsplats",
+          icon: <Hammer className="w-4 h-4" />,
+          active: location === "/3d-viewer/byggarbetsplats",
+          indent: 1
+        }
+      ]
     },
     {
       href: "#",
       label: "Vault",
       icon: <FolderClosed className="w-5 h-5" />,
       active: location.startsWith("/vault"),
+      type: "section",
+      sectionId: "vault",
+      isOpen: openSections.includes("vault"),
+      onToggle: () => toggleSection("vault"),
       children: [
         {
           href: "/vault",
@@ -998,6 +1296,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           active: location.startsWith("/vault/review"),
           indent: 1,
           icon: <CheckSquare className="w-4 h-4" />,
+          type: "link", // Ändra till link för att dölja plus/kryss
           children: []
         },
         {
@@ -1006,120 +1305,14 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           active: location.startsWith("/vault/files"),
           indent: 1,
           icon: <FileText className="w-4 h-4" />,
-          type: "folder",
-          onAddClick: () => handleAddFolder("Files"),
+          type: "folder", // För att kunna visa mappar under Files-sektionen
+          folderId: "files_root", // Unikt ID för rotkatalogen
+          onAddClick: () => handleAddFolder("Files"), // För att lägga till mappar under Files
+          isOpen: openItems["file_folders"] || false, // För att hålla mappen öppen/stängd
+          onToggle: () => toggleItem("file_folders"), // För att toggla öppen/stängd status
           children: [
-            {
-              href: "#",
-              label: "01- Organisation",
-              active: false,
-              indent: 2,
-              icon: <FolderClosed className="w-4 h-4" />,
-              type: "folder",
-              onAddClick: () => handleAddFolder("01- Organisation"),
-              children: []
-            },
-            {
-              href: "#",
-              label: "02- Projektering",
-              active: false,
-              indent: 2,
-              icon: <FolderClosed className="w-4 h-4" />,
-              type: "folder",
-              onAddClick: () => handleAddFolder("02- Projektering"),
-              children: []
-            },
-            {
-              href: "#",
-              label: "00- Gemensam",
-              active: false,
-              indent: 2,
-              icon: <FolderClosed className="w-4 h-4" />,
-              type: "folder",
-              onAddClick: () => handleAddFolder("00- Gemensam"),
-              children: []
-            },
-            {
-              href: "#",
-              label: "01- Arkitekt",
-              active: false,
-              indent: 2,
-              icon: <FolderClosed className="w-4 h-4" />,
-              type: "folder",
-              onAddClick: () => handleAddFolder("01- Arkitekt"),
-              children: [
-                {
-                  href: "/vault/files/ritningar",
-                  label: "1. Ritningar",
-                  active: location === "/vault/files/ritningar",
-                  indent: 3,
-                  icon: <FolderClosed className="w-3 h-3" />,
-                  type: "folder",
-                  onAddClick: () => handleAddFolder("1. Ritningar"),
-                  children: []
-                },
-                {
-                  href: "/dwg-ifc-viewer",
-                  label: "2. DWG & IFC",
-                  active: location === "/dwg-ifc-viewer",
-                  indent: 3,
-                  icon: <FolderClosed className="w-3 h-3" />,
-                  type: "folder",
-                  onAddClick: () => handleAddFolder("2. DWG & IFC"),
-                  children: []
-                },
-                {
-                  href: "#",
-                  label: "3. Beskrivningar",
-                  active: false,
-                  indent: 3,
-                  icon: <FolderClosed className="w-3 h-3" />,
-                  type: "folder",
-                  onAddClick: () => handleAddFolder("3. Beskrivningar"),
-                  children: []
-                },
-                {
-                  href: "#",
-                  label: "4. Underlag",
-                  active: false,
-                  indent: 3,
-                  icon: <FolderClosed className="w-3 h-3" />,
-                  type: "folder",
-                  onAddClick: () => handleAddFolder("4. Underlag"),
-                  children: []
-                },
-                {
-                  href: "#",
-                  label: "5. Egenkontroller",
-                  active: false,
-                  indent: 3,
-                  icon: <FolderClosed className="w-3 h-3" />,
-                  type: "folder",
-                  onAddClick: () => handleAddFolder("5. Egenkontroller"),
-                  children: []
-                }
-              ]
-            },
-            {
-              href: "#",
-              label: "02- Akustik",
-              active: false,
-              indent: 2,
-              icon: <FolderClosed className="w-4 h-4" />,
-              type: "folder",
-              onAddClick: () => handleAddFolder("02- Akustik"),
-              children: []
-            },
-            {
-              href: "#",
-              label: "02- Brand",
-              active: false,
-              indent: 2,
-              icon: <FolderClosed className="w-4 h-4" />,
-              type: "folder",
-              onAddClick: () => handleAddFolder("02- Brand"),
-              children: []
-            }
+            // Dynamiska undermappar kommer att läggas till i useEffect nedan
+            // tillsammans med userCreatedFolders
           ]
         },
         {
@@ -1128,6 +1321,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           active: location.startsWith("/vault/versions"),
           indent: 1,
           icon: <Clock className="w-4 h-4" />,
+          type: "link", // Ändra till link för att dölja plus/kryss
           children: []
         },
         {
@@ -1136,6 +1330,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           active: location.startsWith("/vault/meetings"),
           indent: 1,
           icon: <Users className="w-4 h-4" />,
+          type: "link", // Ändra till link för att dölja plus/kryss
           children: []
         }
       ]
@@ -1147,10 +1342,136 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     // Börja med kopian av grundnavigationen
     let navCopy = [...baseNavItems];
     
-    // Lägg till alla användar-skapade mappar
-    userCreatedFolders.forEach(folder => {
-      navCopy = findParentAndAddFolder(navCopy, folder.parent, folder);
-    });
+    // Logga alla mappar som vi ska försöka lägga till
+    console.log(`getNavItems: Försöker lägga till ${userCreatedFolders.length} mappar i Sidebar`);
+    
+    // Iterera först igenom navigationsobjekten för att hitta Files-sektionen
+    let filesSection = null;
+    
+    // Rekursiv funktion för att hitta Files-sektionen i navigationsobjektet
+    const findFilesSection = (items: NavItemType[]): NavItemType | null => {
+      for (const item of items) {
+        if (item.label === "Files" && item.folderId === "files_root") {
+          return item;
+        }
+        
+        if (item.children && item.children.length > 0) {
+          const found = findFilesSection(item.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    
+    // Sök igenom för att hitta Files-sektionen
+    const vaultSection = navCopy.find(item => item.label === "Vault");
+    if (vaultSection && vaultSection.children) {
+      filesSection = findFilesSection(vaultSection.children);
+    }
+    
+    // Om Files-sektionen hittades, lägg till mappar direkt till den
+    if (filesSection) {
+      console.log("Hittade Files-sektionen i navigationsobjektet:", filesSection.label);
+      
+      // Skapa barnmappar direkt till Files-sektionen
+      if (!filesSection.children) {
+        filesSection.children = [];
+      }
+      
+      // Bygg en mappning av alla mappar för snabb åtkomst vid byggande av hierarkin
+      const folderMap: Record<string, NavItemType> = {};
+      
+      // Först skapa alla mappobjekt och spara dem i mappningen
+      userCreatedFolders.forEach(folder => {
+        folderMap[folder.id] = {
+          href: `/vault/files/${encodeURIComponent(folder.name)}`,
+          label: folder.name,
+          active: location === `/vault/files/${encodeURIComponent(folder.name)}`,
+          indent: (filesSection!.indent || 0) + 1, // Standardvärde, justeras senare
+          icon: <FolderClosed className="w-4 h-4" />,
+          type: "folder",
+          onAddClick: () => handleAddFolder(folder.name),
+          folderId: folder.id,
+          children: []
+        };
+        
+        console.log(`Skapade NavItem för mapp ${folder.name} (ID: ${folder.id})`);
+      });
+      
+      // Identifiera rotmappar (mappar utan förälder eller med förälder "Files")
+      const rootFolders = userCreatedFolders.filter(folder => 
+        !folder.parent || folder.parent === "Files"
+      );
+      
+      // Lägg till rotmapparna direkt till Files-sektionen
+      rootFolders.forEach(folder => {
+        // Kontrollera om mappen redan finns i Files-sektionen för att undvika dubletter
+        const existingFolder = filesSection!.children!.find(child => 
+          child.folderId === folder.id || child.label === folder.name
+        );
+        
+        if (!existingFolder) {
+          // Lägg till mappen direkt som ett barnelement till Files-sektionen
+          filesSection!.children!.push(folderMap[folder.id]);
+          console.log(`Lade till rotmapp ${folder.name} (ID: ${folder.id}) direkt i Files-sektionen`);
+        } else {
+          console.log(`Rotmappen ${folder.name} finns redan i Files-sektionen, hoppar över`);
+        }
+      });
+      
+      // Hantera undermappar genom att koppla dem till sina föräldramappar
+      userCreatedFolders.forEach(folder => {
+        // Om denna mapp har en förälder som INTE är "Files"
+        if (folder.parent && folder.parent !== "Files") {
+          // Hitta föräldermappen baserat på namn
+          const parentFolder = userCreatedFolders.find(p => p.name === folder.parent);
+          
+          if (parentFolder && folderMap[parentFolder.id]) {
+            // Hitta förälderns NavItem objekt
+            const parentNavItem = folderMap[parentFolder.id];
+            
+            // Kontrollera om barnet redan finns i föräldern för att undvika dubletter
+            const childExists = parentNavItem.children?.some(child => 
+              child.folderId === folder.id || child.label === folder.name
+            );
+            
+            if (!childExists) {
+              // Justera indent-nivån baserat på förälderns nivå
+              folderMap[folder.id].indent = (parentNavItem.indent || 0) + 1;
+              
+              // Lägg till som ett barn till föräldern
+              parentNavItem.children = [...(parentNavItem.children || []), folderMap[folder.id]];
+              console.log(`Lade till undermapp ${folder.name} i föräldermappen ${folder.parent}`);
+            }
+          } else {
+            console.log(`Kunde inte hitta föräldermappen för ${folder.name}, lägger den på rotnivå`);
+            
+            // Om föräldern inte hittades, lägg till på rotnivå som säkerhet
+            const existingFolder = filesSection!.children!.find(child => 
+              child.folderId === folder.id || child.label === folder.name
+            );
+            
+            if (!existingFolder) {
+              filesSection!.children!.push(folderMap[folder.id]);
+            }
+          }
+        }
+      });
+      
+      // Säkerställ att Files-sektionen är öppen om den har mappar
+      if (filesSection.children && filesSection.children.length > 0) {
+        filesSection.isOpen = true;
+        // Öppna även Vault-sektionen
+        if (vaultSection) {
+          vaultSection.isOpen = true;
+          if (!openSections.includes("vault")) {
+            toggleSection("vault");
+          }
+        }
+      }
+    } else {
+      console.warn("Kunde inte hitta Files-sektionen i navigationsobjektet!");
+    }
     
     return navCopy;
   };
@@ -1174,7 +1495,14 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     return items.map((item, index) => {
       const itemKey = `${parentKey}-${item.label}`;
       const hasChildren = item.children && item.children.length > 0;
-      const isItemOpen = openItems[itemKey] !== undefined ? openItems[itemKey] : false;
+      
+      // Handle section-specific open state if item is a section
+      let isItemOpen = false;
+      if (item.type === 'section' && item.sectionId) {
+        isItemOpen = item.isOpen ?? false;
+      } else {
+        isItemOpen = openItems[itemKey] !== undefined ? openItems[itemKey] : false;
+      }
       
       // Calculate indentation based on level
       let indentClass = '';
@@ -1194,7 +1522,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               {hasChildren ? (
                 <button 
                   className={cn(
-                    "flex items-center justify-center w-full py-2 rounded-md transition-colors duration-150 sidebar-nav-item",
+                    "flex items-center justify-center w-full py-2 rounded-md transition-colors duration-150 sidebar-nav-item group",
                     item.active
                       ? "bg-primary/10 text-primary font-medium" 
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -1213,7 +1541,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 <Link 
                   href={item.href}
                   className={cn(
-                    "flex items-center justify-center py-2 rounded-md transition-colors duration-150 w-full sidebar-nav-item",
+                    "flex items-center justify-center py-2 rounded-md transition-colors duration-150 w-full sidebar-nav-item group",
                     item.active
                       ? "bg-primary/10 text-primary font-medium" 
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -1236,15 +1564,32 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                   
                   {/* Plus-ikon för mappar i minimerat läge */}
                   {item.type === "folder" && item.onAddClick && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        item.onAddClick?.();
-                      }}
-                      className="ml-3 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
+                    <div className="flex items-center">
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          item.onAddClick?.();
+                        }}
+                        className="ml-3 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                        title="Lägg till ny mapp"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </span>
+                      
+                      {/* Rensa-ikon för Files root-mappen */}
+                      {item.folderId === "files_root" && item.onDeleteAll && (
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            item.onDeleteAll?.();
+                          }}
+                          className="ml-1 p-1 rounded-sm text-muted-foreground hover:text-destructive hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                          title="Rensa alla mappar"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </span>
+                      )}
+                    </div>
                   )}
                   
                   {/* Badge (om det finns) */}
@@ -1284,13 +1629,22 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       return (
         <div key={itemKey}>
           {hasChildren ? (
-            <Collapsible open={isItemOpen} onOpenChange={() => toggleItem(itemKey)}>
+            <Collapsible 
+              open={isItemOpen} 
+              onOpenChange={() => {
+                if (item.type === 'section' && item.sectionId && item.onToggle) {
+                  item.onToggle();
+                } else {
+                  toggleItem(itemKey);
+                }
+              }}
+            >
               <CollapsibleTrigger asChild>
                 {/* Om det är en användarskapad mapp med folderId */}
                 {item.type === "folder" && item.folderId ? (
                   <button 
                     className={cn(
-                      "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150",
+                      "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150 group",
                       item.active
                         ? "bg-primary/10 text-primary font-medium" 
                         : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -1298,24 +1652,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                     )}
                   >
                     <div className="flex items-center">
-                      {/* Ta bort-knapp för användarskapade mappar */}
-                      {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && item.type === "folder" && item.folderId && (
-                        <Button 
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteClick(item.folderId!);
-                          }}
-                          className={cn(
-                            "h-5 w-5 p-0 mr-1 flex items-center justify-center rounded-sm opacity-0 group-hover:opacity-100 transition-opacity",
-                            "text-destructive hover:text-destructive-foreground hover:bg-destructive"
-                          )}
-                          aria-label="Ta bort mapp"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
+                      {/* Ta bort-knapp för användarskapade mappar - temporärt borttagen */}
                       <span className={cn(
                         "flex items-center justify-center mr-3",
                         item.active ? "text-primary" : "text-muted-foreground"
@@ -1343,18 +1680,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       
                       {/* Borttagningsknappen har flyttats till vänster om mappikonen */}
                       
-                      {/* Lägg till plustecken för mappar - endast för project_leader, admin och superuser */}
-                      {item.type === "folder" && item.onAddClick && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation(); // Förhindra att mappknappen klickas
-                            item.onAddClick?.();
-                          }}
-                          className="mr-1 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                        >
-                          <Plus className="h-3 w-3" />
-                        </button>
-                      )}
+                      {/* Plustecken för mappar - temporärt borttaget */}
                       
                       <ChevronRight className={cn(
                         "h-4 w-4 transition-transform duration-200",
@@ -1365,7 +1691,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 ) : (
                   <button 
                     className={cn(
-                      "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150",
+                      "flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors duration-150 group",
                       item.active
                         ? "bg-primary/10 text-primary font-medium" 
                         : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -1373,30 +1699,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                     )}
                   >
                     <div className="flex items-center">
-                      {/* Ta bort-knapp för alla mappar */}
-                      {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && item.type === "folder" && (
-                        <Button 
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Hantera borttagning endast om mappen har ett folderId (användarskapad)
-                            if (item.folderId) {
-                              handleDeleteClick(item.folderId);
-                            }
-                          }}
-                          className={cn(
-                            "h-5 w-5 p-0 mr-1 flex items-center justify-center rounded-sm",
-                            // Avaktivera för inbyggda mappar som saknar folderId
-                            item.folderId 
-                              ? "text-destructive hover:text-destructive-foreground hover:bg-destructive" 
-                              : "text-muted pointer-events-none opacity-30"
-                          )}
-                          aria-label="Ta bort mapp"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
+                      {/* Ta bort-knapp för alla mappar - temporärt borttagen */}
                       <span className={cn(
                         "flex items-center justify-center mr-3",
                         item.active ? "text-primary" : "text-muted-foreground"
@@ -1422,18 +1725,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         </Badge>
                       )}
                       
-                      {/* Lägg till plustecken för mappar - endast för project_leader, admin och superuser */}
-                      {item.type === "folder" && item.onAddClick && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation(); // Förhindra att mappknappen klickas
-                            item.onAddClick?.();
-                          }}
-                          className="mr-1 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                        >
-                          <Plus className="h-3 w-3" />
-                        </button>
-                      )}
+                      {/* Plustecken för mappar - temporärt borttaget */}
                       
                       <ChevronRight className={cn(
                         "h-4 w-4 transition-transform duration-200",
@@ -1467,30 +1759,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 )}
               >
                 <div className="flex items-center">
-                  {/* Ta bort-knapp som bara visas vid hover */}
-                  {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && item.type === "folder" && (
-                    <Button 
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Hantera borttagning endast om mappen har ett folderId (användarskapad)
-                        if (item.folderId) {
-                          handleDeleteClick(item.folderId);
-                        }
-                      }}
-                      className={cn(
-                        "h-5 w-5 p-0 mr-1 flex items-center justify-center rounded-sm opacity-0 group-hover:opacity-100 transition-opacity",
-                        // Avaktivera för inbyggda mappar som saknar folderId
-                        item.folderId 
-                          ? "text-destructive hover:text-destructive-foreground hover:bg-destructive" 
-                          : "text-muted pointer-events-none opacity-0"
-                      )}
-                      aria-label="Ta bort mapp"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
+                  {/* Ta bort-knapp som bara visas vid hover - temporärt borttagen */}
                   <span className={cn(
                     "flex items-center justify-center mr-3",
                     item.active ? "text-primary" : "text-muted-foreground"
@@ -1516,15 +1785,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                 )}
               </Link>
               
-              {/* Plus-ikon för mappar - endast för project_leader, admin och superuser */}
-              {item.type === "folder" && item.onAddClick && user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && (
-                <button
-                  onClick={() => item.onAddClick?.()}
-                  className="ml-1 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
-                >
-                  <Plus className="h-3 w-3" />
-                </button>
-              )}
+              {/* Plus-ikon för mappar - temporärt borttagen */}
             </div>
           )}
         </div>
@@ -1538,20 +1799,42 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   return (
     <>
       {/* Bekräftelsedialog för borttagning av mapp */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => {
+        setDeleteDialogOpen(open);
+        if (!open) {
+          setFolderToDeleteId(null);
+        }
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Är du säker?</AlertDialogTitle>
+            <AlertDialogTitle>Bekräfta borttagning</AlertDialogTitle>
             <AlertDialogDescription>
               Är du säker på att du vill ta bort {folderToDelete?.name ? `"${folderToDelete.name}"` : "denna mapp"}? 
               Alla undermappar till mappen tas också bort. Denna åtgärd kan inte ångras.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          
+          <div className="flex items-center gap-2 text-destructive bg-destructive/10 p-3 rounded mb-4 mt-2">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+            <span className="text-sm">
+              Alla filer och undermappar kommer att raderas permanent.
+            </span>
+          </div>
+          
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setFolderToDeleteId(null)}>
+            <AlertDialogCancel onClick={() => {
+              console.log("Avbryter borttagning av mapp");
+              setFolderToDeleteId(null);
+            }}>
               Avbryt
             </AlertDialogCancel>
-            <AlertDialogAction onClick={deleteFolder} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction 
+              onClick={() => {
+                console.log("Bekräftar borttagning av mapp", folderToDeleteId);
+                deleteFolder();
+              }} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Ta bort
             </AlertDialogAction>
           </AlertDialogFooter>

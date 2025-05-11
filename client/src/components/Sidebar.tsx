@@ -1725,7 +1725,19 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         </Badge>
                       )}
                       
-                      {/* Plustecken för mappar - temporärt borttaget */}
+                      {/* Plustecken för mappar */}
+                      {item.type === "folder" && item.folderId === "files_root" && item.onAddClick && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (item.onAddClick) item.onAddClick();
+                          }}
+                          className="mr-1 p-1 rounded-sm hover:bg-background/90 hover:text-primary"
+                          aria-label="Lägg till ny mapp"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      )}
                       
                       <ChevronRight className={cn(
                         "h-4 w-4 transition-transform duration-200",
