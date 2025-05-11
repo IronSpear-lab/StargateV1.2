@@ -641,27 +641,30 @@ export function Sidebar({ className }: { className?: string }) {
                       </Badge>
                     )}
                     
-                    {/* Plustecken för alla mappar - placeras till vänster om chevron-pilen */}
-                    {item.type === "folder" && item.onAddClick && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (item.onAddClick) item.onAddClick();
-                        }}
-                        className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 mr-1 text-muted-foreground"
-                        aria-label="Lägg till ny mapp"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
-                    )}
-                    
-                    {/* Chevron-pil visas bara för objekt med undermappar */}
-                    {shouldShowChevron && (
-                      <ChevronRight className={cn(
-                        "h-4 w-4 transition-transform duration-200",
-                        isItemOpen ? "rotate-90" : ""
-                      )} />
-                    )}
+                    {/* Placera plustecknet intill chevron-pilen men alltid till höger */}
+                    <div className="flex items-center">
+                      {/* Plustecken för att skapa nya mappar */}
+                      {item.type === "folder" && item.onAddClick && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (item.onAddClick) item.onAddClick();
+                          }}
+                          className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 mr-1 text-muted-foreground"
+                          aria-label="Lägg till ny mapp"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      )}
+                      
+                      {/* Chevron-pil visas bara för objekt med undermappar */}
+                      {shouldShowChevron && (
+                        <ChevronRight className={cn(
+                          "h-4 w-4 transition-transform duration-200",
+                          isItemOpen ? "rotate-90" : ""
+                        )} />
+                      )}
+                    </div>
                   </div>
                 </button>
               ) : (
@@ -700,13 +703,7 @@ export function Sidebar({ className }: { className?: string }) {
                       </Badge>
                     )}
                     
-                    {/* Chevron-pil visas bara för objekt med undermappar */}
-                    {shouldShowChevron && (
-                      <ChevronRight className={cn(
-                        "h-4 w-4 transition-transform duration-200",
-                        isItemOpen ? "rotate-90" : ""
-                      )} />
-                    )}
+                    {/* Ta bort den dubbla chevron-pilen här */}
                   </div>
                 </div>
               )}
