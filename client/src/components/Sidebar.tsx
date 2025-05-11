@@ -1719,20 +1719,6 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         {item.icon}
                       </span>
                       
-                      {/* Plustecken för mappar - nu till vänster, endast för files_root */}
-                      {item.type === "folder" && item.onAddClick && item.folderId === "files_root" && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (item.onAddClick) item.onAddClick();
-                          }}
-                          className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 mr-2"
-                          aria-label="Lägg till ny mapp"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      )}
-                      
                       <span className={cn(
                         "text-sm",
                         item.active ? "text-primary" : "text-muted-foreground"
@@ -1750,6 +1736,20 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         )}>
                           {item.badge}
                         </Badge>
+                      )}
+                      
+                      {/* Plustecken för files_root - nu till höger FÖRE chevron-pilen */}
+                      {item.type === "folder" && item.onAddClick && item.folderId === "files_root" && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (item.onAddClick) item.onAddClick();
+                          }}
+                          className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 mr-1"
+                          aria-label="Lägg till ny mapp"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
                       )}
                       
                       {/* Chevron-pil - alltid till höger */}
@@ -1794,20 +1794,6 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         {item.icon}
                       </span>
                       
-                      {/* Plustecken för mappar - nu till vänster, endast för files_root */}
-                      {item.type === "folder" && item.onAddClick && item.folderId === "files_root" && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (item.onAddClick) item.onAddClick();
-                          }}
-                          className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 mr-2"
-                          aria-label="Lägg till ny mapp"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      )}
-                      
                       <span className={cn(
                         "text-sm",
                         item.active ? "text-primary" : "text-muted-foreground"
@@ -1825,6 +1811,20 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         )}>
                           {item.badge}
                         </Badge>
+                      )}
+                      
+                      {/* Plustecken för files_root - nu till höger FÖRE chevron-pilen */}
+                      {item.type === "folder" && item.onAddClick && item.folderId === "files_root" && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (item.onAddClick) item.onAddClick();
+                          }}
+                          className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 mr-1"
+                          aria-label="Lägg till ny mapp"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
                       )}
                       
                       {/* Chevron-pil - alltid till höger */}
