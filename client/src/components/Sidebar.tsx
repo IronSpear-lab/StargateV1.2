@@ -1785,26 +1785,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         </Badge>
                       )}
                       
-                      {/* Plustecken för files_root - nu till höger FÖRE chevron-pilen */}
-                      {item.type === "folder" && item.onAddClick && item.folderId === "files_root" && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (item.onAddClick) item.onAddClick();
-                          }}
-                          className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 mr-1 text-muted-foreground"
-                          aria-label="Lägg till ny mapp"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      )}
-                      
-                      {/* Chevron-pil - alltid till höger */}
-                      <ChevronRight className={cn(
-                        "h-4 w-4 transition-transform duration-200",
-                        isItemOpen ? "rotate-90" : ""
-                      )} />
-                      
+                      {/* Plustecken är flyttat till den gemensamma implementationen */}
                       {/* Plustecken för vanliga mappar (inte files_root) fortsätter vara till höger */}
                       {item.type === "folder" && item.onAddClick && item.folderId !== "files_root" && (
                         <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
@@ -1880,21 +1861,25 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         isItemOpen ? "rotate-90" : ""
                       )} />
                       
-                      {/* Plustecken för vanliga mappar (inte files_root) fortsätter vara till höger */}
-                      {item.type === "folder" && item.onAddClick && item.folderId !== "files_root" && (
-                        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (item.onAddClick) item.onAddClick();
-                            }}
-                            className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                            aria-label="Lägg till ny mapp"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </button>
-                        </div>
+                      {/* Plustecken för alla mappar - placeras till vänster om chevron-pilen */}
+                      {item.type === "folder" && item.onAddClick && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (item.onAddClick) item.onAddClick();
+                          }}
+                          className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 mr-1 text-muted-foreground"
+                          aria-label="Lägg till ny mapp"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
                       )}
+                      
+                      {/* Chevron-pil - alltid till höger */}
+                      <ChevronRight className={cn(
+                        "h-4 w-4 transition-transform duration-200",
+                        isItemOpen ? "rotate-90" : ""
+                      )} />
                     </div>
                   </button>
                 )}
