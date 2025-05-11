@@ -424,15 +424,16 @@ class DatabaseStorage implements IStorage {
     }
     
     try {
-      const fileList = await db
-        .select()
-        .from(files)
-        .where(
-          and(
-            eq(files.project_id, projectId),
-            isNull(files.folder_id)
-          )
-        );
+      // I förberedning för tillgång till kolumner som använder snake_case (i databasen) istället för camelCase
+      const projectIdColumn = 'project_id';
+      const folderIdColumn = 'folder_id';
+      
+      const fileList = await db.query.files.findMany({
+        where: and(
+          eq(files.projectId, projectId),
+          isNull(files.folderId)
+        )
+      });
       
       console.log(`storage.getRootFiles: Hittade ${fileList.length} rotfiler för projekt ${projectId}`);
       return fileList;
@@ -452,15 +453,12 @@ class DatabaseStorage implements IStorage {
     }
     
     try {
-      const fileList = await db
-        .select()
-        .from(files)
-        .where(
-          and(
-            eq(files.project_id, projectId),
-            eq(files.folder_id, folderId)
-          )
-        );
+      const fileList = await db.query.files.findMany({
+        where: and(
+          eq(files.projectId, projectId),
+          eq(files.folderId, folderId)
+        )
+      });
       
       console.log(`storage.getFilesByFolder: Hittade ${fileList.length} filer i mapp ${folderId} för projekt ${projectId}`);
       return fileList;
@@ -480,10 +478,9 @@ class DatabaseStorage implements IStorage {
     }
     
     try {
-      const fileList = await db
-        .select()
-        .from(files)
-        .where(eq(files.project_id, projectId));
+      const fileList = await db.query.files.findMany({
+        where: eq(files.projectId, projectId)
+      });
       
       console.log(`storage.getFilesByProject: Hittade ${fileList.length} filer för projekt ${projectId}`);
       return fileList;
@@ -503,12 +500,11 @@ class DatabaseStorage implements IStorage {
     }
     
     try {
-      const fileList = await db
-        .select()
-        .from(files)
-        .where(eq(files.project_id, projectId))
-        .orderBy(desc(files.uploadDate))
-        .limit(limit);
+      const fileList = await db.query.files.findMany({
+        where: eq(files.projectId, projectId),
+        orderBy: [desc(files.uploadDate)],
+        limit: limit
+      });
       
       console.log(`storage.getRecentFiles: Hittade ${fileList.length} senaste filer för projekt ${projectId}`);
       return fileList;
