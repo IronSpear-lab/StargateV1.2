@@ -1725,14 +1725,14 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         </Badge>
                       )}
                       
-                      {/* Plustecken för mappar - visas vid hover för alla mappar */}
+                      {/* Plustecken för mappar - visas alltid för alla mappar */}
                       {item.type === "folder" && item.onAddClick && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             if (item.onAddClick) item.onAddClick();
                           }}
-                          className="mr-1 p-1 rounded-sm hover:bg-accent hover:text-accent-foreground opacity-0 group-hover:opacity-100 transition-opacity absolute -right-6"
+                          className="mr-1 p-1 rounded-sm hover:bg-accent hover:text-accent-foreground absolute -right-6"
                           aria-label="Lägg till ny mapp"
                         >
                           <Plus className="h-4 w-4" />
