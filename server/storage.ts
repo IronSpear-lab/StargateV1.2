@@ -429,8 +429,8 @@ class DatabaseStorage implements IStorage {
         .from(files)
         .where(
           and(
-            eq(files.projectId, projectId),
-            isNull(files.folderId)
+            eq(files.project_id, projectId),
+            isNull(files.folder_id)
           )
         );
       
@@ -457,8 +457,8 @@ class DatabaseStorage implements IStorage {
         .from(files)
         .where(
           and(
-            eq(files.projectId, projectId),
-            eq(files.folderId, folderId)
+            eq(files.project_id, projectId),
+            eq(files.folder_id, folderId)
           )
         );
       
@@ -483,7 +483,7 @@ class DatabaseStorage implements IStorage {
       const fileList = await db
         .select()
         .from(files)
-        .where(eq(files.projectId, projectId));
+        .where(eq(files.project_id, projectId));
       
       console.log(`storage.getFilesByProject: Hittade ${fileList.length} filer för projekt ${projectId}`);
       return fileList;
@@ -506,7 +506,7 @@ class DatabaseStorage implements IStorage {
       const fileList = await db
         .select()
         .from(files)
-        .where(eq(files.projectId, projectId))
+        .where(eq(files.project_id, projectId))
         .orderBy(desc(files.uploadDate))
         .limit(limit);
       
