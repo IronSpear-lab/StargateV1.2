@@ -1046,6 +1046,12 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         toggleItem("file_folders");
       }
       
+      // Utlös en uppdatering av sidofältet (måste ske innan toast för korrekt timing)
+      console.log(`createFolder: Utlöser folder-structure-changed event för projekt ${currentProjectId}`);
+      window.dispatchEvent(new CustomEvent('folder-structure-changed', { 
+        detail: { projectId: currentProjectId }
+      }));
+      
       // Visa bekräftelse till användaren
       toast({
         title: "Mapp skapad",
@@ -1060,12 +1066,6 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         variant: "destructive",
       });
     }
-    
-    // Utlös en uppdatering av sidofältet
-    console.log("createFolder: Utlöser folder-structure-changed event");
-    window.dispatchEvent(new CustomEvent('folder-structure-changed', { 
-      detail: { projectId: currentProjectId } 
-    }));
   }
   
   // Funktion för att hantera klick på "Ta bort" ikonen
