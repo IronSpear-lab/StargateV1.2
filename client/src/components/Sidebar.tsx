@@ -1065,11 +1065,6 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       
       localStorage.setItem('user_created_folders', JSON.stringify(updatedFoldersForApp));
       
-      // Säkerställ att Vault-sektionen är öppen
-      if (!openSections.includes("vault")) {
-        toggleSection("vault");
-      }
-      
       // Säkerställ att Files-sektionen är öppen
       if (!openItems["file_folders"]) {
         toggleItem("file_folders");
@@ -1569,13 +1564,6 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       // Säkerställ att Files-sektionen är öppen om den har mappar
       if (filesSection.children && filesSection.children.length > 0) {
         filesSection.isOpen = true;
-        // Öppna även Vault-sektionen
-        if (vaultSection) {
-          vaultSection.isOpen = true;
-          if (!openSections.includes("vault")) {
-            toggleSection("vault");
-          }
-        }
       }
     } else {
       console.warn("Kunde inte hitta Files-sektionen i navigationsobjektet!");
