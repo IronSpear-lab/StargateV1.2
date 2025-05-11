@@ -1713,7 +1713,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                         {item.label}
                       </span>
                     </div>
-                    <div className="flex items-center">
+                    <div className="flex items-center relative">
                       {item.badge && (
                         <Badge variant="outline" className={cn(
                           "text-xs py-0.5 px-2 rounded-full mr-2",
@@ -1732,7 +1732,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                             e.stopPropagation();
                             if (item.onAddClick) item.onAddClick();
                           }}
-                          className="mr-1 p-1 rounded-sm hover:bg-background/90 hover:text-primary z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="mr-1 p-1 rounded-sm hover:bg-accent hover:text-accent-foreground opacity-0 group-hover:opacity-100 transition-opacity absolute -right-6"
                           aria-label="Lägg till ny mapp"
                         >
                           <Plus className="h-4 w-4" />
