@@ -1310,6 +1310,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           onAddClick: () => handleAddFolder("Files"), // För att lägga till mappar under Files
           isOpen: openItems["file_folders"] || false, // För att hålla mappen öppen/stängd
           onToggle: () => toggleItem("file_folders"), // För att toggla öppen/stängd status
+          sectionId: "files", // För att markera detta som Files-sektionen
           children: [
             // Dynamiska undermappar kommer att läggas till i useEffect nedan
             // tillsammans med userCreatedFolders
@@ -1726,13 +1727,14 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       )}
                       
                       {/* Plustecken för mappar - sidan om chevron */}
-                      {item.type === "folder" && item.onAddClick && (
+                      {user && (user.role === "project_leader" || user.role === "admin" || user.role === "superuser") && 
+                        item.type === "folder" && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (item.onAddClick) item.onAddClick();
+                            handleAddFolder(item.label as string);
                           }}
-                          className="p-1 hover:bg-accent hover:text-accent-foreground mr-1"
+                          className="p-1 hover:bg-accent hover:text-accent-foreground mr-1 border border-border rounded-sm"
                           aria-label="Lägg till ny mapp"
                         >
                           <Plus className="h-4 w-4" />
