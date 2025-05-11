@@ -949,14 +949,20 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     const allUserFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
     console.log(`createFolder: Hittade ${allUserFolders.length} existerande mappar i localStorage`);
     
-    // Filtrera ut mappar från andra projekt så vi inte skriver över dem
+    // Dela upp mapparna mellan aktuellt projekt och andra projekt
     const otherProjectFolders = allUserFolders.filter((f: any) => {
       return !f.projectId || f.projectId !== currentProjectId;
     });
-    console.log(`createFolder: Behåller ${otherProjectFolders.length} mappar från andra projekt`);
     
-    // Kombinera mappar från andra projekt med den nya mappen
-    const updatedFolders = [...otherProjectFolders, newFolder];
+    // Hämta mapparna från det aktuella projektet separat
+    const currentProjectFolders = allUserFolders.filter((f: any) => {
+      return f.projectId && f.projectId === currentProjectId;
+    });
+    
+    console.log(`createFolder: Behåller ${otherProjectFolders.length} mappar från andra projekt och ${currentProjectFolders.length} mappar från aktuellt projekt`);
+    
+    // Kombinera mappar från både aktuellt projekt och andra projekt med den nya mappen
+    const updatedFolders = [...otherProjectFolders, ...currentProjectFolders, newFolder];
     
     // Uppdatera state
     setUserCreatedFolders(updatedFolders);
@@ -969,11 +975,27 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     // Detta behövs för den dynamiska routern
     const existingFoldersForApp = localStorage.getItem('user_created_folders');
     const foldersForApp = existingFoldersForApp ? JSON.parse(existingFoldersForApp) : [];
-    const updatedFoldersForApp = [...foldersForApp, { 
+    
+    // Filtrera först ut mappar från andra projekt
+    const otherProjectFoldersForApp = foldersForApp.filter((f: any) => {
+      return !f.projectId || f.projectId !== currentProjectId;
+    });
+    
+    // Filtrera ut mappar från aktuellt projekt
+    const currentProjectFoldersForApp = foldersForApp.filter((f: any) => {
+      return f.projectId && f.projectId === currentProjectId;
+    });
+    
+    // Lägg till den nya mappen i listan
+    const newFolderForApp = { 
       label: folderName,
       parent: parentName,
       projectId: currentProjectId // Lägg till projektId för korrekt filtrering
-    }];
+    };
+    
+    // Kombinera mappar från både aktuellt projekt och andra projekt med den nya mappen
+    const updatedFoldersForApp = [...otherProjectFoldersForApp, ...currentProjectFoldersForApp, newFolderForApp];
+    
     localStorage.setItem('user_created_folders', JSON.stringify(updatedFoldersForApp));
     
     // Säkerställ att Vault-sektionen är öppen
