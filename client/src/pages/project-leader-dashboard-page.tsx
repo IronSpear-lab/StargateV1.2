@@ -6,6 +6,7 @@ import {
   WidgetArea, 
   WidgetGallery
 } from "@/components";
+import { FolderHierarchyUpdater } from "@/components/FolderHierarchyUpdater";
 import ProjectTeamWidget from "@/components/ProjectTeamWidget";
 import { WidthType, HeightType } from "@/components/dashboard/Widget";
 import {
@@ -387,7 +388,8 @@ export default function ProjectLeaderDashboardPage() {
                 Project Leader Dashboard {currentProject && `- ${currentProject.name}`}
               </h1>
               
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
+                {currentProject && <FolderHierarchyUpdater />}
                 <Button 
                   onClick={() => {
                     localStorage.removeItem('project-leader-dashboard-widgets');
