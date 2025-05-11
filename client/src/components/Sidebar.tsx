@@ -1745,7 +1745,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                             e.stopPropagation();
                             if (item.onAddClick) item.onAddClick();
                           }}
-                          className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 mr-1"
+                          className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 mr-1 text-muted-foreground"
                           aria-label="Lägg till ny mapp"
                         >
                           <Plus className="h-4 w-4" />
@@ -1820,7 +1820,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                             e.stopPropagation();
                             if (item.onAddClick) item.onAddClick();
                           }}
-                          className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 mr-1"
+                          className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 mr-1 text-muted-foreground"
                           aria-label="Lägg till ny mapp"
                         >
                           <Plus className="h-4 w-4" />
