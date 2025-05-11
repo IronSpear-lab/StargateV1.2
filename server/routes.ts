@@ -2584,15 +2584,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Recent files API
   app.get(`${apiPrefix}/files/recent`, async (req, res) => {
+    console.log("DEBUG: Recent files API anropad - query params:", req.query);
+    
     if (!req.isAuthenticated()) {
+      console.log("DEBUG: Recent files API - Användare ej autentiserad");
       return res.status(401).send({ error: 'Unauthorized' });
     }
 
     try {
       const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      console.log(`DEBUG: Recent files API - Parsed params: projectId=${projectId}, limit=${limit}`);
       
       if (!projectId) {
+        console.log("DEBUG: Recent files API - Missing projectId");
         return res.status(400).json({ error: "Project ID is required" });
       }
       
