@@ -1310,6 +1310,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           onAddClick: () => handleAddFolder("Files"), // För att lägga till mappar under Files
           isOpen: openItems["file_folders"] || false, // För att hålla mappen öppen/stängd
           onToggle: () => toggleItem("file_folders"), // För att toggla öppen/stängd status
+          badge: "+", // Lägg till plustecken som badge för Files-sektionen
           children: [
             // Dynamiska undermappar kommer att läggas till i useEffect nedan
             // tillsammans med userCreatedFolders
