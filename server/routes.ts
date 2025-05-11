@@ -2590,6 +2590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       
       if (!projectId) {
         return res.status(400).json({ error: "Project ID is required" });
@@ -2608,22 +2609,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'You do not have access to this project' });
       }
       
-      // Hämta de senaste filerna för detta projekt
-      const recentFiles = await db.select({
-        id: files.id,
-        name: files.name,
-        fileType: files.fileType,
-        fileSize: files.fileSize,
-        lastModified: files.uploadDate,
-        uploadedById: files.uploadedById,
-        folderId: files.folderId,
-        filePath: files.filePath,
-        projectId: files.projectId
-      })
-      .from(files)
-      .where(eq(files.projectId, projectId))
-      .orderBy(desc(files.uploadDate))
-      .limit(10);
+      console.log(`API /files/recent - Hämtar senaste filer för projekt ${projectId} med limit ${limit}`);
+      
+      // Använd den nya storage.getRecentFiles funktionen
+      const recentFiles = await storage.getRecentFiles(projectId, limit);
+      
+      if (!recentFiles || recentFiles.length === 0) {
+        console.log(`API /files/recent - Inga filer hittades för projekt ${projectId}`);
+        return res.json([]);
+      }
+      
+      console.log(`API /files/recent - Hittade ${recentFiles.length} filer för projekt ${projectId}`);
       
       // Hämta användarnamn för uppladdare och mappnamn för filerna
       const enhancedFiles = await Promise.all(recentFiles.map(async (file) => {
@@ -2646,12 +2642,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
+        // Förbättrad loggning för felsökning
+        console.log(`API /files/recent - Förberedder fil ${file.id} (${file.name}) för svar`);
+        
         return {
           id: file.id.toString(),
           name: file.name,
           fileType: file.fileType,
           fileSize: file.fileSize,
-          lastModified: file.lastModified.toISOString(),
+          lastModified: file.uploadDate.toISOString(),
           folder: folderName,
           uploadedBy: uploader.length > 0 ? uploader[0].username : "Unknown",
           uploadedById: file.uploadedById.toString(),
@@ -2659,6 +2658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }));
       
+      console.log(`API /files/recent - Svarar med ${enhancedFiles.length} förbättrade filer`);
       return res.json(enhancedFiles);
     } catch (error) {
       console.error("Error fetching recent files:", error);
