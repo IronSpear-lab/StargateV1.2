@@ -2616,8 +2616,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`API /files/recent - Hämtar senaste filer för projekt ${projectId} med limit ${limit}`);
       
-      // Använd den nya storage.getRecentFiles funktionen
-      const recentFiles = await storage.getRecentFiles(projectId, limit);
+      // Gör en direkt databasförfrågan istället för att använda storage.getRecentFiles
+      const recentFiles = await db.query.files.findMany({
+        where: eq(files.projectId, projectId),
+        orderBy: [desc(files.uploadDate)],
+        limit: limit
+      });
       
       if (!recentFiles || recentFiles.length === 0) {
         console.log(`API /files/recent - Inga filer hittades för projekt ${projectId}`);
@@ -2659,26 +2663,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           
-          // Förbättrad loggning för felsökning
-          if (!file.id) {
-            console.error(`API /files/recent - Fil saknar ID:`, file);
-            return {
-              id: "unknown",
-              name: file.name || "Unnamed file",
-              fileType: file.fileType || "unknown",
-              fileSize: file.fileSize || 0,
-              lastModified: file.uploadDate ? file.uploadDate.toISOString() : new Date().toISOString(),
-              folder: folderName,
-              uploadedBy: uploaderName,
-              uploadedById: file.uploadedById ? file.uploadedById.toString() : "unknown",
-              fileId: "unknown"
-            };
-          }
-          
-          console.log(`API /files/recent - Förberedder fil ${file.id} (${file.name}) för svar`);
+          console.log(`API /files/recent - Förberedder fil med ID ${file.id || 'SAKNAS'} och namn "${file.name || 'SAKNAS'}" för svar`);
           
           return {
-            id: file.id.toString(),
+            id: file.id ? file.id.toString() : "unknown",
             name: file.name || "Unnamed file",
             fileType: file.fileType || "unknown",
             fileSize: file.fileSize || 0,
@@ -2686,7 +2674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             folder: folderName,
             uploadedBy: uploaderName,
             uploadedById: file.uploadedById ? file.uploadedById.toString() : "unknown",
-            fileId: file.id.toString()
+            fileId: file.id ? file.id.toString() : "unknown"
           };
         } catch (error) {
           console.error(`Fel vid bearbetning av fil:`, error);
@@ -2700,7 +2688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             folder: "Unknown",
             uploadedBy: "Unknown",
             uploadedById: "unknown",
-            fileId: ""
+            fileId: "unknown"
           };
         }
       }));
