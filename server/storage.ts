@@ -64,6 +64,7 @@ export interface IStorage {
   getFile(id: number): Promise<File | undefined>;
   createFile(file: Omit<File, "id" | "uploadDate">): Promise<File>;
   deleteFile(id: number): Promise<{ success: boolean, filePath: string | null }>;
+  getRecentFiles(projectId: number, limit?: number): Promise<File[]>;
   
   // PDF Handling
   getPDFVersions(fileId: number): Promise<PdfVersion[]>;
@@ -488,6 +489,31 @@ class DatabaseStorage implements IStorage {
       return fileList;
     } catch (error) {
       console.error("Error fetching all project files:", error);
+      return [];
+    }
+  }
+  
+  // Funktion för att hämta de senaste filerna för ett projekt
+  async getRecentFiles(projectId: number, limit: number = 10): Promise<File[]> {
+    console.log(`storage.getRecentFiles: Hämtar de ${limit} senaste filerna för projekt ${projectId}`);
+    
+    if (!projectId || isNaN(projectId)) {
+      console.error('storage.getRecentFiles: Ogiltigt projektID:', projectId);
+      return [];
+    }
+    
+    try {
+      const fileList = await db
+        .select()
+        .from(files)
+        .where(eq(files.projectId, projectId))
+        .orderBy(desc(files.uploadDate))
+        .limit(limit);
+      
+      console.log(`storage.getRecentFiles: Hittade ${fileList.length} senaste filer för projekt ${projectId}`);
+      return fileList;
+    } catch (error) {
+      console.error("Error fetching recent files for project:", error);
       return [];
     }
   }
