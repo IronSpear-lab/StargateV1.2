@@ -228,7 +228,11 @@ export default function DashboardPage() {
           availableProjects={userProjects} 
           onProjectChange={(projectId) => {
             // Use central project change function from ProjectContext
-            changeProject(projectId);
+            // Hitta projektet från ID
+            const project = projects.find(p => p.id === projectId);
+            if (project) {
+              setCurrentProject(project);
+            }
             
             toast({
               title: "Project changed",

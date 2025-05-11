@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { useProject } from "@/contexts/ProjectContext";
+import { useProjectContext } from "@/contexts/project-context";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Dialog,
@@ -52,10 +52,10 @@ export function Header({
   const { 
     currentProject: contextCurrentProject, 
     projects: contextProjects, 
-    changeProject: contextChangeProject,
+    setCurrentProject: contextChangeProject,
     createProject,
     isCreatingProject
-  } = useProject();
+  } = useProjectContext();
   
   // Hämta användarens roll för att avgöra om de kan skapa projekt
   const { user } = useAuth();
@@ -68,7 +68,19 @@ export function Header({
   // korrekt filtrerar baserat på användarens behörigheter
   const availableProjects = contextProjects.length > 0 ? contextProjects : (propAvailableProjects || []);
   
-  const onProjectChange = contextChangeProject || propOnProjectChange;
+  // Definiera en funktion som hanterar både kontextbaserade och props-baserade projektbyten
+  const onProjectChange = (projectId: number) => {
+    if (contextChangeProject) {
+      // Om vi har en kontext, hitta projektet i contextProjects och sätt det
+      const project = contextProjects.find(p => p.id === projectId);
+      if (project) {
+        contextChangeProject(project);
+      }
+    } else if (propOnProjectChange) {
+      // Om vi har props, använd callback från props
+      propOnProjectChange(projectId);
+    }
+  };
   
   const handleCreateProject = async () => {
     if (!newProjectName.trim()) return;
