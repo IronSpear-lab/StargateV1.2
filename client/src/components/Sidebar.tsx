@@ -1637,12 +1637,31 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         isItemOpen = openItems[itemKey] !== undefined ? openItems[itemKey] : false;
       }
       
-      // Calculate indentation based on level
+      // Calculate indentation based on level and ensure consistent padding
       let indentClass = '';
-      if (item.indent === 1) indentClass = isOpen ? 'pl-4' : 'pl-0';
-      else if (item.indent === 2) indentClass = isOpen ? 'pl-8' : 'pl-0';
-      else if (item.indent === 3) indentClass = isOpen ? 'pl-12' : 'pl-0';
-      else if (item.indent === 4) indentClass = isOpen ? 'pl-16' : 'pl-0';
+      // När sidofältet är öppet använder vi faktisk nivåbaserad indentering
+      if (isOpen) {
+        // Om item har explicit indent, använd det
+        if (item.indent !== undefined) {
+          if (item.indent === 0) indentClass = 'pl-0'; // Topnivå - ingen indentering
+          else if (item.indent === 1) indentClass = 'pl-4'; // Första nivån
+          else if (item.indent === 2) indentClass = 'pl-8'; // Andra nivån
+          else if (item.indent === 3) indentClass = 'pl-12'; // Tredje nivån
+          else if (item.indent === 4) indentClass = 'pl-16'; // Fjärde nivån
+          else indentClass = 'pl-4'; // Standard indentering om nivå inte specificeras
+        } else {
+          // Beräkna nivå baserat på längden av parentKey (fler bindelser indikerar djupare nivå)
+          const level = parentKey.split('-').length - 1;
+          if (level <= 0) indentClass = 'pl-0'; // Topnivå
+          else if (level === 1) indentClass = 'pl-4'; // Första nivån
+          else if (level === 2) indentClass = 'pl-8'; // Andra nivån
+          else if (level === 3) indentClass = 'pl-12'; // Tredje nivån
+          else indentClass = 'pl-16'; // Djupare nivåer
+        }
+      } else {
+        // När sidofältet är stängt använder vi ingen indentering (allt är centrerat)
+        indentClass = 'pl-0';
+      }
       
       // Om sidofältet är minimerat och inte är mobilvy
       if (!isOpen && !isMobile) {
@@ -2130,7 +2149,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           </div>
         )}
         
-        <div className="py-2 flex-1 overflow-y-auto">
+        <div className="py-2 flex-1 overflow-y-auto overflow-x-auto">
           {renderNavItems(navItems)}
         </div>
         
