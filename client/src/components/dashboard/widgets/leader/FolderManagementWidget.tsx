@@ -364,8 +364,9 @@ export function FolderManagementWidget() {
   // Confirm clearing all local storage folders
   const confirmClearAllFolders = () => {
     try {
-      // Clear all folders from localStorage
+      // Clear all folders from both localStorage keys
       localStorage.setItem('userCreatedFolders', '[]');
+      localStorage.setItem('user_created_folders', '[]');
       
       // Trigger sidebar update
       window.dispatchEvent(new CustomEvent('folder-structure-changed', { 
