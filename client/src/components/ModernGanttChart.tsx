@@ -1034,99 +1034,140 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
       width
     });
     
-    // Skapa olika stilar beroende på uppgiftstyp
-    const style: React.CSSProperties = {
-      position: 'absolute',
-      left: `${left}px`,
-      cursor: 'pointer',
-      zIndex: 2,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'flex-start',
-      overflow: 'hidden',
-      whiteSpace: 'nowrap',
-    };
+    // HELT NY MER SYNLIG STILHANTERING
+    let style: React.CSSProperties;
     
-    // Olika stilar beroende på uppgiftstyp
+    // Specialfall för milstolpar - visa som diamant med bättre synlighet
     if (task.type === 'MILESTONE') {
-      // För milstolpar, skapa en diamantformad markör med glans
-      Object.assign(style, {
-        top: '10px',
-        width: '14px',
-        height: '14px',
+      style = {
+        position: 'absolute',
+        left: `${left}px`,
+        top: '9px',
+        width: '20px',
+        height: '20px',
         backgroundColor: barColor,
-        transform: 'rotate(45deg)',
-        borderRadius: '2px',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
-        border: '1px solid rgba(255,255,255,0.4)',
-        zIndex: 3,
-        display: 'block'
-      });
+        transform: 'rotate(45deg) scale(1.1)',
+        borderRadius: '3px', 
+        boxShadow: '0 2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3)',
+        border: '2px solid rgba(255,255,255,0.7)',
+        zIndex: 10, // Högre z-index för att alltid synas
+        display: 'block',
+        cursor: 'pointer',
+        // Animation för att stå ut
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+      };
+      
+      // Loggning för debugging
       console.log(`Gantt: Renderar MILSTOLPE "${task.name}"`, {
         position: style.left,
+        type: 'MILESTONE',
         color: barColor,
         dates: {
           start: task.startDate
         }
       });
     }
+    // För faser - visa som större staplar med tydligare design
     else if (task.type === 'PHASE') {
-      // För faser, skapa en större stapel med gradient och subtil skugga
-      Object.assign(style, {
-        top: '2px',
+      // Skapa en starkare gradient med hjälpfunktionen
+      const darkerColor = adjustColorBrightness(barColor, -15); // 15% mörkare
+      
+      style = {
+        position: 'absolute',
+        left: `${left}px`,
+        top: '0px', // Topplacering för bättre synlighet
         width: `${width}px`,
-        height: '26px',
-        background: `linear-gradient(to right, ${barColor}, ${barColor}dd)`,
-        border: '1px solid rgba(0,0,0,0.05)',
-        borderLeft: '4px solid rgba(0,0,0,0.2)',
+        height: '30px', // Större höjd för faser
+        background: `linear-gradient(to bottom, ${barColor}, ${darkerColor})`,
+        border: '1px solid rgba(0,0,0,0.15)',
+        borderLeft: '5px solid rgba(0,0,0,0.3)', // Tydligare vänsterkant
         borderRadius: '4px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)',
-        zIndex: 1
-      });
+        boxShadow: '0 2px 5px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.15)',
+        zIndex: 8, // Hög z-index för att synas bra
+        cursor: 'pointer',
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: '13px',
+        textShadow: '0 1px 1px rgba(0,0,0,0.5)',
+        padding: '3px 8px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        overflow: 'hidden',
+        whiteSpace: 'nowrap',
+        textOverflow: 'ellipsis'
+      };
+      
+      // Loggning för debugging
       console.log(`Gantt: Renderar FAS "${task.name}"`, {
         position: style.left,
         bredd: style.width,
-        color: barColor,
+        type: 'PHASE',
+        color: barColor, 
         dates: {
           start: task.startDate,
           end: task.endDate
         }
       });
     }
+    // För vanliga uppgifter - använd moderna staplar med statusindikator 
     else {
-      // För vanliga uppgifter, skapa en modern stapel med gradient och statusindikator
-      let statusIndicator = {};
+      // Beräkna färger baserat på status
+      let statusStyles: React.CSSProperties = {};
+      let lighterColor = adjustColorBrightness(barColor, 20); // 20% ljusare
       
+      // Anpassa utseende efter uppgiftens status
       if (task.status === 'Completed') {
-        statusIndicator = {
-          borderBottom: '2px solid rgba(255,255,255,0.5)',
-          background: `linear-gradient(to bottom, ${barColor}ee, ${barColor})`
+        statusStyles = {
+          background: `linear-gradient(to bottom, ${lighterColor}, ${barColor})`,
+          borderBottom: '3px solid rgba(255,255,255,0.6)',
+          boxShadow: '0 2px 3px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.2)'
         };
       } else if (task.status === 'Delayed') {
-        statusIndicator = {
-          borderLeft: '3px solid #ef4444',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)'
+        statusStyles = {
+          background: `linear-gradient(to bottom, ${barColor}, ${adjustColorBrightness(barColor, -20)})`,
+          borderLeft: '4px solid #ef4444',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1)',
+          border: '1px solid rgba(0,0,0,0.2)'
         };
       } else {
-        statusIndicator = {
-          background: `linear-gradient(to bottom, ${barColor}dd, ${barColor})`,
-          borderTop: '1px solid rgba(255,255,255,0.3)'
+        statusStyles = {
+          background: `linear-gradient(to bottom, ${lighterColor}, ${barColor})`,
+          borderTop: '2px solid rgba(255,255,255,0.4)',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
         };
       }
       
-      Object.assign(style, {
+      // Grundstilen för en uppgift
+      style = {
+        position: 'absolute',
+        left: `${left}px`,
         top: '5px',
         width: `${width}px`,
-        height: '20px',
-        backgroundColor: barColor,
-        borderRadius: '3px',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-        ...statusIndicator
-      });
+        height: '22px',
+        borderRadius: '4px',
+        color: 'white',
+        fontSize: '12px',
+        fontWeight: '600',
+        padding: '2px 8px',
+        cursor: 'pointer',
+        zIndex: 5,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        overflow: 'hidden',
+        whiteSpace: 'nowrap',
+        textOverflow: 'ellipsis',
+        // Lägg till statusspecifika stilar
+        ...statusStyles
+      };
       
+      // Loggning för debugging
       console.log(`Gantt: Renderar UPPGIFT "${task.name}"`, {
         position: style.left,
         bredd: style.width,
+        type: 'TASK',
+        status: task.status,
         color: barColor,
         dates: {
           start: task.startDate,
@@ -1206,44 +1247,75 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
         return null;
       }
       
-      // Beräkna koordinater för pilen med hänsyn till zoomLevel
-      // För en uppgift är slutpositionen startpositionen + bredden
+      // FÖRBÄTTRADE BERÄKNINGAR FÖR BEROENDEPILAR
+      // Bestäm bredd för källuppgiften med förbättrade beräkningar
       const sourceDayCount = sourceTask.type === 'MILESTONE' ? 0 : differenceInDays(sourceTaskEndDate, sourceTaskStartDate);
-      const sourceTaskWidth = sourceTask.type === 'MILESTONE' ? 10 : Math.max((sourceDayCount + 1) * zoomLevel, zoomLevel);
+      
+      // Använd större bredd för milstolpar och minimum bredd för alla uppgifter för bättre synlighet
+      let sourceTaskWidth;
+      if (sourceTask.type === 'MILESTONE') {
+        sourceTaskWidth = 20; // Större storlek för milstolpar
+      } else {
+        // För vanliga uppgifter, använd minimum bredd
+        sourceTaskWidth = Math.max((sourceDayCount + 1) * zoomLevel, 20);
+      }
       
       // Hitta radnummer för att beräkna Y-positioner
       const sourceTaskIndex = flattenedTasks.findIndex(t => t.id === sourceTask.id);
       const targetTaskIndex = flattenedTasks.findIndex(t => t.id === targetTask.id);
       
-      // Beräkna faktiska y-positioner baserat på raderna (höjden för varje rad är 40px)
-      const sourceRowY = sourceTaskIndex * 40 + 15; // 15 är mitten på uppgiftsstapeln
-      const targetRowY = targetTaskIndex * 40 + 15;
+      // Förbättrad Y-position baserat på uppgiftstyp
+      let sourceRowY, targetRowY;
+      
+      // Justera Y-position baserat på uppgiftstyp
+      if (sourceTask.type === 'MILESTONE') {
+        sourceRowY = sourceTaskIndex * 40 + 18; // Centrera på diamantikonen
+      } else if (sourceTask.type === 'PHASE') {
+        sourceRowY = sourceTaskIndex * 40 + 15; // Centrera på fasstapel
+      } else {
+        sourceRowY = sourceTaskIndex * 40 + 16; // Centrera på uppgiftsstapel
+      }
+      
+      if (targetTask.type === 'MILESTONE') {
+        targetRowY = targetTaskIndex * 40 + 18; // Centrera på diamantikonen
+      } else if (targetTask.type === 'PHASE') {
+        targetRowY = targetTaskIndex * 40 + 15; // Centrera på fasstapel
+      } else {
+        targetRowY = targetTaskIndex * 40 + 16; // Centrera på uppgiftsstapel
+      }
       
       // Beräkna x-positioner för pilens start- och slutpunkter
       const sourceX = (sourceTaskStartIdx * zoomLevel) + sourceTaskWidth; // Slutet av källuppgiften
       const targetX = targetTaskStartIdx * zoomLevel; // Början av måluppgiften
       
-      // Anpassa pilstorleken baserat på zoomnivå
-      const arrowThickness = Math.max(1, Math.min(2, zoomLevel / 20));
+      // Tjockare pilar och bättre synlighet
+      const arrowThickness = Math.max(1.5, Math.min(2.5, zoomLevel / 18));
+      
+      // Loggning av beroendepilar för felsökning
+      console.log(`Gantt: Rita pil från "${sourceTask.name}" till "${targetTask.name}"`, {
+        sourceId: sourceTask.id,
+        targetId: targetTask.id,
+        sourcePosition: { x: sourceX, y: sourceRowY },
+        targetPosition: { x: targetX, y: targetRowY }
+      });
       
       // Bestäm pilens form baserat på uppgifternas relativa positioner
       let points = "";
       
-      // Om pilens riktning är mot vänster (måluppgiften börjar före källuppgiftens slut)
-      // då måste vi rita pilen runt uppgifterna, inte genom dem
+      // Om pilens riktning är mot vänster, rita pilen runt uppgifterna
       if (targetX < sourceX) {
-        // Bestäm om vi ska rita pilen uppåt eller nedåt (eller både och)
+        // Bestäm om vi ska rita pilen uppåt eller nedåt
         const isUpward = targetTaskIndex < sourceTaskIndex;
-        const midX1 = sourceX + 20; // Temporär punkt till höger om källuppgiften
-        const midX2 = targetX - 20; // Temporär punkt till vänster om måluppgiften
+        const midX1 = sourceX + 30; // Större avstånd för bättre synlighet
+        const midX2 = targetX - 30; // Större avstånd för bättre synlighet
         const midY = isUpward 
-          ? Math.min(sourceRowY, targetRowY) - 20 // 20px ovanför den övre uppgiften
-          : Math.max(sourceRowY, targetRowY) + 20; // 20px nedanför den nedre uppgiften
+          ? Math.min(sourceRowY, targetRowY) - 25 // Större avstånd uppåt
+          : Math.max(sourceRowY, targetRowY) + 25; // Större avstånd nedåt
         
-        // Rita en bana som går runt uppgifterna
+        // Rita en bana som går runt uppgifterna med mjukare kurvor
         points = `${sourceX},${sourceRowY} ${midX1},${sourceRowY} ${midX1},${midY} ${midX2},${midY} ${midX2},${targetRowY} ${targetX},${targetRowY}`;
       } 
-      // Normal bana när måluppgiften börjar efter eller samma punkt som källuppgiftens slut
+      // Normal bana framåt i tiden
       else {
         // Om uppgifterna är på samma rad, rita en enkel linje
         if (sourceTaskIndex === targetTaskIndex) {
@@ -1256,12 +1328,13 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
         }
       }
       
+      // Returnera förbättrad pilstil
       return {
         points,
         fill: "none",
-        stroke: "#64748b",
+        stroke: "#4b5563", // Mörkare grå för bättre synlighet
         strokeWidth: arrowThickness,
-        strokeDasharray: "4 2",
+        strokeDasharray: "5 3", // Tydligare streckad linje
         markerEnd: "url(#arrowhead)"
       };
     });
