@@ -471,10 +471,24 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
             }
           });
           
+          // Förbättrad typhantering - respektera originaltypen men mappa till UI-format
+          const mapTaskTypeToUI = (originalType: string) => {
+            if (originalType === 'milestone') return 'MILESTONE';
+            if (originalType === 'phase') return 'PHASE';
+            if (originalType === 'task') return 'TASK';
+            if (originalType === 'gantt') return 'TASK'; // standard gantt-uppgifter visar vi som vanliga uppgifter
+            
+            // Loggning för debugging
+            console.log(`Gantt: Ovanlig uppgiftstyp: "${originalType}" för uppgift "${task.title}"`);
+            
+            // Defaulta till TASK om typen inte är någon av de kända typerna
+            return 'TASK';
+          };
+          
           return {
             id: task.id,
             project: currentProjectName,
-            type: task.type === 'milestone' ? 'MILESTONE' : (task.type === 'phase' ? 'PHASE' : 'TASK'),
+            type: mapTaskTypeToUI(task.type),
             name: task.title,
             status: task.status === 'todo' || task.status === 'backlog' ? 'New' : 
                    task.status === 'in_progress' || task.status === 'review' ? 'Ongoing' : 
