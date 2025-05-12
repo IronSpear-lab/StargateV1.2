@@ -1698,34 +1698,13 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         // Hitta alla mappar som hör till denna förälder
         sortedFolders
           .filter(folder => {
-            // Kontrollera specialfallen för mapparna 1, 2, 3, 4 för att garantera korrekt hierarki
-            if (folder.id === 87 && parentId === null) {
-              console.log("Mapp 1 (ID 87) passar som rotmapp");
-              return true;
-            }
-            if (folder.id === 88 && String(parentId) === "87") {
-              console.log("Mapp 2 (ID 88) passar som undermapp till 1 (ID 87)");
-              return true;
-            }
-            if (folder.id === 89 && String(parentId) === "88") {
-              console.log("Mapp 3 (ID 89) passar som undermapp till 2 (ID 88)");
-              return true;
-            }
-            if (folder.id === 90 && String(parentId) === "89") {
-              console.log("Mapp 4 (ID 90) passar som undermapp till 3 (ID 89)");
-              return true;
-            }
-            
-            // Standard fallback-hantering för andra mappar
             // Hitta rotmappar för parentId null, eller mappar vars förälder matchar det angivna ID:t
             const isParentMatch = parentId === null 
               ? (!folder.parentId || folder.parent === "Files")
-              : (folder.parentId && String(folder.parentId) === String(parentId));
+              : (folder.parentId && String(folder.parentId) === parentId);
             
             // Skip already processed folders to avoid duplicates
-            return isParentMatch && !processedIds.has(String(folder.id)) && 
-                  // Undvik att processa mapparna 1, 2, 3, 4 utanför deras specialfall
-                  !([87, 88, 89, 90].includes(Number(folder.id)));
+            return isParentMatch && !processedIds.has(String(folder.id));
           })
           .forEach(folder => {
             // Markera denna mapp som hanterad
