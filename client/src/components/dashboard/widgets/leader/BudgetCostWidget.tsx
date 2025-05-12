@@ -29,14 +29,14 @@ export function BudgetCostWidget({ projectId }: BudgetCostWidgetProps) {
         
         // Mock data for the chart
         const mockData: BudgetCostData[] = [
-          { name: 'Week 1', plannedBudget: 4000, actualCost: 3800 },
-          { name: 'Week 2', plannedBudget: 8000, actualCost: 8200 },
-          { name: 'Week 3', plannedBudget: 12000, actualCost: 12400 },
-          { name: 'Week 4', plannedBudget: 16000, actualCost: 17000 },
-          { name: 'Week 5', plannedBudget: 20000, actualCost: 21500 },
-          { name: 'Week 6', plannedBudget: 24000, actualCost: 24600 },
-          { name: 'Week 7', plannedBudget: 28000, actualCost: 29500 },
-          { name: 'Week 8', plannedBudget: 32000, actualCost: 32800 },
+          { name: 'Vecka 1', plannedBudget: 4000, actualCost: 3800 },
+          { name: 'Vecka 2', plannedBudget: 8000, actualCost: 8200 },
+          { name: 'Vecka 3', plannedBudget: 12000, actualCost: 12400 },
+          { name: 'Vecka 4', plannedBudget: 16000, actualCost: 17000 },
+          { name: 'Vecka 5', plannedBudget: 20000, actualCost: 21500 },
+          { name: 'Vecka 6', plannedBudget: 24000, actualCost: 24600 },
+          { name: 'Vecka 7', plannedBudget: 28000, actualCost: 29500 },
+          { name: 'Vecka 8', plannedBudget: 32000, actualCost: 32800 },
         ];
 
         setData(mockData);
@@ -69,7 +69,7 @@ export function BudgetCostWidget({ projectId }: BudgetCostWidgetProps) {
         <div className="p-4 flex flex-col">
           <div className="flex justify-between items-start mb-2">
             <div>
-              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Budget (SEK)</h3>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Budget</h3>
               <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">
                 {formatCurrency(data.length > 0 ? data[data.length - 1]?.plannedBudget : 0)}
               </p>
