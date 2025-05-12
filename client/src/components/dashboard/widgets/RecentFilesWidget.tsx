@@ -221,7 +221,7 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
       <div className="flex items-center justify-between mb-3">
         <div className="text-sm font-medium flex items-center space-x-1.5">
           <FolderOpen className="h-4 w-4 text-[#727cf5]" />
-          <span>Senaste filer i Arkivet</span>
+          <span className="text-gray-600 dark:text-gray-400">Senaste filer i Arkivet</span>
         </div>
         <Button 
           variant="ghost" 
