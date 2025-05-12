@@ -1817,7 +1817,9 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       });
       
       // Rensa först filesSection.children för att undvika dubletter
-      filesSection!.children = [];
+      if (filesSection && filesSection.children) {
+        filesSection.children = [];
+      }
       
       // HELT NYTT TILLVÄGAGÅNGSSÄTT: Bygg hierarkiskt mappträd baserat på mappinformation
       // Detta förbättrade tillvägagångssätt eliminerar dubbletterna
@@ -1831,17 +1833,24 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       // Filtrera ut mappar för det aktuella projektet
       let projectFolders = [];
       try {
-        projectFolders = userCreatedFolders.filter(folder => 
-          folder && (
-            // Visa både mappar som saknar projektId och mappar som matchar aktuellt projekt
-            !folder.projectId || 
-            folder.projectId === projectId || 
-            String(folder.projectId) === String(projectId)
-          )
-        );
+        // Se till att vi har giltiga mappar att filtrera
+        if (Array.isArray(userCreatedFolders)) {
+          projectFolders = userCreatedFolders.filter(folder => 
+            folder && (
+              // Visa både mappar som saknar projektId och mappar som matchar aktuellt projekt
+              !folder.projectId || 
+              folder.projectId === projectId || 
+              String(folder.projectId) === String(projectId)
+            )
+          );
+        } else {
+          console.log("userCreatedFolders är inte en array, initierar tom array");
+          projectFolders = [];
+        }
       } catch (error) {
         console.log("Kunde inte filtrera mappar med projektId, använder alla mappar istället", error);
-        projectFolders = [...userCreatedFolders]; // Använd alla mappar om vi inte kan filtrera
+        // Använd alla mappar om vi inte kan filtrera, men säkerställ att vi har en giltig array
+        projectFolders = Array.isArray(userCreatedFolders) ? [...userCreatedFolders] : [];
       }
       
       console.log("Filtered folders for tree building:", projectFolders);
@@ -1914,12 +1923,32 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               // Rotmappar som är direkt under Files får indentering 1
               parentIndent = 0;
             } else {
-              // Om det inte är en rotmapp, kontrollera förälderindenteringen
-              // Garantera att undermappar alltid får minst level 1 indentering
-              const parentNavItem = folderMap[parentId];
-              parentIndent = (parentNavItem?.indent !== undefined) ? parentNavItem.indent : 0;
-              
-              // Debug för att säkerställa att inga undermappar får felaktig indentering
+              // Om det inte är en rotmapp, hitta förälderindenteringen i folderMap
+              // Viktigt: Kontrollera att folderMap har denna förälder
+              if (folderMap[parentId]) {
+                // Använda förälderns indentering om den finns
+                parentIndent = folderMap[parentId].indent !== undefined ? folderMap[parentId].indent : 0;
+              } else {
+                // Fallback: Om förälder saknas i folderMap, används direktsökning i sortedFolders
+                const parentFolder = sortedFolders.find(f => String(f.id) === parentId);
+                if (parentFolder) {
+                  // Hitta föräldermappens indentering genom att räkna nivåer upp till roten
+                  let depth = 1; // Start at 1 for first level
+                  let currentFolder = parentFolder;
+                  
+                  // Räkna steg upp till rot-nivån
+                  while (currentFolder.parentId) {
+                    depth++;
+                    // Hitta den här mappens förälder
+                    const grandparent = sortedFolders.find(f => String(f.id) === String(currentFolder.parentId));
+                    if (!grandparent) break;
+                    currentFolder = grandparent;
+                  }
+                  
+                  parentIndent = depth;
+                }
+              }
+              // Debugging för att säkerställa att inga undermappar får felaktig indentering
               console.log(`Beräkning för ${folder.name}: Förälder ${parentId} har indent ${parentIndent}`);
             }
             
@@ -1929,7 +1958,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
             
             console.log(`Setting indent for ${folder.name} (ID: ${folder.id}): ${baseIndent}, parent: ${parentId || 'root'}`);
             
-            // Skapa NavItem för denna mapp
+            // Skapa NavItem för denna mapp med rätt indentering och alla nödvändiga egenskaper
             const folderNavItem: NavItemType = {
               href: `/vault/files/${encodeURIComponent(folder.name)}`,
               label: folder.name,
@@ -1940,11 +1969,15 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               onAddClick: () => handleAddFolder(folder.name),
               folderId: String(folder.id),
               // Bygg undermappar rekursivt
-              children: buildTree(String(folder.id))
+              children: [] // Initialisera som tom array, kommer att fyllas i nedanför
             };
             
-            // Lägg till folderItem i folderMap för senare användning
+            // Lägg till folderItem i folderMap INNAN vi bygger undermappar 
+            // så att undermappar kan hitta sin förälder i folderMap
             folderMap[folder.id] = folderNavItem;
+            
+            // Bygg undermappar rekursivt och lägg till dem i folderNavItem
+            folderNavItem.children = buildTree(String(folder.id));
             
             // Lägg till i listan av undermappar
             children.push(folderNavItem);
