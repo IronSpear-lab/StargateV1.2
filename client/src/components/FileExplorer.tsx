@@ -43,6 +43,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useProject } from "@/contexts/ProjectContext";
 import { getFileExtension, isFileOfType, formatFileSize } from "@/lib/file-utils";
 import { isPdf } from "@/lib/pdf-utils";
+import { usePDFDialog } from "@/hooks/use-pdf-dialog";
 
 interface FileNode {
   id: string;
@@ -736,10 +737,24 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
   
   const fileTree = buildFileTree();
   
+  // PDF Dialog setup
+  const { showPDFDialog } = usePDFDialog();
+
   // Handle file click
   const handleFileClick = (file: FileNode) => {
     if (file.type === 'file') {
-      onFileSelect(file);
+      // Check if this is a PDF file
+      if (file.fileType && isPdf(file.fileType)) {
+        // Om det är en PDF-fil, öppna med dialog
+        showPDFDialog({
+          fileId: file.id,
+          filename: file.name,
+          projectId: currentProject?.id
+        });
+      } else {
+        // Annars använd standardhanteringen
+        onFileSelect(file);
+      }
     } else {
       // Om det är en mapp, expandera/kollapsa den
       setExpandedFolders(prev => ({
