@@ -841,7 +841,34 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     // Eventlyssnare för manuell refresh av mappar (utlöst av FolderManagementWidget)
     const handleFolderStructureChanged = (event: CustomEvent) => {
       console.log("Sidebar: Mottog folder-structure-changed-event", event.detail);
-      checkForFolderUpdates();
+      
+      // Kontrollera om vi har en action som anger specifik operation
+      const action = event.detail?.action || 'default';
+      const projectId = event.detail?.projectId;
+      
+      console.log(`Sidebar: Hanterar folder-action '${action}' för projekt ${projectId || 'inget projekt'}`);
+      
+      // Om action är 'refresh', tvinga omedelbar uppdatering från localStorage
+      if (action === 'refresh') {
+        console.log("Sidebar: Forcerad refresh av mappdata från localStorage");
+        checkForFolderUpdates();
+      } 
+      // Om action är 'clear', filtrera bort mappar för detta projekt från nuvarande state
+      else if (action === 'clear' && projectId) {
+        console.log(`Sidebar: Rensar mappar för projekt ${projectId} från state`);
+        // Filtrera bort mappar som tillhör det angivna projektet
+        const filteredFolders = userCreatedFolders.filter((folder: any) => {
+          return !folder.projectId || (
+            String(folder.projectId) !== String(projectId) && 
+            folder.projectId !== Number(projectId)
+          );
+        });
+        setUserCreatedFolders(filteredFolders);
+      }
+      // Default: kör vanlig uppdatering
+      else {
+        checkForFolderUpdates();
+      }
     };
     
     // Lägg till lyssnare för den anpassade händelsen
@@ -1208,7 +1235,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   };
   
   // Funktion för att ta bort en mapp
-  const deleteFolder = () => {
+  const deleteFolder = async () => {
     // Om ingen mapp är markerad för borttagning, avbryt
     if (!folderToDeleteId) return;
     
@@ -1216,38 +1243,117 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     const folderToDelete = userCreatedFolders.find(folder => folder.id === folderToDeleteId);
     if (!folderToDelete) return;
     
-    // Filtrera bort mappen och eventuella undermappar
-    const updatedFolders = userCreatedFolders.filter(folder => {
-      // Ta bort den specifika mappen
-      if (folder.id === folderToDeleteId) return false;
-      
-      // Ta bort alla undermappar till den här mappen
-      if (folder.parent === folderToDelete.name) return false;
-      
-      return true;
-    });
+    // Hitta projektID för mappen som ska tas bort
+    const projectId = folderToDelete.projectId;
     
-    // Uppdatera state
-    setUserCreatedFolders(updatedFolders);
+    console.log(`Sidebar: Försöker ta bort mapp ${folderToDelete.name} med ID ${folderToDeleteId} i projekt ${projectId || 'inget projekt'}`);
+    
+    // Rekursiv funktion för att hitta alla undermappar
+    const findAllChildFolders = (parentId: string, folders: any[]): string[] => {
+      const directChildren = folders.filter(folder => folder.parentId === parentId);
+      return [
+        ...directChildren.map(folder => folder.id),
+        ...directChildren.flatMap(folder => findAllChildFolders(folder.id, folders))
+      ];
+    };
+    
+    // Hämta alla användarskapade mappar
+    const allUserFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
+    
+    // Hitta ID för alla undermappar
+    const childFolderIds = findAllChildFolders(folderToDeleteId, allUserFolders);
+    
+    console.log(`Sidebar: Hittade ${childFolderIds.length} undermappar att ta bort`);
+    
+    // Filtrera bort mappen och eventuella undermappar
+    const updatedFolders = allUserFolders.filter(folder => {
+      return folder.id !== folderToDeleteId && !childFolderIds.includes(folder.id);
+    });
     
     // Spara i localStorage
     localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
+    localStorage.setItem('user_created_folders', JSON.stringify(updatedFolders));
     
-    // Ta även bort från user_created_folders listan som App.tsx använder
-    const existingFoldersForApp = localStorage.getItem('user_created_folders');
-    if (existingFoldersForApp) {
-      const foldersForApp = JSON.parse(existingFoldersForApp);
-      const updatedFoldersForApp = foldersForApp.filter((folder: any) => 
-        folder.label !== folderToDelete.name
-      );
-      localStorage.setItem('user_created_folders', JSON.stringify(updatedFoldersForApp));
+    // Om vi har ett projektID och mappen ska tas bort från databasen, synkronisera med API
+    if (projectId) {
+      try {
+        // Försök hämta färska mappdata från API:et
+        console.log(`Sidebar: Hämtar fräscha mappdata från API efter borttagning av mapp för projekt ${projectId}`);
+        const freshFoldersResponse = await fetch(`/api/folders?projectId=${projectId}`, {
+          credentials: 'include'
+        });
+        
+        if (freshFoldersResponse.ok) {
+          const freshFolders = await freshFoldersResponse.json();
+          console.log(`Sidebar: Hämtade ${freshFolders.length} uppdaterade mappar från API efter borttagning`);
+          
+          // Förbered mapparna för localStorage i korrekt format som sidebaren förväntar sig
+          const formattedFolders = freshFolders.map((folder: any) => {
+            // Hitta föräldermappens namn om den finns
+            let parentName = 'Files';
+            if (folder.parentId) {
+              const parentFolder = freshFolders.find((f: any) => f.id === folder.parentId);
+              if (parentFolder) {
+                parentName = parentFolder.name;
+              }
+            }
+            
+            return {
+              name: folder.name,
+              parent: parentName,
+              id: folder.id.toString(),
+              parentId: folder.parentId ? folder.parentId.toString() : null,
+              projectId: projectId.toString(),
+              type: 'folder',
+              label: folder.name, // För kompatibilitet
+              href: `/vault/files/${encodeURIComponent(folder.name)}`
+            };
+          });
+          
+          // Filtrera ut mappar som inte tillhör detta projekt
+          const otherProjectFolders = allUserFolders.filter((f: any) => {
+            return !f.projectId || (
+              String(f.projectId) !== String(projectId) && 
+              f.projectId !== Number(projectId)
+            );
+          });
+          
+          // Kombinera mappar från API med mappar från andra projekt
+          const combinedFolders = [...otherProjectFolders, ...formattedFolders];
+          
+          // Uppdatera localStorage och state med full uppdatering
+          localStorage.setItem('userCreatedFolders', JSON.stringify(combinedFolders));
+          localStorage.setItem('user_created_folders', JSON.stringify(combinedFolders));
+          setUserCreatedFolders(combinedFolders);
+        } else {
+          console.warn(`Kunde inte hämta fräscha mappdata från API (${freshFoldersResponse.status}). Använder lokalt modifierade data.`);
+          // Uppdatera state med lokal data
+          setUserCreatedFolders(updatedFolders);
+        }
+      } catch (apiError) {
+        console.error("Fel vid kommunikation med API:", apiError);
+        // Vid fel, använd lokal data
+        setUserCreatedFolders(updatedFolders);
+      }
+    } else {
+      // Om inget projekt-ID, uppdatera state direkt med lokala ändringar
+      setUserCreatedFolders(updatedFolders);
     }
     
     // Visa meddelande om att mappen har tagits bort
     toast({
       title: "Mapp borttagen",
-      description: `Mappen "${folderToDelete.name}" har tagits bort`,
+      description: `Mappen "${folderToDelete.name}" och dess undermappar har tagits bort`,
     });
+    
+    // Utlös en uppdatering av sidofältet med clear action för att andra komponenter ska uppdateras
+    window.dispatchEvent(new CustomEvent('folder-structure-changed', {
+      detail: { 
+        projectId: projectId,
+        action: 'delete',
+        folderId: folderToDeleteId
+      }
+    }));
     
     // Återställ mapp-ID och stäng dialogen
     setFolderToDeleteId(null);
@@ -1266,21 +1372,65 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       return;
     }
     
-    // Rensa alla sparade mappar
-    localStorage.setItem('userCreatedFolders', '[]');
-    localStorage.setItem('user_created_folders', '[]');
-    
-    // Uppdatera state
-    setUserCreatedFolders([]);
+    // Spara bara mappar som inte tillhör det aktuella projektet
+    if (currentProject?.id) {
+      try {
+        // Hämta alla befintliga mappar från localStorage
+        const allUserFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
+        
+        // Filtrera ut mappar från andra projekt så vi inte skriver över dem
+        const otherProjectFolders = allUserFolders.filter((f: any) => {
+          return !f.projectId || (
+            String(f.projectId) !== String(currentProject.id) && 
+            f.projectId !== Number(currentProject.id)
+          );
+        });
+        
+        console.log(`Sidebar: behåller ${otherProjectFolders.length} mappar från andra projekt vid rensning`);
+        
+        // Spara endast mappar från andra projekt i localStorage
+        localStorage.setItem('userCreatedFolders', JSON.stringify(otherProjectFolders));
+        localStorage.setItem('user_created_folders', JSON.stringify(otherProjectFolders));
+        
+        // Filtrera current state för att ta bort mappar från det aktuella projektet
+        const filteredCurrentFolders = userCreatedFolders.filter((folder: any) => {
+          return !folder.projectId || (
+            String(folder.projectId) !== String(currentProject.id) && 
+            folder.projectId !== Number(currentProject.id)
+          );
+        });
+        
+        // Uppdatera state för att ta bort de lokala mapparna
+        setUserCreatedFolders(filteredCurrentFolders);
+      } catch (e) {
+        console.error("Sidebar: Fel vid selektiv rensning av mappar", e);
+        // Vid fel, rensa alla mappar som fallback
+        localStorage.setItem('userCreatedFolders', '[]');
+        localStorage.setItem('user_created_folders', '[]');
+        setUserCreatedFolders([]);
+      }
+    } else {
+      // Om inget projekt är valt, rensa alla sparade mappar
+      localStorage.setItem('userCreatedFolders', '[]');
+      localStorage.setItem('user_created_folders', '[]');
+      setUserCreatedFolders([]);
+    }
     
     // Visa ett meddelande
     toast({
-      title: "Alla mappar borttagna",
-      description: "Alla mappar har tagits bort från systemet",
+      title: "Mappar borttagna",
+      description: currentProject?.id 
+        ? `Alla mappar för projekt ${currentProject.name} har tagits bort` 
+        : "Alla mappar har tagits bort från systemet",
     });
     
-    // Utlös en uppdatering av sidofältet
-    window.dispatchEvent(new CustomEvent('folder-structure-changed'));
+    // Utlös en uppdatering av sidofältet med clear action
+    window.dispatchEvent(new CustomEvent('folder-structure-changed', {
+      detail: { 
+        projectId: currentProject?.id,
+        action: 'clear'
+      }
+    }));
   };
   
   // Funktion för att hitta den rätta föräldern för en nyskapad mapp och uppdatera den
