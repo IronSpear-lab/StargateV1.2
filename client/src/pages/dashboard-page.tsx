@@ -40,28 +40,28 @@ const defaultWidgets: WidgetInstance[] = [
   {
     id: uuidv4(),
     type: "custom-text",
-    title: "CUSTOM TEXT",
+    title: "Anpassad text",
     width: "half",
     height: "medium"
   },
   {
     id: uuidv4(),
     type: "calendar",
-    title: "CALENDAR",
+    title: "Kalender",
     width: "half",
     height: "medium"
   },
   {
     id: uuidv4(),
     type: "messages",
-    title: "MESSAGES",
+    title: "Meddelanden",
     width: "half",
     height: "medium"
   },
   {
     id: uuidv4(),
     type: "deadlines",
-    title: "UPCOMING DEADLINES",
+    title: "Kommande deadlines",
     width: "half",
     height: "medium"
   },
