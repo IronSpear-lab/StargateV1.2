@@ -1592,13 +1592,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Validera estimatedHours-fältet
       if (taskData.estimatedHours !== undefined) {
-        // Konvertera estimatedHours från sträng till nummer om det behövs
-        if (typeof taskData.estimatedHours === 'string') {
-          taskData.estimatedHours = parseFloat(taskData.estimatedHours);
+        // Konvertera estimatedHours till sträng eftersom databaseschemat har ändrats
+        if (typeof taskData.estimatedHours !== 'string') {
+          taskData.estimatedHours = taskData.estimatedHours.toString();
         }
         
         // Logga för att felsöka att estimatedHours faktiskt sparas
-        console.log(`Task created with estimatedHours: ${taskData.estimatedHours}`);
+        console.log(`Task created with estimatedHours (as string): ${taskData.estimatedHours}`);
       } else {
         console.log("Warning: Task created without estimatedHours");
       }
@@ -1629,13 +1629,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Validera estimatedHours-fältet
       if (taskData.estimatedHours !== undefined) {
-        // Konvertera estimatedHours från sträng till nummer om det behövs
-        if (typeof taskData.estimatedHours === 'string') {
-          taskData.estimatedHours = parseFloat(taskData.estimatedHours);
+        // Konvertera estimatedHours till sträng eftersom databaseschemat har ändrats
+        if (typeof taskData.estimatedHours !== 'string') {
+          taskData.estimatedHours = taskData.estimatedHours.toString();
         }
         
         // Logga för att felsöka att estimatedHours faktiskt sparas
-        console.log(`Task updated with estimatedHours: ${taskData.estimatedHours}`);
+        console.log(`Task updated with estimatedHours (as string): ${taskData.estimatedHours}`);
       }
       
       // Om taskData.type är satt till explicit "" (tom sträng), ersätt med null
