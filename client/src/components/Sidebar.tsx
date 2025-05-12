@@ -1285,69 +1285,89 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     parentName: string, 
     newFolder: { name: string, parent: string, id: string, parentId?: string | null }
   ): NavItemType[] => {
-    return items.map(item => {
-      // Extra loggutskrift för att hjälpa debug
-      console.log(`Checking item ${item.label}, parent=${parentName}, type=${item.type}, folderId=${item.folderId}`);
-      console.log(`Item details:`, item);
-      console.log(`Folder details:`, newFolder);
+    // Ny hjälpfunktion för rekursiv sökning som returnerar om mappen hittades
+    const recursiveSearch = (
+      items: NavItemType[]
+    ): { 
+      items: NavItemType[],
+      found: boolean 
+    } => {
+      let foundMatch = false;
       
-      // FÖRBÄTTRAD MATCHNING: Kontrollera om denna mapp är föräldern med fler matchningsregler
-      const isParentMatch = 
-        // Om förälder är "Files" (huvudmappen) och den nya mappen ska vara på rotnivå
-        (item.label === "Files" && parentName === "Files" && !newFolder.parentId && item.folderId === "files_root") ||
-        // ELLER om vi har en användarskapad mapp som förälder, matcha på ID, och konvertera till string för säkerhets skull
-        (item.folderId && newFolder.parentId && 
-          (String(item.folderId) === String(newFolder.parentId) || 
-           item.folderId === newFolder.id || 
-           (typeof item.folderId === 'string' && item.folderId.includes(String(newFolder.parentId)))));
+      const updatedItems = items.map(item => {
+        // Logga mindre information men fortfarande viktig för felsökning
+        console.log(`Söker förälder: ${parentName}, nuvarande nod: ${item.label} (ID: ${item.folderId}, typ: ${item.type})`);
         
-      if (isParentMatch) {
-        console.log(`✅ MATCHNING HITTAD! Tilldelar mapp ${newFolder.name} till ${item.label} (ID: ${item.folderId})`);
+        // Förbättrad matchningslogik med mer specifika kriterier
+        const isParentMatch = 
+          // Om förälder är "Files" (huvudmappen) och den nya mappen ska vara på rotnivå
+          (item.label === "Files" && parentName === "Files" && !newFolder.parentId && item.folderId === "files_root") ||
+          // ELLER om vi har en användarskapad mapp som förälder, matcha på namn eller ID
+          (item.folderId && 
+           ((item.label === parentName) || // Matcha på mappnamn
+            (newFolder.parentId && String(item.folderId) === String(newFolder.parentId)))); // Matcha på ID
         
-        // Kontrollera om mappen redan finns för att undvika dubletter
-        const folderAlreadyExists = (item.children || []).some(
-          child => child.folderId === newFolder.id || child.label === newFolder.name
-        );
-        
-        if (folderAlreadyExists) {
-          console.log(`⚠️ Mappen ${newFolder.name} (ID: ${newFolder.id}) finns redan i ${item.label}, hoppar över`);
-          return item; // Returnera oförändrad om mappen redan finns
+        if (isParentMatch) {
+          console.log(`✅ DIREKT MATCHNING HITTAD! ${item.label} (ID: ${item.folderId}) är förälder till ${newFolder.name}`);
+          foundMatch = true;
+          
+          // Kontrollera om mappen redan finns för att undvika dubletter
+          const folderAlreadyExists = (item.children || []).some(
+            child => child.folderId === newFolder.id || child.label === newFolder.name
+          );
+          
+          if (folderAlreadyExists) {
+            console.log(`⚠️ Mappen ${newFolder.name} (ID: ${newFolder.id}) finns redan i ${item.label}, hoppar över`);
+            return item; // Returnera oförändrad om mappen redan finns
+          }
+          
+          // Skapa en kopia med den nya mappen
+          return {
+            ...item,
+            type: "folder", // Säkerställ att typen är folder för att visa undermappar
+            children: [
+              ...(item.children || []),
+              {
+                href: `/vault/files/${encodeURIComponent(newFolder.name)}`,
+                label: newFolder.name,
+                active: location === `/vault/files/${encodeURIComponent(newFolder.name)}`,
+                indent: (item.indent || 0) + 1,
+                icon: <FolderClosed className={`w-4 h-4`} />,
+                type: "folder",
+                onAddClick: () => handleAddFolder(newFolder.name),
+                folderId: newFolder.id, // Lägg till ID för identifiering och borttagning
+                parentId: item.folderId, // Explicit sätt förälder-ID för att bevara hierarkin
+                children: []
+              }
+            ]
+          };
         }
         
-        // Skapa en kopia med den nya mappen
-        return {
-          ...item,
-          type: "folder", // Säkerställ att typen är folder för att visa undermappar
-          children: [
-            ...(item.children || []),
-            {
-              href: `/vault/files/${encodeURIComponent(newFolder.name)}`,
-              label: newFolder.name,
-              active: location === `/vault/files/${encodeURIComponent(newFolder.name)}`,
-              indent: (item.indent || 0) + 1,
-              icon: <FolderClosed className={`w-4 h-4`} />,
-              type: "folder",
-              onAddClick: () => handleAddFolder(newFolder.name),
-              folderId: newFolder.id, // Lägg till ID för identifiering och borttagning
-              parentId: item.folderId, // Explicit sätt förälder-ID för att bevara hierarkin
-              children: []
-            }
-          ]
-        };
-      }
+        // Om detta objekt har barn, sök rekursivt, men BARA om det är en mapp
+        if (item.type === "folder" && item.children && item.children.length > 0) {
+          // Rekursiv sökning i undermapparna
+          const result = recursiveSearch(item.children);
+          
+          // Om matchning hittades i någon undermapp, bevara ändringar och markera som hittad
+          if (result.found) {
+            foundMatch = true;
+            return {
+              ...item,
+              children: result.items
+            };
+          }
+        }
+        
+        // Annars returnera objektet oförändrat
+        return item;
+      });
       
-      // Om detta objekt har barn, sök rekursivt, men BARA om det är en mapp
-      // Detta eliminerar rekursion genom alla typer av element
-      if (item.type === "folder" && item.children && item.children.length > 0) {
-        return {
-          ...item,
-          children: findParentAndAddFolder(item.children, parentName, newFolder)
-        };
-      }
-      
-      // Annars returnera objektet oförändrat
-      return item;
-    });
+      return { items: updatedItems, found: foundMatch };
+    };
+    
+    // Starta den rekursiva sökningen
+    const result = recursiveSearch(items);
+    return result.items;
   };
   
   // Lista med de grundläggande navigationslänkarna
