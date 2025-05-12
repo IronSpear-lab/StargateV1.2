@@ -267,7 +267,7 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2">
-                      <div className="text-sm font-medium text-gray-500 dark:text-gray-100 truncate">{file.name}</div>
+                      <div className="text-sm font-medium text-gray-600 dark:text-gray-400 truncate">{file.name}</div>
                       <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", getFileTypeStyle(file.fileType))}>
                         {file.fileType.toUpperCase()}
                       </Badge>

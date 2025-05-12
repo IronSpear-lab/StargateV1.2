@@ -113,10 +113,10 @@ export function KpiMetricsWidget({ projectId }: KpiMetricsWidgetProps) {
                     {metric.icon}
                   </div>
                   <div>
-                    <h4 className="text-sm text-gray-500 dark:text-foreground/70">{metric.name}</h4>
-                    <div className="text-xl font-bold text-gray-500 dark:text-foreground">
+                    <h4 className="text-sm text-gray-600 dark:text-gray-400">{metric.name}</h4>
+                    <div className="text-xl font-bold text-gray-600 dark:text-gray-300">
                       {typeof metric.value === 'number' ? metric.value.toLocaleString() : metric.value}
-                      <span className="text-sm font-normal text-gray-500 dark:text-foreground/70 ml-1">{metric.unit}</span>
+                      <span className="text-sm font-normal text-gray-600 dark:text-gray-400 ml-1">{metric.unit}</span>
                     </div>
                   </div>
                 </div>
