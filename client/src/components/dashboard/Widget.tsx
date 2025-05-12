@@ -148,27 +148,28 @@ export function Widget({
         "shadow-md rounded-lg transition-all duration-300 widget border-0",
         dragging ? "opacity-50" : "opacity-100",
         expanded && "backdrop-blur-sm",
+        "bg-gray-100 dark:bg-gray-800 p-3", // Gråare bakgrund för 3D-effekt 
         className
       )}
       style={{
-        boxShadow: expanded ? "0 8px 30px rgba(0, 0, 0, 0.12)" : "",
+        boxShadow: expanded ? "0 8px 30px rgba(0, 0, 0, 0.12)" : "0 4px 12px rgba(0, 0, 0, 0.05)",
       }}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <CardHeader className="p-3 bg-gradient-to-r from-primary/10 to-card border-b flex-row items-center justify-between space-y-0 rounded-t-lg">
+      <CardHeader className="p-3 bg-white dark:bg-gray-700 flex-row items-center justify-between space-y-0 rounded-lg mb-2 shadow-sm">
         <div className="flex items-center space-x-2">
           <div
             className="cursor-move p-1 rounded hover:bg-primary/10"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <Grip className="h-4 w-4 text-primary" />
+            <Grip className="h-4 w-4 text-gray-500" />
           </div>
           <div>
-            <CardTitle className="text-sm font-medium text-foreground">{title}</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300 capitalize">{title}</CardTitle>
             {description && (
-              <CardDescription className="text-xs text-muted-foreground">{description}</CardDescription>
+              <CardDescription className="text-xs text-gray-500 dark:text-gray-400">{description}</CardDescription>
             )}
           </div>
         </div>
@@ -285,10 +286,10 @@ export function Widget({
       <CardContent 
         className={cn(
           noPadding ? "p-0" : "p-3", 
-          "overflow-auto bg-card rounded-b-lg",
+          "overflow-auto bg-white dark:bg-gray-700 rounded-lg",
           !expanded && heightClasses, 
           collapsed && "hidden", 
-          "relative"
+          "relative shadow-sm"
         )}
       >
         {children}
