@@ -30,28 +30,28 @@ export function AiForecastWidget({ projectId }: AiForecastWidgetProps) {
         const mockPredictions: ForecastItem[] = [
           {
             id: '1',
-            message: "You may exceed budget in 3 weeks based on current spending trends",
+            message: "Du kan överskrida budget om 3 veckor baserat på nuvarande utgiftstrender",
             type: 'warning',
             icon: <DollarSign className="h-5 w-5" />,
             daysAhead: 21
           },
           {
             id: '2',
-            message: "4 tasks are trending late and may miss their deadlines",
+            message: "4 uppgifter är försenade och kan missa sina slutdatum",
             type: 'critical',
             icon: <Clock className="h-5 w-5" />,
             daysAhead: 5
           },
           {
             id: '3',
-            message: "Resource allocation for UI design phase may be insufficient",
+            message: "Resursallokering för UI-designfasen kan vara otillräcklig",
             type: 'warning',
             icon: <TrendingUp className="h-5 w-5" />,
             daysAhead: 14
           },
           {
             id: '4',
-            message: "Team meeting attendance trending downward (-15%)",
+            message: "Närvaron på teammöten minskar (-15%)",
             type: 'info',
             icon: <Calendar className="h-5 w-5" />,
             daysAhead: 7
@@ -104,7 +104,7 @@ export function AiForecastWidget({ projectId }: AiForecastWidgetProps) {
       <CardContent className="p-4 flex-1 flex flex-col">
         <div className="flex items-center mb-4">
           <AlertCircle className="h-5 w-5 text-primary mr-2" />
-          <h3 className="text-md font-semibold text-foreground dark:text-foreground">AI Project Forecast</h3>
+          <h3 className="text-md font-semibold text-foreground dark:text-foreground">AI-prognos</h3>
         </div>
         
         {isLoading ? (
@@ -129,10 +129,10 @@ export function AiForecastWidget({ projectId }: AiForecastWidgetProps) {
                       <p className={`text-sm ${style.textColor}`}>{prediction.message}</p>
                       <p className="text-xs text-foreground/70 dark:text-foreground/70 mt-1">
                         {prediction.daysAhead === 0 
-                          ? 'Predicted for today' 
+                          ? 'Förutsedd för idag' 
                           : prediction.daysAhead === 1 
-                            ? 'Predicted for tomorrow' 
-                            : `Predicted in ${prediction.daysAhead} days`}
+                            ? 'Förutsedd för imorgon' 
+                            : `Förutsedd om ${prediction.daysAhead} dagar`}
                       </p>
                     </div>
                   </div>
@@ -145,15 +145,15 @@ export function AiForecastWidget({ projectId }: AiForecastWidgetProps) {
                 <div className="mb-2">
                   <AlertTriangle className="h-10 w-10 mx-auto text-foreground/40 dark:text-foreground/40" />
                 </div>
-                <p>No predictions available at this time</p>
-                <p className="text-sm">Check back later for AI-generated insights</p>
+                <p>Inga förutsägelser tillgängliga just nu</p>
+                <p className="text-sm">Återkom senare för AI-genererade insikter</p>
               </div>
             )}
           </div>
         )}
         
         <div className="mt-4 pt-2 border-t border-border text-xs text-foreground/70 dark:text-foreground/70">
-          <p>Predictions based on historical project data and current trends</p>
+          <p>Förutsägelser baserade på historisk projektdata och aktuella trender</p>
         </div>
       </CardContent>
     </Card>
