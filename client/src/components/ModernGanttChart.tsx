@@ -456,8 +456,28 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
         // Omvandla API-formatet till GanttTask-formatet
         return data.map((task: any) => {
           // Normalisera datum för att säkerställa konsekvent format YYYY-MM-DD
-          const normalizedStartDate = normalizeDate(task.startDate) || normalizeDate(task.createdAt);
-          const normalizedEndDate = normalizeDate(task.endDate) || normalizedStartDate || normalizeDate(task.createdAt);
+          // Använd dagens datum som standardvärde om ingen startDate finns
+          const today = new Date().toISOString().substring(0, 10);
+          const normalizedStartDate = normalizeDate(task.startDate) || normalizeDate(task.createdAt) || today;
+          
+          // För slutdatum, beräkna standardvärde baserat på uppgiftstyp
+          let defaultEndDate = normalizedStartDate;
+          if (task.type === 'milestone') {
+              // Milstolpar är samma dag
+              defaultEndDate = normalizedStartDate;
+          } else if (task.type === 'phase') {
+              // Faser är 14 dagar långa som standard
+              const endDateObj = new Date(normalizedStartDate);
+              endDateObj.setDate(endDateObj.getDate() + 14);
+              defaultEndDate = endDateObj.toISOString().substring(0, 10);
+          } else {
+              // Vanliga uppgifter är 7 dagar som standard
+              const endDateObj = new Date(normalizedStartDate);
+              endDateObj.setDate(endDateObj.getDate() + 7);
+              defaultEndDate = endDateObj.toISOString().substring(0, 10);
+          }
+          
+          const normalizedEndDate = normalizeDate(task.endDate) || defaultEndDate;
           
           console.log(`Gantt Task "${task.title}" datum normaliserade:`, {
             original: {
@@ -809,24 +829,48 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
     let startIdx = -1;
     let endIdx = -1;
     
-    // Hitta startindex
-    for (let i = 0; i < days.length; i++) {
-      if (isSameDay(days[i], taskStartDate) || isAfter(days[i], taskStartDate)) {
-        startIdx = i;
-        break;
+    // För robusthet, använd en säker metod för att hitta index
+    function findDateIndex(date: Date, defaultValue: number): number {
+      // Logga för debugging
+      console.log(`Gantt: Söker index för ${date.toISOString().substring(0, 10)}`);
+      
+      // Om datum är null/undefined, returnera fallback
+      if (!date) {
+        console.warn(`Gantt: Ogiltigt datum (undefined/null)`);
+        return defaultValue;
       }
+      
+      // Hitta matchande datum i days-listan
+      for (let i = 0; i < days.length; i++) {
+        try {
+          if (isSameDay(days[i], date) || isAfter(days[i], date)) {
+            return i;
+          }
+        } catch (e) {
+          console.error(`Gantt: Fel vid jämförelse av datum mellan ${days[i]} och ${date}`, e);
+        }
+      }
+      
+      // Om ingen match hittas, returnera fallback men logga varning
+      console.warn(`Gantt: Hittade inget matchande index för datum ${date}`);
+      return defaultValue;
     }
     
-    // Hitta slutindex - särskild hantering för milstolpar (samma dag)
+    // Hitta startindex med säker metod
+    startIdx = findDateIndex(taskStartDate, 0);
+    
+    // Hitta slutindex baserat på uppgiftstyp
     if (task.type === 'MILESTONE') {
-      endIdx = startIdx; // Milstolpar visar vi som en punkt (samma dag)
+      // Milstolpar visar vi som en punkt (samma dag)
+      endIdx = startIdx;
     } else {
-      // För vanliga uppgifter, hitta sista dagen som är mindre än eller lika med slutdatumet
-      for (let i = 0; i < days.length; i++) {
-        if (isSameDay(days[i], taskEndDate) || isAfter(days[i], taskEndDate)) {
-          endIdx = i;
-          break;
-        }
+      // För vanliga uppgifter
+      endIdx = findDateIndex(taskEndDate, startIdx + 1);
+      
+      // Säkerställ att endIdx alltid är >= startIdx för förutsägbart beteende
+      if (endIdx < startIdx) {
+        console.warn(`Gantt: Slutindex (${endIdx}) < startindex (${startIdx}) för "${task.name}", justerar...`);
+        endIdx = startIdx + 1;
       }
     }
     
