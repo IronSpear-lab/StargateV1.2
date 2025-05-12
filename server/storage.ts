@@ -371,6 +371,21 @@ class DatabaseStorage implements IStorage {
   }
 
   async createFolder(folder: Omit<Folder, "id">): Promise<Folder> {
+    // Om föräldermapp-ID finns, verifiera att den finns i databasen
+    if (folder.parentId) {
+      // Kontrollera om föräldermapp-ID finns i databasen
+      const parentFolder = await db.select()
+        .from(folders)
+        .where(eq(folders.id, folder.parentId))
+        .limit(1);
+      
+      // Om föräldermappen inte finns, sätt parentId till null
+      if (parentFolder.length === 0) {
+        console.log(`Varning: Föräldermapp med ID ${folder.parentId} finns inte, sätter parentId till null`);
+        folder.parentId = null;
+      }
+    }
+    
     const validatedData = insertFolderSchema.parse(folder);
     const result = await db.insert(folders).values(validatedData).returning();
     return result[0];
