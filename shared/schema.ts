@@ -23,6 +23,9 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   role: text("role").notNull().default('user'),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  email: text("email"),
 });
 
 // Projects table
@@ -272,6 +275,10 @@ export const wikiPagesRelations = relations(wikiPages, ({ one, many }) => ({
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+  role: true,
+  firstName: true,
+  lastName: true,
+  email: true,
 });
 
 // User Invitations table

@@ -50,7 +50,7 @@ export interface IStorage {
   // Auth
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: Omit<User, "id" | "role">): Promise<User>;
+  createUser(user: Omit<User, "id">): Promise<User>;
   
   // Projects
   getProject(id: number): Promise<Project | undefined>;
@@ -253,11 +253,15 @@ class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async createUser(user: Omit<User, "id"> & { role?: string }): Promise<User> {
+  async createUser(user: Omit<User, "id">): Promise<User> {
     const validatedData = insertUserSchema.parse(user);
+    // Make sure role is set to a default if not provided
     const result = await db.insert(users).values({
       ...validatedData,
-      role: user.role || "user" // Använd angiven roll eller "user" som standard
+      role: user.role || "user", // Använd angiven roll eller "user" som standard
+      firstName: user.firstName || null,
+      lastName: user.lastName || null,
+      email: user.email || null
     }).returning();
     return result[0];
   }
