@@ -16,6 +16,8 @@ import {
   calendarEvents,
   pdfVersions,
   pdfAnnotations,
+  conversationParticipants,
+  messages,
   insertUserSchema,
   insertFileSchema,
   insertFolderSchema,
@@ -273,10 +275,13 @@ class DatabaseStorage implements IStorage {
       await db.delete(userProjects).where(eq(userProjects.userId, id));
       
       // Ta bort användaren från conversations (chat-related)
-      await db.delete(conversationMembers).where(eq(conversationMembers.userId, id));
+      await db.delete(conversationParticipants).where(eq(conversationParticipants.userId, id));
+      
+      // Ta bort meddelandena som användaren har skickat
+      await db.delete(messages).where(eq(messages.senderId, id));
       
       // Ta bort användaren från tidrapporter
-      await db.delete(timeEntries).where(eq(timeEntries.userId, id));
+      await db.delete(taskTimeEntries).where(eq(taskTimeEntries.userId, id));
       
       // Ta bort användarens PDF-anteckningar
       const userAnnotations = await db
