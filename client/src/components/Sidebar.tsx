@@ -1876,29 +1876,18 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       let indentClass = '';
       // När sidofältet är öppet använder vi faktisk nivåbaserad indentering
       if (isOpen) {
-        // KORRIGERAD INDENTERINGSLOGIK: Säkerställer att alla mappar på samma hierarkiska nivå 
-        // får samma visuella indentering oavsett om de visas som egna objekt eller undermappar.
-        // Detta löser problemet där mappar med parentId kan visas på toppnivå i strukturen.
-        
-        // För undermappar som visas på fel nivå, utgå istället från förälderrelation i databasen
-        if (item.type === 'folder' && item.folderId && item.folderId === "99") {
-          // Speciell hantering för mapp med ID 5 för att säkerställa att den visas
-          // med rätt indentering baserat på dess förälder-child relation
-          indentClass = 'pl-20'; // Fast indentering som matchar nivå 4 (samma som mapp 4)
-          console.log(`KORRIGERAD INDENTERING för mapp 5 - får pl-20 för konsekvent trädstruktur`);
-        }
-        // För alla andra mappar, använd den vanliga indenteringsberäkningen
-        else if (item.indent !== undefined) {
-          // Förbättrad indenteringsskala med perfekt jämna steg mellan nivåer
-          // Detta säkerställer att alla mappar får exakt samma hierarkiska visuella struktur
-          if (item.indent === 0) indentClass = 'pl-0'; // Topnivå - ingen indentering
-          else if (item.indent === 1) indentClass = 'pl-5'; // Första nivån (direkt under Files)
-          else if (item.indent === 2) indentClass = 'pl-10'; // Andra nivån - exakt 5px mer än föregående
-          else if (item.indent === 3) indentClass = 'pl-15'; // Tredje nivån - exakt 5px mer än föregående
-          else if (item.indent === 4) indentClass = 'pl-20'; // Fjärde nivån - exakt 5px mer än föregående
-          else if (item.indent === 5) indentClass = 'pl-25'; // Femte nivån - exakt 5px mer än föregående
-          else if (item.indent >= 6) indentClass = `pl-${item.indent * 5}`; // Djupare nivåer - 5px per nivå
-          else indentClass = 'pl-4'; // Standard indentering om nivå inte specificeras
+        // SPECIFIKA INDENTERINGSVÄRDEN enligt användarens specifikation
+        if (item.indent !== undefined) {
+          // Använder exakt de indenteringsvärden som användaren har angivit för varje mapp
+          if (item.indent === 0) indentClass = 'pl-0';      // Topnivå - ingen indentering
+          else if (item.indent === 1) indentClass = 'pl-8'; // Mapp 1
+          else if (item.indent === 2) indentClass = 'pl-10'; // Nivå 2
+          else if (item.indent === 3) indentClass = 'pl-12'; // Mapp 2
+          else if (item.indent === 4) indentClass = 'pl-16'; // Mapp 3
+          else if (item.indent === 5) indentClass = 'pl-20'; // Mapp 4
+          else if (item.indent === 6) indentClass = 'pl-24'; // Mapp 5
+          else if (item.indent === 7) indentClass = 'pl-28'; // Mapp 6
+          else indentClass = `pl-${item.indent * 4}`; // Djupare nivåer - 4px per nivå
           
           // Debuglogga för att säkerställa att indenteringen beräknas korrekt
           if (item.type === 'folder') {
