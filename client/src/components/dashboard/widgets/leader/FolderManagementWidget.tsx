@@ -164,12 +164,17 @@ export function FolderManagementWidget() {
         // Filtrera ut mappar från andra projekt så vi inte skriver över dem
         const otherProjectFolders = allUserFolders.filter((f: any) => {
           // Behåll mappar som inte har ett projectId eller som tillhör ett annat projekt
-          return !f.projectId || f.projectId !== currentProject?.id.toString();
+          // Jämför både som sträng och som nummer för att vara säker
+          return !f.projectId || (
+            String(f.projectId) !== String(currentProject?.id) && 
+            f.projectId !== Number(currentProject?.id)
+          );
         });
         
         // Hämta befintliga mappar för det aktuella projektet
         const currentProjectFolders = allUserFolders.filter((f: any) => 
-          f.projectId === currentProject?.id.toString()
+          String(f.projectId) === String(currentProject?.id) || 
+          f.projectId === Number(currentProject?.id)
         );
         
         // Identifiera föräldermappens namn från dess ID
@@ -204,7 +209,10 @@ export function FolderManagementWidget() {
         
         // Kombinera mappar från andra projekt och uppdaterad lista för aktuellt projekt
         const updatedFolders = [...otherProjectFolders, ...currentProjectFolders, newFolder];
+        
+        // Spara i båda localStorage-nycklarna för att säkerställa synkronisering
         localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
+        localStorage.setItem('user_created_folders', JSON.stringify(updatedFolders));
         
         // Tvinga en refresh av sidebar-menyn genom att utlösa en custom event
         // Sidomenyn lyssnar efter denna händelse för att uppdatera sig
@@ -288,8 +296,9 @@ export function FolderManagementWidget() {
             !idsToRemove.includes(folder.id)
           );
           
-          // Spara de uppdaterade mapparna till localStorage
+          // Spara de uppdaterade mapparna till båda localStorage-nycklarna för att säkerställa synkronisering
           localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
+          localStorage.setItem('user_created_folders', JSON.stringify(updatedFolders));
           
           // Tvinga en refresh av sidebar-menyn genom att utlösa en custom event
           window.dispatchEvent(new CustomEvent('folder-structure-changed', { 
