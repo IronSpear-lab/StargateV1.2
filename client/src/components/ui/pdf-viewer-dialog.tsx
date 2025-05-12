@@ -116,14 +116,20 @@ type Position = {
   y: number;
 };
 
-export function PDFViewerDialog({
+// INAKTIVERAD: Denna komponent är ersatt av PDFDialogProvider och EnhancedPDFViewer
+// Använd istället hook från PDFDialogProvider för alla dialoger
+/* export function PDFViewerDialog({
   open,
   onOpenChange,
   url,
   title,
   file,
   fileData
-}: PDFViewerDialogProps) {
+}: PDFViewerDialogProps) { */
+function _DisabledPDFViewerDialog() {
+  console.error("DENNA KOMPONENT ÄR INAKTIVERAD - Använd PDFDialogProvider istället");
+  return null;
+}
   const { user } = useAuth();
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
