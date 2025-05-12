@@ -18,6 +18,7 @@ import {
   taskTimeEntries,
   conversations,
   conversationParticipants,
+  userInvitations,
   pdfVersions,
   pdfAnnotations,
   messages,
