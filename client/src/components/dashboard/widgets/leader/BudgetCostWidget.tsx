@@ -56,9 +56,9 @@ export function BudgetCostWidget({ projectId }: BudgetCostWidgetProps) {
   }, [projectId]);
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('sv-SE', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'SEK',
       maximumFractionDigits: 0
     }).format(value);
   };
@@ -69,15 +69,15 @@ export function BudgetCostWidget({ projectId }: BudgetCostWidgetProps) {
         <div className="p-4 flex flex-col">
           <div className="flex justify-between items-start mb-2">
             <div>
-              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Budget</h3>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Budget (SEK)</h3>
               <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">
                 {formatCurrency(data.length > 0 ? data[data.length - 1]?.plannedBudget : 0)}
               </p>
             </div>
             <div className="text-right">
-              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">This Week</h3>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Denna Vecka</h3>
               <p className={`text-lg font-semibold ${budgetDifference > 0 ? 'text-primary dark:text-primary' : 'text-emerald-500 dark:text-emerald-400'}`}>
-                {budgetDifference > 0 ? '+' : ''}{budgetDifference.toFixed(1)}% <span className="text-gray-600 dark:text-gray-400">over budget</span>
+                {budgetDifference > 0 ? '+' : ''}{budgetDifference.toFixed(1)}% <span className="text-gray-600 dark:text-gray-400">över budget</span>
               </p>
             </div>
           </div>
@@ -158,7 +158,7 @@ export function BudgetCostWidget({ projectId }: BudgetCostWidgetProps) {
             size="sm" 
             className="w-full justify-between text-gray-600 dark:text-gray-400 hover:bg-primary/10 hover:text-primary"
           >
-            View Financial Report <ExternalLink className="h-4 w-4 ml-2" />
+            Visa ekonomisk rapport <ExternalLink className="h-4 w-4 ml-2" />
           </Button>
         </div>
       </CardContent>
