@@ -2,17 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom padding utilities for sidebar folder indentation */
+/* Custom padding utilities for sidebar folder indentation with progressive scale */
 @layer utilities {
-  .pl-10 {
-    padding-left: 2.5rem; /* 40px */
-  }
-  .pl-15 {
-    padding-left: 3.75rem; /* 60px */
-  }
-  .pl-25 {
-    padding-left: 6.25rem; /* 100px */
-  }
+  /* First level indentation */
+  .pl-3 { padding-left: 0.75rem; }  /* 12px */
+  .pl-5 { padding-left: 1.25rem; }  /* 20px */
+  .pl-7 { padding-left: 1.75rem; }  /* 28px */
+  
+  /* Second level indentation */
+  .pl-9 { padding-left: 2.25rem; }  /* 36px */
+  .pl-10 { padding-left: 2.5rem; }  /* 40px */
+  .pl-11 { padding-left: 2.75rem; } /* 44px */
+  .pl-12 { padding-left: 3rem; }    /* 48px */
+  .pl-13 { padding-left: 3.25rem; } /* 52px */
+  
+  /* Third level indentation */
+  .pl-14 { padding-left: 3.5rem; }  /* 56px */
+  .pl-15 { padding-left: 3.75rem; } /* 60px */
+  .pl-16 { padding-left: 4rem; }    /* 64px */
+  .pl-17 { padding-left: 4.25rem; } /* 68px */
+  .pl-18 { padding-left: 4.5rem; }  /* 72px */
+  .pl-19 { padding-left: 4.75rem; } /* 76px */
+  
+  /* Fourth level indentation - compressed increment */
+  .pl-20 { padding-left: 5rem; }    /* 80px */
+  .pl-21 { padding-left: 5.25rem; } /* 84px */
+  .pl-22 { padding-left: 5.5rem; }  /* 88px */
+  .pl-23 { padding-left: 5.75rem; } /* 92px */
+  .pl-24 { padding-left: 6rem; }    /* 96px */
+  .pl-25 { padding-left: 6.25rem; } /* 100px */
+  
+  /* Fifth level and beyond - minimal increments to avoid running off screen */
+  .pl-26 { padding-left: 6.4rem; }  /* 102px */
+  .pl-28 { padding-left: 6.55rem; } /* 105px */
+  .pl-31 { padding-left: 6.7rem; }  /* 107px */
+  .pl-34 { padding-left: 6.85rem; } /* 109px */
+  .pl-37 { padding-left: 7rem; }    /* 112px */
+  .pl-40 { padding-left: 7.15rem; } /* 114px */
+  .pl-43 { padding-left: 7.3rem; }  /* 117px */
+  .pl-46 { padding-left: 7.45rem; } /* 119px */
+  .pl-49 { padding-left: 7.6rem; }  /* 121px */
+  
+  /* For extreme nesting (useful for testing) */
+  .pl-52 { padding-left: 7.75rem; } /* 124px */
+  .pl-55 { padding-left: 7.9rem; }  /* 126px */
+  .pl-58 { padding-left: 8.05rem; } /* 129px */
+  .pl-60 { padding-left: 8.2rem; }  /* 131px */
 }
 
 /* Sidebar scroll container styles för horisontell scrollning */

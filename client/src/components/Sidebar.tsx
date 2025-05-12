@@ -1876,27 +1876,41 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       let indentClass = '';
       // När sidofältet är öppet använder vi faktisk nivåbaserad indentering
       if (isOpen) {
-        // SPECIFIKA INDENTERINGSVÄRDEN enligt användarens specifikation
+        // SPECIFIKA INDENTERINGSVÄRDEN med standardiserad beräkning för bättre stöd av djupa nivåer
         if (item.indent !== undefined) {
-          // Använder progressiva indenteringsvärden med mindre ökning för djupare nivåer
-          // Detta förhindrar att djupt nästlade mappar hamnar för långt till höger
-          if (item.indent === 0) indentClass = 'pl-0';      // Topnivå - ingen indentering
-          else if (item.indent === 1) indentClass = 'pl-7';  // Mapp 1 - något mindre indentering
-          else if (item.indent === 2) indentClass = 'pl-10'; // Nivå 2 - mindre ökning
-          else if (item.indent === 3) indentClass = 'pl-13'; // Mapp 3 - mindre ökning
-          else if (item.indent === 4) indentClass = 'pl-16'; // Mapp 4
-          else if (item.indent === 5) indentClass = 'pl-19'; // Mapp 5
-          else if (item.indent === 6) indentClass = 'pl-22'; // Mapp 6
-          else if (item.indent === 7) indentClass = 'pl-25'; // Mapp 7
-          else if (item.indent === 8) indentClass = 'pl-28'; // Mapp 8
-          else if (item.indent === 9) indentClass = 'pl-31'; // Mapp 9
-          else if (item.indent === 10) indentClass = 'pl-34'; // Mapp 10
-          else if (item.indent === 11) indentClass = 'pl-37'; // Mapp 11
-          else if (item.indent === 12) indentClass = 'pl-40'; // Mapp 12
-          else if (item.indent === 13) indentClass = 'pl-43'; // Mapp 13
-          else if (item.indent === 14) indentClass = 'pl-46'; // Mapp 14
-          else if (item.indent === 15) indentClass = 'pl-49'; // Mapp 15
-          else if (item.indent > 15) indentClass = `pl-${34 + (item.indent - 10) * 3}`; // Formeln ger rimliga värden för obegränsad nästling
+          // Använd en konsekvent formel för alla nivåer istället för individuella cases
+          // Detta ger en mer systematisk och skalbar indenteringsmodell
+          const baseIndent = 3;  // Bas-indentering för varje nivå i enheter (rem)
+          const calcIndent = Math.min(16, item.indent); // Begränsa max indentering för att inte gå utanför skärmen
+          
+          // Progressiv indentering - gradvis mindre ökning för djupare nivåer
+          // Detta förhindrar att mappar går för långt till höger vid djup nästling
+          let totalIndent;
+          
+          if (item.indent === 0) {
+            totalIndent = 0;  // Topnivå - ingen indentering
+          } else if (item.indent <= 3) {
+            // Första 3 nivåerna - full indentering
+            totalIndent = item.indent * baseIndent;
+          } else if (item.indent <= 7) {
+            // Nivå 4-7 - något mindre ökning per nivå
+            totalIndent = 9 + (item.indent - 3) * 2.5;
+          } else if (item.indent <= 12) {
+            // Nivå 8-12 - ytterligare minskad ökning
+            totalIndent = 19 + (item.indent - 7) * 2;
+          } else {
+            // Djupare nivåer - minimal ökning per nivå
+            totalIndent = 29 + (item.indent - 12) * 1.5;
+          }
+          
+          // Konvertera till heltal och skapa den faktiska CSS-klassen
+          const indentValue = Math.round(totalIndent);
+          indentClass = `pl-${indentValue}`;
+          
+          // Konsol-logga indenteringsinformation för felsökning
+          if (item.type === 'folder' && item.indent > 5) {
+            console.log(`Djup mapp ${item.label} (nivå ${item.indent}) får indentering: ${indentValue}px`);
+          }
           
           // Debuglogga för att säkerställa att indenteringen beräknas korrekt
           if (item.type === 'folder') {
