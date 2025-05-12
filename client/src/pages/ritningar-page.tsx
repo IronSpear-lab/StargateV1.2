@@ -910,19 +910,7 @@ export default function RitningarPage() {
         </div>
       </div>
       
-      {/* PDF-visare - använder den förbättrade visaren med kommentarer och versionshantering */}
-      {selectedFile && (
-        <div className="fixed inset-0 z-50 bg-background/80">
-          <EnhancedPDFViewer
-            fileId={Number(selectedFile.fileData?.id) || (selectedFile.fileData as any)?.fileId || `file_${Date.now()}`}
-            initialUrl={selectedFile.fileUrl || ""}
-            filename={selectedFile.fileData?.filename || "Dokument"}
-            onClose={() => setSelectedFile(null)}
-            projectId={currentProject?.id || null}
-            useDatabase={true} // Använd databasen istället för localStorage för att spara anmärkningar
-          />
-        </div>
-      )}
+      {/* PDF Dialog används nu för att visa PDF filer via usePDFDialog-hooken */}
       
       {/* Bekräftelsedialog för borttagning */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
