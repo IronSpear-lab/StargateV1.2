@@ -861,7 +861,7 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-sm font-medium flex items-center space-x-1.5">
+        <div className="text-sm font-medium flex items-center space-x-1.5 text-gray-500">
           <Calendar className="h-4 w-4 text-blue-500" />
           <span>Kommande deadlines</span>
         </div>
