@@ -419,6 +419,58 @@ export default function FolderPage() {
     }
   };
   
+  // Direkt API-anrop för att hämta folder ID baserat på mappnamn
+  const getFolderIdByName = async (name: string): Promise<number | null> => {
+    if (!currentProject?.id) return null;
+    
+    try {
+      // Första försöket: Hitta ID direkt från mappnamnet (om det finns i formatet "Mappnamn (123)")
+      const folderMatch = name.match(/\((\d+)\)$/);
+      if (folderMatch && folderMatch[1]) {
+        const folderId = parseInt(folderMatch[1]);
+        if (!isNaN(folderId)) {
+          console.log(`Direct match - found folder ID: ${folderId} from name: ${name}`);
+          return folderId;
+        }
+      }
+      
+      // Andra försöket: Gör ett API-anrop för att hitta mappen
+      console.log(`Searching for folder by name: ${name} in project: ${currentProject.id}`);
+      const cleanName = name.replace(/\s*\(\d+\)$/, '').trim();
+      const res = await apiRequest('GET', `/api/folders/by-name?name=${encodeURIComponent(cleanName)}&projectId=${currentProject.id}`);
+      
+      if (res.ok) {
+        const folder = await res.json();
+        if (folder && folder.id) {
+          console.log(`API lookup - found folder ID: ${folder.id} by name: ${cleanName}`);
+          return folder.id;
+        }
+      }
+      
+      // Tredje försöket: Hämta alla mappar och sök manuellt
+      const allFoldersRes = await apiRequest('GET', `/api/folders?projectId=${currentProject.id}`);
+      if (allFoldersRes.ok) {
+        const allFolders = await allFoldersRes.json();
+        // Sök efter mappen med samma namn (utan ID-delen om det finns)
+        const matchedFolder = allFolders.find((folder: any) => 
+          folder.name.toLowerCase() === cleanName.toLowerCase() || 
+          folder.name.replace(/\s*\(\d+\)$/, '').trim().toLowerCase() === cleanName.toLowerCase()
+        );
+        
+        if (matchedFolder && matchedFolder.id) {
+          console.log(`List lookup - found folder ID: ${matchedFolder.id} for name: ${cleanName}`);
+          return matchedFolder.id;
+        }
+      }
+      
+      console.log(`Could not find any folder ID for name: ${name}`);
+      return null;
+    } catch (error) {
+      console.error("Error finding folder ID:", error);
+      return null;
+    }
+  };
+  
   // Hämta alla mappar för det aktuella projektet
   const { data: folders } = useQuery<any[]>({
     queryKey: ['/api/folders', currentProject?.id],
@@ -432,44 +484,22 @@ export default function FolderPage() {
   });
   
   // Visa bekräftelsedialog för mapp-borttagning
-  const handleFolderDeleteClick = () => {
-    // Extrahera mappid från URL-parametern
-    // Format på URL: /vault/files/:folderName där folderName ofta innehåller id i parentes t.ex. "Min Mapp (123)"
-    const folderMatch = folderName.match(/\((\d+)\)$/);
+  const handleFolderDeleteClick = async () => {
+    // Försök hitta mappens ID med den nya robusta funktionen
+    const folderId = await getFolderIdByName(folderName);
     
-    if (folderMatch && folderMatch[1]) {
-      const folderId = parseInt(folderMatch[1]);
-      if (!isNaN(folderId)) {
-        console.log(`Preparing to delete folder ID: ${folderId}`);
-        setFolderIdToDelete(folderId);
-        setShowFolderDeleteConfirm(true);
-        return;
-      }
+    if (folderId) {
+      console.log(`Found folder ID: ${folderId} - ready to delete`);
+      setFolderIdToDelete(folderId);
+      setShowFolderDeleteConfirm(true);
+    } else {
+      // Om vi inte kunde hitta något ID alls, visa ett mer hjälpsamt felmeddelande
+      toast({
+        title: "Kunde inte hitta mappen",
+        description: "Mappen hittades inte i systemet. Kontrollera att du är i rätt projekt och att mappen existerar.",
+        variant: "destructive",
+      });
     }
-    
-    // Om vi inte kunde hitta ett ID direkt i mappnamnet, försök hitta mappen baserat på namnet i listan över mappar
-    if (folders && folders.length > 0) {
-      // Sök efter mappen med samma namn (utan ID-delen)
-      const cleanFolderName = folderName.replace(/\s*\(\d+\)$/, '').trim();
-      const matchedFolder = folders.find(folder => 
-        folder.name.toLowerCase() === cleanFolderName.toLowerCase() || 
-        folder.name.replace(/\s*\(\d+\)$/, '').trim().toLowerCase() === cleanFolderName.toLowerCase()
-      );
-      
-      if (matchedFolder && matchedFolder.id) {
-        console.log(`Found folder by name: ${matchedFolder.name} with ID: ${matchedFolder.id}`);
-        setFolderIdToDelete(matchedFolder.id);
-        setShowFolderDeleteConfirm(true);
-        return;
-      }
-    }
-    
-    // Om vi fortfarande inte hittat något ID, visa felmeddelande
-    toast({
-      title: "Kunde inte identifiera mappen",
-      description: "Det gick inte att hitta mappens ID i systemet. Kontrollera att mappens namn innehåller ett ID eller kontakta support.",
-      variant: "destructive",
-    });
   };
   
   // Ta bort mapp efter bekräftelse

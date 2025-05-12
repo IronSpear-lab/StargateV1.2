@@ -1020,6 +1020,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Ett fel uppstod vid hämtning av mappar" });
     }
   });
+  
+  // Söka efter mapp med specifikt namn
+  app.get(`${apiPrefix}/folders/by-name`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      console.log("/api/folders/by-name - ej autentiserad, returnerar 401");
+      return res.status(401).send({ error: 'Du måste vara inloggad' });
+    }
+    
+    try {
+      const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
+      const folderName = req.query.name as string;
+      
+      if (!projectId) {
+        console.log("/api/folders/by-name - saknar projektID i förfrågan");
+        return res.status(400).json({ error: "Projekt-ID är obligatoriskt" });
+      }
+      
+      if (!folderName) {
+        console.log("/api/folders/by-name - saknar mappnamn i förfrågan");
+        return res.status(400).json({ error: "Mappnamn är obligatoriskt" });
+      }
+
+      console.log(`/api/folders/by-name - Söker efter mapp "${folderName}" i projekt ${projectId} av användare ${req.user!.id}`);
+
+      // Kontrollera att användaren har tillgång till projektet
+      const userProject = await db.select()
+        .from(userProjects)
+        .where(and(
+          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.projectId, projectId)
+        ))
+        .limit(1);
+      
+      if (userProject.length === 0) {
+        console.log(`/api/folders/by-name - Användare ${req.user!.id} har inte tillgång till projekt ${projectId}`);
+        return res.status(403).json({ error: 'Du har inte tillgång till detta projekt' });
+      }
+      
+      // Hämta alla mappar för projektet
+      const folderList = await storage.getFolders(projectId);
+      
+      // Rensa mappnamnet - ta bort ID-delen om den finns
+      const cleanFolderName = folderName.replace(/\s*\(\d+\)$/, '').trim().toLowerCase();
+      
+      // Sök efter mappen som matchar namnet
+      const matchingFolder = folderList.find(folder => 
+        folder.name.toLowerCase() === folderName.toLowerCase() ||
+        folder.name.toLowerCase() === cleanFolderName ||
+        folder.name.replace(/\s*\(\d+\)$/, '').trim().toLowerCase() === cleanFolderName
+      );
+      
+      if (matchingFolder) {
+        console.log(`/api/folders/by-name - Hittade mapp med ID ${matchingFolder.id} för namn "${folderName}"`);
+        return res.json(matchingFolder);
+      } else {
+        console.log(`/api/folders/by-name - Ingen mapp hittades med namn "${folderName}" i projekt ${projectId}`);
+        return res.status(404).json({ error: 'Mappen kunde inte hittas' });
+      }
+    } catch (error) {
+      console.error("Error finding folder by name:", error);
+      res.status(500).json({ error: "Ett fel uppstod vid sökning efter mappen" });
+    }
+  });
 
   app.post(`${apiPrefix}/folders`, async (req, res) => {
     // Förbättrad autentiseringskontroll
