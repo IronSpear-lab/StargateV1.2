@@ -237,7 +237,7 @@ export default function DashboardPage() {
           }}
         />
         
-        <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-background">
+        <main className="flex-1 overflow-y-auto bg-gray-100 dark:bg-gray-900">
           <div className="max-w-7xl mx-auto py-5 px-4 sm:px-6">
             {/* Breadcrumb */}
             <div className="flex items-center space-x-2 text-sm mb-5">
