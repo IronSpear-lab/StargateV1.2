@@ -51,6 +51,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: Omit<User, "id">): Promise<User>;
+  deleteUser(id: number): Promise<boolean>;
   
   // Projects
   getProject(id: number): Promise<Project | undefined>;

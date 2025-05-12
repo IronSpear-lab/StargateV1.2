@@ -8,11 +8,22 @@ import {
   X,
   AlertTriangle, 
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Trash2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Form,
   FormControl,
@@ -56,6 +67,9 @@ interface User {
 export default function UserManagementWidget({ title = "Användarhantering" }) {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isLoadingSubmit, setIsLoadingSubmit] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   
   // Ladda användarlistan
@@ -117,6 +131,44 @@ export default function UserManagementWidget({ title = "Användarhantering" }) {
       form.reset();
     }
   };
+  
+  const confirmDeleteUser = (user: User) => {
+    setUserToDelete(user);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      const response = await apiRequest('DELETE', `/api/users/${userToDelete.id}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Kunde inte ta bort användaren");
+      }
+      
+      toast({
+        title: "Användaren borttagen",
+        description: `Användaren ${userToDelete.username} har tagits bort.`,
+      });
+      
+      // Uppdatera användarlistan
+      refetch();
+    } catch (error) {
+      toast({
+        title: "Fel vid borttagning av användare",
+        description: error instanceof Error ? error.message : "Ett okänt fel inträffade",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
+      setUserToDelete(null);
+    }
+  };
 
   return (
     <Widget title={title}>
@@ -136,6 +188,49 @@ export default function UserManagementWidget({ title = "Användarhantering" }) {
           </Button>
         </CardHeader>
         <CardContent>
+          
+          {/* Bekräftelsedialog för användarborttagning */}
+          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Bekräfta borttagning</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {userToDelete ? (
+                    <>
+                      Är du säker på att du vill ta bort användaren <strong>{userToDelete.username}</strong>?
+                      <div className="mt-2 p-2 bg-muted rounded-md text-sm">
+                        All data kopplad till denna användare kommer också att tas bort. Denna åtgärd kan inte ångras.
+                      </div>
+                    </>
+                  ) : (
+                    "Är du säker på att du vill ta bort den här användaren?"
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeleting}>Avbryt</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleDeleteUser();
+                  }}
+                  disabled={isDeleting}
+                  className="bg-destructive hover:bg-destructive/90"
+                >
+                  {isDeleting ? (
+                    <>
+                      <span className="mr-2">Tar bort...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Ta bort
+                    </>
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           {isAddUserOpen && (
             <div className="mb-4 p-4 border rounded-lg dark:border-gray-700 bg-background">
               <h3 className="text-sm font-medium mb-3">Skapa ny användare</h3>
