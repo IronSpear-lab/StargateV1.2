@@ -128,7 +128,7 @@ export function FolderManagementWidget() {
       
       return await res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       // Använd föräldermappens namn i meddelandetexten
       const parentInfo = selectedParentFolder ? 
         `under "${foldersData.find((f: FolderData) => f.id.toString() === selectedParentFolder)?.name || 'vald'} mappen"` : 
@@ -154,70 +154,68 @@ export function FolderManagementWidget() {
       queryClient.invalidateQueries({ queryKey: ['/api/folders', currentProject?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id, 'all=true'] });
       
-      // Uppdatera lokalt lagrade mappar i localStorage för att de ska visas i sidomenyn
-      // Sparar en temporär referens i lokalstorage med speciell struktur
-      // för att respektera mappstrukturen i sidofältet och projektspecifik avgränsning
       try {
-        // Hämta alla befintliga mappar från localStorage
+        // Hämta alltid FRÄSCHA data direkt från API istället för att lita på lokal cache
+        // Detta är nyckeln till att lösa synkroniseringsproblemet mellan sidebaren och widgeten
+        console.log(`Hämtar fräscha mappdata från API för projekt ${currentProject?.id}`);
+        const freshFoldersResponse = await fetch(`/api/folders?projectId=${currentProject?.id}`, {
+          credentials: 'include'
+        });
+        
+        if (!freshFoldersResponse.ok) {
+          throw new Error(`Kunde inte hämta uppdaterade mappar: ${freshFoldersResponse.status}`);
+        }
+        
+        // Hämta de färska mapparna från API:et
+        const freshFolders = await freshFoldersResponse.json();
+        console.log(`Hämtade ${freshFolders.length} uppdaterade mappar från API`);
+        
+        // Förbered mapparna för localStorage i korrekt format som sidebaren förväntar sig
+        const formattedFolders = freshFolders.map((folder: any) => {
+          // Hitta föräldermappens namn om den finns
+          let parentName = 'Files';
+          if (folder.parentId) {
+            const parentFolder = freshFolders.find((f: any) => f.id === folder.parentId);
+            if (parentFolder) {
+              parentName = parentFolder.name;
+            }
+          }
+          
+          return {
+            name: folder.name,
+            parent: parentName,
+            id: folder.id.toString(),
+            parentId: folder.parentId ? folder.parentId.toString() : null,
+            projectId: currentProject?.id.toString(),
+            type: 'folder',
+            label: folder.name, // För kompatibilitet
+            href: `/vault/files/${encodeURIComponent(folder.name)}`
+          };
+        });
+        
+        // Hämta befintliga mappar för alla projekt
         const allUserFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
         
         // Filtrera ut mappar från andra projekt så vi inte skriver över dem
         const otherProjectFolders = allUserFolders.filter((f: any) => {
-          // Behåll mappar som inte har ett projectId eller som tillhör ett annat projekt
-          // Jämför både som sträng och som nummer för att vara säker
           return !f.projectId || (
             String(f.projectId) !== String(currentProject?.id) && 
             f.projectId !== Number(currentProject?.id)
           );
         });
         
-        // Hämta befintliga mappar för det aktuella projektet
-        const currentProjectFolders = allUserFolders.filter((f: any) => 
-          String(f.projectId) === String(currentProject?.id) || 
-          f.projectId === Number(currentProject?.id)
-        );
+        console.log(`Behåller ${otherProjectFolders.length} mappar från andra projekt och lägger till ${formattedFolders.length} mapparna från aktuellt projekt`);
         
-        // Identifiera föräldermappens namn från dess ID
-        let parentFolderName = 'Files'; // Standardvärde om ingen föräldermapp är vald
-        
-        if (data.parentId) {
-          // Hitta föräldermappens namn baserat på ID
-          const parentFromDB = foldersData.find((f: FolderData) => 
-            f.id.toString() === data.parentId.toString()
-          );
-          
-          if (parentFromDB) {
-            parentFolderName = parentFromDB.name;
-            console.log(`Found parent folder name: ${parentFolderName} for ID: ${data.parentId}`);
-          } else {
-            console.log(`Could not find parent folder with ID: ${data.parentId}, using Files as parent`);
-          }
-        }
-        
-        // Skapa den nya mappen med explicit projektID-referens
-        const newFolder = {
-          name: data.name,
-          parent: parentFolderName, // Använd föräldermappens namn för korrekt hierarki
-          id: data.id.toString(),
-          parentId: data.parentId ? data.parentId.toString() : null,
-          projectId: currentProject?.id.toString(), // Lägg till projektID för korrekt filtrering
-          type: 'folder' // Explicit typ för korrekt rendering
-        };
-        
-        console.log('Saving new folder to localStorage:', newFolder);
-        console.log(`Current project: ${currentProject?.id}, Adding to ${currentProjectFolders.length} existing folders`);
-        
-        // Kombinera mappar från andra projekt och uppdaterad lista för aktuellt projekt
-        const updatedFolders = [...otherProjectFolders, ...currentProjectFolders, newFolder];
+        // Kombinera andra projekts mappar med de fräscha mapparna från API
+        const updatedFolders = [...otherProjectFolders, ...formattedFolders];
         
         // Spara i båda localStorage-nycklarna för att säkerställa synkronisering
         localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
         localStorage.setItem('user_created_folders', JSON.stringify(updatedFolders));
         
-        // Tvinga en refresh av sidebar-menyn genom att utlösa en custom event
-        // Sidomenyn lyssnar efter denna händelse för att uppdatera sig
+        // Tvinga en refresh av sidebar-menyn genom att utlösa en custom event med action=refresh
         window.dispatchEvent(new CustomEvent('folder-structure-changed', { 
-          detail: { projectId: currentProject?.id } 
+          detail: { projectId: currentProject?.id, action: 'refresh' } 
         }));
         
       } catch (e) {
