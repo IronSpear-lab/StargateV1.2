@@ -1706,21 +1706,22 @@ export default function EnhancedPDFViewer({
               cursor: isMarking ? 'crosshair' : isDragging ? 'grabbing' : 'grab'
             }}
           >
-            <div ref={pageRef}>
+            <div ref={pageRef} className="pdf-document-container">
               <Document
                 file={pdfUrl}
                 onLoadSuccess={onDocumentLoadSuccess}
                 onLoadError={onDocumentLoadError}
                 loading={<div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin h-8 w-8" /></div>}
                 error={<div className="p-8 text-center text-red-500">Dokumentet kunde inte laddas. Försöker igen automatiskt...</div>}
+                className="pdf-document"
               >
                 <Page
                   pageNumber={pageNumber}
                   renderTextLayer={true}
                   renderAnnotationLayer={true}
                   loading={<div className="flex items-center justify-center h-[600px]"><Loader2 className="animate-spin h-8 w-8" /></div>}
+                  className="pdf-page"
                 />
-              </Document>
               
               {/* Render annotations */}
               {annotations
@@ -1764,8 +1765,8 @@ export default function EnhancedPDFViewer({
           </div>
         </div>
         
-        {/* Right sidebar */}
-        <div className="w-80 border-l bg-white overflow-y-auto">
+        {/* Right sidebar - med högre z-index för att säkerställa att den alltid är synlig */}
+        <div className="w-80 border-l bg-white overflow-y-auto z-20 relative">
           {/* Sidebar navigation */}
           <div className="border-b p-3 flex">
             <Button 

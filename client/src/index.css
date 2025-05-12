@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* PDF viewer style fixes to ensure sidebar remains visible */
+.pdf-document-container {
+  position: relative;
+  z-index: 1;
+}
+
+.pdf-document {
+  position: relative;
+  z-index: 1;
+}
+
+.pdf-page {
+  position: relative;
+  z-index: 1;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
