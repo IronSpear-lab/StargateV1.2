@@ -1,3 +1,5 @@
+// DENNA KOMPONENTEN ÄR ERSATT AV PDFDialogProvider och EnhancedPDFViewer
+// Behåll koden men gör den oåtkomlig genom att inaktivera importen
 import * as React from "react";
 import { useState, useEffect, useRef } from "react";
 import {
