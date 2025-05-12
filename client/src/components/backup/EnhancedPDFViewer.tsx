@@ -1621,6 +1621,7 @@ export default function EnhancedPDFViewer({
 
   return (
     <div className={`${isDialogMode ? 'h-full' : 'h-screen'} flex flex-col bg-gray-100`}>
+      <div className="flex flex-col flex-grow overflow-hidden">
       {/* Header bar */}
       <div className="border-b bg-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center">
@@ -2408,6 +2409,7 @@ export default function EnhancedPDFViewer({
             <Download className="h-4 w-4 mr-1" /> Ladda ner
           </Button>
         </div>
+      </div>
       </div>
     </div>
   );
