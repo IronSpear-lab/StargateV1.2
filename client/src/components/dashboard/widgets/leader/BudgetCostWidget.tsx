@@ -119,7 +119,7 @@ export function BudgetCostWidget({ projectId }: BudgetCostWidgetProps) {
                   />
                   <Tooltip
                     formatter={(value) => [formatCurrency(value as number), '']}
-                    labelFormatter={(label) => `Week: ${label}`}
+                    labelFormatter={(label) => `Vecka: ${label}`}
                     contentStyle={{
                       backgroundColor: 'rgba(255, 255, 255, 0.9)',
                       border: 'none',
@@ -135,7 +135,7 @@ export function BudgetCostWidget({ projectId }: BudgetCostWidgetProps) {
                     strokeWidth={2}
                     fillOpacity={1} 
                     fill="url(#colorBudget)" 
-                    name="Planned Budget"
+                    name="Planerad Budget"
                   />
                   <Area 
                     type="monotone" 
@@ -144,7 +144,7 @@ export function BudgetCostWidget({ projectId }: BudgetCostWidgetProps) {
                     strokeWidth={2}
                     fillOpacity={1} 
                     fill="url(#colorCost)" 
-                    name="Actual Cost"
+                    name="Faktisk Kostnad"
                   />
                 </AreaChart>
               </ResponsiveContainer>
