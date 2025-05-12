@@ -148,17 +148,19 @@ export function Widget({
         "shadow-md rounded-lg transition-all duration-300 widget border-0",
         dragging ? "opacity-50" : "opacity-100",
         expanded && "backdrop-blur-sm",
-        "bg-gray-100 dark:bg-gray-800 p-3", // Gråare bakgrund för 3D-effekt 
+        "bg-gray-200 dark:bg-gray-800 p-3", // Mörkare bakgrund för tydligare 3D-effekt
         className
       )}
       style={{
-        boxShadow: expanded ? "0 8px 30px rgba(0, 0, 0, 0.12)" : "0 4px 12px rgba(0, 0, 0, 0.05)",
+        boxShadow: expanded ? 
+          "0 8px 30px rgba(0, 0, 0, 0.12)" : 
+          "0 6px 16px rgba(0, 0, 0, 0.08), inset 0 -2px 5px rgba(0, 0, 0, 0.03)",
       }}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <CardHeader className="p-3 bg-white dark:bg-gray-700 flex-row items-center justify-between space-y-0 rounded-lg mb-2 shadow-sm">
+      <CardHeader className="p-3 bg-white dark:bg-gray-700 flex-row items-center justify-between space-y-0 rounded-lg mb-2 shadow-sm border border-gray-50">
         <div className="flex items-center space-x-2">
           <div
             className="cursor-move p-1 rounded hover:bg-primary/10"
@@ -289,7 +291,7 @@ export function Widget({
           "overflow-auto bg-white dark:bg-gray-700 rounded-lg",
           !expanded && heightClasses, 
           collapsed && "hidden", 
-          "relative shadow-sm"
+          "relative shadow-sm border border-gray-50"
         )}
       >
         {children}

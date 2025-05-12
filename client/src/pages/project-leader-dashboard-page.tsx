@@ -77,7 +77,7 @@ const defaultProjectLeaderWidgets: WidgetInstance[] = [
   {
     id: uuidv4(),
     type: "revenue-overview",
-    title: "INTÄKTSÖVERSIKT",
+    title: "Intäktsöversikt",
     width: "half",
     height: "medium"
   },
