@@ -1860,26 +1860,34 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         isItemOpen = openItems[itemKey] !== undefined ? openItems[itemKey] : false;
       }
       
-      // Calculate indentation based on level and ensure consistent padding
+      // FÖRBÄTTRAD INDENTERINGSBERÄKNING baserad på mappnivå
       let indentClass = '';
       // När sidofältet är öppet använder vi faktisk nivåbaserad indentering
       if (isOpen) {
-        // Om item har explicit indent, använd det
+        // Använd explicit indenteringsnivå som kommer från mappens faktiska position i hierarkin
         if (item.indent !== undefined) {
+          // Förbättrad indenteringsskala med tydligare steg mellan nivåer
           if (item.indent === 0) indentClass = 'pl-0'; // Topnivå - ingen indentering
-          else if (item.indent === 1) indentClass = 'pl-4'; // Första nivån
-          else if (item.indent === 2) indentClass = 'pl-8'; // Andra nivån
+          else if (item.indent === 1) indentClass = 'pl-5'; // Första nivån med tydligare indentering
+          else if (item.indent === 2) indentClass = 'pl-9'; // Andra nivån med större mellanrum
           else if (item.indent === 3) indentClass = 'pl-12'; // Tredje nivån
           else if (item.indent === 4) indentClass = 'pl-16'; // Fjärde nivån
+          else if (item.indent >= 5) indentClass = 'pl-20'; // Djupare nivåer
           else indentClass = 'pl-4'; // Standard indentering om nivå inte specificeras
+          
+          // Debuglogga för att säkerställa att indenteringen beräknas korrekt
+          if (item.type === 'folder') {
+            console.log(`Mapp ${item.label} med indent ${item.indent} får CSS-klass ${indentClass}`);
+          }
         } else {
-          // Beräkna nivå baserat på längden av parentKey (fler bindelser indikerar djupare nivå)
+          // Alternativ beräkning baserat på längden av parentKey för icke-mappobjekt
           const level = parentKey.split('-').length - 1;
           if (level <= 0) indentClass = 'pl-0'; // Topnivå
-          else if (level === 1) indentClass = 'pl-4'; // Första nivån
-          else if (level === 2) indentClass = 'pl-8'; // Andra nivån
+          else if (level === 1) indentClass = 'pl-5'; // Första nivån
+          else if (level === 2) indentClass = 'pl-9'; // Andra nivån
           else if (level === 3) indentClass = 'pl-12'; // Tredje nivån
-          else indentClass = 'pl-16'; // Djupare nivåer
+          else if (level === 4) indentClass = 'pl-16'; // Fjärde nivån
+          else indentClass = 'pl-20'; // Djupare nivåer
         }
       } else {
         // När sidofältet är stängt använder vi ingen indentering (allt är centrerat)
