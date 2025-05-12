@@ -409,21 +409,12 @@ export default function FolderPage() {
         return;
       }
       
-      // Använd metadatan direkt från ritningar listan
-      setSelectedFile({
-        file: null,
-        fileUrl,
-        fileData: {
-          id: ritning.id,
-          filename: ritning.filename || "dokument.pdf",
-          version: ritning.version || "1",
-          description: ritning.description || "PDF-dokument",
-          uploaded: ritning.uploaded || new Date().toLocaleString(),
-          uploadedBy: ritning.uploadedBy || "System",
-          number: ritning.number || "",
-          status: ritning.status || "",
-          annat: ritning.annat || ""
-        }
+      // Använd PDF-dialog-systemet istället för lokal state
+      showPDFDialog({
+        fileId: ritning.id,
+        initialUrl: fileUrl,
+        filename: ritning.filename || "dokument.pdf",
+        projectId: currentProject?.id || null
       });
     },
     onError: (error: Error) => {
