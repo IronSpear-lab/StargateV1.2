@@ -912,19 +912,43 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                 
                 {/* Ta bort radera-knappen helt eftersom vi skapar en widget för detta istället */}
                 
-                {/* För filer visar vi bara en actions-knapp utan meny (för att undvika HTML-validering) */}
+                {/* För filer visar vi en aktionsmeny med dropdown */}
                 {node.type === 'file' && (
-                  <div 
-                    className="ml-2 opacity-0 group-hover:opacity-100"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Här skulle vi kunna lägga till filspecifika åtgärder
-                    }}
-                  >
-                    <span className="inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-neutral-100 cursor-pointer">
-                      <MoreVertical className="h-3.5 w-3.5 text-neutral-500" />
-                    </span>
-                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <div className="ml-2 opacity-0 group-hover:opacity-100">
+                        <span className="inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-neutral-100 cursor-pointer">
+                          <MoreVertical className="h-3.5 w-3.5 text-neutral-500" />
+                        </span>
+                      </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      {node.fileType && isPdf(node.fileType) && (
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            showPDFDialog({
+                              fileId: node.id,
+                              filename: node.name,
+                              projectId: currentProject?.id
+                            });
+                          }}
+                        >
+                          <File className="h-4 w-4 mr-2 text-red-500" />
+                          <span>Visa PDF</span>
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onFileSelect(node);
+                        }}
+                      >
+                        <FileIcon className="h-4 w-4 mr-2" />
+                        <span>Öppna dokument</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </div>
               
