@@ -82,22 +82,8 @@ export default function FolderPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Samma komponenter och state som i ritningar-page för konsekvent användargränssnitt
-  const [selectedFile, setSelectedFile] = useState<{
-    file: File | null;
-    fileUrl?: string;
-    fileData?: {
-      id?: number;
-      fileId?: string;
-      filename: string;
-      version: string;
-      description: string;
-      uploaded: string;
-      uploadedBy: string;
-      number?: string;
-      status?: string;
-      annat?: string;
-    };
-  } | null>(null);
+  // Använd PDF Dialog hook istället för lokal state
+  const { showPDFDialog } = usePDFDialog();
   
   // Använd API:et för att hämta filer från databasen med korrekt projektID-parameter
   const { data: apiRitningar, isLoading: isLoadingApi } = useQuery<any[]>({
@@ -460,22 +446,17 @@ export default function FolderPage() {
         
         if (storedFileData) {
           console.log(`[${Date.now()}] Successfully loaded file from local storage for viewing: ${ritning.fileId}`);
-          setSelectedFile({
-            file: storedFileData.file,
-            fileUrl: storedFileData.url,
-            fileData: {
-              id: typeof ritning.id === 'number' ? ritning.id : 
-                  typeof ritning.id === 'string' && !isNaN(Number(ritning.id)) ? Number(ritning.id) : 
-                  ritning.fileId || Math.floor(Date.now() / 1000),  // Använd ett numeriskt ID baserat på aktuell tid
-              filename: ritning.filename,
-              version: ritning.version,
-              description: ritning.description,
-              uploaded: ritning.uploaded,
-              uploadedBy: ritning.uploadedBy,
-              number: ritning.number || "",
-              status: ritning.status || "",
-              annat: ritning.annat || ""
-            }
+          // Använd PDF-dialogen istället för lokal state
+          const fileId = typeof ritning.id === 'number' ? ritning.id : 
+                        typeof ritning.id === 'string' && !isNaN(Number(ritning.id)) ? Number(ritning.id) : 
+                        ritning.fileId || Math.floor(Date.now() / 1000);
+          
+          showPDFDialog({
+            fileId: fileId,
+            initialUrl: storedFileData.url,
+            filename: ritning.filename,
+            projectId: currentProject?.id || null,
+            file: storedFileData.file
           });
           return;
         }
@@ -484,11 +465,16 @@ export default function FolderPage() {
       }
     }
     
-    // För filens numeriska ID, försök att hämta från servern
+    // För filens numeriska ID, försök att hämta från servern istället för mutation
     if (ritning.id && !isNaN(Number(ritning.id))) {
       try {
-        // Starta hämtning av filinnehåll från servern via mutation
-        fetchFileContentMutation.mutate(Number(ritning.id));
+        const numericId = Number(ritning.id);
+        // Öppna PDF-dialogen direkt med fileId
+        showPDFDialog({
+          fileId: numericId,
+          filename: ritning.filename,
+          projectId: currentProject?.id || null
+        });
         return;
       } catch (error) {
         console.error(`[${Date.now()}] Error loading file with ID ${ritning.id} from server:`, error);
@@ -499,22 +485,16 @@ export default function FolderPage() {
     try {
       const fileUrl = getUploadedFileUrl(ritning.id);
       console.log(`[${Date.now()}] Using example file URL for file: ${ritning.filename}`);
-      setSelectedFile({
-        file: null,
-        fileUrl,
-        fileData: {
-          id: typeof ritning.id === 'number' ? ritning.id : 
-              typeof ritning.id === 'string' && !isNaN(Number(ritning.id)) ? Number(ritning.id) : 
-              Math.floor(Date.now() / 1000),  // Använd ett numeriskt ID baserat på aktuell tid
-          filename: ritning.filename,
-          version: ritning.version,
-          description: ritning.description,
-          uploaded: ritning.uploaded,
-          uploadedBy: ritning.uploadedBy,
-          number: ritning.number || "",
-          status: ritning.status || "",
-          annat: ritning.annat || ""
-        }
+      
+      const fileId = typeof ritning.id === 'number' ? ritning.id : 
+          typeof ritning.id === 'string' && !isNaN(Number(ritning.id)) ? Number(ritning.id) : 
+          Math.floor(Date.now() / 1000);
+      
+      openPDFDialog({
+        fileId: fileId,
+        initialUrl: fileUrl,
+        filename: ritning.filename,
+        projectId: currentProject?.id || null
       });
     } catch (error) {
       console.error("Kunde inte öppna fallback-filen:", error);
