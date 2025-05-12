@@ -2154,6 +2154,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Delete a user (endast för admin och superuser)
+  app.delete(`${apiPrefix}/users/:id`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    // Endast admin och superuser kan ta bort användare
+    if (req.user!.role !== 'admin' && req.user!.role !== 'superuser') {
+      return res.status(403).json({ error: "Du har inte behörighet att ta bort användare" });
+    }
+    
+    const userId = parseInt(req.params.id);
+    
+    // Förhindra borttagning av den egna användaren
+    if (userId === req.user!.id) {
+      return res.status(400).json({ 
+        message: "Du kan inte ta bort din egen användare" 
+      });
+    }
+    
+    try {
+      // Hämta användaren först för att kontrollera att den finns och returnera information
+      const userToDelete = await storage.getUser(userId);
+      
+      if (!userToDelete) {
+        return res.status(404).json({ message: "Användaren hittades inte" });
+      }
+      
+      const success = await storage.deleteUser(userId);
+      
+      if (success) {
+        res.status(200).json({ 
+          message: "Användaren har tagits bort",
+          username: userToDelete.username
+        });
+      } else {
+        res.status(500).json({ message: "Kunde inte ta bort användaren" });
+      }
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ error: "Kunde inte ta bort användaren" });
+    }
+  });
+  
   // List invitations for admin management
   app.get(`${apiPrefix}/users/invitations`, async (req, res) => {
     if (!req.isAuthenticated()) {

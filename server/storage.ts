@@ -266,6 +266,43 @@ class DatabaseStorage implements IStorage {
     }).returning();
     return result[0];
   }
+  
+  async deleteUser(id: number): Promise<boolean> {
+    try {
+      // Ta bort användarens tillhörighet i projekt först (userProjects)
+      await db.delete(userProjects).where(eq(userProjects.userId, id));
+      
+      // Ta bort användaren från conversations (chat-related)
+      await db.delete(conversationMembers).where(eq(conversationMembers.userId, id));
+      
+      // Ta bort användaren från tidrapporter
+      await db.delete(timeEntries).where(eq(timeEntries.userId, id));
+      
+      // Ta bort användarens PDF-anteckningar
+      const userAnnotations = await db
+        .select({ id: pdfAnnotations.id })
+        .from(pdfAnnotations)
+        .where(eq(pdfAnnotations.createdById, id));
+        
+      for (const annotation of userAnnotations) {
+        await db.delete(pdfAnnotations).where(eq(pdfAnnotations.id, annotation.id));
+      }
+      
+      // Ta bort användarens kommentarer
+      await db.delete(comments).where(eq(comments.createdById, id));
+      
+      // Ta bort användaren från kalenderhändelser
+      await db.delete(calendarEvents).where(eq(calendarEvents.userId, id));
+      
+      // Slutligen, ta bort användaren
+      const result = await db.delete(users).where(eq(users.id, id)).returning();
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      return false;
+    }
+  }
 
   // Projects methods
   async getProject(id: number): Promise<Project | undefined> {

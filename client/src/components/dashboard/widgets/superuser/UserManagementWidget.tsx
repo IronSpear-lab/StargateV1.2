@@ -402,8 +402,10 @@ export default function UserManagementWidget({ title = "Användarhantering" }) {
                             variant="destructive" 
                             size="sm" 
                             onClick={() => confirmDeleteUser(user)}
+                            disabled={user.role === 'admin' || user.id === 1} // Förhindra borttagning av admins och användare med ID 1
+                            title={user.role === 'admin' ? "Administratörer kan inte tas bort" : ""}
                           >
-                            Ta bort
+                            <Trash2 className="h-4 w-4 mr-1" /> Ta bort
                           </Button>
                         </td>
                       </tr>
