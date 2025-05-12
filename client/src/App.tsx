@@ -35,6 +35,7 @@ import { AuthProvider } from "./hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ProjectProvider } from "./contexts/ProjectContext";
 import { PDFDialogProvider } from "@/components/PDFDialogProvider";
+import { usePDFDialog } from "@/hooks/use-pdf-dialog";
 import { useEffect, useState } from "react";
 import { configurePdfWorker } from "@/lib/pdf-worker-config";
 
@@ -102,7 +103,27 @@ function Router() {
       <ProtectedRoute path="/vault/files/:folderName" component={FolderPage} />
       <ProtectedRoute path="/messages" component={MessagesPage} />
       <ProtectedRoute path="/communication/messages" component={MessagesPage} />
-      <ProtectedRoute path="/files/pdf/:versionId" component={PDFViewerPage} />
+      <ProtectedRoute path="/files/pdf/:versionId" component={
+        ({ params }) => {
+          const { showPDFDialog } = usePDFDialog();
+          // Istället för att navigera till sidan, visa dialogen och återgå
+          useEffect(() => {
+            const versionId = params?.versionId ? Number(params.versionId) : undefined;
+            if (versionId) {
+              console.log(`Öppnar PDF version ${versionId} i dialog istället för separat sida`);
+              showPDFDialog({
+                versionId: versionId
+              });
+              // Återgå till föregående sida efter en kort fördröjning
+              setTimeout(() => {
+                window.history.back();
+              }, 300);
+            }
+          }, [params, showPDFDialog]);
+          
+          return null; // Visa ingenting medan omdirigeringen sker
+        }
+      } />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
