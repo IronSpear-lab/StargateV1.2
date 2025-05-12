@@ -2056,23 +2056,23 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       indentClass
                     )}
                   >
-                    <div className="flex items-center flex-grow">
+                    <div className="flex items-center flex-grow min-w-0">
                       {/* Ta bort-knapp för användarskapade mappar - temporärt borttagen */}
                       <span className={cn(
-                        "flex items-center justify-center mr-3",
+                        "flex-shrink-0 flex items-center justify-center mr-3",
                         item.active ? "text-primary" : "text-muted-foreground"
                       )}>
                         {item.icon}
                       </span>
                       
                       <span className={cn(
-                        "text-sm",
+                        "text-sm truncate",
                         item.active ? "text-primary" : "text-muted-foreground"
                       )}>
                         {item.label}
                       </span>
                     </div>
-                    <div className="flex items-center">
+                    <div className="flex items-center relative flex-shrink-0 ml-2">
                       {item.badge && (
                         <Badge variant="outline" className={cn(
                           "text-xs py-0.5 px-2 rounded-full mr-2",
