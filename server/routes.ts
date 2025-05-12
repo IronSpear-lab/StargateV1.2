@@ -3394,7 +3394,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Hasha lösenordet först
-      const hashedPassword = await require('./auth').hashPassword(password);
+      const { hashPassword } = await import('./auth');
+      const hashedPassword = await hashPassword(password);
       
       // Skapa användaren
       const newUser = await storage.createUser({
