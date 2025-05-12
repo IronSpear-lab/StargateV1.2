@@ -1803,7 +1803,11 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   
   const renderNavItems = (items: NavItemType[], parentKey: string = '') => {
     return items.map((item, index) => {
-      const itemKey = `${parentKey}-${item.label}`;
+      // Skapa en unik nyckel baserad på item-specifika egenskaper om de finns
+      const uniqueId = item.folderId || item.id || '';
+      const itemKey = uniqueId 
+        ? `${parentKey}-${item.label}-${uniqueId}` 
+        : `${parentKey}-${item.label}-${index}`;
       const hasChildren = item.children && item.children.length > 0;
       
       // Handle section-specific open state if item is a section
