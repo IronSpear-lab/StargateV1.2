@@ -48,6 +48,7 @@ import { UploadDialog } from "@/components/UploadDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useProject } from "@/contexts/ProjectContext";
 import { formatDate } from "@/lib/ui-utils";
+import { usePDFDialog } from "@/hooks/use-pdf-dialog";
 
 // Interface för ritningar/dokument
 interface Ritning {
