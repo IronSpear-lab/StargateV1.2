@@ -146,21 +146,41 @@ export function Widget({
       className={cn(
         expanded ? "fixed inset-6 z-50" : widthClasses,
         "shadow-md rounded-lg transition-all duration-300 widget border-0",
-        "backdrop-filter backdrop-blur-[2px] bg-opacity-95",
+        "backdrop-filter backdrop-blur-[2px] bg-opacity-90",
         dragging ? "opacity-50" : "opacity-100",
         expanded && "backdrop-blur-sm",
         className
       )}
       style={{
-        boxShadow: expanded ? "0 8px 30px rgba(0, 0, 0, 0.12)" : "0 4px 15px rgba(0, 0, 0, 0.06)",
+        boxShadow: expanded 
+          ? "0 10px 40px rgba(0, 0, 0, 0.15), 0 0 15px rgba(var(--primary-rgb), 0.05)" 
+          : "0 5px 20px rgba(0, 0, 0, 0.08), 0 0 10px rgba(var(--primary-rgb), 0.03)",
         background: "linear-gradient(135deg, var(--card) 0%, var(--card-foreground-rgb)/0.02 100%)",
         borderLeft: "1px solid rgba(var(--card-foreground-rgb), 0.05)",
         borderTop: "1px solid rgba(var(--card-foreground-rgb), 0.05)",
+        position: "relative",
+        overflow: "hidden",
       }}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
+      {/* Dekorativa element för futuristisk känsla */}
+      <div 
+        className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary/20 to-transparent"
+        style={{ opacity: 0.7 }}
+      />
+      <div 
+        className="absolute top-0 left-0 bottom-0 w-[1px] bg-gradient-to-b from-primary/20 via-transparent to-transparent"
+        style={{ opacity: 0.7 }}
+      />
+      <div 
+        className="absolute bottom-0 right-0 w-[40px] h-[40px] pointer-events-none"
+        style={{
+          background: "radial-gradient(circle at bottom right, var(--primary)/0.06 0%, transparent 70%)",
+        }}
+      />
+      
       <CardHeader 
         className="p-3 flex-row items-center justify-between space-y-0 rounded-t-lg relative overflow-hidden backdrop-filter backdrop-blur-sm"
         style={{
