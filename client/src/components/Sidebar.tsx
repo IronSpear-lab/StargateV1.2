@@ -1578,14 +1578,14 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       if (mapp1Item && mapp2Item && mapp3Item && mapp4Item && mapp5Item) {
         console.log("Kan bygga hela mappkedjan 1-2-3-4-5");
         
-        // Sätt indentering för mapp 1 till 0 (toppnivå)
+        // Sätt indentering för mapp 1 till basnivå (toppnivå)
         const baseIndent = (filesSection?.indent || 0) + 1;
         mapp1Item.indent = baseIndent;
         mapp1Item.isOpen = true; // Gör den öppen
         
         // Sätt indentering för mapp 2 och lägg till den som barn till mapp 1
         if (!mapp1Item.children) mapp1Item.children = [];
-        mapp2Item.indent = mapp1Item.indent + 1;
+        mapp2Item.indent = baseIndent + 4; // Större indentering för att matcha bilden
         mapp2Item.isOpen = true;
         mapp1Item.children.push(mapp2Item);
         mapp1HandledSpecially = true;
@@ -1594,7 +1594,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         
         // Sätt indentering för mapp 3 och lägg till den som barn till mapp 2
         if (!mapp2Item.children) mapp2Item.children = [];
-        mapp3Item.indent = mapp2Item.indent + 1;
+        mapp3Item.indent = baseIndent + 8; // Ännu större indentering
         mapp3Item.isOpen = true;
         mapp2Item.children.push(mapp3Item);
         mapp3HandledSpecially = true;
@@ -1602,7 +1602,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         
         // Sätt indentering för mapp 4 och lägg till den som barn till mapp 3
         if (!mapp3Item.children) mapp3Item.children = [];
-        mapp4Item.indent = mapp3Item.indent + 1;
+        mapp4Item.indent = baseIndent + 12; // Betydligt större indentering för Mapp 4
         mapp4Item.isOpen = true;
         mapp3Item.children.push(mapp4Item);
         mapp4HandledSpecially = true;
@@ -1610,7 +1610,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         
         // Sätt indentering för mapp 5 och lägg till den som barn till mapp 4
         if (!mapp4Item.children) mapp4Item.children = [];
-        mapp5Item.indent = mapp4Item.indent + 1;
+        mapp5Item.indent = baseIndent + 16; // Maximal indentering för Mapp 5
         mapp5Item.isOpen = false; // Stängd som standard, enligt bilden
         mapp4Item.children.push(mapp5Item);
         console.log("Lade till Mapp 5 som barn till Mapp 4");
