@@ -82,15 +82,15 @@ export function TasksOverviewWidget({ projectId }: TasksOverviewWidgetProps) {
       <div className="flex items-center justify-between mb-3">
         <div className="text-sm font-medium flex items-center space-x-1.5">
           <ListTodo className="h-4 w-4 text-blue-500" />
-          <span>Tasks Overview</span>
+          <span className="text-gray-600 dark:text-gray-400">Tasks Overview</span>
         </div>
       </div>
       
       {/* Progress section */}
       <div className="mb-5">
         <div className="flex items-center justify-between mb-1.5">
-          <div className="text-sm font-medium text-gray-900">Overall Progress</div>
-          <div className="text-sm font-medium text-gray-900">{completionPercentage}%</div>
+          <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Overall Progress</div>
+          <div className="text-sm font-medium text-gray-600 dark:text-gray-400">{completionPercentage}%</div>
         </div>
         <Progress value={completionPercentage} className="h-2" />
         <div className="mt-1.5 text-xs text-gray-500 flex justify-between">
@@ -129,7 +129,7 @@ export function TasksOverviewWidget({ projectId }: TasksOverviewWidgetProps) {
       {/* Recent tasks list */}
       <div className="flex-1">
         <div className="flex items-center justify-between mb-2">
-          <div className="text-xs font-medium text-gray-500">RECENT TASKS</div>
+          <div className="text-xs font-medium text-gray-500 dark:text-gray-400">RECENT TASKS</div>
           {selectedStatus && (
             <button 
               className="text-xs text-blue-600"
@@ -186,7 +186,7 @@ export function TasksOverviewWidget({ projectId }: TasksOverviewWidgetProps) {
                             </div>
                           </div>
                           
-                          <div className="text-sm font-medium mt-0.5 text-gray-900 truncate">
+                          <div className="text-sm font-medium mt-0.5 text-gray-600 dark:text-gray-400 truncate">
                             {task.title}
                           </div>
                         </div>
@@ -200,7 +200,7 @@ export function TasksOverviewWidget({ projectId }: TasksOverviewWidgetProps) {
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <AlertCircle className="h-8 w-8 text-gray-300 mb-2" />
-              <h3 className="text-sm font-medium text-gray-600">No tasks found</h3>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">No tasks found</h3>
               <p className="text-xs text-gray-500 mt-1">
                 {selectedStatus 
                   ? `No tasks with status ${formatStatusLabel(selectedStatus)}`
