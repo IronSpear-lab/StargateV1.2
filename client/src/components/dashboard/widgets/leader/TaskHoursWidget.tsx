@@ -224,10 +224,10 @@ export function TaskHoursWidget({
   const renderContent = () => (
     <div className="space-y-4">
       <div className="flex flex-col space-y-3">
-        <div className="text-2xl font-bold">
+        <div className="text-2xl font-bold text-gray-600 dark:text-gray-400">
           {isLoading ? "..." : `${totalActualHours.toFixed(1)} tim`}
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
           Planerat: {totalEstimatedHours.toFixed(1)} tim. Faktisk tid: {totalActualHours.toFixed(1)} tim.
         </p>
         <div className="flex items-baseline space-x-2">
@@ -245,7 +245,7 @@ export function TaskHoursWidget({
               ({isOverBudget ? "+" : ""}{diffPercentage}%)
             </span>
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-gray-500 dark:text-gray-400">
             jämfört med uppskattad tid
           </div>
         </div>
@@ -276,7 +276,7 @@ export function TaskHoursWidget({
             </Button>
           </div>
         </div>
-        <div className="text-center text-sm font-medium">{formattedPeriod}</div>
+        <div className="text-center text-sm font-medium text-gray-600 dark:text-gray-400">{formattedPeriod}</div>
       </div>
 
       <div className="h-[200px]">
@@ -359,11 +359,11 @@ export function TaskHoursWidget({
       </div>
 
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2 text-xs">
+        <div className="flex items-center space-x-2 text-xs text-gray-600 dark:text-gray-400">
           <div className="h-3 w-3 rounded-full bg-[#8884d8]" />
           <div>Uppskattade timmar</div>
         </div>
-        <div className="flex items-center space-x-2 text-xs">
+        <div className="flex items-center space-x-2 text-xs text-gray-600 dark:text-gray-400">
           <div className="h-3 w-3 rounded-full bg-[#4ade80]" />
           <div>Faktiska timmar</div>
         </div>
@@ -383,8 +383,8 @@ export function TaskHoursWidget({
         type={type}
         onRemove={onRemove || (() => {})}
         className={className}
-        width="half"
-        height="medium"
+        width={width || "half"}
+        height={height || "medium"}
       >
         {renderContent()}
       </Widget>

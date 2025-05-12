@@ -298,7 +298,7 @@ export function RevenueOverviewWidget({
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <div className="text-2xl font-bold">
+        <div className="text-2xl font-bold text-gray-600 dark:text-gray-400">
           {isLoading ? "..." : formatCurrency(currentWeekTotal)}
         </div>
         <Button 
@@ -312,7 +312,7 @@ export function RevenueOverviewWidget({
         </Button>
       </div>
 
-      <p className="text-xs text-muted-foreground mb-2">
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
         {hourlyRate 
           ? `Aktuellt timpris: ${formatCurrency(hourlyRate)}/tim`
           : 'Inget timpris inställt. Klicka på "Inställningar" för att lägga till.'
@@ -346,7 +346,7 @@ export function RevenueOverviewWidget({
             ({percentChange >= 0 ? "+" : ""}{percentChange.toFixed(1)}%)
           </span>
         </div>
-        <div className="text-xs text-muted-foreground">
+        <div className="text-xs text-gray-500 dark:text-gray-400">
           jämfört med föregående period
         </div>
       </div>
@@ -376,7 +376,7 @@ export function RevenueOverviewWidget({
             </Button>
           </div>
         </div>
-        <div className="text-center text-sm font-medium">{formattedPeriod}</div>
+        <div className="text-center text-sm font-medium text-gray-600 dark:text-gray-400">{formattedPeriod}</div>
       </div>
 
       <div className="h-[200px]">
