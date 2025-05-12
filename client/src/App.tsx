@@ -91,7 +91,7 @@ function Router() {
       <ProtectedRoute path="/help" component={HelpPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
       <ProtectedRoute path="/profile" component={SettingsPage} />
-      <ProtectedRoute path="/invitations" component={InvitationsPage} />
+      <Route path="/invitations" component={InvitationsPage} />
       <ProtectedRoute path="/ritningar" component={RitningarPage} />
       <ProtectedRoute path="/vault/files/ritningar" component={RitningarPage} />
       <ProtectedRoute path="/dwg-ifc-viewer" component={DwgIfcViewerPage} />

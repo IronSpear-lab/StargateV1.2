@@ -2,11 +2,12 @@ import { PageHeader } from "@/components/page-header";
 import { InviteUserDialog } from "@/components/invitations/InviteUserDialog";
 import { InvitationsList } from "@/components/invitations/InvitationsList";
 import { useAuth } from "@/hooks/use-auth";
-import { Navigate } from "wouter";
+import { useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 
 export default function InvitationsPage() {
   const { user, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
 
   if (isLoading) {
     return (
@@ -17,14 +18,16 @@ export default function InvitationsPage() {
   }
 
   if (!user) {
-    return <Navigate to="/auth" />;
+    setLocation("/auth");
+    return null;
   }
 
   // Only admin, superuser, and project leaders can manage invitations
   const canManageInvitations = ["admin", "superuser", "project_leader"].includes(user.role);
 
   if (!canManageInvitations) {
-    return <Navigate to="/" />;
+    setLocation("/");
+    return null;
   }
 
   return (
