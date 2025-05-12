@@ -365,12 +365,16 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
         delete taskData.ganttType;
       }
       
-      // Sätt typen till 'gantt' bara om den inte uttryckligen anges
-      if (!taskData.type) {
-        taskData.type = 'gantt';
-      }
+      // Sätt alltid task-typen till 'gantt' för uppgifter i Gantt-vyn,
+      // men bevara taskType för den visuella representationen
+      taskData.type = 'gantt';
       
-      const response = await apiRequest('PATCH', `/api/tasks/${taskId}`, taskData);
+      // Lägg till headers för att indikera att uppgiften kommer från Gantt-vyn
+      const headers = {
+        'X-From-View': 'gantt'
+      };
+      
+      const response = await apiRequest('PATCH', `/api/tasks/${taskId}?view=gantt`, taskData, headers);
       return await response.json();
     },
     onSuccess: () => {
@@ -397,7 +401,12 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
   // Mutation för att radera uppgifter
   const deleteTaskMutation = useMutation({
     mutationFn: async (taskId: number) => {
-      const response = await apiRequest('DELETE', `/api/tasks/${taskId}`);
+      // Lägg till headers för att indikera att uppgiften kommer från Gantt-vyn
+      const headers = {
+        'X-From-View': 'gantt'
+      };
+      
+      const response = await apiRequest('DELETE', `/api/tasks/${taskId}?view=gantt`, undefined, headers);
       return await response.json();
     },
     onSuccess: () => {
