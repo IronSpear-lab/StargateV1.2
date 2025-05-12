@@ -79,6 +79,7 @@ type NavItemType = {
   badge?: string;
   active?: boolean;
   indent?: number;
+  level?: number; // Explicit nivå för mappar i hierarkin
   children?: NavItemType[];
   type?: 'folder' | 'file' | 'link' | 'section' | string; // För att kunna identifiera mappar, sektioner och visa plustecken
   onAddClick?: () => void;
@@ -87,6 +88,7 @@ type NavItemType = {
   sectionId?: string; // ID för sektioner som ska kunna öppnas/stängas
   isOpen?: boolean; // Om en sektion är öppen eller stängd
   onToggle?: () => void; // Funktion för att toggla öppna/stängda sektioner
+  borderClass?: string; // CSS-klasser för visuella linjer i hierarkin
 };
 
 interface NavGroupProps {
@@ -1580,40 +1582,55 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         
         // Exakt efterlikna trädstrukturen i bilden
         
-        // Mapp 1 blir en toppnivåmapp
-        mapp1Item.indent = 0;  // Ingen indentering
-        mapp1Item.isOpen = true; // Öppen så att barnen visas
+        // Skapa den exakta strukturen från bilden
+        // Mapp 1 läggs till som en separat mapppost i navBar
+        mapp1Item.level = 0;
+        mapp1Item.indent = 0;
+        mapp1Item.isOpen = true;
         mapp1HandledSpecially = true;
         
-        // Mapp 2 är ett direkt barn till Mapp 1
-        if (!mapp1Item.children) mapp1Item.children = [];
-        mapp2Item.indent = 1;  // En nivås indentering
+        // Vi återställer children till tom array för att undvika dubbletter
+        mapp1Item.children = [];
+        
+        // Mapp 2 läggs till som ett child direkt under Mapp 1
+        mapp2Item.level = 1;
+        mapp2Item.indent = 1;
         mapp2Item.isOpen = true;
-        mapp1Item.children.push(mapp2Item);
         mapp2HandledSpecially = true;
+        mapp1Item.children.push(mapp2Item);
         console.log("Lade till Mapp 2 som barn till Mapp 1");
         
-        // Mapp 3 är ett direkt barn till Mapp 2
-        if (!mapp2Item.children) mapp2Item.children = [];
-        mapp3Item.indent = 1;  // Samma relativa indentering
+        // Mapp 2 får en tom children-array
+        mapp2Item.children = [];
+        
+        // Mapp 3 läggs till som ett child direkt under Mapp 2
+        mapp3Item.level = 2;
+        mapp3Item.indent = 1; 
         mapp3Item.isOpen = true;
-        mapp2Item.children.push(mapp3Item);
         mapp3HandledSpecially = true;
+        mapp2Item.children.push(mapp3Item);
         console.log("Lade till Mapp 3 som barn till Mapp 2");
         
-        // Mapp 4 är ett direkt barn till Mapp 3
-        if (!mapp3Item.children) mapp3Item.children = [];
-        mapp4Item.indent = 1; // Behåll samma indragsnivå för alla mappar
-        mapp4Item.isOpen = true;
-        mapp3Item.children.push(mapp4Item);
+        // Mapp 3 får en tom children-array
+        mapp3Item.children = [];
+        
+        // Mapp 4 läggs till som ett child direkt under Mapp 3
+        mapp4Item.level = 3;
+        mapp4Item.indent = 1;
+        mapp4Item.isOpen = true; 
         mapp4HandledSpecially = true;
+        mapp3Item.children.push(mapp4Item);
         console.log("Lade till Mapp 4 som barn till Mapp 3");
         
-        // Mapp 5 är ett direkt barn till Mapp 4
-        if (!mapp4Item.children) mapp4Item.children = [];
-        mapp5Item.indent = 1; // Samma indrag relativt till föräldern
+        // Mapp 4 får en tom children-array
+        mapp4Item.children = [];
+        
+        // Mapp 5 läggs till som ett child direkt under Mapp 4
+        mapp5Item.level = 4;
+        mapp5Item.indent = 1;
         mapp5Item.isOpen = false; // Stängd som standard, enligt bilden
         mapp4Item.children.push(mapp5Item);
+        console.log("Lade till Mapp 5 som barn till Mapp 4");
         console.log("Lade till Mapp 5 som barn till Mapp 4");
       } else {
         console.log("Kunde inte hitta alla mappar för att bygga kedjan 1-2-3-4-5");
@@ -1769,32 +1786,35 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         
         // Tillämpa indentering baserat på nivån - med visuell linje för hierarkin
         // Anpassade indenteringsnivåer för att exakt matcha bildhierarkin
-        if (folderLevel <= 0) {
+        // Använd item.level om det finns, annars fallback till folderLevel
+        const level = item.level !== undefined ? item.level : folderLevel;
+        
+        if (level <= 0) {
           indentClass = 'pl-0'; // Topnivå - ingen indentering
         }
-        else if (folderLevel === 1) {
+        else if (level === 1) {
           indentClass = 'pl-8 relative'; // Första nivån med bredare indrag
           // Lägg till en visuell linje som visar hierarkin
-          item.borderClass = 'border-l-2 border-blue-100 dark:border-blue-950 ml-3 absolute left-0 h-full';
+          item.borderClass = 'border-l-2 border-zinc-200 dark:border-zinc-700 absolute left-3 h-full';
         }
-        else if (folderLevel === 2) {
+        else if (level === 2) {
           indentClass = 'pl-16 relative'; // Andra nivån med än mer indrag
           // Tydligare visuell linje för nivå 2
-          item.borderClass = 'border-l-2 border-blue-100 dark:border-blue-950 ml-10 absolute left-0 h-full';
+          item.borderClass = 'border-l-2 border-zinc-200 dark:border-zinc-700 absolute left-11 h-full';
         }
-        else if (folderLevel === 3) {
+        else if (level === 3) {
           indentClass = 'pl-24 relative'; // Tredje nivån med mycket indrag
           // Ännu tydligare visuell linje för nivå 3
-          item.borderClass = 'border-l-2 border-blue-100 dark:border-blue-950 ml-18 absolute left-0 h-full';
+          item.borderClass = 'border-l-2 border-zinc-200 dark:border-zinc-700 absolute left-19 h-full';
         }
-        else if (folderLevel >= 4) {
+        else if (level >= 4) {
           indentClass = 'pl-32 relative'; // Fjärde nivån och djupare - extremt indrag
           // Maximal visuell linje för djupa nivåer
-          item.borderClass = 'border-l-2 border-blue-100 dark:border-blue-950 ml-26 absolute left-0 h-full';
+          item.borderClass = 'border-l-2 border-zinc-200 dark:border-zinc-700 absolute left-27 h-full';
         }
         else {
           indentClass = 'pl-32 relative'; // Djupare nivåer
-          item.borderClass = 'border-l-2 border-blue-100 dark:border-blue-950 ml-26 absolute left-0 h-full';
+          item.borderClass = 'border-l-2 border-zinc-200 dark:border-zinc-700 absolute left-27 h-full';
         }
       } else {
         // När sidofältet är stängt använder vi ingen indentering (allt är centrerat)
