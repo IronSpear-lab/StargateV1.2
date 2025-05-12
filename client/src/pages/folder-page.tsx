@@ -31,8 +31,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { PDFViewerDialog } from "@/components/ui/pdf-viewer-dialog";
-import EnhancedPDFViewer from "@/components/EnhancedPDFViewer";
 import { 
   storeFiles, 
   getUploadedFileUrl, 

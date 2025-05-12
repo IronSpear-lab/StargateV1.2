@@ -30,8 +30,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { PDFViewerDialog } from "@/components/ui/pdf-viewer-dialog";
-import EnhancedPDFViewer from "@/components/EnhancedPDFViewer";
 import { 
   storeFiles, 
   getUploadedFileUrl, 
@@ -47,6 +45,7 @@ import { UploadDialog } from "@/components/UploadDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useProject } from "@/contexts/ProjectContext";
 import { formatDate } from "@/lib/ui-utils";
+import { usePDFDialog } from "@/hooks/use-pdf-dialog";
 
 const mockRitningar = [
   { 
