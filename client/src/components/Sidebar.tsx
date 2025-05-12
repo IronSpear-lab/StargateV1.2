@@ -2410,7 +2410,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         )}
         
         <div className="py-2 flex-1 overflow-y-auto">
-          <div className="sidebar-folder-container">
+          <div className="sidebar-folder-container" ref={fileSectionRef}>
             {renderNavItems(navItems)}
           </div>
         </div>
