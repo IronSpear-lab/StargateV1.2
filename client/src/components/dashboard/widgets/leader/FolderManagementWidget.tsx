@@ -64,6 +64,7 @@ export function FolderManagementWidget() {
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [folderToDelete, setFolderToDelete] = useState<FolderData | null>(null);
+  const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
 
   // Fetch folders
   const { 
@@ -355,6 +356,43 @@ export function FolderManagementWidget() {
     createFolderMutation.mutate(folderData);
   };
 
+  // Handle clearing all local storage folders
+  const handleClearAllFolders = () => {
+    setShowClearAllConfirm(true);
+  };
+  
+  // Confirm clearing all local storage folders
+  const confirmClearAllFolders = () => {
+    try {
+      // Clear all folders from localStorage
+      localStorage.setItem('userCreatedFolders', '[]');
+      
+      // Trigger sidebar update
+      window.dispatchEvent(new CustomEvent('folder-structure-changed', { 
+        detail: { projectId: currentProject?.id } 
+      }));
+      
+      // Reset the confirm dialog
+      setShowClearAllConfirm(false);
+      
+      // Provide feedback to the user
+      toast({
+        title: "Lokala mappar rensade",
+        description: "Alla lokalt lagrade mappar har rensats från sidofältet",
+      });
+      
+      // Refresh the folders data
+      refetchFolders();
+    } catch (error) {
+      console.error("Error clearing localStorage folders:", error);
+      toast({
+        title: "Kunde inte rensa mappar",
+        description: "Ett fel uppstod vid rensning av lokala mappar",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Build folder tree with support for unlimited nesting
   const buildFolderTree = () => {
     if (!foldersData || !Array.isArray(foldersData)) return [];
@@ -494,14 +532,26 @@ export function FolderManagementWidget() {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-medium text-gray-600 dark:text-gray-400">Mapphantering</CardTitle>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => refetchFolders()} 
-            title="Uppdatera mapplistan"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+          <div className="flex space-x-1">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={handleClearAllFolders}
+              title="Rensa lokala mappar"
+              className="text-gray-500 hover:text-red-600"
+            >
+              <Trash className="h-4 w-4 mr-1" />
+              Rensa mappar
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => refetchFolders()} 
+              title="Uppdatera mapplistan"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
@@ -587,6 +637,31 @@ export function FolderManagementWidget() {
                 className="bg-red-600 hover:bg-red-700 text-white"
               >
                 Ta bort
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        
+        {/* Clear all folders confirmation dialog */}
+        <AlertDialog open={showClearAllConfirm} onOpenChange={setShowClearAllConfirm}>
+          <AlertDialogContent className="max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-neutral-800">Bekräfta rensning av lokala mappar</AlertDialogTitle>
+              <AlertDialogDescription className="text-neutral-600">
+                Detta kommer att ta bort alla lokalt lagrade mappinformationer från sidofältet. Mapparna kommer fortfarande finnas i databasen om de inte har raderats därifrån.
+                <br /><br />
+                <span className="font-medium">Detta är användbart om mapparna i sidofältet inte stämmer överens med de faktiska mapparna i systemet.</span>
+                <br /><br />
+                <span className="font-medium">Vill du fortsätta?</span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-neutral-200 text-neutral-700">Avbryt</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmClearAllFolders} 
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Rensa lokala mappar
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
