@@ -367,7 +367,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
         <div className="grid grid-cols-7 gap-1">
           {/* Day headers (Mon, Tue, etc.) */}
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
-            <div key={day} className="font-medium text-sm text-center py-1 border-b">
+            <div key={day} className="font-medium text-sm text-center py-1 border-b text-gray-500">
               {day}
             </div>
           ))}
@@ -467,7 +467,7 @@ export function CalendarWidget({ projectId }: CalendarWidgetProps) {
                         )}
                         onClick={() => setShowEventDetails(event.id)}
                       >
-                        <div className="font-medium text-xs line-clamp-1">{event.title}</div>
+                        <div className="font-medium text-xs line-clamp-1 text-gray-500">{event.title}</div>
                         <div className="flex items-center mt-0.5 text-[10px] opacity-80">
                           <Clock className="h-2.5 w-2.5 mr-1" />
                           {format(parseISO(event.start), "HH:mm")}
