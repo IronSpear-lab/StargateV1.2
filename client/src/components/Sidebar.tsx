@@ -1557,9 +1557,10 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                   // Initiera children array om det inte finns
                   if (!folder3Item.children) folder3Item.children = [];
                   
-                  // Sätt indenteringsnivå för Mapp 4 baserat på Mapp 3:s nivå
+                  // Sätt högre indenteringsnivå för Mapp 4 för tydligare hierarki
                   const folder3Indent = folder3Item.indent || 0;
-                  folder4Item.indent = folder3Indent + 1;
+                  // Öka indentering med 2 nivåer för att tydliggöra att det är en undermapp
+                  folder4Item.indent = folder3Indent + 2;
                   
                   // Lägg till Mapp 4 som barn till Mapp 3
                   folder3Item.children.push(folder4Item);
@@ -1575,6 +1576,51 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                     // Logga händelsen med trygg åtkomst till indent
                     const indentLevel = folder4Item.indent || 0;
                     console.log(`Specialhantering: Lade till Mapp 4 som barn till Mapp 3 med indentering ${indentLevel}`);
+                    
+                    // Nu ska vi lägga till Mapp 5 som barn till Mapp 4
+                    console.log("Letar efter Mapp 5 för att lägga till som barn till Mapp 4...");
+                    
+                    // Kommer använda variabeln mapp5HandledSpecially som definierats tidigare
+                    
+                    // Leta efter Mapp 5
+                    for (const folder5 of sortedFolders) {
+                      if (folder5.name === "Mapp 5") {
+                        // Hitta motsvarande NavItem för Mapp 5
+                        const folder5Item = folderMap[folder5.id] as NavItemType;
+                        console.log("Hittade Mapp 5:", folder5.name, "med ID:", folder5.id);
+                        
+                        if (folder5Item) {
+                          // Skapa hierarki mellan Mapp 4 och Mapp 5
+                          console.log("Skapar parent-child relation mellan Mapp 4 och Mapp 5");
+                          
+                          // Initiera children array för Mapp 4 om det inte finns
+                          if (!folder4Item.children) folder4Item.children = [];
+                          
+                          // Sätt indenteringsnivå för Mapp 5 baserat på Mapp 4:s nivå
+                          const folder4Indent = folder4Item.indent || 0;
+                          // Öka indentering med 2 nivåer för att tydliggöra att det är en undermapp
+                          folder5Item.indent = folder4Indent + 2;
+                          
+                          // Lägg till Mapp 5 som barn till Mapp 4
+                          folder4Item.children.push(folder5Item);
+                          
+                          // Markera Mapp 4 som öppen
+                          folder4Item.isOpen = true;
+                          
+                          // Markera att Mapp 5 har lagts till som barn
+                          if (folder5.id) {
+                            addedToParent.add(folder5.id);
+                            mapp5HandledSpecially = true;
+                            
+                            // Logga händelsen med trygg åtkomst till indent
+                            const indentLevel5 = folder5Item.indent || 0;
+                            console.log(`Specialhantering: Lade till Mapp 5 som barn till Mapp 4 med indentering ${indentLevel5}`);
+                          }
+                          
+                          break; // Vi behöver inte fortsätta söka efter Mapp 5
+                        }
+                      }
+                    }
                   }
                   
                   // Vi behöver inte fortsätta söka efter Mapp 4
@@ -1589,10 +1635,15 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         }
       }
       
+      // Variabel för att spåra om Mapp 5 har specialhanterats
+      let mapp5HandledSpecially = false;
+    
       // Loopa igenom alla mappar och bygg resten av hierarkin
       sortedFolders.forEach(folder => {
         // Hoppa över mapp 4 om vi redan har hanterat den
         if (folder.name === "Mapp 4" && mapp4HandledSpecially) return;
+        // Hoppa över mapp 5 om vi redan har hanterat den
+        if (folder.name === "Mapp 5" && mapp5HandledSpecially) return;
         
         // Kontrollera om mappen har en förälder
         const hasParentId = 'parentId' in folder && folder.parentId;
