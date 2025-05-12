@@ -146,51 +146,21 @@ export function Widget({
       className={cn(
         expanded ? "fixed inset-6 z-50" : widthClasses,
         "shadow-md rounded-lg transition-all duration-300 widget border-0",
-        "backdrop-filter backdrop-blur-[2px] bg-opacity-90",
         dragging ? "opacity-50" : "opacity-100",
         expanded && "backdrop-blur-sm",
         className
       )}
       style={{
-        boxShadow: expanded 
-          ? "0 10px 40px rgba(0, 0, 0, 0.15), 0 0 15px rgba(var(--primary-rgb), 0.05)" 
-          : "0 5px 20px rgba(0, 0, 0, 0.08), 0 0 10px rgba(var(--primary-rgb), 0.03)",
-        background: "linear-gradient(135deg, var(--card) 0%, var(--card-foreground-rgb)/0.02 100%)",
-        borderLeft: "1px solid rgba(var(--card-foreground-rgb), 0.05)",
-        borderTop: "1px solid rgba(var(--card-foreground-rgb), 0.05)",
-        position: "relative",
-        overflow: "hidden",
+        boxShadow: expanded ? "0 8px 30px rgba(0, 0, 0, 0.12)" : "",
       }}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      {/* Dekorativa element för futuristisk känsla */}
-      <div 
-        className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary/20 to-transparent"
-        style={{ opacity: 0.7 }}
-      />
-      <div 
-        className="absolute top-0 left-0 bottom-0 w-[1px] bg-gradient-to-b from-primary/20 via-transparent to-transparent"
-        style={{ opacity: 0.7 }}
-      />
-      <div 
-        className="absolute bottom-0 right-0 w-[40px] h-[40px] pointer-events-none"
-        style={{
-          background: "radial-gradient(circle at bottom right, var(--primary)/0.06 0%, transparent 70%)",
-        }}
-      />
-      
-      <CardHeader 
-        className="p-3 flex-row items-center justify-between space-y-0 rounded-t-lg relative overflow-hidden backdrop-filter backdrop-blur-sm"
-        style={{
-          background: "linear-gradient(135deg, var(--primary)/0.07 0%, transparent 100%)",
-          borderBottom: "1px solid rgba(var(--card-foreground-rgb), 0.06)"
-        }}
-      >
-        <div className="flex items-center space-x-2 z-10">
+      <CardHeader className="p-3 bg-gradient-to-r from-primary/10 to-card border-b flex-row items-center justify-between space-y-0 rounded-t-lg">
+        <div className="flex items-center space-x-2">
           <div
-            className="cursor-move p-1 rounded-full hover:bg-primary/10 transition-colors"
+            className="cursor-move p-1 rounded hover:bg-primary/10"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <Grip className="h-4 w-4 text-primary" />
@@ -202,11 +172,11 @@ export function Widget({
             )}
           </div>
         </div>
-        <div className="flex items-center space-x-0.5 z-10">
+        <div className="flex items-center space-x-0.5">
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-6 w-6 rounded-full hover:bg-primary/10 transition-colors" 
+            className="h-6 w-6 rounded-full hover:bg-primary/10" 
             onClick={toggleCollapsed}
           >
             {collapsed ? (
@@ -220,7 +190,7 @@ export function Widget({
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-6 w-6 rounded-full hover:bg-primary/10 transition-colors" 
+              className="h-6 w-6 rounded-full hover:bg-primary/10" 
               onClick={toggleExpanded}
             >
               <Maximize2 className="h-3.5 w-3.5 text-primary" />
@@ -229,7 +199,7 @@ export function Widget({
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-6 w-6 rounded-full hover:bg-primary/10 transition-colors" 
+              className="h-6 w-6 rounded-full hover:bg-primary/10" 
               onClick={toggleExpanded}
             >
               <Minimize2 className="h-3.5 w-3.5 text-primary" />
@@ -241,7 +211,7 @@ export function Widget({
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-6 w-6 rounded-full hover:bg-primary/10 transition-colors"
+                className="h-6 w-6 rounded-full hover:bg-primary/10"
               >
                 <MoreHorizontal className="h-3.5 w-3.5 text-primary" />
               </Button>
@@ -249,55 +219,55 @@ export function Widget({
             <DropdownMenuContent align="end" className="w-[160px]">
               {onEdit && (
                 <DropdownMenuItem onClick={() => onEdit(id)}>
-                  Redigera widget
+                  Edit widget
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={toggleExpanded}>
-                {expanded ? "Minimera" : "Expandera"}
+                {expanded ? "Collapse" : "Expand"}
               </DropdownMenuItem>
               
               {/* Widget Width Submenu */}
               <DropdownMenuItem className="font-semibold">
-                Ställ in bredd:
+                Set Width:
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleResize("full" as WidthType, safeHeight)}>
-                Full bredd
+                Full Width
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleResize("half" as WidthType, safeHeight)}>
-                Halv bredd
+                Half Width
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleResize("third" as WidthType, safeHeight)}>
-                Tredjedels bredd
+                Third Width
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleResize("quarter" as WidthType, safeHeight)}>
-                Fjärdedels bredd
+                Quarter Width
               </DropdownMenuItem>
               
               {/* Widget Height Submenu */}
               <DropdownMenuSeparator />
               <DropdownMenuItem className="font-semibold">
-                Ställ in höjd:
+                Set Height:
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleResize(safeWidth, "small" as HeightType)}>
-                Låg höjd
+                Small Height
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleResize(safeWidth, "medium" as HeightType)}>
-                Medium höjd
+                Medium Height
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleResize(safeWidth, "large" as HeightType)}>
-                Stor höjd
+                Large Height
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleResize(safeWidth, "auto" as HeightType)}>
-                Auto höjd
+                Auto Height
               </DropdownMenuItem>
               
-              <DropdownMenuItem>Uppdatera data</DropdownMenuItem>
+              <DropdownMenuItem>Refresh data</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive"
                 onClick={() => onRemove(id)}
               >
-                Ta bort widget
+                Remove widget
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -305,7 +275,7 @@ export function Widget({
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 rounded-full hover:bg-destructive/10 transition-colors"
+            className="h-6 w-6 rounded-full hover:bg-destructive/10"
             onClick={() => onRemove(id)}
           >
             <X className="h-3.5 w-3.5 text-destructive" />
@@ -315,40 +285,13 @@ export function Widget({
       <CardContent 
         className={cn(
           noPadding ? "p-0" : "p-3", 
-          "overflow-auto rounded-b-lg transition-all duration-300",
+          "overflow-auto bg-card rounded-b-lg",
           !expanded && heightClasses, 
           collapsed && "hidden", 
-          "relative",
-          expanded && "p-5 backdrop-blur-sm"
+          "relative"
         )}
-        style={{
-          background: "linear-gradient(180deg, var(--card) 0%, var(--card-foreground-rgb)/0.01 100%)",
-        }}
       >
-        {/* Dekorativa element i CardContent */}
-        {expanded && (
-          <>
-            <div 
-              className="absolute top-0 right-0 w-[150px] h-[150px] rounded-full pointer-events-none opacity-5"
-              style={{ 
-                background: "radial-gradient(circle, var(--primary)/0.7 0%, transparent 70%)",
-              }}
-            />
-            <div 
-              className="absolute right-[10%] bottom-[5%] w-[60px] h-[60px] rounded-full pointer-events-none opacity-10 animate-pulse-slow"
-              style={{ 
-                background: "radial-gradient(circle, var(--primary) 0%, transparent 70%)",
-              }}
-            />
-          </>
-        )}
-        
-        <div className="relative z-10">
-          {children}
-        </div>
-        
-        {/* Gradientlinjer för mer futuristiskt utseende */}
-        <div className="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-primary/10 to-transparent"></div>
+        {children}
       </CardContent>
     </Card>
   );

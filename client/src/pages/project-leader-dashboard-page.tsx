@@ -201,8 +201,8 @@ export default function ProjectLeaderDashboardPage() {
     setIsWidgetGalleryOpen(false);
     
     toast({
-      title: "Widget tillagd",
-      description: `${widgetType.name} har lagts till i din dashboard`,
+      title: "Widget added",
+      description: `${widgetType.name} has been added to your dashboard`,
     });
   };
 
@@ -278,8 +278,8 @@ export default function ProjectLeaderDashboardPage() {
     setWidgets(widgets.filter(widget => widget.id !== widgetId));
     
     toast({
-      title: "Widget borttagen",
-      description: "Widgeten har tagits bort från din dashboard",
+      title: "Widget removed",
+      description: "The widget has been removed from your dashboard",
     });
   };
 
@@ -343,13 +343,11 @@ export default function ProjectLeaderDashboardPage() {
   if (user?.role !== "project_leader" && user?.role !== "admin") {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-center p-8 bg-card rounded-lg border border-border/30 shadow-lg backdrop-blur-sm">
-          <h1 className="text-2xl font-bold mb-3 text-primary">Åtkomst nekad</h1>
-          <p className="mb-5 text-muted-foreground">Du måste vara Projektledare för att komma åt denna dashboard.</p>
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
+          <p className="mb-4">You need to be a Project Leader to access this dashboard.</p>
           <Link href="/dashboard">
-            <Button className="bg-primary hover:bg-primary/90 transition-all">
-              Gå till Standarddashboard
-            </Button>
+            <Button>Go to Standard Dashboard</Button>
           </Link>
         </div>
       </div>
@@ -363,40 +361,19 @@ export default function ProjectLeaderDashboardPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Använd bara ProjectContext för Header-komponenten */}
         <Header 
-          title="Projektledardashboard" 
+          title="Project Leader Dashboard" 
           onToggleSidebar={toggleSidebar}
         />
         
-        <main 
-          className="flex-1 overflow-y-auto bg-slate-50 dark:bg-background relative"
-          style={{
-            background: "linear-gradient(135deg, var(--background) 0%, var(--card-foreground-rgb)/0.01 100%)",
-          }}
-        >
-          {/* Dekorativa element för futuristisk känsla */}
-          <div 
-            className="absolute inset-0 pointer-events-none opacity-10"
-            style={{
-              backgroundImage: "radial-gradient(circle at 20% 20%, var(--primary)/0.15 0%, transparent 40%)",
-              zIndex: 0
-            }}
-          />
-          <div 
-            className="absolute inset-0 pointer-events-none opacity-5"
-            style={{
-              backgroundImage: "radial-gradient(circle at 80% 80%, var(--primary)/0.2 0%, transparent 40%)",
-              zIndex: 0
-            }}
-          />
-          
-          <div className="max-w-7xl mx-auto py-5 px-4 sm:px-6 relative z-10">
+        <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-background">
+          <div className="max-w-7xl mx-auto py-5 px-4 sm:px-6">
             {/* Breadcrumb */}
             <div className="flex items-center space-x-2 text-sm mb-5">
-              <Link href="/" className="text-primary hover:text-primary/80 transition-colors">
+              <Link href="/" className="text-primary hover:text-primary/80">
                 <Home className="h-4 w-4" />
               </Link>
               <span className="text-muted-foreground">/</span>
-              <span className="text-muted-foreground">Projektledardashboard</span>
+              <span className="text-muted-foreground">Project Leader Dashboard</span>
               {currentProject && (
                 <>
                   <span className="text-muted-foreground">/</span>
@@ -406,13 +383,8 @@ export default function ProjectLeaderDashboardPage() {
             </div>
             
             <div className="flex justify-between items-center mb-6">
-              <h1 className="text-xl font-bold text-foreground flex items-center space-x-2">
-                <span className="bg-primary/10 p-2 rounded-full">
-                  <Settings className="h-5 w-5 text-primary" />
-                </span>
-                <span>
-                  Projektledardashboard {currentProject && `- ${currentProject.name}`}
-                </span>
+              <h1 className="text-xl font-bold text-foreground">
+                Project Leader Dashboard {currentProject && `- ${currentProject.name}`}
               </h1>
               
               <div className="flex gap-2">
@@ -421,58 +393,52 @@ export default function ProjectLeaderDashboardPage() {
                     localStorage.removeItem('project-leader-dashboard-widgets');
                     setWidgets(defaultProjectLeaderWidgets);
                     toast({
-                      title: "Dashboard återställd",
-                      description: "Din dashboard har återställts till standardinställningarna",
+                      title: "Dashboard reset",
+                      description: "Your dashboard has been reset to defaults",
                     });
                   }}
                   variant="outline"
-                  className="gap-1 text-sm transition-all"
+                  className="gap-1 text-sm"
                 >
-                  Återställ dashboard
+                  Reset dashboard
                 </Button>
                 {currentProject && (
                   <Button 
                     onClick={handleManageProjectClick}
                     variant="outline"
-                    className="gap-1 text-sm transition-all"
+                    className="gap-1 text-sm"
                   >
                     <Settings className="h-4 w-4" />
-                    Hantera projekt
+                    Manage Project
                   </Button>
                 )}
                 <Button 
                   onClick={handleAddWidgetClick} 
-                  className="gap-1 bg-primary hover:bg-primary/90 transition-all"
+                  className="gap-1 bg-primary hover:bg-primary/90"
                 >
                   <PlusCircle className="h-4 w-4" />
-                  Lägg till widget
+                  Add widget
                 </Button>
               </div>
             </div>
             
             {widgets.length === 0 ? (
-              <div className="bg-card/80 border border-dashed border-border rounded-lg p-10 text-center shadow-md backdrop-blur-sm">
-                <div className="mb-5 text-primary/70">
-                  <Settings className="h-12 w-12 mx-auto animate-pulse opacity-70" />
-                </div>
-                <h3 className="font-medium text-lg mb-2 text-foreground">Din dashboard är tom</h3>
-                <p className="text-muted-foreground mb-5">
-                  Lägg till widgets för att anpassa din dashboard
+              <div className="bg-card border border-dashed border-border rounded-lg p-8 text-center shadow-sm">
+                <h3 className="font-medium text-lg mb-2 text-foreground">Your dashboard is empty</h3>
+                <p className="text-muted-foreground mb-4">
+                  Add widgets to customize your dashboard experience
                 </p>
                 <Button 
                   variant="outline" 
                   onClick={handleAddWidgetClick}
-                  className="gap-2 border-primary/30 text-primary hover:bg-primary/10 transition-all px-5 py-2 h-auto"
+                  className="gap-1 border-primary/20 text-primary hover:bg-primary/10"
                 >
                   <PlusCircle className="h-4 w-4" />
-                  Lägg till din första widget
+                  Add Your First Widget
                 </Button>
               </div>
             ) : (
-              <WidgetArea 
-                onWidgetPositionChange={handleWidgetPositionChange}
-                className="gap-5 p-1"
-              >
+              <WidgetArea onWidgetPositionChange={handleWidgetPositionChange}>
                 {widgets.map((widget) => (
                   <Widget
                     key={widget.id}
@@ -507,36 +473,31 @@ export default function ProjectLeaderDashboardPage() {
       />
 
       <Dialog open={isProjectSettingsOpen} onOpenChange={setIsProjectSettingsOpen}>
-        <DialogContent className="sm:max-w-[800px] bg-card/95 backdrop-blur-md border-border/50">
+        <DialogContent className="sm:max-w-[800px]">
           <DialogHeader>
-            <DialogTitle className="text-xl flex items-center gap-2">
-              <span className="bg-primary/10 p-1.5 rounded-full">
-                <Settings className="h-5 w-5 text-primary" />
-              </span>
-              <span>Hantera projekt: <span className="text-primary">{currentProject?.name}</span></span>
-            </DialogTitle>
+            <DialogTitle>Manage Project: {currentProject?.name}</DialogTitle>
             <DialogDescription>
-              Uppdatera projektinställningar och hantera deltagare
+              Update project settings and manage participants
             </DialogDescription>
           </DialogHeader>
           
           <Tabs defaultValue="settings" className="mt-4">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="settings" className="data-[state=active]:bg-primary/20">Projektinställningar</TabsTrigger>
-              <TabsTrigger value="team" className="data-[state=active]:bg-primary/20">Teamhantering</TabsTrigger>
+              <TabsTrigger value="settings">Project Settings</TabsTrigger>
+              <TabsTrigger value="team">Team Management</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="settings" className="pt-5">
+            <TabsContent value="settings" className="pt-4">
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmitProjectSettings)} className="space-y-5">
+                <form onSubmit={form.handleSubmit(onSubmitProjectSettings)} className="space-y-4">
                   <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Projektnamn</FormLabel>
+                        <FormLabel>Project Name</FormLabel>
                         <FormControl>
-                          <Input {...field} className="backdrop-blur-sm bg-background/70" />
+                          <Input {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -548,9 +509,9 @@ export default function ProjectLeaderDashboardPage() {
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Beskrivning</FormLabel>
+                        <FormLabel>Description</FormLabel>
                         <FormControl>
-                          <Textarea {...field} className="backdrop-blur-sm bg-background/70 min-h-[100px]" />
+                          <Textarea {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -562,65 +523,48 @@ export default function ProjectLeaderDashboardPage() {
                     name="deadline"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Slutdatum</FormLabel>
+                        <FormLabel>Deadline</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} className="backdrop-blur-sm bg-background/70" />
+                          <Input type="date" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   
-                  <div className="pt-5 flex justify-end gap-3">
-                    <Button 
-                      variant="outline" 
-                      type="button" 
-                      onClick={() => setIsProjectSettingsOpen(false)}
-                      className="transition-all"
-                    >
-                      Avbryt
+                  <div className="pt-4 flex justify-end gap-2">
+                    <Button variant="outline" type="button" onClick={() => setIsProjectSettingsOpen(false)}>
+                      Cancel
                     </Button>
-                    <Button 
-                      type="submit"
-                      className="bg-primary hover:bg-primary/90 transition-all"
-                    >
-                      Spara ändringar
+                    <Button type="submit">
+                      Save Changes
                     </Button>
                   </div>
                 </form>
               </Form>
             </TabsContent>
             
-            <TabsContent value="team" className="pt-5">
+            <TabsContent value="team" className="pt-4">
               <div>
-                <h3 className="text-lg font-medium flex items-center gap-2">
-                  <span className="bg-primary/10 p-1.5 rounded-full">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                  </span>
-                  <span>Teammedlemmar</span>
-                </h3>
-                <p className="text-sm text-muted-foreground ml-8 mt-1">
-                  Lägg till eller ta bort medlemmar från detta projekt.
+                <h3 className="text-lg font-medium">Team Members</h3>
+                <p className="text-sm text-muted-foreground">
+                  Add or remove members from this project.
                 </p>
               </div>
               
-              <Separator className="my-5" />
+              <Separator className="my-4" />
               
               {currentProject?.id ? (
                 <ProjectTeamWidget projectId={currentProject.id} />
               ) : (
-                <div className="py-8 text-center text-muted-foreground bg-background/30 rounded-lg backdrop-blur-sm">
-                  Spara projektet först innan du lägger till teammedlemmar.
+                <div className="py-4 text-center text-muted-foreground">
+                  Save the project first before adding team members.
                 </div>
               )}
               
               <div className="flex justify-end mt-6">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsProjectSettingsOpen(false)}
-                  className="transition-all"
-                >
-                  Stäng
+                <Button variant="outline" onClick={() => setIsProjectSettingsOpen(false)}>
+                  Close
                 </Button>
               </div>
             </TabsContent>

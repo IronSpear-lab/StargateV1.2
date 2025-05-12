@@ -49,8 +49,8 @@ export function WidgetArea({ children, className, onWidgetPositionChange }: Widg
     if (nearestWidget && onWidgetPositionChange) {
       onWidgetPositionChange(widgetId, nearestWidget);
       toast({
-        title: "Widget omplacerad",
-        description: "Widgetens position har uppdaterats",
+        title: "Widget repositioned",
+        description: "Widget position has been updated",
         variant: "default",
       });
     }
@@ -91,68 +91,27 @@ export function WidgetArea({ children, className, onWidgetPositionChange }: Widg
     <div
       ref={areaRef}
       className={cn(
-        "grid grid-cols-12 gap-4 p-4 relative rounded-lg overflow-hidden",
-        dropzoneActive && "border-2 border-dashed border-primary/30 shadow-lg",
-        "transition-all duration-300",
+        "grid grid-cols-12 gap-4 p-4 relative",
+        dropzoneActive && "border-2 border-dashed border-blue-200 rounded-lg",
         className
       )}
       style={{
-        backgroundImage: "linear-gradient(135deg, var(--background) 0%, var(--primary)/0.03 100%)",
+        backgroundImage: "var(--dashboard-bg-gradient)",
         backgroundSize: "cover",
         backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        boxShadow: "inset 0 0 30px rgba(var(--primary-rgb)/0.03)"
+        backgroundRepeat: "repeat"
       }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Futuristisk dekorativ overlay */}
-      <div 
-        className="absolute inset-0 pointer-events-none" 
-        style={{
-          background: "radial-gradient(circle at 20% 20%, var(--primary)/0.03 0%, transparent 50%), radial-gradient(circle at 80% 80%, var(--primary)/0.05 0%, transparent 40%)",
-          backdropFilter: "blur(40px)",
-          opacity: 0.8
-        }}
-      />
-      
-      {/* Animerad dekorativ effekt - pulsningar */}
-      <div 
-        className="absolute left-[5%] top-[15%] w-[300px] h-[300px] rounded-full pointer-events-none animate-pulse-slow"
-        style={{ 
-          background: "radial-gradient(circle, var(--primary)/0.03 0%, transparent 70%)",
-          animation: "pulse 8s infinite ease-in-out" 
-        }}
-      />
-      
-      <div 
-        className="absolute right-[10%] bottom-[10%] w-[200px] h-[200px] rounded-full pointer-events-none animate-pulse-slower"
-        style={{ 
-          background: "radial-gradient(circle, var(--primary)/0.04 0%, transparent 70%)",
-          animation: "pulse 12s infinite ease-in-out" 
-        }}
-      />
-      
-      {/* Subtilt linjemönster som bakgrund */}
-      <div 
-        className="absolute inset-0 pointer-events-none opacity-10"
-        style={{
-          backgroundImage: "linear-gradient(to right, var(--primary)/0.1 1px, transparent 1px), linear-gradient(to bottom, var(--primary)/0.1 1px, transparent 1px)",
-          backgroundSize: "40px 40px"
-        }}
-      />
+      {/* Subtle overlay */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-background/20 to-background/30 dark:from-background/40 dark:to-background/50 pointer-events-none" />
       
       {/* Widget content */}
       <div className="col-span-12 grid grid-cols-12 gap-4 relative z-10">
         {children}
       </div>
-      
-      {/* Dekorativa hörn */}
-      <div className="absolute left-0 top-0 w-[40px] h-[40px] pointer-events-none border-l-2 border-t-2 border-primary/10 rounded-tl-lg opacity-50"></div>
-      <div className="absolute right-0 top-0 w-[40px] h-[40px] pointer-events-none border-r-2 border-t-2 border-primary/10 rounded-tr-lg opacity-50"></div>
-      <div className="absolute left-0 bottom-0 w-[40px] h-[40px] pointer-events-none border-l-2 border-b-2 border-primary/10 rounded-bl-lg opacity-50"></div>
-      <div className="absolute right-0 bottom-0 w-[40px] h-[40px] pointer-events-none border-r-2 border-b-2 border-primary/10 rounded-br-lg opacity-50"></div>
     </div>
   );
 }
