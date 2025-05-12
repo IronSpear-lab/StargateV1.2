@@ -1008,8 +1008,8 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         name: folderName, 
         parent: parentName, 
         id: folderId,
-        parentId: null, // Denna sätts bara när mappen skapas under en annan mapp
-        projectId: currentProjectId, // Lägg till projektId för korrekt filtrering
+        parentId: parentId, // Sätt parentId korrekt om mappen har en förälder
+        projectId: Number(currentProjectId), // Lägg till projektId för korrekt filtrering
         label: folderName, // Samma som name, men enklare att använda i andra delar av koden
         href: `/vault/files/${encodeURIComponent(folderName)}` // Länk till den dynamiska sidan
       };
@@ -1055,11 +1055,14 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         return f.projectId && f.projectId === currentProjectId;
       });
       
-      // Lägg till den nya mappen i listan
+      // Lägg till den nya mappen i listan - se till att id, parentId och övriga attribut matchar i båda lagringsplatserna
       const newFolderForApp = { 
         label: folderName,
+        name: folderName,
+        id: folderId,
         parent: parentName,
-        projectId: currentProjectId // Lägg till projektId för korrekt filtrering
+        parentId: parentId,
+        projectId: Number(currentProjectId) // Lägg till projektId för korrekt filtrering
       };
       
       // Kombinera mappar från både aktuellt projekt och andra projekt med den nya mappen
