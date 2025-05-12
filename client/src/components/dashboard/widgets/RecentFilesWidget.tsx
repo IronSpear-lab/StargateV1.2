@@ -18,6 +18,7 @@ import {
   Video,
   FileArchive as Archive
 } from "lucide-react";
+import { usePDFDialog } from "@/hooks/use-pdf-dialog";
 
 interface File {
   id: string;
@@ -37,6 +38,9 @@ interface RecentFilesWidgetProps {
 }
 
 export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetProps) {
+  // Hämta PDF-dialog hook på toppnivån
+  const { showPDFDialog } = usePDFDialog();
+  
   // Fetch recent files from API & localStorage
   const { data: files, isLoading } = useQuery({
     queryKey: ['recent-files', projectId],
@@ -242,12 +246,15 @@ export function RecentFilesWidget({ limit = 5, projectId }: RecentFilesWidgetPro
                 <div 
                   className="flex py-2.5 px-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer group"
                   onClick={() => {
-                    // Hantera klick på olika typer av filer
+                    // Hantera klick på olika typer av filer med PDF-dialog för PDF-filer
                     if (file.fileType.toLowerCase() === "pdf" && file.fileId) {
-                      // Om PDF har filID redan, så skicka med det till ritningar-sidan
-                      window.location.href = `/ritningar?viewFile=${encodeURIComponent(file.fileId)}`;
+                      // Om PDF har filID, använd PDF-dialog istället för navigering
+                      showPDFDialog({
+                        versionId: Number(file.fileId),
+                        filename: file.name
+                      });
                     } else if (file.folder === "Ritningar" && file.fileType.toLowerCase() === "pdf") {
-                      // Utan filID, navigera bara till ritningar-sidan
+                      // Utan filID, visa ett fel eller navigera till ritningar-sidan
                       window.location.href = "/ritningar";
                     } else {
                       // Alla andra filer går till vault
