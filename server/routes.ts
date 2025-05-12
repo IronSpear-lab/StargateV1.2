@@ -1581,10 +1581,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Säkerställ att type-fältet är korrekt satt
       if (!taskData.type) {
-        // Defaulta till kanban om ingen typ är angiven, även om den har startDate och endDate
-        // Detta låter milestone, phase, task och andra specifika typer behållas
-        taskData.type = "kanban";
-        console.log("Task type defaulted to 'kanban' as no explicit type was specified.");
+        // Kontrollera om uppgiften skapas från Gantt-vyn
+        const isFromGanttView = req.query.view === 'gantt' || 
+                              req.headers['x-from-view'] === 'gantt' || 
+                              (taskData.startDate && taskData.endDate);
+        
+        if (isFromGanttView) {
+          // Om uppgiften skapas från Gantt-vyn, sätt typ till "gantt"
+          taskData.type = "gantt";
+          console.log("Task type set to 'gantt' based on request context");
+        } else {
+          // Annars defaulta till kanban
+          taskData.type = "kanban";
+          console.log("Task type defaulted to 'kanban' as no explicit type was specified.");
+        }
       } else {
         // Respektera den typ som skickas, oavsett datum-fält
         console.log(`Creating task with explicit type: ${taskData.type}`);

@@ -11,12 +11,13 @@ export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
+  customHeaders?: HeadersInit,
 ): Promise<Response> {
   // Hantera FormData särskilt för filuppladdningar
   const isFormData = data instanceof FormData;
   
   // Lägg till anti-cache headers även för apiRequest
-  const headers: HeadersInit = data && !isFormData ? 
+  const defaultHeaders: HeadersInit = data && !isFormData ? 
     { 
       "Content-Type": "application/json",
       "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -28,6 +29,9 @@ export async function apiRequest(
       "Pragma": "no-cache",
       "Expires": "0"
     };
+    
+  // Kombinera standardheaders med anpassade headers om de anges
+  const headers: HeadersInit = customHeaders ? {...defaultHeaders, ...customHeaders} : defaultHeaders;
 
   // Särskild hantering för SameSite=None cookie-problem i Replit
   if (url.includes('/api/login') || url.includes('/api/projects')) {
