@@ -37,7 +37,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useRef, createRef, RefObject } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMobile } from "@/hooks/use-mobile";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -698,7 +698,6 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   const [location] = useLocation();
   const isMobile = useMobile();
   const [isOpen, setIsOpen] = useState(!isMobile);
-  const fileSectionRef = useRef<HTMLElement | null>(null);
   const [openSections, setOpenSections] = useState<string[]>(() => {
     // Retrieve open sections from localStorage if available
     if (typeof window !== 'undefined') {
@@ -904,40 +903,11 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     setIsOpen(!isOpen);
   };
 
-  const toggleItem = (itemName: string, item?: NavItemType) => {
+  const toggleItem = (itemName: string) => {
     setOpenItems(prev => ({
       ...prev,
       [itemName]: !prev[itemName]
     }));
-    
-    // Om det är en djupt nästlad mapp, se till att scrollningen visar den
-    if (item?.indent && item.indent >= 10 && fileSectionRef.current) {
-      // Vänta lite så DOM hinner uppdateras efter toggle
-      setTimeout(() => {
-        // Hitta alla element med deep-folder-klassen
-        const deepFolders = fileSectionRef.current?.querySelectorAll('.deep-folder');
-        // Hitta elementet som innehåller mappnamnet vi söker
-        const targetFolder = Array.from(deepFolders || []).find(
-          el => el.textContent?.includes(item.label)
-        );
-        
-        if (targetFolder) {
-          // Beräkna optimal scrollposition
-          const container = fileSectionRef.current;
-          const elementLeft = (targetFolder as HTMLElement).offsetLeft;
-          const containerWidth = container.clientWidth;
-          const scrollLeft = elementLeft - (containerWidth / 4);
-          
-          // Scrolla containern
-          container.scrollTo({
-            left: scrollLeft,
-            behavior: 'smooth'
-          });
-          
-          console.log(`Scrollat till djupt nästlad mapp efter toggle: ${item.label}`);
-        }
-      }, 150);
-    }
   };
   
   const toggleSection = (sectionId: string) => {
@@ -1185,7 +1155,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       
       // Säkerställ att Files-sektionen är öppen
       if (!openItems["file_folders"]) {
-        toggleItem("file_folders", filesSection);
+        toggleItem("file_folders");
       }
       
       // VIKTIGT: Invalidera React Query cache för att uppdatera FolderManagementWidget
@@ -1554,7 +1524,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           folderId: "files_root", // Unikt ID för rotkatalogen
           onAddClick: () => handleAddFolder("Files"), // För att lägga till mappar under Files
           isOpen: openItems["file_folders"] || false, // För att hålla mappen öppen/stängd
-          onToggle: () => toggleItem("file_folders", filesSection), // För att toggla öppen/stängd status
+          onToggle: () => toggleItem("file_folders"), // För att toggla öppen/stängd status
           children: [
             // Dynamiska undermappar kommer att läggas till i useEffect nedan
             // tillsammans med userCreatedFolders
@@ -1927,39 +1897,6 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           else if (item.indent === 15) indentClass = 'pl-60'; // Mapp 14
           else indentClass = `pl-${item.indent * 4}`; // Djupare nivåer - 4px per nivå
           
-          // Lägg till villkor för att aktivera overflow-x-auto på djupa mappar
-          if (item.indent && item.indent >= 10) {
-            // Lägg till klass för att göra elementi genomskinligt om det är för långt till höger
-            indentClass += ' deep-folder';
-            
-            // Om denna mapp är aktiv, se till att den är synlig genom att scrolla till den
-            if (item.active && fileSectionRef.current) {
-              // Använd setTimeout för att säkerställa att DOM har uppdaterats
-              setTimeout(() => {
-                const deepElements = fileSectionRef.current?.querySelectorAll('.deep-folder');
-                const activeDeepElement = Array.from(deepElements || []).find(
-                  el => el.textContent?.includes(item.label)
-                );
-                
-                if (activeDeepElement) {
-                  // Beräkna den nödvändiga scrollpositionen för att visa elementet
-                  const container = fileSectionRef.current;
-                  const elementLeft = (activeDeepElement as HTMLElement).offsetLeft;
-                  const containerWidth = container.clientWidth;
-                  const scrollLeft = elementLeft - (containerWidth / 4); // Scrolla så att elementet är synligt med marginal
-                  
-                  // Animera scrollningen
-                  container.scrollTo({
-                    left: scrollLeft,
-                    behavior: 'smooth'
-                  });
-                  
-                  console.log(`Scrollat till djupt nästlad mapp: ${item.label}`);
-                }
-              }, 100);
-            }
-          }
-          
           // Debuglogga för att säkerställa att indenteringen beräknas korrekt
           if (item.type === 'folder') {
             console.log(`Mapp ${item.label} med indent ${item.indent} får CSS-klass ${indentClass}`);
@@ -1996,7 +1933,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     "px-0 mx-auto"
                   )}
-                  onClick={() => toggleItem(itemKey, item)}
+                  onClick={() => toggleItem(itemKey)}
                 >
                   <span className={cn(
                     "flex items-center justify-center",
@@ -2466,7 +2403,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         )}
         
         <div className="py-2 flex-1 overflow-y-auto">
-          <div className="sidebar-folder-container" ref={fileSectionRef}>
+          <div className="sidebar-folder-container">
             {renderNavItems(navItems)}
           </div>
         </div>

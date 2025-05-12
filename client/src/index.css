@@ -365,41 +365,15 @@
     width: 100%;
     overflow-x: auto;
     scrollbar-width: thin;
-    position: relative;
-  }
-  
-  /* Support för djupt nästlade mappar */
-  nav.overflow-x-auto {
-    scrollbar-width: thin;
-    overflow-x: auto;
-  }
-  
-  .deep-folder {
-    min-width: max-content;
-    white-space: nowrap;
   }
   
   /* Markera horisontell scrollbar när innehållet överskrider containern */
-  .sidebar-folder-container::-webkit-scrollbar-track-horizontal,
-  nav.overflow-x-auto::-webkit-scrollbar-track-horizontal {
+  .sidebar-folder-container::-webkit-scrollbar-track-horizontal {
     background-color: rgba(217, 217, 217, 0.3);
     border-radius: 6px;
   }
   
-  /* Förbättrad synlighet för scrollbar för djupa mappar */
-  .sidebar-folder-container::-webkit-scrollbar-thumb-horizontal,
-  nav.overflow-x-auto::-webkit-scrollbar-thumb-horizontal {
-    background-color: rgba(156, 163, 175, 0.5);
-    border-radius: 6px;
-  }
-  
-  .sidebar-folder-container::-webkit-scrollbar-thumb-horizontal:hover,
-  nav.overflow-x-auto::-webkit-scrollbar-thumb-horizontal:hover {
-    background-color: rgba(156, 163, 175, 0.8);
-  }
-  
-  .dark .sidebar-folder-container::-webkit-scrollbar-track-horizontal,
-  .dark nav.overflow-x-auto::-webkit-scrollbar-track-horizontal {
+  .dark .sidebar-folder-container::-webkit-scrollbar-track-horizontal {
     background-color: rgba(55, 55, 55, 0.3);
   }
 }
