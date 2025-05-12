@@ -66,6 +66,7 @@ export function PDFDialogProvider({ children }: { children: ReactNode }) {
               versionId={dialogState.versionId}
               pdfFile={dialogState.pdfFile}
               highlightAnnotationId={dialogState.highlightAnnotationId}
+              annotationId={dialogState.annotationId}
               isDialogMode={true}
             />
           )}

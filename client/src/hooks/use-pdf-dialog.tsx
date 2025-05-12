@@ -13,7 +13,8 @@ export function usePDFDialog() {
     file,
     versionId,
     pdfFile,
-    highlightAnnotationId
+    highlightAnnotationId,
+    annotationId
   }: {
     fileId?: string | number;
     initialUrl?: string;
@@ -23,6 +24,7 @@ export function usePDFDialog() {
     versionId?: number;
     pdfFile?: Blob | null;
     highlightAnnotationId?: number;
+    annotationId?: number;
   }) => {
     openPDFDialog({
       fileId,
@@ -32,7 +34,8 @@ export function usePDFDialog() {
       file,
       versionId,
       pdfFile,
-      highlightAnnotationId
+      highlightAnnotationId,
+      annotationId
     });
   };
 

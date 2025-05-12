@@ -134,6 +134,7 @@ interface EnhancedPDFViewerProps {
   versionId?: number;
   pdfFile?: Blob | null;
   highlightAnnotationId?: number;
+  annotationId?: number; // ID för att fokusera på en specifik annotation
   // Dialog mode flag - när true visas PDF:en i dialog/popup-läge
   isDialogMode?: boolean;
 }
@@ -151,6 +152,7 @@ export default function EnhancedPDFViewer({
   versionId,
   pdfFile,
   highlightAnnotationId,
+  annotationId,
   isDialogMode = false
 }: EnhancedPDFViewerProps) {
   const { user } = useAuth();
@@ -286,13 +288,19 @@ export default function EnhancedPDFViewer({
               
               setAnnotations(uiAnnotations);
               
-              // Markera den specificerade annotationen om highlightAnnotationId anges
-              if (highlightAnnotationId) {
-                const annotation = uiAnnotations.find(a => Number(a.id) === highlightAnnotationId);
+              // Markera den specificerade annotationen om highlightAnnotationId eller annotationId anges
+              if (highlightAnnotationId || annotationId) {
+                const targetId = annotationId || highlightAnnotationId;
+                const annotation = uiAnnotations.find(a => Number(a.id) === targetId);
                 if (annotation) {
                   setActiveAnnotation(annotation);
                   // Sätt sidebarMode till comment för att visa kommentarspanelen
                   setSidebarMode('comment');
+                  
+                  // Sätt även pageNumber för att visa rätt sida med annotationen
+                  if (annotation.rect && annotation.rect.pageNumber) {
+                    setPageNumber(annotation.rect.pageNumber);
+                  }
                 }
               }
             }
