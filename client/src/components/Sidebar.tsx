@@ -754,7 +754,9 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     // Funktionen som kontrollerar localStorage för förändringar
     const checkForFolderUpdates = () => {
       if (typeof window !== 'undefined') {
-        const savedFolders = localStorage.getItem('userCreatedFolders');
+        // Kontrollera både det nya och det gamla nyckeln för mapparna
+        const savedFolders = localStorage.getItem('userCreatedFolders') || localStorage.getItem('user_created_folders');
+        
         if (savedFolders) {
           try {
             const parsedFolders = JSON.parse(savedFolders);
@@ -766,7 +768,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
             const filteredFolders = projectId
               ? parsedFolders.filter((folder: any) => {
                   // Inkludera mappar som saknar projektId och mappar som tillhör aktuellt projekt
-                  const matchesProject = !folder.projectId || folder.projectId === projectId;
+                  const matchesProject = !folder.projectId || folder.projectId === parseInt(projectId);
                   console.log(`Sidebar: Kontrollerar mapp ${folder.name}, projectId=${folder.projectId}, match=${matchesProject}`);
                   return matchesProject;
                 })
@@ -1526,15 +1528,28 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       userCreatedFolders.forEach(folder => {
         // Om denna mapp har en förälder som INTE är "Files"
         if (folder.parent && folder.parent !== "Files") {
-          // Hitta föräldermappen baserat på namn
-          const parentFolder = userCreatedFolders.find(p => p.name === folder.parent);
+          // Försök först att hitta föräldern baserat på ID (mer exakt)
+          let parentFolder = null;
+          
+          // Först leta efter mappning baserat på namn (som sker i Mapphanteringswidgeten)
+          parentFolder = userCreatedFolders.find(p => p.name === folder.parent);
+          
+          // Om det inte fungerar, försök med exakt matchning på parent-attribut
+          if (!parentFolder && folder.parent) {
+            parentFolder = userCreatedFolders.find(p => p.id === folder.parent);
+          }
           
           if (parentFolder && folderMap[parentFolder.id]) {
             // Hitta förälderns NavItem objekt
             const parentNavItem = folderMap[parentFolder.id];
             
+            // Se till att föräldern har en children-array
+            if (!parentNavItem.children) {
+              parentNavItem.children = [];
+            }
+            
             // Kontrollera om barnet redan finns i föräldern för att undvika dubletter
-            const childExists = parentNavItem.children?.some(child => 
+            const childExists = parentNavItem.children.some(child => 
               child.folderId === folder.id || child.label === folder.name
             );
             
