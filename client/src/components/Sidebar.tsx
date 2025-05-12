@@ -1698,10 +1698,17 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         // Hitta alla mappar som hör till denna förälder
         sortedFolders
           .filter(folder => {
-            // Hitta rotmappar för parentId null, eller mappar vars förälder matchar det angivna ID:t
+            // FÖRBÄTTRAD FÖRÄLDER-KONTROLL:
+            // För rotmappar (parentId är null): Visa bara dem som har null/undefined som förälder
+            // För undermappar (parentId är ett ID): Visa bara dem som har exakt det ID:t som förälder
             const isParentMatch = parentId === null 
-              ? (!folder.parentId || folder.parent === "Files")
-              : (folder.parentId && String(folder.parentId) === parentId);
+              ? (!folder.parentId || folder.parentId === null)
+              : (folder.parentId !== null && String(folder.parentId) === parentId);
+            
+            // Använd både mappnamn och ID i loggen för felsökning
+            if (isParentMatch) {
+              console.log(`Folder match: ${folder.name} (ID: ${folder.id}) with parent ${folder.parentId}`);
+            }
             
             // Skip already processed folders to avoid duplicates
             return isParentMatch && !processedIds.has(String(folder.id));
@@ -1710,10 +1717,18 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
             // Markera denna mapp som hanterad
             processedIds.add(String(folder.id));
             
-            // Beräkna indragningsnivå baserat på föräldern
-            const baseIndent = parentId === null 
-              ? (filesSection!.indent || 0) + 1
-              : (folderMap[parentId]?.indent || 0) + 1;
+            // FÖRBÄTTRAD INDENTERINGSBERÄKNING:
+            // Garanterar korrekt visuell hierarki baserat på faktisk nästling
+            // Rotmappar får grundindentering + 1
+            // Undermappar får sin förälders indentering + 1 för att bygga visuell hierarki
+            const parentIndent = parentId === null 
+              ? (filesSection!.indent || 0) 
+              : (folderMap[parentId]?.indent || 0);
+            
+            // Öka alltid indenteringen med 1 för varje nästlingsnivå
+            const baseIndent = parentIndent + 1;
+            
+            console.log(`Setting indent for ${folder.name} (ID: ${folder.id}): ${baseIndent}, parent: ${parentId}`);
             
             // Skapa NavItem för denna mapp
             const folderNavItem: NavItemType = {
