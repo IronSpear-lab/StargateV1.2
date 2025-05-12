@@ -95,16 +95,16 @@ export function MessagesWidget({ limit = 5 }: MessagesWidgetProps) {
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-sm font-medium flex items-center space-x-1.5">
+        <div className="text-sm font-medium text-gray-500 flex items-center space-x-1.5">
           <MessageSquare className="h-4 w-4 text-blue-500" />
-          <span>Recent Messages</span>
+          <span>Senaste meddelanden</span>
         </div>
         <Button 
           variant="ghost" 
           size="sm" 
           className="h-7 px-2 text-blue-600 text-xs font-normal"
         >
-          View All
+          Visa alla
         </Button>
       </div>
       
