@@ -283,16 +283,17 @@ class DatabaseStorage implements IStorage {
     
     console.log(`Fetching projects for user ${userId} with role ${user.role}`);
     
-    if (user.role === "admin") {
-      // Admin: Hämta alla projekt och sätt rollen till admin för alla
-      console.log("User is admin, fetching all projects");
+    // Admin och superuser har tillgång till alla projekt
+    if (user.role === "admin" || user.role === "superuser") {
+      // Admin/superuser: Hämta alla projekt och sätt rollen till admin/superuser för alla
+      console.log(`User is ${user.role}, fetching all projects`);
       const allProjects = await db
         .select()
         .from(projects);
         
       return allProjects.map(project => ({
         ...project,
-        role: "admin"
+        role: user.role // Använd användarens faktiska roll
       }));
     } else if (user.role === "project_leader") {
       // Project_leader: Hämta alla projekt där användaren är medlem, men också kolla userProjects för specifika projektroller

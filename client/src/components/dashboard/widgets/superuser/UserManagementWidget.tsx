@@ -267,6 +267,9 @@ export default function UserManagementWidget({ title = "Användarhantering" }) {
                     <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Roll
                     </th>
+                    <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Åtgärder
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-card divide-y divide-border">
@@ -298,6 +301,15 @@ export default function UserManagementWidget({ title = "Användarhantering" }) {
                             {user.role === 'superuser' && 'Superanvändare'}
                             {user.role === 'user' && 'Användare'}
                           </span>
+                        </td>
+                        <td className="px-4 py-2 text-sm">
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            onClick={() => confirmDeleteUser(user)}
+                          >
+                            Ta bort
+                          </Button>
                         </td>
                       </tr>
                     ))
