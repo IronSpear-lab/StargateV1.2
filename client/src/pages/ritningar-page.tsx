@@ -30,8 +30,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { PDFViewerDialog } from "@/components/ui/pdf-viewer-dialog";
-import EnhancedPDFViewer from "@/components/EnhancedPDFViewer";
+import { usePDFDialog } from "@/hooks/use-pdf-dialog";
 import { 
   storeFiles, 
   getUploadedFileUrl, 
@@ -306,17 +305,8 @@ export default function RitningarPage() {
   // Initiera med tom array och hämta data från server när komponenten laddas
   const [ritningarData, setRitningarData] = useState<Ritning[]>([]);
   
-  const [selectedFile, setSelectedFile] = useState<{
-    file: File | null;
-    fileUrl?: string;
-    fileData?: {
-      filename: string;
-      version: string;
-      description: string;
-      uploaded: string;
-      uploadedBy: string;
-    };
-  } | null>(null);
+  // Använd PDF-dialog-hooken istället för lokal state
+  const { showPDFDialog } = usePDFDialog();
   
   // Hämta ritningar när projektet ändras
   useEffect(() => {
@@ -355,23 +345,13 @@ export default function RitningarPage() {
             // Hitta ritningsdatan för den här filen om den finns
             const matchingRitning = ritningarData.find(r => r.fileId === fileIdParam);
             
-            setSelectedFile({
-              file: storedFileData.file,
-              fileUrl: storedFileData.url,
-              fileData: matchingRitning ? {
-                filename: matchingRitning.filename,
-                version: matchingRitning.version,
-                description: matchingRitning.description,
-                uploaded: matchingRitning.uploaded,
-                uploadedBy: matchingRitning.uploadedBy
-              } : {
-                // Standardvärden om vi inte hittar matchande ritningsdata
-                filename: storedFileData.name,
-                version: "1",
-                description: "Uppladdad fil",
-                uploaded: new Date().toLocaleString(),
-                uploadedBy: "Du"
-              }
+            // Använd PDF-dialogsystemet istället för lokal state
+            showPDFDialog({
+              fileId: matchingRitning?.id || `file_${Date.now()}`,
+              initialUrl: storedFileData.url,
+              filename: matchingRitning?.filename || storedFileData.name || "Dokument",
+              projectId: currentProject?.id || null,
+              file: storedFileData.file
             });
           } else {
             console.error(`[${Date.now()}] Could not load file with ID: ${fileIdParam}`);
@@ -393,7 +373,7 @@ export default function RitningarPage() {
     };
     
     checkUrlParams();
-  }, [ritningarData]);
+  }, [ritningarData, currentProject, showPDFDialog]);
   
   // Hämta ritningar från databasen baserat på projekt-ID
   const { data: apiRitningar = [], isLoading: isLoadingApi } = useQuery({
