@@ -37,7 +37,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useRef, createRef } from "react";
+import { useState, useEffect, useRef, createRef, RefObject } from "react";
 import { useMobile } from "@/hooks/use-mobile";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
