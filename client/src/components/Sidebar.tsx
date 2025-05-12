@@ -37,7 +37,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, createRef } from "react";
 import { useMobile } from "@/hooks/use-mobile";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -698,6 +698,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   const [location] = useLocation();
   const isMobile = useMobile();
   const [isOpen, setIsOpen] = useState(!isMobile);
+  const fileSectionRef = useRef<HTMLElement | null>(null);
   const [openSections, setOpenSections] = useState<string[]>(() => {
     // Retrieve open sections from localStorage if available
     if (typeof window !== 'undefined') {
