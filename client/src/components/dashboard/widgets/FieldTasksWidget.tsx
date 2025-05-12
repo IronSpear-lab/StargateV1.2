@@ -453,8 +453,8 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
                 </Avatar>
               </div>
               
-              <div className="text-sm font-medium mt-0.5 text-gray-900">
-                {annotation.comment || "PDF-kommentar"}
+              <div className="text-sm font-medium mt-0.5 text-gray-500">
+                {annotation.comment || "PDF-anteckning"}
               </div>
               
               <div className="mt-1.5 flex items-center space-x-4">
@@ -511,10 +511,10 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
             </Avatar>
           </div>
           
-          <div className="text-sm font-medium mt-0.5 text-gray-900">
+          <div className="text-sm font-medium mt-0.5 text-gray-500">
             {/* Om annotationen är kopplad till en task, visar vi hellre kommentaren 
                 eftersom servern inkluderar task-titeln som kommentar när den är tillgänglig */}
-            {annotation.comment || "PDF-kommentar"}
+            {annotation.comment || "PDF-anteckning"}
           </div>
           
           <div className="mt-1.5 flex items-center space-x-4">
