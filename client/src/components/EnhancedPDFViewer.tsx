@@ -626,8 +626,12 @@ export default function EnhancedPDFViewer({
 
   // Document load handler
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    console.log(`PDF laddad framgångsrikt: ${numPages} sidor`);
     setNumPages(numPages);
-    setLoading(false);
+    // Vi behåller loading-tillståndet lite längre för att säkerställa att allt renderas korrekt
+    setTimeout(() => {
+      setLoading(false);
+    }, 100);
   };
   
   // Hantera fel vid laddning av PDF
@@ -1685,11 +1689,11 @@ export default function EnhancedPDFViewer({
       </div>
       
       {/* Main content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* PDF viewer */}
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* PDF viewer - med förändrad z-index för att säkerställa att den inte täcker sidopanelen */}
         <div 
           ref={containerRef}
-          className="flex-1 overflow-auto bg-gray-200"
+          className="flex-1 overflow-auto bg-gray-200 z-10"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
