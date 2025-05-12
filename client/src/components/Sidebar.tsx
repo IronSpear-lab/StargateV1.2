@@ -768,7 +768,10 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
             const filteredFolders = projectId
               ? parsedFolders.filter((folder: any) => {
                   // Inkludera mappar som saknar projektId och mappar som tillhör aktuellt projekt
-                  const matchesProject = !folder.projectId || folder.projectId === parseInt(projectId);
+                  // Jämför både med strängvärden och numeriska värden för att hantera olika formatering
+                  const matchesProject = !folder.projectId || 
+                    String(folder.projectId) === String(projectId) || 
+                    folder.projectId === parseInt(projectId);
                   console.log(`Sidebar: Kontrollerar mapp ${folder.name}, projectId=${folder.projectId}, match=${matchesProject}`);
                   return matchesProject;
                 })
