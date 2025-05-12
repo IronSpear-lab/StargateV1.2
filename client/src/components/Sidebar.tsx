@@ -1782,13 +1782,13 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           folderLevel = level;
         }
         
-        // Tillämpa indentering baserat på nivån
+        // Tillämpa indentering baserat på nivån - med större indentering för tydligare hierarki
         if (folderLevel <= 0) indentClass = 'pl-0'; // Topnivå - ingen indentering
-        else if (folderLevel === 1) indentClass = 'pl-4'; // Första nivån
-        else if (folderLevel === 2) indentClass = 'pl-8'; // Andra nivån
-        else if (folderLevel === 3) indentClass = 'pl-12'; // Tredje nivån
-        else if (folderLevel >= 4) indentClass = 'pl-16'; // Fjärde nivån eller djupare
-        else indentClass = 'pl-16'; // Djupare nivåer
+        else if (folderLevel === 1) indentClass = 'pl-6'; // Första nivån - ökat från pl-4
+        else if (folderLevel === 2) indentClass = 'pl-12'; // Andra nivån - ökat från pl-8
+        else if (folderLevel === 3) indentClass = 'pl-20'; // Tredje nivån - ökat från pl-12
+        else if (folderLevel >= 4) indentClass = 'pl-28'; // Fjärde nivån eller djupare - ökat från pl-16
+        else indentClass = 'pl-28'; // Djupare nivåer
       } else {
         // När sidofältet är stängt använder vi ingen indentering (allt är centrerat)
         indentClass = 'pl-0';
