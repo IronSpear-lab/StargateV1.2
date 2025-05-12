@@ -1581,15 +1581,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Säkerställ att type-fältet är korrekt satt
       if (!taskData.type) {
-        // Försök avgöra typen om den inte explicit angetts
-        if (taskData.startDate && taskData.endDate) {
-          taskData.type = "gantt";
-          console.log("Task type auto-set to 'gantt' based on having both startDate and endDate.");
-        } else {
-          taskData.type = "kanban";
-          console.log("Task type defaulted to 'kanban' as no explicit type was specified.");
-        }
+        // Defaulta till kanban om ingen typ är angiven, även om den har startDate och endDate
+        // Detta låter milestone, phase, task och andra specifika typer behållas
+        taskData.type = "kanban";
+        console.log("Task type defaulted to 'kanban' as no explicit type was specified.");
       } else {
+        // Respektera den typ som skickas, oavsett datum-fält
         console.log(`Creating task with explicit type: ${taskData.type}`);
       }
       
