@@ -629,30 +629,18 @@ export default function RitningarPage() {
       if (ritning) {
         // Använd den nya PDF-dialog-hooken
         showPDFDialog({
-          url: fileUrl,
-          title: ritning.filename,
-          fileData: {
-            filename: ritning.filename,
-            version: data.version.versionNumber.toString(),
-            description: data.version.description || ritning.description,
-            uploaded: new Date(data.version.uploadedAt).toLocaleString(),
-            uploadedBy: data.version.uploadedBy || ritning.uploadedBy,
-            fileId: ritning.id.toString()
-          }
+          initialUrl: fileUrl,
+          filename: ritning.filename,
+          fileId: ritning.id.toString(),
+          projectId: currentProject?.id || null
         });
       } else {
         // Använd den nya PDF-dialog-hooken även om vi inte hittar en matchande ritning
         showPDFDialog({
-          url: fileUrl,
-          title: data.version.metadata?.fileName || "dokument.pdf",
-          fileData: {
-            filename: data.version.metadata?.fileName || "dokument.pdf",
-            version: data.version.versionNumber.toString(),
-            description: data.version.description || "PDF-dokument",
-            uploaded: new Date(data.version.uploadedAt).toLocaleString(),
-            uploadedBy: data.version.uploadedBy || "System",
-            fileId: fileId.toString()
-          }
+          initialUrl: fileUrl,
+          filename: data.version.metadata?.fileName || "dokument.pdf",
+          fileId: fileId.toString(),
+          projectId: currentProject?.id || null
         });
       }
     },
@@ -679,17 +667,11 @@ export default function RitningarPage() {
           
           // Använd den nya PDF-dialog-hooken
           showPDFDialog({
-            url: storedFileData.url,
-            title: ritning.filename,
-            fileData: {
-              filename: ritning.filename,
-              version: ritning.version,
-              description: ritning.description,
-              uploaded: ritning.uploaded,
-              uploadedBy: ritning.uploadedBy,
-              fileId: ritning.fileId
-            },
-            file: storedFileData.file
+            initialUrl: storedFileData.url,
+            filename: ritning.filename,
+            fileId: ritning.fileId,
+            file: storedFileData.file,
+            projectId: currentProject?.id || null
           });
           return;
         }
@@ -917,19 +899,7 @@ export default function RitningarPage() {
         </div>
       </div>
       
-      {/* PDF-visare - använder den förbättrade visaren med kommentarer och versionshantering */}
-      {selectedFile && (
-        <div className="fixed inset-0 z-50 bg-background/80">
-          <EnhancedPDFViewer
-            fileId={Number(selectedFile.fileData?.id) || (selectedFile.fileData as any)?.fileId || `file_${Date.now()}`}
-            initialUrl={selectedFile.fileUrl || ""}
-            filename={selectedFile.fileData?.filename || "Dokument"}
-            onClose={() => setSelectedFile(null)}
-            projectId={currentProject?.id || null}
-            useDatabase={true} // Använd databasen istället för localStorage för att spara anmärkningar
-          />
-        </div>
-      )}
+      {/* PDF-visning hanteras nu genom det globala PDF-dialog-systemet */}
       
       {/* Bekräftelsedialog för borttagning */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
