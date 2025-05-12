@@ -1808,7 +1808,7 @@ export default function EnhancedPDFViewer({
           <div className="p-4">
             {sidebarMode === 'details' && (
               <div>
-                <h3 className="text-lg font-medium mb-4">Extra tätskiktsremsa YEP #{Math.floor(Math.random() * 1000)}</h3>
+                <h3 className="text-lg font-medium mb-4">PDF Anteckning</h3>
                 
                 <div className="space-y-4">
                   <div>
@@ -1821,17 +1821,6 @@ export default function EnhancedPDFViewer({
                         </AvatarFallback>
                       </Avatar>
                       <span>{fileVersions[0]?.uploadedBy || 'Unknown'}, {formatDate(fileVersions[0]?.uploaded || new Date().toISOString())}</span>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Tilldelad till</label>
-                    <div className="flex items-center mt-1">
-                      <Avatar className="h-5 w-5 mr-2">
-                        <AvatarImage src="https://avatar.vercel.sh/benoit.png" />
-                        <AvatarFallback>B</AvatarFallback>
-                      </Avatar>
-                      <span>Benoit Nielsen, Konstruktör</span>
                     </div>
                   </div>
                   
