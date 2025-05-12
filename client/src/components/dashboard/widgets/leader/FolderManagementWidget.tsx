@@ -1,5 +1,15 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   FolderPlus,
   Folder,
@@ -52,6 +62,8 @@ export function FolderManagementWidget() {
   const [newFolderName, setNewFolderName] = useState("");
   const [selectedParentFolder, setSelectedParentFolder] = useState<string | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
+  const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
+  const [folderToDelete, setFolderToDelete] = useState<FolderData | null>(null);
 
   // Fetch folders
   const { 
@@ -300,8 +312,16 @@ export function FolderManagementWidget() {
 
   // Handle folder deletion
   const handleDeleteFolder = (folder: FolderData) => {
-    if (window.confirm(`Är du säker på att du vill radera mappen "${folder.name}" och allt dess innehåll? Denna åtgärd kan inte ångras.`)) {
-      deleteFolderMutation.mutate(Number(folder.id));
+    setFolderToDelete(folder);
+    setDeleteAlertOpen(true);
+  };
+  
+  // Confirm folder deletion
+  const confirmDeleteFolder = () => {
+    if (folderToDelete) {
+      deleteFolderMutation.mutate(Number(folderToDelete.id));
+      setDeleteAlertOpen(false);
+      setFolderToDelete(null);
     }
   };
 
