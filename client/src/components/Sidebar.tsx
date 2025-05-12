@@ -1902,6 +1902,33 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           if (item.indent && item.indent >= 10) {
             // Lägg till klass för att göra elementi genomskinligt om det är för långt till höger
             indentClass += ' deep-folder';
+            
+            // Om denna mapp är aktiv, se till att den är synlig genom att scrolla till den
+            if (item.active && fileSectionRef.current) {
+              // Använd setTimeout för att säkerställa att DOM har uppdaterats
+              setTimeout(() => {
+                const deepElements = fileSectionRef.current?.querySelectorAll('.deep-folder');
+                const activeDeepElement = Array.from(deepElements || []).find(
+                  el => el.textContent?.includes(item.label)
+                );
+                
+                if (activeDeepElement) {
+                  // Beräkna den nödvändiga scrollpositionen för att visa elementet
+                  const container = fileSectionRef.current;
+                  const elementLeft = (activeDeepElement as HTMLElement).offsetLeft;
+                  const containerWidth = container.clientWidth;
+                  const scrollLeft = elementLeft - (containerWidth / 4); // Scrolla så att elementet är synligt med marginal
+                  
+                  // Animera scrollningen
+                  container.scrollTo({
+                    left: scrollLeft,
+                    behavior: 'smooth'
+                  });
+                  
+                  console.log(`Scrollat till djupt nästlad mapp: ${item.label}`);
+                }
+              }, 100);
+            }
           }
           
           // Debuglogga för att säkerställa att indenteringen beräknas korrekt
