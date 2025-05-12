@@ -275,13 +275,29 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
   // Mutation för att skapa nya uppgifter
   const createTaskMutation = useMutation({
     mutationFn: async (taskData: any) => {
-      // Säkerställ att type-fältet är satt till "gantt" för alla uppgifter i Gantt-vyn
-      const taskDataWithType = {
-        ...taskData,
-        type: "gantt" // Explicit sätta typen
-      };
+      // Behåll den valda task-typen (milestone, phase, eller task)
+      // Konverterar från UI-format till API-format om det behövs
+      if (taskData.ganttType) {
+        // Om vi har en ganttType (MILESTONE, PHASE, TASK) från UI, konvertera till backend-format
+        const typeMapping: Record<string, string> = {
+          'MILESTONE': 'milestone',
+          'PHASE': 'phase',
+          'TASK': 'task'
+        };
+        
+        taskData = {
+          ...taskData,
+          type: typeMapping[taskData.ganttType] || 'gantt'
+        };
+        delete taskData.ganttType;
+      }
       
-      const response = await apiRequest('POST', '/api/tasks', taskDataWithType);
+      // Sätt typen till 'gantt' bara om den inte uttryckligen anges
+      if (!taskData.type) {
+        taskData.type = 'gantt';
+      }
+      
+      const response = await apiRequest('POST', '/api/tasks', taskData);
       return await response.json();
     },
     onSuccess: () => {
@@ -312,13 +328,29 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
   // Mutation för att uppdatera befintliga uppgifter
   const updateTaskMutation = useMutation({
     mutationFn: async ({ taskId, taskData }: { taskId: number, taskData: any }) => {
-      // Säkerställ att type-fältet är satt till "gantt" för alla uppgifter som uppdateras
-      const taskDataWithType = {
-        ...taskData,
-        type: "gantt" // Explicit sätta typen
-      };
+      // Behåll den valda task-typen (milestone, phase, eller task)
+      // Konverterar från UI-format till API-format om det behövs
+      if (taskData.ganttType) {
+        // Om vi har en ganttType (MILESTONE, PHASE, TASK) från UI, konvertera till backend-format
+        const typeMapping: Record<string, string> = {
+          'MILESTONE': 'milestone',
+          'PHASE': 'phase',
+          'TASK': 'task'
+        };
+        
+        taskData = {
+          ...taskData,
+          type: typeMapping[taskData.ganttType] || 'gantt'
+        };
+        delete taskData.ganttType;
+      }
       
-      const response = await apiRequest('PATCH', `/api/tasks/${taskId}`, taskDataWithType);
+      // Sätt typen till 'gantt' bara om den inte uttryckligen anges
+      if (!taskData.type) {
+        taskData.type = 'gantt';
+      }
+      
+      const response = await apiRequest('PATCH', `/api/tasks/${taskId}`, taskData);
       return await response.json();
     },
     onSuccess: () => {
