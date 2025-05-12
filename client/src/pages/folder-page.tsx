@@ -78,6 +78,8 @@ export default function FolderPage() {
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<Ritning | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showFolderDeleteConfirm, setShowFolderDeleteConfirm] = useState(false);
+  const [folderIdToDelete, setFolderIdToDelete] = useState<number | null>(null);
   
   // Samma komponenter och state som i ritningar-page för konsekvent användargränssnitt
   // Använd PDF Dialog hook istället för lokal state
@@ -339,6 +341,56 @@ export default function FolderPage() {
     }
   });
   
+  // Ta bort mapp mutation
+  const deleteFolderMutation = useMutation({
+    mutationFn: async (folderId: number) => {
+      if (!currentProject?.id) {
+        throw new Error("Inget projekt valt");
+      }
+      
+      // Bekräfta att användaren vet vad de gör genom att visa en varningsdialog innan denna funktion körs
+      console.log(`Executing delete request for folder ID: ${folderId} in project: ${currentProject?.id}`);
+
+      const response = await apiRequest('DELETE', `/api/folders/${folderId}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Okänt fel' }));
+        throw new Error(errorData.error || 'Fel vid borttagning av mapp');
+      }
+      return folderId;
+    },
+    onSuccess: (folderId) => {
+      // Invalidera alla queries relaterade till mappar och filer
+      queryClient.invalidateQueries({ queryKey: ['/api/folders', currentProject?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id] });
+      
+      // Utlös en event för att meddela andra komponenter (t.ex. sidofältet) att mappstrukturen har ändrats
+      const event = new CustomEvent('folder-structure-changed', { 
+        detail: { action: 'delete', folderId }
+      });
+      window.dispatchEvent(event);
+      
+      // Visa bekräftelse
+      toast({
+        title: "Mappen har tagits bort",
+        description: "Mappen och alla dess undermappar har tagits bort permanent.",
+        variant: "default",
+      });
+      
+      // Stäng bekräftelsedialogen
+      setShowFolderDeleteConfirm(false);
+      setFolderIdToDelete(null);
+    },
+    onError: (error: Error) => {
+      console.error("Fel vid borttagning av mapp:", error);
+      toast({
+        title: "Borttagning av mapp misslyckades",
+        description: error.message || "Ett fel uppstod när mappen skulle tas bort.",
+        variant: "destructive",
+      });
+      setShowFolderDeleteConfirm(false);
+    }
+  });
+  
   // Visa bekräftelsedialog innan borttagning
   const handleDeleteClick = (ritning: Ritning) => {
     setFileToDelete(ritning);
@@ -364,6 +416,42 @@ export default function FolderPage() {
       
       setShowDeleteConfirm(false);
       setFileToDelete(null);
+    }
+  };
+  
+  // Visa bekräftelsedialog för mapp-borttagning
+  const handleFolderDeleteClick = () => {
+    // Extrahera mappid från URL-parametern
+    // Format på URL: /vault/files/:folderName där folderName ofta innehåller id i parentes t.ex. "Min Mapp (123)"
+    const folderMatch = folderName.match(/\((\d+)\)$/);
+    if (folderMatch && folderMatch[1]) {
+      const folderId = parseInt(folderMatch[1]);
+      if (!isNaN(folderId)) {
+        console.log(`Preparing to delete folder ID: ${folderId}`);
+        setFolderIdToDelete(folderId);
+        setShowFolderDeleteConfirm(true);
+      } else {
+        toast({
+          title: "Kunde inte hitta mappens ID",
+          description: "Mappen har ett ogiltigt ID-format och kan inte tas bort.",
+          variant: "destructive",
+        });
+      }
+    } else {
+      toast({
+        title: "Kunde inte hitta mappens ID",
+        description: "Mappen saknar ett ID-format i namnet och kan inte tas bort.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Ta bort mapp efter bekräftelse
+  const handleFolderDeleteConfirm = () => {
+    if (folderIdToDelete) {
+      deleteFolderMutation.mutate(folderIdToDelete);
+    } else {
+      setShowFolderDeleteConfirm(false);
     }
   };
   
@@ -561,16 +649,29 @@ export default function FolderPage() {
                 </SelectContent>
               </Select>
               
-              <Button 
-                variant="default" 
-                size="sm" 
-                className="flex items-center" 
-                onClick={() => setShowUploadDialog(true)}
-                disabled={!currentProject}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Ladda upp
-              </Button>
+              <div className="flex space-x-2">
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  className="flex items-center" 
+                  onClick={() => setShowUploadDialog(true)}
+                  disabled={!currentProject}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Ladda upp
+                </Button>
+                
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  className="flex items-center" 
+                  onClick={handleFolderDeleteClick}
+                  disabled={!currentProject}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Ta bort mapp
+                </Button>
+              </div>
             </div>
           </div>
           
@@ -669,6 +770,32 @@ export default function FolderPage() {
             <AlertDialogCancel>Avbryt</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700 text-white">
               Ta bort
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Bekräftelsedialog för mapp-borttagning */}
+      <AlertDialog open={showFolderDeleteConfirm} onOpenChange={setShowFolderDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Är du säker på att du vill ta bort denna mapp?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <p className="mb-2">Denna åtgärd kan inte ångras. När du tar bort denna mapp kommer även:</p>
+              <ul className="list-disc pl-5 space-y-1 text-destructive dark:text-red-400">
+                <li>Alla undermappar och deras innehåll tas bort permanent</li>
+                <li>Alla filer i denna mapp tas bort permanent</li>
+              </ul>
+              <p className="mt-4 font-medium">Bekräfta att du verkligen vill ta bort hela mappstrukturen.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleFolderDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Ta bort mapp och allt innehåll
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
