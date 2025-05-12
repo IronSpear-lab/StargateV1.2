@@ -961,8 +961,8 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   // Funktion för att skapa en ny mapp
   const createFolder = async (folderName: string, parentName: string) => {
     try {
-      // Hämta aktuellt project-ID för att knyta mappen till rätt projekt
-      const currentProjectId = localStorage.getItem('currentProjectId');
+      // Hämta aktuellt project-ID från ProjectContext för att knyta mappen till rätt projekt
+      const currentProjectId = currentProject?.id ? String(currentProject.id) : localStorage.getItem('currentProjectId');
       
       console.log(`createFolder: Skapar mapp '${folderName}' under '${parentName}' för projekt ${currentProjectId || 'inget projekt'}`);
       
@@ -1654,16 +1654,25 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       // HELT NYTT TILLVÄGAGÅNGSSÄTT: Bygg hierarkiskt mappträd baserat på mappinformation
       // Detta förbättrade tillvägagångssätt eliminerar dubbletterna
       
-      // Filtrera ut bara foldrarna för aktuellt projekt (för säkerhets skull)
-      // Försök använda den globala currentProjectId som redan ska vara definierad
-      // men med en try-catch för att hantera eventuella fel
+      // Filtrera ut bara foldrarna för aktuellt projekt från ProjectContext
+      // Om ProjectContext inte har något projekt, använd localStorage som fallback
+      const projectId = currentProject?.id ? Number(currentProject.id) : (localStorage.getItem('currentProjectId') ? Number(localStorage.getItem('currentProjectId')) : null);
+      
+      console.log(`Sidebar: Filtrerar mappar för projekt ${projectId || 'inget projekt'} (från ProjectContext: ${currentProject?.id || 'saknas'})`);
+      
+      // Filtrera ut mappar för det aktuella projektet
       let projectFolders = [];
       try {
         projectFolders = userCreatedFolders.filter(folder => 
-          folder && folder.projectId === currentProjectId
+          folder && (
+            // Visa både mappar som saknar projektId och mappar som matchar aktuellt projekt
+            !folder.projectId || 
+            folder.projectId === projectId || 
+            String(folder.projectId) === String(projectId)
+          )
         );
       } catch (error) {
-        console.log("Kunde inte filtrera mappar med currentProjectId, använder alla mappar istället", error);
+        console.log("Kunde inte filtrera mappar med projektId, använder alla mappar istället", error);
         projectFolders = [...userCreatedFolders]; // Använd alla mappar om vi inte kan filtrera
       }
       
