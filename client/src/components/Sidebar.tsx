@@ -1012,14 +1012,12 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       }
       
       // Skapa mappen via API först, för att synka med Mapphantering
-      // Modifierar parent för att säkerställa att nya mappar hamnar under Files-sektionen
       const folderData = {
         name: folderName,
         projectId: Number(currentProjectId),
         parentId: parentId, // Sätt parentId korrekt baserat på föräldermappen
-        sidebarParent: 'Files',
-        // För att säkerställa riktig visning i sidebar
-        parent: parentName
+        sidebarParent: parentName === "Files" ? "Files" : "", // Endast sätt sidebarParent till Files för rotmappar
+        parent: parentName // Behåll föräldermappens namn för korrekt hierarki
       };
       
       console.log("Anropar API för att skapa mapp:", folderData);
