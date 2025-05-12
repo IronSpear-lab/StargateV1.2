@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Bell, HelpCircle, Menu, Search, ChevronDown, Plus, UserPlus } from "lucide-react";
 import { useMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { ModeToggle } from "@/components/mode-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -304,11 +303,11 @@ export function Header({
         
         {/* Visa inbjudningsknapp endast för användare med behörighet (admin, project_leader, superuser) */}
         {user?.role && (user.role === "admin" || user.role === "project_leader" || user.role === "superuser") && (
-          <InviteUserDialog>
+          <InviteUserDialog trigger={
             <Button variant="ghost" size="icon" className="p-2 rounded-full hover:bg-muted" title="Bjud in användare">
               <UserPlus className="h-5 w-5 text-foreground" />
             </Button>
-          </InviteUserDialog>
+          } />
         )}
         
         <Button variant="ghost" size="icon" className="p-2 rounded-full hover:bg-muted relative">

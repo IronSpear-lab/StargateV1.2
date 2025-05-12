@@ -49,7 +49,7 @@ const defaultValues: Partial<InviteFormValues> = {
 };
 
 interface InviteUserDialogProps {
-  trigger?: React.ReactNode;
+  trigger: React.ReactNode;
 }
 
 export function InviteUserDialog({ trigger }: InviteUserDialogProps) {
