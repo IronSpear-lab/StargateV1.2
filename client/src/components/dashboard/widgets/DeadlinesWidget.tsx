@@ -643,7 +643,7 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
               </Avatar>
             </div>
             
-            <div className="text-sm font-medium mt-0.5 text-gray-900">{task.title}</div>
+            <div className="text-sm font-medium mt-0.5 text-gray-500">{task.title}</div>
             
             <div className="mt-1.5 flex items-center space-x-4">
               <div className="text-xs text-gray-500 flex items-center">
@@ -740,7 +740,7 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
             </Avatar>
           </div>
           
-          <div className="text-sm font-medium mt-0.5 text-gray-900">
+          <div className="text-sm font-medium mt-0.5 text-gray-500">
             {annotation.comment || "PDF-kommentar"}
           </div>
           
@@ -811,7 +811,7 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
             </Avatar>
           </div>
           
-          <div className="text-sm font-medium mt-0.5 text-gray-900">{task.title}</div>
+          <div className="text-sm font-medium mt-0.5 text-gray-500">{task.title}</div>
           
           <div className="mt-1.5 flex items-center space-x-4">
             <div className="text-xs text-gray-500 flex items-center">
