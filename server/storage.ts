@@ -253,11 +253,11 @@ class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async createUser(user: Omit<User, "id" | "role">): Promise<User> {
+  async createUser(user: Omit<User, "id"> & { role?: string }): Promise<User> {
     const validatedData = insertUserSchema.parse(user);
     const result = await db.insert(users).values({
       ...validatedData,
-      role: "user" // Default role is "user"
+      role: user.role || "user" // Använd angiven roll eller "user" som standard
     }).returning();
     return result[0];
   }
