@@ -103,27 +103,32 @@ function Router() {
       <ProtectedRoute path="/vault/files/:folderName" component={FolderPage} />
       <ProtectedRoute path="/messages" component={MessagesPage} />
       <ProtectedRoute path="/communication/messages" component={MessagesPage} />
-      <ProtectedRoute path="/files/pdf/:versionId" component={
-        ({ params }) => {
-          const { showPDFDialog } = usePDFDialog();
-          // Istället för att navigera till sidan, visa dialogen och återgå
-          useEffect(() => {
-            const versionId = params?.versionId ? Number(params.versionId) : undefined;
-            if (versionId) {
-              console.log(`Öppnar PDF version ${versionId} i dialog istället för separat sida`);
-              showPDFDialog({
-                versionId: versionId
-              });
-              // Återgå till föregående sida efter en kort fördröjning
-              setTimeout(() => {
-                window.history.back();
-              }, 300);
-            }
-          }, [params, showPDFDialog]);
+      <ProtectedRoute path="/files/pdf/:versionId" component={() => {
+          // Create a component to intercept PDF navigation
+          const PdfInterceptor = () => {
+            const { showPDFDialog } = usePDFDialog();
+            const params = window.location.pathname.split('/');
+            const versionId = params[params.length - 1] ? Number(params[params.length - 1]) : undefined;
+            
+            // På komponentmontering, visa dialogen och gå tillbaka
+            useEffect(() => {
+              if (versionId) {
+                console.log(`Öppnar PDF version ${versionId} i dialog istället för separat sida`);
+                showPDFDialog({
+                  versionId: versionId
+                });
+                // Återgå till föregående sida efter en kort fördröjning
+                setTimeout(() => {
+                  window.history.back();
+                }, 300);
+              }
+            }, [versionId]);
+            
+            return null; // Visa ingenting medan omdirigeringen sker
+          };
           
-          return null; // Visa ingenting medan omdirigeringen sker
-        }
-      } />
+          return <PdfInterceptor />;
+        }} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>

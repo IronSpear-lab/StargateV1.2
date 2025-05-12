@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
 import { FileExplorer } from "@/components/FileExplorer";
 import { PDFViewer } from "@/components/PDFViewer";
+import { usePDFDialog } from "@/hooks/use-pdf-dialog";
 
 interface FileNode {
   id: string;
@@ -19,6 +20,18 @@ export default function FilesPage() {
   };
 
   const handleFileSelect = (file: FileNode) => {
+    // Kontrollera om det är en PDF-fil
+    if (file.name.toLowerCase().endsWith('.pdf')) {
+      // Använder PDFDialogProvider istället för att sätta valda filen
+      const { showPDFDialog } = usePDFDialog();
+      showPDFDialog({
+        fileId: file.id,
+        filename: file.name
+      });
+      return;
+    }
+    
+    // Hantera andra filtyper som vanligt
     setSelectedFile(file);
   };
 
@@ -39,8 +52,16 @@ export default function FilesPage() {
             </div>
             <div className="lg:w-3/4">
               <PDFViewer 
-                fileName={selectedFile?.name || "Document.pdf"} 
-                fileId={selectedFile?.id}
+                isOpen={!!selectedFile}
+                onClose={() => setSelectedFile(null)}
+                fileData={{
+                  filename: selectedFile?.name || "Document.pdf",
+                  fileId: selectedFile?.id,
+                  version: "1.0",
+                  description: "",
+                  uploaded: new Date().toISOString(),
+                  uploadedBy: ""
+                }}
               />
             </div>
           </div>
