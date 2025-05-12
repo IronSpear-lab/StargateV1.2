@@ -40,7 +40,7 @@ export function TaskHoursWidget({
   id = 'task-hours', 
   projectId, 
   type = 'task-hours', 
-  title = 'TIMFÖRBRUKNING', 
+  title = 'Timförbrukning', 
   onRemove,
   className,
   width,
@@ -207,12 +207,12 @@ export function TaskHoursWidget({
       return (
         <div className="rounded-lg border bg-background p-3 shadow-md text-xs">
           <div className="grid grid-cols-2 gap-2">
-            <div className="font-medium">Datum:</div>
-            <div>{format(new Date(data.fullDate), 'yyyy-MM-dd')}</div>
-            <div className="font-medium">Planerat:</div>
-            <div>{data.estimatedHours} tim</div>
-            <div className="font-medium">Faktiskt:</div>
-            <div>{data.actualHours} tim</div>
+            <div className="font-medium text-gray-600 dark:text-gray-400">Datum:</div>
+            <div className="text-gray-600 dark:text-gray-400">{format(new Date(data.fullDate), 'yyyy-MM-dd')}</div>
+            <div className="font-medium text-gray-600 dark:text-gray-400">Planerat:</div>
+            <div className="text-gray-600 dark:text-gray-400">{data.estimatedHours} tim</div>
+            <div className="font-medium text-gray-600 dark:text-gray-400">Faktiskt:</div>
+            <div className="text-gray-600 dark:text-gray-400">{data.actualHours} tim</div>
           </div>
         </div>
       );

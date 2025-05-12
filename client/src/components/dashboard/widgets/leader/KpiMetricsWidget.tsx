@@ -59,21 +59,21 @@ export function KpiMetricsWidget({ projectId }: KpiMetricsWidgetProps) {
         // Mock metrics data
         const mockMetrics: KpiMetric[] = [
           {
-            name: "Avg. Task Duration",
+            name: "Genomsnittlig uppgiftslängd",
             value: 4.2,
-            unit: "days",
+            unit: "dagar",
             change: -12.5,
             icon: <Clock className="h-5 w-5 text-primary" />
           },
           {
-            name: "Budget Accuracy",
+            name: "Budgetnoggrannhet",
             value: 92,
             unit: "%",
             change: 3.2,
             icon: <Percent className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
           },
           {
-            name: "Task Completion Rate",
+            name: "Uppgiftsavslutning",
             value: 86,
             unit: "%",
             change: 5.7,
@@ -95,7 +95,7 @@ export function KpiMetricsWidget({ projectId }: KpiMetricsWidgetProps) {
   return (
     <Card className="w-full h-full flex flex-col bg-white dark:bg-background overflow-hidden">
       <CardContent className="p-4 flex-1 flex flex-col">
-        <h3 className="text-md font-semibold text-foreground dark:text-foreground mb-3">Key Performance Indicators</h3>
+        <h3 className="text-md font-semibold text-gray-600 dark:text-gray-400 mb-3">Nyckeltal</h3>
         
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center">
@@ -152,7 +152,7 @@ export function KpiMetricsWidget({ projectId }: KpiMetricsWidgetProps) {
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Trend over the last 30 days</p>
+                        <p className="text-gray-600 dark:text-gray-400">Trend de senaste 30 dagarna</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
