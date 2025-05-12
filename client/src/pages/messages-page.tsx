@@ -27,6 +27,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { usePDFDialog } from "@/hooks/use-pdf-dialog";
 import { User, Send, MoreVertical, UserPlus, Search, FileIcon, Paperclip, X, FileText, Image as ImageIcon, Loader2, ExternalLink, Edit, Settings, Users, Camera, Shield, UserMinus, LogOut } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -648,11 +649,15 @@ const MessageView = ({
   const [pdfUrl, setPdfUrl] = useState("");
   const [pdfTitle, setPdfTitle] = useState("");
   
-  // Öppna PDF i dialogrutan
+  // Öppna PDF i dialogrutan med den nya PDF-dialoglösningen
+  const { showPDFDialog } = usePDFDialog();
+  
+  // Funktion för att öppna PDF i dialogrutan
   const openPdfViewer = (url: string, title: string) => {
-    setPdfUrl(url);
-    setPdfTitle(title);
-    setPdfViewerOpen(true);
+    showPDFDialog({
+      initialUrl: url,
+      filename: title
+    });
   };
   
   // Upload file and send message
