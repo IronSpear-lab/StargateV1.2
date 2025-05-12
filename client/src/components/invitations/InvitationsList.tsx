@@ -1,407 +1,357 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { format, parseISO } from "date-fns";
-import { sv } from "date-fns/locale";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Clock,
+  Copy,
+  MoreVertical,
+  RefreshCcw,
+  Trash2,
+  Link,
+  CheckCircle,
+  AlertCircle,
+  ClockIcon,
+} from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { sv } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, RefreshCw, Copy, CheckCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
-type Invitation = {
+interface Invitation {
   id: number;
   email: string;
   role: string;
-  status: string;
+  status: "pending" | "accepted" | "expired";
   invitedAt: string;
   expiresAt: string;
   invitedByUsername: string;
   token?: string;
-};
+}
 
 export function InvitationsList() {
+  const [selectedInvitation, setSelectedInvitation] = useState<Invitation | null>(null);
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [invitationLink, setInvitationLink] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [deleteInvitationId, setDeleteInvitationId] = useState<number | null>(null);
-  const [resendInvitationId, setResendInvitationId] = useState<number | null>(null);
-  const [showTokenDialog, setShowTokenDialog] = useState(false);
-  const [selectedInvitation, setSelectedInvitation] = useState<Invitation | null>(null);
-  const [isCopied, setIsCopied] = useState(false);
 
-  // Fetch invitations
-  const { data: invitations, isLoading, error } = useQuery<Invitation[]>({
-    queryKey: ['/api/invitations'],
-    queryFn: async () => {
-      const response = await apiRequest('GET', '/api/invitations');
-      return response.json();
-    }
+  const { data: invitations, isLoading, isError } = useQuery<Invitation[]>({
+    queryKey: ["/api/invitations"],
+    queryFn: getQueryFn(),
   });
 
-  // Delete invitation mutation
-  const deleteInvitationMutation = useMutation({
+  const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest('DELETE', `/api/invitations/${id}`);
+      const response = await apiRequest("DELETE", `/api/invitations/${id}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Kunde inte ta bort inbjudan");
+      }
+      return id;
     },
     onSuccess: () => {
       toast({
         title: "Inbjudan borttagen",
-        description: "Inbjudan har tagits bort framgångsrikt."
+        description: "Inbjudan har tagits bort framgångsrikt.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/invitations'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invitations"] });
     },
     onError: (error: Error) => {
       toast({
         title: "Fel",
-        description: `Kunde inte ta bort inbjudan: ${error.message}`,
-        variant: "destructive"
+        description: error.message,
+        variant: "destructive",
       });
-    }
+    },
   });
 
-  // Resend invitation mutation
-  const resendInvitationMutation = useMutation({
+  const resendMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await apiRequest('POST', `/api/invitations/${id}/resend`);
+      const response = await apiRequest("POST", `/api/invitations/${id}/resend`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Kunde inte skicka om inbjudan");
+      }
       return await response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast({
         title: "Inbjudan skickad igen",
-        description: "Inbjudan har skickats igen framgångsrikt."
+        description: "Inbjudan har skickats om framgångsrikt.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/invitations'] });
-      setSelectedInvitation(data);
-      setShowTokenDialog(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/invitations"] });
     },
     onError: (error: Error) => {
       toast({
         title: "Fel",
-        description: `Kunde inte skicka inbjudan igen: ${error.message}`,
-        variant: "destructive"
+        description: error.message,
+        variant: "destructive",
       });
-    }
+    },
   });
 
-  // Get invitation link mutation
   const getInvitationLinkMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await apiRequest('GET', `/api/invitations/${id}/token`);
+      const response = await apiRequest("GET", `/api/invitations/${id}/token`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Kunde inte hämta inbjudningslänk");
+      }
       return await response.json();
     },
-    onSuccess: (data) => {
-      setSelectedInvitation(data);
-      setShowTokenDialog(true);
-      setIsCopied(false);
+    onSuccess: (invitation: Invitation) => {
+      // Create the invitation link
+      const baseUrl = window.location.origin;
+      const link = `${baseUrl}/register?token=${invitation.token}`;
+      setInvitationLink(link);
+      setShowLinkDialog(true);
     },
     onError: (error: Error) => {
       toast({
         title: "Fel",
-        description: `Kunde inte hämta inbjudningslänk: ${error.message}`,
-        variant: "destructive"
+        description: error.message,
+        variant: "destructive",
       });
-    }
+    },
   });
 
-  const handleDeleteInvitation = (id: number) => {
-    setDeleteInvitationId(id);
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(invitationLink);
+    toast({
+      title: "Kopierad",
+      description: "Inbjudningslänken har kopierats till urklipp.",
+    });
   };
 
-  const confirmDeleteInvitation = () => {
-    if (deleteInvitationId) {
-      deleteInvitationMutation.mutate(deleteInvitationId);
-      setDeleteInvitationId(null);
+  const handleDelete = (invitation: Invitation) => {
+    if (confirm(`Är du säker på att du vill ta bort inbjudan till ${invitation.email}?`)) {
+      deleteMutation.mutate(invitation.id);
     }
   };
 
-  const handleResendInvitation = (id: number) => {
-    setResendInvitationId(id);
+  const handleResend = (invitation: Invitation) => {
+    resendMutation.mutate(invitation.id);
   };
 
-  const confirmResendInvitation = () => {
-    if (resendInvitationId) {
-      resendInvitationMutation.mutate(resendInvitationId);
-      setResendInvitationId(null);
-    }
-  };
-
-  const handleGetInvitationLink = (invitation: Invitation) => {
+  const handleGetLink = (invitation: Invitation) => {
+    setSelectedInvitation(invitation);
     getInvitationLinkMutation.mutate(invitation.id);
   };
 
-  const copyInvitationLink = () => {
-    if (selectedInvitation?.token) {
-      const baseUrl = window.location.origin;
-      const invitationLink = `${baseUrl}/auth?token=${selectedInvitation.token}`;
-      
-      navigator.clipboard.writeText(invitationLink)
-        .then(() => {
-          setIsCopied(true);
-          toast({
-            title: "Kopierad!",
-            description: "Inbjudningslänken har kopierats till urklipp."
-          });
-        })
-        .catch((err) => {
-          toast({
-            title: "Kunde inte kopiera",
-            description: "Det gick inte att kopiera till urklipp. Försök att kopiera länken manuellt.",
-            variant: "destructive"
-          });
-        });
+  const translateRole = (role: string) => {
+    switch (role) {
+      case "admin":
+        return "Administratör";
+      case "project_leader":
+        return "Projektledare";
+      case "superuser":
+        return "Superanvändare";
+      case "user":
+        return "Användare";
+      default:
+        return role;
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    try {
-      return format(parseISO(dateString), 'd MMM yyyy, HH:mm', { locale: sv });
-    } catch (error) {
-      return dateString;
-    }
-  };
-
-  const getRoleName = (role: string): string => {
-    const roleMap: Record<string, string> = {
-      user: "Användare",
-      project_leader: "Projektledare",
-      admin: "Administratör",
-      superuser: "Superanvändare"
-    };
-    return roleMap[role] || role;
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'pending':
-        return <Badge variant="outline" className="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200">Väntar</Badge>;
-      case 'accepted':
-        return <Badge variant="outline" className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">Accepterad</Badge>;
-      case 'expired':
-        return <Badge variant="outline" className="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">Utgången</Badge>;
+      case "pending":
+        return (
+          <Badge className="bg-amber-500 hover:bg-amber-600">
+            <ClockIcon className="h-3 w-3 mr-1" />
+            Väntar
+          </Badge>
+        );
+      case "accepted":
+        return (
+          <Badge className="bg-green-500 hover:bg-green-600">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Accepterad
+          </Badge>
+        );
+      case "expired":
+        return (
+          <Badge className="bg-red-500 hover:bg-red-600">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Utgången
+          </Badge>
+        );
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge>{status}</Badge>;
     }
   };
 
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-8 w-24" />
-        </div>
-        <div className="border rounded-lg">
-          <div className="p-4">
-            <Skeleton className="h-10 w-full" />
-          </div>
-          <div className="p-4">
-            <Skeleton className="h-10 w-full" />
-          </div>
-          <div className="p-4">
-            <Skeleton className="h-10 w-full" />
-          </div>
-        </div>
+        <h2 className="text-2xl font-bold text-gray-700 dark:text-gray-300">Inbjudningar</h2>
+        {[1, 2, 3].map((i) => (
+          <Card key={i} className="bg-white dark:bg-gray-800">
+            <CardHeader className="pb-2">
+              <Skeleton className="h-5 w-full max-w-[250px]" />
+              <Skeleton className="h-4 w-full max-w-[180px]" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between items-center">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-6 w-24" />
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-between items-center pt-2">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-8 w-8 rounded-full" />
+            </CardFooter>
+          </Card>
+        ))}
       </div>
     );
   }
 
-  if (error) {
+  if (isError) {
     return (
-      <div className="p-4 border border-red-200 rounded-lg bg-red-50 dark:bg-red-900/20 dark:border-red-800 text-red-700 dark:text-red-400">
-        <p>Ett fel uppstod vid hämtning av inbjudningar.</p>
-        <p className="text-sm mt-2">{(error as Error).message}</p>
-      </div>
-    );
-  }
-
-  if (!invitations || invitations.length === 0) {
-    return (
-      <div className="text-center p-8 border rounded-lg">
-        <p className="text-gray-500 dark:text-gray-400">Inga inbjudningar att visa</p>
-        <p className="text-sm mt-2">
-          Använd knappen "Bjud in användare" för att skapa nya inbjudningar
-        </p>
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-gray-700 dark:text-gray-300">Inbjudningar</h2>
+        <Card className="bg-white dark:bg-gray-800">
+          <CardHeader>
+            <CardTitle className="text-red-500">Fel</CardTitle>
+            <CardDescription>Kunde inte ladda inbjudningar</CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button
+              onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/invitations"] })}
+            >
+              Försök igen
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     );
   }
 
   return (
-    <>
-      <div className="relative w-full overflow-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>E-post</TableHead>
-              <TableHead>Roll</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Inbjuden av</TableHead>
-              <TableHead>Inbjuden</TableHead>
-              <TableHead>Utgår</TableHead>
-              <TableHead className="text-right">Åtgärder</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {invitations.map((invitation) => (
-              <TableRow key={invitation.id}>
-                <TableCell className="font-medium">{invitation.email}</TableCell>
-                <TableCell>{getRoleName(invitation.role)}</TableCell>
-                <TableCell>{getStatusBadge(invitation.status)}</TableCell>
-                <TableCell>{invitation.invitedByUsername}</TableCell>
-                <TableCell>{formatDate(invitation.invitedAt)}</TableCell>
-                <TableCell>{formatDate(invitation.expiresAt)}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    {invitation.status === 'pending' && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleGetInvitationLink(invitation)}
-                          title="Visa länk"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog open={resendInvitationId === invitation.id} onOpenChange={(open) => !open && setResendInvitationId(null)}>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleResendInvitation(invitation.id)}
-                              title="Skicka igen"
-                            >
-                              <RefreshCw className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Skicka inbjudan igen</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Är du säker på att du vill skicka denna inbjudan igen till {invitation.email}? 
-                                Detta kommer att förlänga utgångsdatumet.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                              <AlertDialogAction onClick={confirmResendInvitation}>
-                                Skicka igen
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </>
-                    )}
-                    <AlertDialog open={deleteInvitationId === invitation.id} onOpenChange={(open) => !open && setDeleteInvitationId(null)}>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-red-800 dark:hover:bg-red-950"
-                          onClick={() => handleDeleteInvitation(invitation.id)}
-                          title="Ta bort"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Ta bort inbjudan</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Är du säker på att du vill ta bort inbjudan till {invitation.email}? 
-                            Denna åtgärd kan inte ångras.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                          <AlertDialogAction
-                            className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-                            onClick={confirmDeleteInvitation}
-                          >
-                            Ta bort
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+    <div className="space-y-4">
+      <h2 className="text-2xl font-bold text-gray-700 dark:text-gray-300">Inbjudningar</h2>
+      
+      {invitations && invitations.length === 0 ? (
+        <Card className="bg-white dark:bg-gray-800">
+          <CardHeader>
+            <CardTitle>Inga inbjudningar</CardTitle>
+            <CardDescription>
+              Det finns inga aktiva inbjudningar. Använd knappen "Bjud in användare" för att skapa nya inbjudningar.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : (
+        invitations?.map((invitation) => (
+          <Card key={invitation.id} className="bg-white dark:bg-gray-800">
+            <CardHeader className="pb-2">
+              <CardTitle>{invitation.email}</CardTitle>
+              <CardDescription>
+                Roll: {translateRole(invitation.role)} | Inbjuden av: {invitation.invitedByUsername}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pb-2">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 text-sm">
+                  <Clock className="h-4 w-4" />
+                  <span>
+                    Skapad: {formatDistanceToNow(new Date(invitation.invitedAt), { addSuffix: true, locale: sv })}
+                  </span>
+                </div>
+                <div>{getStatusBadge(invitation.status)}</div>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-between pt-2">
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                Utgår: {formatDistanceToNow(new Date(invitation.expiresAt), { addSuffix: true, locale: sv })}
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreVertical className="h-4 w-4" />
+                    <span className="sr-only">Öppna meny</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Alternativ</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {invitation.status !== "accepted" && (
+                    <>
+                      <DropdownMenuItem onClick={() => handleGetLink(invitation)}>
+                        <Link className="mr-2 h-4 w-4" />
+                        Hämta länk
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleResend(invitation)}>
+                        <RefreshCcw className="mr-2 h-4 w-4" />
+                        Skicka om
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuItem 
+                    onClick={() => handleDelete(invitation)}
+                    className="text-red-500 hover:text-red-600 focus:text-red-600"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Ta bort
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </CardFooter>
+          </Card>
+        ))
+      )}
 
-      {/* Dialog for showing invitation link */}
-      <Dialog open={showTokenDialog} onOpenChange={(open) => setShowTokenDialog(open)}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Inbjudningslänk</DialogTitle>
+            <DialogDescription>
+              Kopiera denna länk och dela med användaren. Länken är giltig tills inbjudan går ut eller
+              användaren registrerar sig.
+            </DialogDescription>
           </DialogHeader>
-          <div className="mt-4 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="invitation-link">Kopiera denna länk och dela med användaren:</Label>
-              <div className="flex items-center space-x-2">
-                <Input
-                  id="invitation-link"
-                  value={selectedInvitation?.token ? 
-                    `${window.location.origin}/auth?token=${selectedInvitation.token}` : 
-                    ''}
-                  readOnly
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  size="icon"
-                  onClick={copyInvitationLink}
-                  variant={isCopied ? "default" : "secondary"}
-                  className={isCopied ? "bg-green-600 hover:bg-green-700" : ""}
-                >
-                  {isCopied ? 
-                    <CheckCircle className="h-4 w-4" /> : 
-                    <Copy className="h-4 w-4" />
-                  }
-                </Button>
-              </div>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Inbjudan är giltig till {selectedInvitation?.expiresAt ? 
-                formatDate(selectedInvitation.expiresAt) : 'N/A'}
-            </p>
-          </div>
-          <DialogFooter className="mt-4">
-            <Button type="button" onClick={() => setShowTokenDialog(false)}>
-              Stäng
+          <div className="flex items-center space-x-2">
+            <Input
+              value={invitationLink}
+              readOnly
+              className="flex-1"
+            />
+            <Button onClick={handleCopyLink} size="icon">
+              <Copy className="h-4 w-4" />
             </Button>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowLinkDialog(false)}>Stäng</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

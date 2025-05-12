@@ -8,6 +8,7 @@ import { users } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import { 
   files, 
   folders, 
@@ -4492,6 +4493,325 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching assigned PDF annotations:", error);
       res.status(500).json({ error: "Failed to fetch assigned annotations" });
+    }
+  });
+
+  // Get all invitations (admin/superuser only)
+  app.get("/api/invitations", async (req, res) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      if (!["admin", "superuser"].includes(user.role)) {
+        return res.status(403).json({ error: "Endast administratörer kan visa alla inbjudningar" });
+      }
+
+      const invitations = await db.query.userInvitations.findMany({
+        orderBy: [desc(userInvitations.invitedAt)],
+        with: {
+          invitedBy: true
+        }
+      });
+
+      const formattedInvitations = invitations.map(invitation => ({
+        id: invitation.id,
+        email: invitation.email,
+        role: invitation.role,
+        status: invitation.status,
+        invitedAt: invitation.invitedAt.toISOString(),
+        expiresAt: invitation.expiresAt.toISOString(),
+        invitedByUsername: invitation.invitedBy?.username || "Unknown"
+      }));
+
+      res.json(formattedInvitations);
+    } catch (error) {
+      console.error("Error fetching invitations:", error);
+      res.status(500).json({ error: "Det gick inte att hämta inbjudningar" });
+    }
+  });
+
+  // Create a new invitation
+  app.post("/api/invitations", async (req, res) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      if (!["admin", "superuser", "project_leader"].includes(user.role)) {
+        return res.status(403).json({ error: "Du har inte behörighet att skapa inbjudningar" });
+      }
+
+      const { email, role } = req.body;
+      
+      if (!email || !role) {
+        return res.status(400).json({ error: "E-post och roll krävs" });
+      }
+
+      // Check if the email is already registered
+      const existingUser = await db.query.users.findFirst({
+        where: eq(users.email, email)
+      });
+
+      if (existingUser) {
+        return res.status(400).json({ error: "En användare med denna e-post finns redan" });
+      }
+
+      // Check if there's already a pending invitation for this email
+      const existingInvitation = await db.query.userInvitations.findFirst({
+        where: and(
+          eq(userInvitations.email, email),
+          eq(userInvitations.status, "pending")
+        )
+      });
+
+      if (existingInvitation) {
+        return res.status(400).json({ error: "Det finns redan en aktiv inbjudan för denna e-post" });
+      }
+
+      // Generate a unique token
+      const token = crypto.randomBytes(32).toString('hex');
+      
+      // Set expiration date (7 days from now)
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      // Create the invitation
+      const [invitation] = await db.insert(userInvitations).values({
+        email,
+        role,
+        token,
+        status: "pending",
+        invitedById: user.id,
+        invitedAt: new Date(),
+        expiresAt
+      }).returning();
+
+      // Format the response with the inviter's username
+      const invitedBy = await db.query.users.findFirst({
+        where: eq(users.id, user.id),
+        columns: {
+          username: true
+        }
+      });
+
+      const formattedInvitation = {
+        id: invitation.id,
+        email: invitation.email,
+        role: invitation.role,
+        status: invitation.status,
+        invitedAt: invitation.invitedAt.toISOString(),
+        expiresAt: invitation.expiresAt.toISOString(),
+        invitedByUsername: invitedBy?.username || "Unknown",
+        token: invitation.token
+      };
+
+      res.status(201).json(formattedInvitation);
+    } catch (error) {
+      console.error("Error creating invitation:", error);
+      res.status(500).json({ error: "Det gick inte att skapa inbjudan" });
+    }
+  });
+
+  // Get invitation token
+  app.get("/api/invitations/:id/token", async (req, res) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      if (!["admin", "superuser", "project_leader"].includes(user.role)) {
+        return res.status(403).json({ error: "Du har inte behörighet att hämta inbjudningslänkar" });
+      }
+
+      const invitationId = parseInt(req.params.id);
+      if (isNaN(invitationId)) {
+        return res.status(400).json({ error: "Ogiltigt inbjudnings-ID" });
+      }
+
+      const invitation = await db.query.userInvitations.findFirst({
+        where: eq(userInvitations.id, invitationId),
+        with: {
+          invitedBy: true
+        }
+      });
+
+      if (!invitation) {
+        return res.status(404).json({ error: "Inbjudan hittades inte" });
+      }
+
+      // Check if invitation is expired
+      if (invitation.status !== "pending" || new Date() > invitation.expiresAt) {
+        // Update status if expired
+        if (invitation.status === "pending" && new Date() > invitation.expiresAt) {
+          await db.update(userInvitations)
+            .set({ status: "expired" })
+            .where(eq(userInvitations.id, invitationId));
+          return res.status(400).json({ error: "Inbjudan har gått ut" });
+        }
+        return res.status(400).json({ error: "Inbjudan är inte längre aktiv" });
+      }
+
+      const formattedInvitation = {
+        id: invitation.id,
+        email: invitation.email,
+        role: invitation.role,
+        status: invitation.status,
+        invitedAt: invitation.invitedAt.toISOString(),
+        expiresAt: invitation.expiresAt.toISOString(),
+        invitedByUsername: invitation.invitedBy?.username || "Unknown",
+        token: invitation.token
+      };
+
+      res.json(formattedInvitation);
+    } catch (error) {
+      console.error("Error fetching invitation token:", error);
+      res.status(500).json({ error: "Det gick inte att hämta inbjudningslänk" });
+    }
+  });
+
+  // Resend invitation
+  app.post("/api/invitations/:id/resend", async (req, res) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      if (!["admin", "superuser", "project_leader"].includes(user.role)) {
+        return res.status(403).json({ error: "Du har inte behörighet att skicka om inbjudningar" });
+      }
+
+      const invitationId = parseInt(req.params.id);
+      if (isNaN(invitationId)) {
+        return res.status(400).json({ error: "Ogiltigt inbjudnings-ID" });
+      }
+
+      const invitation = await db.query.userInvitations.findFirst({
+        where: eq(userInvitations.id, invitationId)
+      });
+
+      if (!invitation) {
+        return res.status(404).json({ error: "Inbjudan hittades inte" });
+      }
+
+      // Generate a new token
+      const token = crypto.randomBytes(32).toString('hex');
+      
+      // Set a new expiration date (7 days from now)
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      // Update the invitation
+      const [updatedInvitation] = await db.update(userInvitations)
+        .set({
+          token,
+          status: "pending",
+          expiresAt
+        })
+        .where(eq(userInvitations.id, invitationId))
+        .returning();
+
+      // Format the response with the inviter's username
+      const invitedBy = await db.query.users.findFirst({
+        where: eq(users.id, updatedInvitation.invitedById),
+        columns: {
+          username: true
+        }
+      });
+
+      const formattedInvitation = {
+        id: updatedInvitation.id,
+        email: updatedInvitation.email,
+        role: updatedInvitation.role,
+        status: updatedInvitation.status,
+        invitedAt: updatedInvitation.invitedAt.toISOString(),
+        expiresAt: updatedInvitation.expiresAt.toISOString(),
+        invitedByUsername: invitedBy?.username || "Unknown",
+        token: updatedInvitation.token
+      };
+
+      res.json(formattedInvitation);
+    } catch (error) {
+      console.error("Error resending invitation:", error);
+      res.status(500).json({ error: "Det gick inte att skicka om inbjudan" });
+    }
+  });
+
+  // Delete invitation
+  app.delete("/api/invitations/:id", async (req, res) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      if (!["admin", "superuser"].includes(user.role)) {
+        return res.status(403).json({ error: "Endast administratörer kan ta bort inbjudningar" });
+      }
+
+      const invitationId = parseInt(req.params.id);
+      if (isNaN(invitationId)) {
+        return res.status(400).json({ error: "Ogiltigt inbjudnings-ID" });
+      }
+
+      const invitation = await db.query.userInvitations.findFirst({
+        where: eq(userInvitations.id, invitationId)
+      });
+
+      if (!invitation) {
+        return res.status(404).json({ error: "Inbjudan hittades inte" });
+      }
+
+      await db.delete(userInvitations)
+        .where(eq(userInvitations.id, invitationId));
+
+      res.status(200).json({ message: "Inbjudan har tagits bort" });
+    } catch (error) {
+      console.error("Error deleting invitation:", error);
+      res.status(500).json({ error: "Det gick inte att ta bort inbjudan" });
+    }
+  });
+
+  // Verify and use invitation token during registration
+  app.post("/api/auth/verify-invitation", async (req, res) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ error: "Token krävs" });
+      }
+
+      const invitation = await db.query.userInvitations.findFirst({
+        where: eq(userInvitations.token, token)
+      });
+
+      if (!invitation) {
+        return res.status(404).json({ error: "Ogiltig inbjudningstoken" });
+      }
+
+      // Check if invitation is expired
+      if (invitation.status !== "pending" || new Date() > invitation.expiresAt) {
+        // Update status if expired
+        if (invitation.status === "pending" && new Date() > invitation.expiresAt) {
+          await db.update(userInvitations)
+            .set({ status: "expired" })
+            .where(eq(userInvitations.id, invitation.id));
+        }
+        return res.status(400).json({ error: "Inbjudan har gått ut eller är inte längre aktiv" });
+      }
+
+      res.json({
+        email: invitation.email,
+        role: invitation.role,
+        invitationId: invitation.id
+      });
+    } catch (error) {
+      console.error("Error verifying invitation:", error);
+      res.status(500).json({ error: "Det gick inte att verifiera inbjudan" });
     }
   });
 
