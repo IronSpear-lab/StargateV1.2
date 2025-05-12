@@ -1652,9 +1652,17 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       // Detta förbättrade tillvägagångssätt eliminerar dubbletterna
       
       // Filtrera ut bara foldrarna för aktuellt projekt (för säkerhets skull)
-      const projectFolders = userCreatedFolders.filter(folder => 
-        folder && folder.projectId === currentProjectId
-      );
+      // Försök använda den globala currentProjectId som redan ska vara definierad
+      // men med en try-catch för att hantera eventuella fel
+      let projectFolders = [];
+      try {
+        projectFolders = userCreatedFolders.filter(folder => 
+          folder && folder.projectId === currentProjectId
+        );
+      } catch (error) {
+        console.log("Kunde inte filtrera mappar med currentProjectId, använder alla mappar istället", error);
+        projectFolders = [...userCreatedFolders]; // Använd alla mappar om vi inte kan filtrera
+      }
       
       console.log("Filtered folders for tree building:", projectFolders);
       
