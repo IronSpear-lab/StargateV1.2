@@ -28,6 +28,7 @@ import {
   HelpCircle,
   CircleUser,
   Search,
+  DollarSign,
   Box,
   Plus,
   Shield,
@@ -1403,7 +1404,8 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       label: "Projektplanering",
       icon: <Briefcase className="w-5 h-5" />,
       active: location === "/kanban" || location === "/gantt" || 
-              location === "/planning/kanban" || location === "/planning/gantt-chart",
+              location === "/planning/kanban" || location === "/planning/gantt-chart" || 
+              location === "/planning/revenue-time",
       type: "section",
       sectionId: "project-planning",
       isOpen: openSections.includes("project-planning"),
@@ -1421,6 +1423,13 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           label: "Gantt Chart",
           icon: <BarChart2 className="w-4 h-4" />,
           active: location === "/gantt" || location === "/planning/gantt-chart",
+          indent: 1
+        },
+        {
+          href: "/planning/revenue-time", // Match the route in App.tsx
+          label: "Ekonomi & Tid",
+          icon: <DollarSign className="w-4 h-4" />,
+          active: location === "/planning/revenue-time",
           indent: 1
         }
       ]
