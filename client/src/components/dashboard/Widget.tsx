@@ -318,15 +318,37 @@ export function Widget({
           "overflow-auto rounded-b-lg transition-all duration-300",
           !expanded && heightClasses, 
           collapsed && "hidden", 
-          "relative"
+          "relative",
+          expanded && "p-5 backdrop-blur-sm"
         )}
         style={{
           background: "linear-gradient(180deg, var(--card) 0%, var(--card-foreground-rgb)/0.01 100%)",
         }}
       >
+        {/* Dekorativa element i CardContent */}
+        {expanded && (
+          <>
+            <div 
+              className="absolute top-0 right-0 w-[150px] h-[150px] rounded-full pointer-events-none opacity-5"
+              style={{ 
+                background: "radial-gradient(circle, var(--primary)/0.7 0%, transparent 70%)",
+              }}
+            />
+            <div 
+              className="absolute right-[10%] bottom-[5%] w-[60px] h-[60px] rounded-full pointer-events-none opacity-10 animate-pulse-slow"
+              style={{ 
+                background: "radial-gradient(circle, var(--primary) 0%, transparent 70%)",
+              }}
+            />
+          </>
+        )}
+        
         <div className="relative z-10">
           {children}
         </div>
+        
+        {/* Gradientlinjer för mer futuristiskt utseende */}
+        <div className="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-primary/10 to-transparent"></div>
       </CardContent>
     </Card>
   );

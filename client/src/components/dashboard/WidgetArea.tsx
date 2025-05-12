@@ -93,6 +93,7 @@ export function WidgetArea({ children, className, onWidgetPositionChange }: Widg
       className={cn(
         "grid grid-cols-12 gap-4 p-4 relative rounded-lg overflow-hidden",
         dropzoneActive && "border-2 border-dashed border-primary/30 shadow-lg",
+        "transition-all duration-300",
         className
       )}
       style={{
@@ -116,7 +117,24 @@ export function WidgetArea({ children, className, onWidgetPositionChange }: Widg
         }}
       />
       
-      {/* Subtil linjemönster som bakgrund */}
+      {/* Animerad dekorativ effekt - pulsningar */}
+      <div 
+        className="absolute left-[5%] top-[15%] w-[300px] h-[300px] rounded-full pointer-events-none animate-pulse-slow"
+        style={{ 
+          background: "radial-gradient(circle, var(--primary)/0.03 0%, transparent 70%)",
+          animation: "pulse 8s infinite ease-in-out" 
+        }}
+      />
+      
+      <div 
+        className="absolute right-[10%] bottom-[10%] w-[200px] h-[200px] rounded-full pointer-events-none animate-pulse-slower"
+        style={{ 
+          background: "radial-gradient(circle, var(--primary)/0.04 0%, transparent 70%)",
+          animation: "pulse 12s infinite ease-in-out" 
+        }}
+      />
+      
+      {/* Subtilt linjemönster som bakgrund */}
       <div 
         className="absolute inset-0 pointer-events-none opacity-10"
         style={{
@@ -129,6 +147,12 @@ export function WidgetArea({ children, className, onWidgetPositionChange }: Widg
       <div className="col-span-12 grid grid-cols-12 gap-4 relative z-10">
         {children}
       </div>
+      
+      {/* Dekorativa hörn */}
+      <div className="absolute left-0 top-0 w-[40px] h-[40px] pointer-events-none border-l-2 border-t-2 border-primary/10 rounded-tl-lg opacity-50"></div>
+      <div className="absolute right-0 top-0 w-[40px] h-[40px] pointer-events-none border-r-2 border-t-2 border-primary/10 rounded-tr-lg opacity-50"></div>
+      <div className="absolute left-0 bottom-0 w-[40px] h-[40px] pointer-events-none border-l-2 border-b-2 border-primary/10 rounded-bl-lg opacity-50"></div>
+      <div className="absolute right-0 bottom-0 w-[40px] h-[40px] pointer-events-none border-r-2 border-b-2 border-primary/10 rounded-br-lg opacity-50"></div>
     </div>
   );
 }
