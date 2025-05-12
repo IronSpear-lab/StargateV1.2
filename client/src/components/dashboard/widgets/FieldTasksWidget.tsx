@@ -330,7 +330,12 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
   // Hanterare för klick på en PDF-kommentar
   const handlePdfAnnotationClick = (annotation: PdfAnnotation) => {
     // Navigera till PDF-visaren med annotation ID
-    setLocation(`/files/pdf/${annotation.pdfVersionId}?annotationId=${annotation.id}`);
+    // Använd dialogvisning istället för navigation
+    const { showPDFDialog } = usePDFDialog();
+    showPDFDialog({
+      versionId: Number(annotation.pdfVersionId),
+      annotationId: annotation.id
+    });
   };
 
   // Få initialerna från ett namn
