@@ -21,6 +21,7 @@ import { format, parseISO } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { sv } from 'date-fns/locale';
 import { apiRequest } from "@/lib/queryClient";
+import { usePDFDialog } from "@/hooks/use-pdf-dialog";
 
 // PDF Annotation interface
 interface PDFAnnotation {
@@ -99,10 +100,17 @@ export default function VaultCommentsPage() {
     return true;
   });
 
-  // Function to view PDF with annotation
+  // Function to view PDF with annotation using dialog
   const viewAnnotation = (annotation: PDFAnnotation) => {
+    const { showPDFDialog } = usePDFDialog();
+    
     if (annotation.pdfVersionId) {
-      window.location.href = `/ritningar?fileId=${annotation.pdfVersionId}&annotationId=${annotation.id}`;
+      // Använd PDF-dialog istället för navigation
+      showPDFDialog({
+        versionId: Number(annotation.pdfVersionId),
+        annotationId: annotation.id,
+        filename: annotation.fileName || "PDF-dokument"
+      });
     } else {
       toast({
         title: "Kunde inte öppna filen",
