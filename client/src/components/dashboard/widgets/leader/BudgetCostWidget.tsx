@@ -69,13 +69,13 @@ export function BudgetCostWidget({ projectId }: BudgetCostWidgetProps) {
         <div className="p-4 flex flex-col">
           <div className="flex justify-between items-start mb-2">
             <div>
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Budget</h3>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Budget</h3>
               <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">
                 {formatCurrency(data.length > 0 ? data[data.length - 1]?.plannedBudget : 0)}
               </p>
             </div>
             <div className="text-right">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">This Week</h3>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">This Week</h3>
               <p className={`text-lg font-semibold ${budgetDifference > 0 ? 'text-primary dark:text-primary' : 'text-emerald-500 dark:text-emerald-400'}`}>
                 {budgetDifference > 0 ? '+' : ''}{budgetDifference.toFixed(1)}% <span className="text-gray-600 dark:text-gray-400">over budget</span>
               </p>
