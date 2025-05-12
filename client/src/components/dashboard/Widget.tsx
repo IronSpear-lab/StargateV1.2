@@ -148,7 +148,7 @@ export function Widget({
         "shadow-md rounded-lg transition-all duration-300 widget border-0",
         dragging ? "opacity-50" : "opacity-100",
         expanded && "backdrop-blur-sm",
-        "bg-gray-200 dark:bg-gray-800 p-3", // Mörkare bakgrund för tydligare 3D-effekt
+        "bg-gray-200 dark:bg-gray-700 p-3", // Ljusare bakgrund för bättre kontrast i dark mode
         className
       )}
       style={{
@@ -160,7 +160,7 @@ export function Widget({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <CardHeader className="p-3 bg-white dark:bg-gray-700 flex-row items-center justify-between space-y-0 rounded-lg mb-2 shadow-sm border border-gray-50">
+      <CardHeader className="p-3 bg-white dark:bg-gray-600 flex-row items-center justify-between space-y-0 rounded-lg mb-2 shadow-sm border border-gray-50 dark:border-gray-500">
         <div className="flex items-center space-x-2">
           <div
             className="cursor-move p-1 rounded hover:bg-primary/10"
@@ -288,10 +288,10 @@ export function Widget({
       <CardContent 
         className={cn(
           noPadding ? "p-0" : "p-3", 
-          "overflow-auto bg-white dark:bg-gray-700 rounded-lg",
+          "overflow-auto bg-white dark:bg-gray-600 rounded-lg",
           !expanded && heightClasses, 
           collapsed && "hidden", 
-          "relative shadow-sm border border-gray-50"
+          "relative shadow-sm border border-gray-50 dark:border-gray-500"
         )}
       >
         {children}
