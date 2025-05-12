@@ -745,12 +745,16 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     if (file.type === 'file') {
       // Check if this is a PDF file
       if (file.fileType && isPdf(file.fileType)) {
+        console.log(`Öppnar PDF i dialog: ${file.name} (ID: ${file.id})`);
         // Om det är en PDF-fil, öppna med dialog
         showPDFDialog({
           fileId: file.id,
           filename: file.name,
           projectId: currentProject?.id
         });
+        
+        // Förhindra standardhantering för PDF-filer
+        return;
       } else {
         // Annars använd standardhanteringen
         onFileSelect(file);

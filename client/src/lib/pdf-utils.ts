@@ -1,12 +1,20 @@
 import { apiRequest, queryClient } from "./queryClient";
 
 /**
- * Checks if a filename has a PDF extension
- * @param filename The filename to check
+ * Checks if a filename or filetype has a PDF extension
+ * @param filenameOrType The filename or filetype to check
  * @returns true if the file is a PDF
  */
-export function isPdf(filename: string): boolean {
-  return /\.pdf$/i.test(filename);
+export function isPdf(filenameOrType: string): boolean {
+  // Kontrollera för vanliga PDF MIME-typer
+  if (filenameOrType === 'application/pdf' || 
+      filenameOrType === 'pdf' || 
+      filenameOrType === 'PDF') {
+    return true;
+  }
+  
+  // Kontrollera om filnamnet slutar med .pdf
+  return /\.pdf$/i.test(filenameOrType);
 }
 
 /**
