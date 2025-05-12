@@ -1722,6 +1722,7 @@ export default function EnhancedPDFViewer({
                   loading={<div className="flex items-center justify-center h-[600px]"><Loader2 className="animate-spin h-8 w-8" /></div>}
                   className="pdf-page"
                 />
+              </Document>
               
               {/* Render annotations */}
               {annotations
