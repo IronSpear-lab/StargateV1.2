@@ -1872,30 +1872,31 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         isItemOpen = openItems[itemKey] !== undefined ? openItems[itemKey] : false;
       }
       
-      // FÖRBÄTTRAD INDENTERINGSBERÄKNING baserad på mappnivå
+      // FÖRBÄTTRAD INDENTERINGSBERÄKNING baserad på mappnivå med stöd för obegränsad nästling
       let indentClass = '';
       // När sidofältet är öppet använder vi faktisk nivåbaserad indentering
       if (isOpen) {
         // SPECIFIKA INDENTERINGSVÄRDEN enligt användarens specifikation
         if (item.indent !== undefined) {
-          // Använder exakt de indenteringsvärden som användaren har angivit för varje mapp
+          // Använder progressiva indenteringsvärden med mindre ökning för djupare nivåer
+          // Detta förhindrar att djupt nästlade mappar hamnar för långt till höger
           if (item.indent === 0) indentClass = 'pl-0';      // Topnivå - ingen indentering
-          else if (item.indent === 1) indentClass = 'pl-8';  // Mapp 1
-          else if (item.indent === 2) indentClass = 'pl-10'; // Nivå 2
-          else if (item.indent === 3) indentClass = 'pl-12'; // Mapp 2
-          else if (item.indent === 4) indentClass = 'pl-16'; // Mapp 3
-          else if (item.indent === 5) indentClass = 'pl-20'; // Mapp 4
-          else if (item.indent === 6) indentClass = 'pl-24'; // Mapp 5
-          else if (item.indent === 7) indentClass = 'pl-28'; // Mapp 6
-          else if (item.indent === 8) indentClass = 'pl-32'; // Mapp 7
-          else if (item.indent === 9) indentClass = 'pl-36'; // Mapp 8
-          else if (item.indent === 10) indentClass = 'pl-40'; // Mapp 9
-          else if (item.indent === 11) indentClass = 'pl-44'; // Mapp 10
-          else if (item.indent === 12) indentClass = 'pl-48'; // Mapp 11
-          else if (item.indent === 13) indentClass = 'pl-52'; // Mapp 12
-          else if (item.indent === 14) indentClass = 'pl-56'; // Mapp 13
-          else if (item.indent === 15) indentClass = 'pl-60'; // Mapp 14
-          else indentClass = `pl-${item.indent * 4}`; // Djupare nivåer - 4px per nivå
+          else if (item.indent === 1) indentClass = 'pl-7';  // Mapp 1 - något mindre indentering
+          else if (item.indent === 2) indentClass = 'pl-10'; // Nivå 2 - mindre ökning
+          else if (item.indent === 3) indentClass = 'pl-13'; // Mapp 3 - mindre ökning
+          else if (item.indent === 4) indentClass = 'pl-16'; // Mapp 4
+          else if (item.indent === 5) indentClass = 'pl-19'; // Mapp 5
+          else if (item.indent === 6) indentClass = 'pl-22'; // Mapp 6
+          else if (item.indent === 7) indentClass = 'pl-25'; // Mapp 7
+          else if (item.indent === 8) indentClass = 'pl-28'; // Mapp 8
+          else if (item.indent === 9) indentClass = 'pl-31'; // Mapp 9
+          else if (item.indent === 10) indentClass = 'pl-34'; // Mapp 10
+          else if (item.indent === 11) indentClass = 'pl-37'; // Mapp 11
+          else if (item.indent === 12) indentClass = 'pl-40'; // Mapp 12
+          else if (item.indent === 13) indentClass = 'pl-43'; // Mapp 13
+          else if (item.indent === 14) indentClass = 'pl-46'; // Mapp 14
+          else if (item.indent === 15) indentClass = 'pl-49'; // Mapp 15
+          else if (item.indent > 15) indentClass = `pl-${34 + (item.indent - 10) * 3}`; // Formeln ger rimliga värden för obegränsad nästling
           
           // Debuglogga för att säkerställa att indenteringen beräknas korrekt
           if (item.type === 'folder') {
@@ -2402,7 +2403,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           </div>
         )}
         
-        <div className="py-2 flex-1 overflow-y-auto">
+        <div className="py-2 flex-1 overflow-y-auto custom-scrollbar">
           <div className="sidebar-folder-container overflow-x-auto">
             {renderNavItems(navItems)}
           </div>
