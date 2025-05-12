@@ -34,6 +34,7 @@ import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ProjectProvider } from "./contexts/ProjectContext";
+import { PDFDialogProvider } from "@/components/PDFDialogProvider";
 import { useEffect, useState } from "react";
 import { configurePdfWorker } from "@/lib/pdf-worker-config";
 
@@ -114,8 +115,10 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <ProjectProvider>
-            <Router />
-            <Toaster />
+            <PDFDialogProvider>
+              <Router />
+              <Toaster />
+            </PDFDialogProvider>
           </ProjectProvider>
         </AuthProvider>
       </QueryClientProvider>
