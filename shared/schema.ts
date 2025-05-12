@@ -12,6 +12,9 @@ export const userRoleEnum = pgEnum('user_role', ['admin', 'project_leader', 'use
 // Define task status enum
 export const taskStatusEnum = pgEnum('task_status', ['backlog', 'todo', 'in_progress', 'review', 'done']);
 
+// Define invitation status enum
+export const invitationStatusEnum = pgEnum('invitation_status', ['pending', 'accepted', 'expired']);
+
 
 
 // Users table
@@ -132,6 +135,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   createdWikiPages: many(wikiPages, { relationName: 'createdWikiPages' }),
   updatedWikiPages: many(wikiPages, { relationName: 'updatedWikiPages' }),
   calendarEvents: many(calendarEvents),
+  sentInvitations: many(userInvitations, { relationName: 'sentInvitations' }),
 }));
 
 export const projectsRelations = relations(projects, ({ one, many }) => ({
@@ -270,6 +274,18 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
 });
 
+// User Invitations table
+export const userInvitations = pgTable("user_invitations", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  role: text("role").notNull(),
+  status: invitationStatusEnum("status").default("pending").notNull(),
+  invitedById: integer("invited_by_id").references(() => users.id).notNull(),
+  invitedAt: timestamp("invited_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  token: text("token").notNull(),
+});
+
 export const insertProjectSchema = createInsertSchema(projects);
 export const insertFolderSchema = createInsertSchema(folders);
 export const insertFileSchema = createInsertSchema(files);
@@ -278,6 +294,7 @@ export const insertTimeEntrySchema = createInsertSchema(taskTimeEntries);
 export const insertCommentSchema = createInsertSchema(comments);
 export const insertWikiPageSchema = createInsertSchema(wikiPages);
 export const insertUserProjectSchema = createInsertSchema(userProjects);
+export const insertUserInvitationSchema = createInsertSchema(userInvitations);
 
 // PDF Versions table
 export const pdfVersions = pgTable("pdf_versions", {

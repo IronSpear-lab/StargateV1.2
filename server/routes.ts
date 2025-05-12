@@ -2018,6 +2018,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User Invitations API
+  app.post(`${apiPrefix}/users/invite`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    try {
+      const { email, role } = req.body;
+      
+      if (!email || !role) {
+        return res.status(400).json({ error: "E-postadress och roll krävs" });
+      }
+      
+      // Generera ett unikt token
+      const token = require('crypto').randomBytes(32).toString('hex');
+      
+      // Sätt utgångsdatum till 7 dagar från nu
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+      
+      // Skapa inbjudan i databasen
+      const [invitation] = await db.insert(userInvitations)
+        .values({
+          email,
+          role,
+          token,
+          expiresAt,
+          invitedById: req.user!.id,
+          status: "pending"
+        })
+        .returning();
+      
+      // I en faktisk implementering skulle vi skicka ett e-postmeddelande här med SendGrid
+      // Men eftersom vi inte har någon API-nyckel, sparar vi bara inbjudan i databasen
+      
+      res.status(201).json({ 
+        message: "Inbjudan har skapats och sparats",
+        invitation: {
+          id: invitation.id,
+          email: invitation.email,
+          role: invitation.role,
+          invitedAt: invitation.invitedAt,
+          expiresAt: invitation.expiresAt
+        } 
+      });
+    } catch (error) {
+      console.error("Error creating invitation:", error);
+      res.status(500).json({ error: "Kunde inte skapa inbjudan" });
+    }
+  });
+  
+  // List invitations for admin management
+  app.get(`${apiPrefix}/users/invitations`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    // Endast admin och project_leader kan se alla inbjudningar
+    if (req.user!.role !== 'admin' && req.user!.role !== 'project_leader' && req.user!.role !== 'superuser') {
+      return res.status(403).json({ error: "Du har inte behörighet att se inbjudningar" });
+    }
+    
+    try {
+      const invitations = await db.select({
+        id: userInvitations.id,
+        email: userInvitations.email,
+        role: userInvitations.role,
+        status: userInvitations.status,
+        invitedAt: userInvitations.invitedAt,
+        expiresAt: userInvitations.expiresAt,
+        invitedByUsername: users.username,
+      })
+      .from(userInvitations)
+      .innerJoin(users, eq(userInvitations.invitedById, users.id))
+      .orderBy(desc(userInvitations.invitedAt));
+      
+      res.json(invitations);
+    } catch (error) {
+      console.error("Error fetching invitations:", error);
+      res.status(500).json({ error: "Kunde inte hämta inbjudningar" });
+    }
+  });
+  
   // Wiki pages API
   app.get(`${apiPrefix}/wiki-pages`, async (req, res) => {
     if (!req.isAuthenticated()) {
