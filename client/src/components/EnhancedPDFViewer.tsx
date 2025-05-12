@@ -628,10 +628,16 @@ export default function EnhancedPDFViewer({
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     console.log(`PDF laddad framgångsrikt: ${numPages} sidor`);
     setNumPages(numPages);
-    // Vi behåller loading-tillståndet lite längre för att säkerställa att allt renderas korrekt
+    
+    // Vi behåller loading-tillståndet mycket längre för att säkerställa att allt renderas korrekt
+    // Detta hjälper till att förhindra att sidopanelen försvinner när PDF-dokumentet laddas
     setTimeout(() => {
-      setLoading(false);
-    }, 100);
+      // Kontrollera om komponenterna fortfarande är monterade
+      if (pdfContainerRef.current && containerRef.current) {
+        console.log('Ställer in loading till false efter fördröjning');
+        setLoading(false);
+      }
+    }, 500); // Ökad fördröjning till 500ms för att säkerställa att allt hinner ladda
   };
   
   // Hantera fel vid laddning av PDF
@@ -1693,7 +1699,8 @@ export default function EnhancedPDFViewer({
         {/* PDF viewer - med förändrad z-index för att säkerställa att den inte täcker sidopanelen */}
         <div 
           ref={containerRef}
-          className="flex-1 overflow-auto bg-gray-200 z-10"
+          className="flex-1 overflow-auto bg-gray-200 z-5"
+          style={{ position: 'relative', zIndex: 5 }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -1766,8 +1773,8 @@ export default function EnhancedPDFViewer({
           </div>
         </div>
         
-        {/* Right sidebar - med högre z-index för att säkerställa att den alltid är synlig */}
-        <div className="w-80 border-l bg-white overflow-y-auto z-20 relative">
+        {/* Right sidebar - med extremt hög z-index för att säkerställa att den alltid är synlig */}
+        <div className="w-80 border-l bg-white overflow-y-auto z-50 relative" style={{ position: 'relative', zIndex: 50 }}>
           {/* Sidebar navigation */}
           <div className="border-b p-3 flex">
             <Button 
