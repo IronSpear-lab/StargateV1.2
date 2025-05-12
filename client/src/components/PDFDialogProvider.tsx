@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { PDFDialog, PDFDialogContent } from "@/components/ui/pdf-dialog";
 import EnhancedPDFViewer from "@/components/EnhancedPDFViewer";
 
 // Typ för dialogen
@@ -50,10 +50,10 @@ export function PDFDialogProvider({ children }: { children: ReactNode }) {
     <PDFDialogContext.Provider value={{ dialogState, openPDFDialog, closePDFDialog }}>
       {children}
       
-      <Dialog open={dialogState.isOpen} onOpenChange={isOpen => {
+      <PDFDialog open={dialogState.isOpen} onOpenChange={isOpen => {
         if (!isOpen) closePDFDialog();
       }}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] w-[95vw] h-[95vh] p-0 overflow-hidden">
+        <PDFDialogContent className="max-w-[90vw] max-h-[90vh] w-[90vw] h-[90vh] p-0 overflow-hidden">
           {dialogState.isOpen && (
             <EnhancedPDFViewer
               fileId={dialogState.fileId}
@@ -70,8 +70,8 @@ export function PDFDialogProvider({ children }: { children: ReactNode }) {
               isDialogMode={true}
             />
           )}
-        </DialogContent>
-      </Dialog>
+        </PDFDialogContent>
+      </PDFDialog>
     </PDFDialogContext.Provider>
   );
 }
