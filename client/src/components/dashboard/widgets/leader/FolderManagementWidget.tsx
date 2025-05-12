@@ -531,14 +531,14 @@ export function FolderManagementWidget() {
           </div>
           
           <div className="border-t border-neutral-200 pt-4">
-            <h3 className="text-sm font-medium mb-3">Projektmappar</h3>
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">Projektmappar</h3>
             
             {isLoadingFolders ? (
-              <div className="py-4 text-center text-sm text-neutral-500">
+              <div className="py-4 text-center text-sm text-gray-600 dark:text-gray-400">
                 Laddar mappstruktur...
               </div>
             ) : folderTree.length === 0 ? (
-              <div className="py-4 text-center text-sm text-neutral-500">
+              <div className="py-4 text-center text-sm text-gray-600 dark:text-gray-400">
                 Inga mappar att visa. Skapa en mapp för att komma igång.
               </div>
             ) : (

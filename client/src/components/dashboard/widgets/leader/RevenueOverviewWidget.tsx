@@ -312,7 +312,7 @@ export function RevenueOverviewWidget({
         </Button>
       </div>
 
-      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+      <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
         {hourlyRate 
           ? `Aktuellt timpris: ${formatCurrency(hourlyRate)}/tim`
           : 'Inget timpris inställt. Klicka på "Inställningar" för att lägga till.'
@@ -346,7 +346,7 @@ export function RevenueOverviewWidget({
             ({percentChange >= 0 ? "+" : ""}{percentChange.toFixed(1)}%)
           </span>
         </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400">
+        <div className="text-xs text-gray-600 dark:text-gray-400">
           jämfört med föregående period
         </div>
       </div>
