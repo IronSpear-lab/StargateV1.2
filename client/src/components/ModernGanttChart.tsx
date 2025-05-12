@@ -789,29 +789,108 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
   
   // Beräkna position och stil för uppgiftsstaplar
   const getTaskBarStyle = (task: GanttTask): React.CSSProperties => {
-    // Kontrollera om datum finns och konvertera datestrings till Date-objekt
-    if (!task.startDate || !task.endDate) {
-      console.warn(`Gantt: Uppgift "${task.name}" saknar start- eller slutdatum`, task);
-      return { display: 'none' };
-    }
+    // HELT NY OCH FÖRBÄTTRAD DATUMHANTERING
+    // Skapa alltid dagens datum som fallback
+    const today = new Date();
+    let taskStartDate = today;
+    let taskEndDate = today;
     
-    // Försök att konvertera strängdatum till Date-objekt, hantera eventuella fel
-    let taskStartDate, taskEndDate;
-    try {
-      taskStartDate = parseISO(task.startDate);
-      taskEndDate = parseISO(task.endDate);
+    // Generera standard datum om de saknas
+    if (!task.startDate && !task.endDate) {
+      console.log(`Gantt: Uppgift "${task.name}" saknar både start- och slutdatum, använder dagens datum som start`);
+      taskStartDate = today;
       
-      // Validera att parseISO producerade giltiga datum
-      if (isNaN(taskStartDate.getTime()) || isNaN(taskEndDate.getTime())) {
-        console.warn(`Gantt: Ogiltiga datum för uppgift "${task.name}"`, {
-          startDate: task.startDate,
-          endDate: task.endDate
-        });
-        return { display: 'none' };
+      // Välj slutdatum baserat på uppgiftstyp
+      if (task.type === 'MILESTONE') {
+        taskEndDate = today; // Samma dag
+      } else if (task.type === 'PHASE') {
+        const endDate = new Date(today);
+        endDate.setDate(today.getDate() + 14); // 14 dagar för faser
+        taskEndDate = endDate;
+      } else {
+        const endDate = new Date(today);
+        endDate.setDate(today.getDate() + 7); // 7 dagar för vanliga uppgifter
+        taskEndDate = endDate;
       }
-    } catch (error) {
-      console.error(`Gantt: Fel vid konvertering av datum för uppgift "${task.name}"`, error);
-      return { display: 'none' };
+    } 
+    // Om bara startdatum finns
+    else if (task.startDate && !task.endDate) {
+      try {
+        taskStartDate = parseISO(task.startDate);
+        
+        // Beräkna slutdatum baserat på startdatum
+        if (task.type === 'MILESTONE') {
+          taskEndDate = taskStartDate; // Samma dag för milstolpar
+        } else if (task.type === 'PHASE') {
+          const endDate = new Date(taskStartDate);
+          endDate.setDate(taskStartDate.getDate() + 14);
+          taskEndDate = endDate;
+        } else {
+          const endDate = new Date(taskStartDate);
+          endDate.setDate(taskStartDate.getDate() + 7);
+          taskEndDate = endDate;
+        }
+      } catch (error) {
+        console.error(`Gantt: Fel vid parsning av startdatum "${task.startDate}"`, error);
+        taskStartDate = today;
+        taskEndDate = today;
+      }
+    } 
+    // Om bara slutdatum finns
+    else if (!task.startDate && task.endDate) {
+      try {
+        taskEndDate = parseISO(task.endDate);
+        
+        // Beräkna startdatum baserat på slutdatum
+        if (task.type === 'MILESTONE') {
+          taskStartDate = taskEndDate; // Samma dag för milstolpar
+        } else if (task.type === 'PHASE') {
+          const startDate = new Date(taskEndDate);
+          startDate.setDate(taskEndDate.getDate() - 14);
+          taskStartDate = startDate;
+        } else {
+          const startDate = new Date(taskEndDate);
+          startDate.setDate(taskEndDate.getDate() - 7);
+          taskStartDate = startDate;
+        }
+      } catch (error) {
+        console.error(`Gantt: Fel vid parsning av slutdatum "${task.endDate}"`, error);
+        taskStartDate = today;
+        taskEndDate = today;
+      }
+    } 
+    // Om både start- och slutdatum finns
+    else {
+      try {
+        taskStartDate = parseISO(task.startDate);
+        taskEndDate = parseISO(task.endDate);
+        
+        // Validera att parseISO producerade giltiga datum
+        if (isNaN(taskStartDate.getTime()) || isNaN(taskEndDate.getTime())) {
+          console.warn(`Gantt: Ogiltiga datum för uppgift "${task.name}"`);
+          taskStartDate = today;
+          taskEndDate = today;
+        }
+        
+        // Hantera fallet där slutdatum är före startdatum
+        if (taskEndDate < taskStartDate) {
+          console.warn(`Gantt: Slutdatum före startdatum för "${task.name}", korrigerar...`);
+          
+          // För milstolpar, använd startdatum
+          if (task.type === 'MILESTONE') {
+            taskEndDate = taskStartDate;
+          } else {
+            // För andra typer, sätt slutdatum till startdatum + lämplig period
+            const endDate = new Date(taskStartDate);
+            endDate.setDate(taskStartDate.getDate() + (task.type === 'PHASE' ? 14 : 7));
+            taskEndDate = endDate;
+          }
+        }
+      } catch (error) {
+        console.error(`Gantt: Fel vid konvertering av datum för uppgift "${task.name}"`, error);
+        taskStartDate = today;
+        taskEndDate = today;
+      }
     }
     
     // Logga för debugging
