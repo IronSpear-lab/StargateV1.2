@@ -1392,6 +1392,15 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       type: "link",
       badge: "New"
     }] : []),
+    // Superuser-dashboard - endast synlig för superuser och admin
+    ...((user?.role === "superuser" || user?.role === "admin") ? [{
+      href: "/superuser-dashboard",
+      label: "Superuser Dashboard",
+      icon: <Shield className="w-5 h-5" />,
+      active: location === "/superuser-dashboard",
+      type: "link",
+      badge: "New"
+    }] : []),
     {
       href: "/time-tracking",
       label: "Tidsrapportering",

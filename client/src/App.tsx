@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page-new";
 import DashboardPage from "@/pages/dashboard-page";
 import ProjectLeaderDashboardPage from "@/pages/project-leader-dashboard-page";
+import SuperuserDashboardPage from "@/pages/superuser-dashboard-page";
 import FilesPage from "@/pages/files-page";
 import TasksPage from "@/pages/tasks-page";
 import TimelinePage from "@/pages/timeline-page";
@@ -33,6 +34,7 @@ import PDFViewerPage from "@/pages/pdf-viewer-page";
 import InvitationsPage from "@/pages/invitations-page";
 import RevenueTimePage from "@/pages/planning/revenue-time-page";
 import { ProtectedRoute } from "./lib/protected-route";
+import { ProtectedSuperuserRoute } from "./lib/protected-superuser-route";
 import { AuthProvider } from "./hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ProjectProvider } from "./contexts/ProjectContext";
@@ -71,6 +73,7 @@ function Router() {
     <Switch>
       <ProtectedRoute path="/" component={DashboardPage} />
       <ProtectedRoute path="/project-leader-dashboard" component={ProjectLeaderDashboardPage} />
+      <ProtectedSuperuserRoute path="/superuser-dashboard" component={SuperuserDashboardPage} />
       <ProtectedRoute path="/analytics" component={AnalyticsPage} />
       <ProtectedRoute path="/projects" component={ProjectsPage} />
       <ProtectedRoute path="/projects/:id" component={ProjectDetailPage} />
