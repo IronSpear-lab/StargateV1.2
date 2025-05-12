@@ -77,7 +77,7 @@ export function BudgetCostWidget({ projectId }: BudgetCostWidgetProps) {
             <div className="text-right">
               <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">This Week</h3>
               <p className={`text-lg font-semibold ${budgetDifference > 0 ? 'text-primary dark:text-primary' : 'text-emerald-500 dark:text-emerald-400'}`}>
-                {budgetDifference > 0 ? '+' : ''}{budgetDifference.toFixed(1)}% over budget
+                {budgetDifference > 0 ? '+' : ''}{budgetDifference.toFixed(1)}% <span className="text-gray-600 dark:text-gray-400">over budget</span>
               </p>
             </div>
           </div>
@@ -156,7 +156,7 @@ export function BudgetCostWidget({ projectId }: BudgetCostWidgetProps) {
           <Button 
             variant="outline" 
             size="sm" 
-            className="w-full justify-between text-primary hover:bg-primary/10 hover:text-primary"
+            className="w-full justify-between text-gray-600 dark:text-gray-400 hover:bg-primary/10 hover:text-primary"
           >
             View Financial Report <ExternalLink className="h-4 w-4 ml-2" />
           </Button>

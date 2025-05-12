@@ -238,16 +238,16 @@ export function RevenueOverviewWidget({
       return (
         <div className="rounded-lg border bg-background p-3 shadow-md text-xs">
           <div className="grid grid-cols-2 gap-2">
-            <div className="font-medium">Datum:</div>
-            <div>{format(new Date(data.fullDate), 'yyyy-MM-dd')}</div>
-            <div className="font-medium">Dagens intäkt:</div>
-            <div>{formatCurrency(data.current)}</div>
-            <div className="font-medium">Föregående period:</div>
-            <div>{formatCurrency(data.previous)}</div>
+            <div className="font-medium text-gray-600 dark:text-gray-400">Datum:</div>
+            <div className="text-gray-600 dark:text-gray-400">{format(new Date(data.fullDate), 'yyyy-MM-dd')}</div>
+            <div className="font-medium text-gray-600 dark:text-gray-400">Dagens intäkt:</div>
+            <div className="text-gray-600 dark:text-gray-400">{formatCurrency(data.current)}</div>
+            <div className="font-medium text-gray-600 dark:text-gray-400">Föregående period:</div>
+            <div className="text-gray-600 dark:text-gray-400">{formatCurrency(data.previous)}</div>
             {data.budget !== undefined && (
               <>
-                <div className="font-medium">Budget:</div>
-                <div>{formatCurrency(data.budget)}</div>
+                <div className="font-medium text-gray-600 dark:text-gray-400">Budget:</div>
+                <div className="text-gray-600 dark:text-gray-400">{formatCurrency(data.budget)}</div>
               </>
             )}
           </div>
@@ -525,8 +525,8 @@ export function RevenueOverviewWidget({
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !startDate && "text-muted-foreground"
+                        "w-full justify-start text-left font-normal text-gray-600 dark:text-gray-400",
+                        !startDate && "text-gray-400 dark:text-gray-500"
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
@@ -554,8 +554,8 @@ export function RevenueOverviewWidget({
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !endDate && "text-muted-foreground"
+                        "w-full justify-start text-left font-normal text-gray-600 dark:text-gray-400",
+                        !endDate && "text-gray-400 dark:text-gray-500"
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
@@ -576,7 +576,7 @@ export function RevenueOverviewWidget({
             </div>
             
             {startDate && endDate && (
-              <div className="text-xs text-muted-foreground text-center">
+              <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
                 <p>Projektperiod: {format(startDate, 'yyyy-MM-dd')} — {format(endDate, 'yyyy-MM-dd')}</p>
                 <p>Antal dagar: {Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1}</p>
                 {totalBudget && (
