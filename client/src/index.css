@@ -2,52 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom padding utilities for sidebar folder indentation with progressive scale */
+/* Custom padding utilities for sidebar folder indentation */
 @layer utilities {
-  /* First level indentation */
-  .pl-3 { padding-left: 0.75rem; }  /* 12px */
-  .pl-5 { padding-left: 1.25rem; }  /* 20px */
-  .pl-7 { padding-left: 1.75rem; }  /* 28px */
-  
-  /* Second level indentation */
-  .pl-9 { padding-left: 2.25rem; }  /* 36px */
-  .pl-10 { padding-left: 2.5rem; }  /* 40px */
-  .pl-11 { padding-left: 2.75rem; } /* 44px */
-  .pl-12 { padding-left: 3rem; }    /* 48px */
-  .pl-13 { padding-left: 3.25rem; } /* 52px */
-  
-  /* Third level indentation */
-  .pl-14 { padding-left: 3.5rem; }  /* 56px */
-  .pl-15 { padding-left: 3.75rem; } /* 60px */
-  .pl-16 { padding-left: 4rem; }    /* 64px */
-  .pl-17 { padding-left: 4.25rem; } /* 68px */
-  .pl-18 { padding-left: 4.5rem; }  /* 72px */
-  .pl-19 { padding-left: 4.75rem; } /* 76px */
-  
-  /* Fourth level indentation - compressed increment */
-  .pl-20 { padding-left: 5rem; }    /* 80px */
-  .pl-21 { padding-left: 5.25rem; } /* 84px */
-  .pl-22 { padding-left: 5.5rem; }  /* 88px */
-  .pl-23 { padding-left: 5.75rem; } /* 92px */
-  .pl-24 { padding-left: 6rem; }    /* 96px */
-  .pl-25 { padding-left: 6.25rem; } /* 100px */
-  
-  /* Fifth level and beyond - minimal increments to avoid running off screen */
-  .pl-26 { padding-left: 6.4rem; }  /* 102px */
-  .pl-28 { padding-left: 6.55rem; } /* 105px */
-  .pl-31 { padding-left: 6.7rem; }  /* 107px */
-  .pl-34 { padding-left: 6.85rem; } /* 109px */
-  .pl-37 { padding-left: 7rem; }    /* 112px */
-  .pl-40 { padding-left: 7.15rem; } /* 114px */
-  .pl-43 { padding-left: 7.3rem; }  /* 117px */
-  .pl-46 { padding-left: 7.45rem; } /* 119px */
-  .pl-49 { padding-left: 7.6rem; }  /* 121px */
-  
-  /* For extreme nesting (useful for testing) */
-  .pl-52 { padding-left: 7.75rem; } /* 124px */
-  .pl-55 { padding-left: 7.9rem; }  /* 126px */
-  .pl-58 { padding-left: 8.05rem; } /* 129px */
-  .pl-60 { padding-left: 8.2rem; }  /* 131px */
+  .pl-10 {
+    padding-left: 2.5rem; /* 40px */
+  }
+  .pl-15 {
+    padding-left: 3.75rem; /* 60px */
+  }
+  .pl-25 {
+    padding-left: 6.25rem; /* 100px */
+  }
 }
 
 /* Sidebar scroll container styles för horisontell scrollning */
@@ -430,41 +395,6 @@
     scrollbar-width: thin;
   }
   
-  /* Förbättrad scrollbar för djupt nästlade mappar */
-  .custom-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(155, 155, 155, 0.8) rgba(0, 0, 0, 0.05);
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background-color: rgba(0, 0, 0, 0.05);
-    border-radius: 4px;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: rgba(155, 155, 155, 0.8);
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(155, 155, 155, 1);
-  }
-  
-  .dark .custom-scrollbar::-webkit-scrollbar-track {
-    background-color: rgba(30, 30, 30, 0.1);
-  }
-  
-  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: rgba(155, 155, 155, 0.5);
-    border: 1px solid rgba(0, 0, 0, 0.2);
-  }
-  
   /* Markera horisontell scrollbar när innehållet överskrider containern */
   .sidebar-folder-container::-webkit-scrollbar-track-horizontal {
     background-color: rgba(217, 217, 217, 0.3);
@@ -473,39 +403,5 @@
   
   .dark .sidebar-folder-container::-webkit-scrollbar-track-horizontal {
     background-color: rgba(55, 55, 55, 0.3);
-  }
-  
-  /* Specifika stilar för mapptext i sidofältet - förbättrad trunkering */
-  .sidebar-folder-text {
-    display: inline-block;
-    max-width: 140px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 0.875rem; /* text-sm */
-  }
-  
-  /* Anpassa maxbredd baserat på nästlingsnivå */
-  [data-folder-level="3"] .sidebar-folder-text,
-  [data-folder-level="4"] .sidebar-folder-text,
-  [data-folder-level="5"] .sidebar-folder-text {
-    max-width: 120px;
-  }
-  
-  [data-folder-level="6"] .sidebar-folder-text,
-  [data-folder-level="7"] .sidebar-folder-text,
-  [data-folder-level="8"] .sidebar-folder-text,
-  [data-folder-level="9"] .sidebar-folder-text,
-  [data-folder-level="10"] .sidebar-folder-text {
-    max-width: 100px;
-  }
-  
-  /* Extrema nivåer får minimal bredd */
-  [data-folder-level="11"] .sidebar-folder-text,
-  [data-folder-level="12"] .sidebar-folder-text,
-  [data-folder-level="13"] .sidebar-folder-text,
-  [data-folder-level="14"] .sidebar-folder-text,
-  [data-folder-level="15"] .sidebar-folder-text {
-    max-width: 80px;
   }
 }

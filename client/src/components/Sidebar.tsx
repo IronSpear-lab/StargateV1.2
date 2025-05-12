@@ -1872,45 +1872,30 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         isItemOpen = openItems[itemKey] !== undefined ? openItems[itemKey] : false;
       }
       
-      // FÖRBÄTTRAD INDENTERINGSBERÄKNING baserad på mappnivå med stöd för obegränsad nästling
+      // FÖRBÄTTRAD INDENTERINGSBERÄKNING baserad på mappnivå
       let indentClass = '';
       // När sidofältet är öppet använder vi faktisk nivåbaserad indentering
       if (isOpen) {
-        // SPECIFIKA INDENTERINGSVÄRDEN med standardiserad beräkning för bättre stöd av djupa nivåer
+        // SPECIFIKA INDENTERINGSVÄRDEN enligt användarens specifikation
         if (item.indent !== undefined) {
-          // Använd en konsekvent formel för alla nivåer istället för individuella cases
-          // Detta ger en mer systematisk och skalbar indenteringsmodell
-          const baseIndent = 3;  // Bas-indentering för varje nivå i enheter (rem)
-          const calcIndent = Math.min(16, item.indent); // Begränsa max indentering för att inte gå utanför skärmen
-          
-          // Progressiv indentering - gradvis mindre ökning för djupare nivåer
-          // Detta förhindrar att mappar går för långt till höger vid djup nästling
-          let totalIndent;
-          
-          if (item.indent === 0) {
-            totalIndent = 0;  // Topnivå - ingen indentering
-          } else if (item.indent <= 3) {
-            // Första 3 nivåerna - full indentering
-            totalIndent = item.indent * baseIndent;
-          } else if (item.indent <= 7) {
-            // Nivå 4-7 - något mindre ökning per nivå
-            totalIndent = 9 + (item.indent - 3) * 2.5;
-          } else if (item.indent <= 12) {
-            // Nivå 8-12 - ytterligare minskad ökning
-            totalIndent = 19 + (item.indent - 7) * 2;
-          } else {
-            // Djupare nivåer - minimal ökning per nivå
-            totalIndent = 29 + (item.indent - 12) * 1.5;
-          }
-          
-          // Konvertera till heltal och skapa den faktiska CSS-klassen
-          const indentValue = Math.round(totalIndent);
-          indentClass = `pl-${indentValue}`;
-          
-          // Konsol-logga indenteringsinformation för felsökning
-          if (item.type === 'folder' && item.indent > 5) {
-            console.log(`Djup mapp ${item.label} (nivå ${item.indent}) får indentering: ${indentValue}px`);
-          }
+          // Använder exakt de indenteringsvärden som användaren har angivit för varje mapp
+          if (item.indent === 0) indentClass = 'pl-0';      // Topnivå - ingen indentering
+          else if (item.indent === 1) indentClass = 'pl-8';  // Mapp 1
+          else if (item.indent === 2) indentClass = 'pl-10'; // Nivå 2
+          else if (item.indent === 3) indentClass = 'pl-12'; // Mapp 2
+          else if (item.indent === 4) indentClass = 'pl-16'; // Mapp 3
+          else if (item.indent === 5) indentClass = 'pl-20'; // Mapp 4
+          else if (item.indent === 6) indentClass = 'pl-24'; // Mapp 5
+          else if (item.indent === 7) indentClass = 'pl-28'; // Mapp 6
+          else if (item.indent === 8) indentClass = 'pl-32'; // Mapp 7
+          else if (item.indent === 9) indentClass = 'pl-36'; // Mapp 8
+          else if (item.indent === 10) indentClass = 'pl-40'; // Mapp 9
+          else if (item.indent === 11) indentClass = 'pl-44'; // Mapp 10
+          else if (item.indent === 12) indentClass = 'pl-48'; // Mapp 11
+          else if (item.indent === 13) indentClass = 'pl-52'; // Mapp 12
+          else if (item.indent === 14) indentClass = 'pl-56'; // Mapp 13
+          else if (item.indent === 15) indentClass = 'pl-60'; // Mapp 14
+          else indentClass = `pl-${item.indent * 4}`; // Djupare nivåer - 4px per nivå
           
           // Debuglogga för att säkerställa att indenteringen beräknas korrekt
           if (item.type === 'folder') {
@@ -2071,23 +2056,23 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       indentClass
                     )}
                   >
-                    <div className="flex items-center flex-grow min-w-0">
+                    <div className="flex items-center flex-grow">
                       {/* Ta bort-knapp för användarskapade mappar - temporärt borttagen */}
                       <span className={cn(
-                        "flex-shrink-0 flex items-center justify-center mr-3",
+                        "flex items-center justify-center mr-3",
                         item.active ? "text-primary" : "text-muted-foreground"
                       )}>
                         {item.icon}
                       </span>
                       
                       <span className={cn(
-                        "text-sm truncate",
+                        "text-sm",
                         item.active ? "text-primary" : "text-muted-foreground"
                       )}>
                         {item.label}
                       </span>
                     </div>
-                    <div className="flex items-center relative flex-shrink-0 ml-2">
+                    <div className="flex items-center">
                       {item.badge && (
                         <Badge variant="outline" className={cn(
                           "text-xs py-0.5 px-2 rounded-full mr-2",
@@ -2131,23 +2116,23 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       indentClass
                     )}
                   >
-                    <div className="flex items-center flex-grow min-w-0">
+                    <div className="flex items-center flex-grow">
                       {/* Ta bort-knapp för alla mappar - temporärt borttagen */}
                       <span className={cn(
-                        "flex-shrink-0 flex items-center justify-center mr-3",
+                        "flex items-center justify-center mr-3",
                         item.active ? "text-primary" : "text-muted-foreground"
                       )}>
                         {item.icon}
                       </span>
                       
                       <span className={cn(
-                        "text-sm truncate",
+                        "text-sm",
                         item.active ? "text-primary" : "text-muted-foreground"
                       )}>
                         {item.label}
                       </span>
                     </div>
-                    <div className="flex items-center relative flex-shrink-0 ml-2">
+                    <div className="flex items-center relative">
                       {item.badge && (
                         <Badge variant="outline" className={cn(
                           "text-xs py-0.5 px-2 rounded-full mr-2",
@@ -2229,13 +2214,10 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                   )}>
                     {item.icon}
                   </span>
-                  <span 
-                    className={cn(
-                      "text-sm truncate max-w-[140px] inline-block", 
-                      item.active ? "text-primary" : "text-muted-foreground"
-                    )}
-                    title={item.label} // Show full name on hover
-                  >
+                  <span className={cn(
+                    "text-sm",
+                    item.active ? "text-primary" : "text-muted-foreground"
+                  )}>
                     {item.label}
                   </span>
                 </div>
@@ -2420,7 +2402,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           </div>
         )}
         
-        <div className="py-2 flex-1 overflow-y-auto custom-scrollbar">
+        <div className="py-2 flex-1 overflow-y-auto">
           <div className="sidebar-folder-container overflow-x-auto">
             {renderNavItems(navItems)}
           </div>
