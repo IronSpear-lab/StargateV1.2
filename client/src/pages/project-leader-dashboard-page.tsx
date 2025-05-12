@@ -201,8 +201,8 @@ export default function ProjectLeaderDashboardPage() {
     setIsWidgetGalleryOpen(false);
     
     toast({
-      title: "Widget added",
-      description: `${widgetType.name} has been added to your dashboard`,
+      title: "Widget tillagd",
+      description: `${widgetType.name} har lagts till i din dashboard`,
     });
   };
 
@@ -278,8 +278,8 @@ export default function ProjectLeaderDashboardPage() {
     setWidgets(widgets.filter(widget => widget.id !== widgetId));
     
     toast({
-      title: "Widget removed",
-      description: "The widget has been removed from your dashboard",
+      title: "Widget borttagen",
+      description: "Widgeten har tagits bort från din dashboard",
     });
   };
 

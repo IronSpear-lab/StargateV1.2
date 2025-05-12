@@ -49,8 +49,8 @@ export function WidgetArea({ children, className, onWidgetPositionChange }: Widg
     if (nearestWidget && onWidgetPositionChange) {
       onWidgetPositionChange(widgetId, nearestWidget);
       toast({
-        title: "Widget repositioned",
-        description: "Widget position has been updated",
+        title: "Widget omplacerad",
+        description: "Widgetens position har uppdaterats",
         variant: "default",
       });
     }
@@ -91,22 +91,39 @@ export function WidgetArea({ children, className, onWidgetPositionChange }: Widg
     <div
       ref={areaRef}
       className={cn(
-        "grid grid-cols-12 gap-4 p-4 relative",
-        dropzoneActive && "border-2 border-dashed border-blue-200 rounded-lg",
+        "grid grid-cols-12 gap-4 p-4 relative rounded-lg overflow-hidden",
+        dropzoneActive && "border-2 border-dashed border-primary/30 shadow-lg",
         className
       )}
       style={{
-        backgroundImage: "var(--dashboard-bg-gradient)",
+        backgroundImage: "linear-gradient(135deg, var(--background) 0%, var(--primary)/0.03 100%)",
         backgroundSize: "cover",
         backgroundPosition: "center",
-        backgroundRepeat: "repeat"
+        backgroundRepeat: "no-repeat",
+        boxShadow: "inset 0 0 30px rgba(var(--primary-rgb)/0.03)"
       }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Subtle overlay */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-background/20 to-background/30 dark:from-background/40 dark:to-background/50 pointer-events-none" />
+      {/* Futuristisk dekorativ overlay */}
+      <div 
+        className="absolute inset-0 pointer-events-none" 
+        style={{
+          background: "radial-gradient(circle at 20% 20%, var(--primary)/0.03 0%, transparent 50%), radial-gradient(circle at 80% 80%, var(--primary)/0.05 0%, transparent 40%)",
+          backdropFilter: "blur(40px)",
+          opacity: 0.8
+        }}
+      />
+      
+      {/* Subtil linjemönster som bakgrund */}
+      <div 
+        className="absolute inset-0 pointer-events-none opacity-10"
+        style={{
+          backgroundImage: "linear-gradient(to right, var(--primary)/0.1 1px, transparent 1px), linear-gradient(to bottom, var(--primary)/0.1 1px, transparent 1px)",
+          backgroundSize: "40px 40px"
+        }}
+      />
       
       {/* Widget content */}
       <div className="col-span-12 grid grid-cols-12 gap-4 relative z-10">
