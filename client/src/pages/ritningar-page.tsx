@@ -687,16 +687,10 @@ export default function RitningarPage() {
     
     // Använd den nya PDF-dialog-hooken
     showPDFDialog({
-      url: fileUrl,
-      title: ritning.filename,
-      fileData: {
-        filename: ritning.filename,
-        version: ritning.version,
-        description: ritning.description,
-        uploaded: ritning.uploaded,
-        uploadedBy: ritning.uploadedBy,
-        fileId: ritning.id ? ritning.id.toString() : undefined
-      }
+      initialUrl: fileUrl,
+      filename: ritning.filename,
+      fileId: ritning.id ? ritning.id.toString() : undefined,
+      projectId: currentProject?.id || null
     });
   };
 
