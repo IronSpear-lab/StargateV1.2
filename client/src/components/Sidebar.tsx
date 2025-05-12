@@ -841,34 +841,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     // Eventlyssnare för manuell refresh av mappar (utlöst av FolderManagementWidget)
     const handleFolderStructureChanged = (event: CustomEvent) => {
       console.log("Sidebar: Mottog folder-structure-changed-event", event.detail);
-      
-      // Kontrollera om vi har en action som anger specifik operation
-      const action = event.detail?.action || 'default';
-      const projectId = event.detail?.projectId;
-      
-      console.log(`Sidebar: Hanterar folder-action '${action}' för projekt ${projectId || 'inget projekt'}`);
-      
-      // Om action är 'refresh', tvinga omedelbar uppdatering från localStorage
-      if (action === 'refresh') {
-        console.log("Sidebar: Forcerad refresh av mappdata från localStorage");
-        checkForFolderUpdates();
-      } 
-      // Om action är 'clear', filtrera bort mappar för detta projekt från nuvarande state
-      else if (action === 'clear' && projectId) {
-        console.log(`Sidebar: Rensar mappar för projekt ${projectId} från state`);
-        // Filtrera bort mappar som tillhör det angivna projektet
-        const filteredFolders = userCreatedFolders.filter((folder: any) => {
-          return !folder.projectId || (
-            String(folder.projectId) !== String(projectId) && 
-            folder.projectId !== Number(projectId)
-          );
-        });
-        setUserCreatedFolders(filteredFolders);
-      }
-      // Default: kör vanlig uppdatering
-      else {
-        checkForFolderUpdates();
-      }
+      checkForFolderUpdates();
     };
     
     // Lägg till lyssnare för den anpassade händelsen
@@ -1235,7 +1208,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   };
   
   // Funktion för att ta bort en mapp
-  const deleteFolder = async () => {
+  const deleteFolder = () => {
     // Om ingen mapp är markerad för borttagning, avbryt
     if (!folderToDeleteId) return;
     
@@ -1243,117 +1216,38 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     const folderToDelete = userCreatedFolders.find(folder => folder.id === folderToDeleteId);
     if (!folderToDelete) return;
     
-    // Hitta projektID för mappen som ska tas bort
-    const projectId = folderToDelete.projectId;
-    
-    console.log(`Sidebar: Försöker ta bort mapp ${folderToDelete.name} med ID ${folderToDeleteId} i projekt ${projectId || 'inget projekt'}`);
-    
-    // Rekursiv funktion för att hitta alla undermappar
-    const findAllChildFolders = (parentId: string, folders: any[]): string[] => {
-      const directChildren = folders.filter(folder => folder.parentId === parentId);
-      return [
-        ...directChildren.map(folder => folder.id),
-        ...directChildren.flatMap(folder => findAllChildFolders(folder.id, folders))
-      ];
-    };
-    
-    // Hämta alla användarskapade mappar
-    const allUserFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
-    
-    // Hitta ID för alla undermappar
-    const childFolderIds = findAllChildFolders(folderToDeleteId, allUserFolders);
-    
-    console.log(`Sidebar: Hittade ${childFolderIds.length} undermappar att ta bort`);
-    
     // Filtrera bort mappen och eventuella undermappar
-    const updatedFolders = allUserFolders.filter(folder => {
-      return folder.id !== folderToDeleteId && !childFolderIds.includes(folder.id);
+    const updatedFolders = userCreatedFolders.filter(folder => {
+      // Ta bort den specifika mappen
+      if (folder.id === folderToDeleteId) return false;
+      
+      // Ta bort alla undermappar till den här mappen
+      if (folder.parent === folderToDelete.name) return false;
+      
+      return true;
     });
+    
+    // Uppdatera state
+    setUserCreatedFolders(updatedFolders);
     
     // Spara i localStorage
     localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
-    localStorage.setItem('user_created_folders', JSON.stringify(updatedFolders));
     
-    // Om vi har ett projektID och mappen ska tas bort från databasen, synkronisera med API
-    if (projectId) {
-      try {
-        // Försök hämta färska mappdata från API:et
-        console.log(`Sidebar: Hämtar fräscha mappdata från API efter borttagning av mapp för projekt ${projectId}`);
-        const freshFoldersResponse = await fetch(`/api/folders?projectId=${projectId}`, {
-          credentials: 'include'
-        });
-        
-        if (freshFoldersResponse.ok) {
-          const freshFolders = await freshFoldersResponse.json();
-          console.log(`Sidebar: Hämtade ${freshFolders.length} uppdaterade mappar från API efter borttagning`);
-          
-          // Förbered mapparna för localStorage i korrekt format som sidebaren förväntar sig
-          const formattedFolders = freshFolders.map((folder: any) => {
-            // Hitta föräldermappens namn om den finns
-            let parentName = 'Files';
-            if (folder.parentId) {
-              const parentFolder = freshFolders.find((f: any) => f.id === folder.parentId);
-              if (parentFolder) {
-                parentName = parentFolder.name;
-              }
-            }
-            
-            return {
-              name: folder.name,
-              parent: parentName,
-              id: folder.id.toString(),
-              parentId: folder.parentId ? folder.parentId.toString() : null,
-              projectId: projectId.toString(),
-              type: 'folder',
-              label: folder.name, // För kompatibilitet
-              href: `/vault/files/${encodeURIComponent(folder.name)}`
-            };
-          });
-          
-          // Filtrera ut mappar som inte tillhör detta projekt
-          const otherProjectFolders = allUserFolders.filter((f: any) => {
-            return !f.projectId || (
-              String(f.projectId) !== String(projectId) && 
-              f.projectId !== Number(projectId)
-            );
-          });
-          
-          // Kombinera mappar från API med mappar från andra projekt
-          const combinedFolders = [...otherProjectFolders, ...formattedFolders];
-          
-          // Uppdatera localStorage och state med full uppdatering
-          localStorage.setItem('userCreatedFolders', JSON.stringify(combinedFolders));
-          localStorage.setItem('user_created_folders', JSON.stringify(combinedFolders));
-          setUserCreatedFolders(combinedFolders);
-        } else {
-          console.warn(`Kunde inte hämta fräscha mappdata från API (${freshFoldersResponse.status}). Använder lokalt modifierade data.`);
-          // Uppdatera state med lokal data
-          setUserCreatedFolders(updatedFolders);
-        }
-      } catch (apiError) {
-        console.error("Fel vid kommunikation med API:", apiError);
-        // Vid fel, använd lokal data
-        setUserCreatedFolders(updatedFolders);
-      }
-    } else {
-      // Om inget projekt-ID, uppdatera state direkt med lokala ändringar
-      setUserCreatedFolders(updatedFolders);
+    // Ta även bort från user_created_folders listan som App.tsx använder
+    const existingFoldersForApp = localStorage.getItem('user_created_folders');
+    if (existingFoldersForApp) {
+      const foldersForApp = JSON.parse(existingFoldersForApp);
+      const updatedFoldersForApp = foldersForApp.filter((folder: any) => 
+        folder.label !== folderToDelete.name
+      );
+      localStorage.setItem('user_created_folders', JSON.stringify(updatedFoldersForApp));
     }
     
     // Visa meddelande om att mappen har tagits bort
     toast({
       title: "Mapp borttagen",
-      description: `Mappen "${folderToDelete.name}" och dess undermappar har tagits bort`,
+      description: `Mappen "${folderToDelete.name}" har tagits bort`,
     });
-    
-    // Utlös en uppdatering av sidofältet med clear action för att andra komponenter ska uppdateras
-    window.dispatchEvent(new CustomEvent('folder-structure-changed', {
-      detail: { 
-        projectId: projectId,
-        action: 'delete',
-        folderId: folderToDeleteId
-      }
-    }));
     
     // Återställ mapp-ID och stäng dialogen
     setFolderToDeleteId(null);
@@ -1372,65 +1266,21 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       return;
     }
     
-    // Spara bara mappar som inte tillhör det aktuella projektet
-    if (currentProject?.id) {
-      try {
-        // Hämta alla befintliga mappar från localStorage
-        const allUserFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
-        
-        // Filtrera ut mappar från andra projekt så vi inte skriver över dem
-        const otherProjectFolders = allUserFolders.filter((f: any) => {
-          return !f.projectId || (
-            String(f.projectId) !== String(currentProject.id) && 
-            f.projectId !== Number(currentProject.id)
-          );
-        });
-        
-        console.log(`Sidebar: behåller ${otherProjectFolders.length} mappar från andra projekt vid rensning`);
-        
-        // Spara endast mappar från andra projekt i localStorage
-        localStorage.setItem('userCreatedFolders', JSON.stringify(otherProjectFolders));
-        localStorage.setItem('user_created_folders', JSON.stringify(otherProjectFolders));
-        
-        // Filtrera current state för att ta bort mappar från det aktuella projektet
-        const filteredCurrentFolders = userCreatedFolders.filter((folder: any) => {
-          return !folder.projectId || (
-            String(folder.projectId) !== String(currentProject.id) && 
-            folder.projectId !== Number(currentProject.id)
-          );
-        });
-        
-        // Uppdatera state för att ta bort de lokala mapparna
-        setUserCreatedFolders(filteredCurrentFolders);
-      } catch (e) {
-        console.error("Sidebar: Fel vid selektiv rensning av mappar", e);
-        // Vid fel, rensa alla mappar som fallback
-        localStorage.setItem('userCreatedFolders', '[]');
-        localStorage.setItem('user_created_folders', '[]');
-        setUserCreatedFolders([]);
-      }
-    } else {
-      // Om inget projekt är valt, rensa alla sparade mappar
-      localStorage.setItem('userCreatedFolders', '[]');
-      localStorage.setItem('user_created_folders', '[]');
-      setUserCreatedFolders([]);
-    }
+    // Rensa alla sparade mappar
+    localStorage.setItem('userCreatedFolders', '[]');
+    localStorage.setItem('user_created_folders', '[]');
+    
+    // Uppdatera state
+    setUserCreatedFolders([]);
     
     // Visa ett meddelande
     toast({
-      title: "Mappar borttagna",
-      description: currentProject?.id 
-        ? `Alla mappar för projekt ${currentProject.name} har tagits bort` 
-        : "Alla mappar har tagits bort från systemet",
+      title: "Alla mappar borttagna",
+      description: "Alla mappar har tagits bort från systemet",
     });
     
-    // Utlös en uppdatering av sidofältet med clear action
-    window.dispatchEvent(new CustomEvent('folder-structure-changed', {
-      detail: { 
-        projectId: currentProject?.id,
-        action: 'clear'
-      }
-    }));
+    // Utlös en uppdatering av sidofältet
+    window.dispatchEvent(new CustomEvent('folder-structure-changed'));
   };
   
   // Funktion för att hitta den rätta föräldern för en nyskapad mapp och uppdatera den
@@ -1817,9 +1667,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       });
       
       // Rensa först filesSection.children för att undvika dubletter
-      if (filesSection && filesSection.children) {
-        filesSection.children = [];
-      }
+      filesSection!.children = [];
       
       // HELT NYTT TILLVÄGAGÅNGSSÄTT: Bygg hierarkiskt mappträd baserat på mappinformation
       // Detta förbättrade tillvägagångssätt eliminerar dubbletterna
@@ -1833,24 +1681,17 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       // Filtrera ut mappar för det aktuella projektet
       let projectFolders = [];
       try {
-        // Se till att vi har giltiga mappar att filtrera
-        if (Array.isArray(userCreatedFolders)) {
-          projectFolders = userCreatedFolders.filter(folder => 
-            folder && (
-              // Visa både mappar som saknar projektId och mappar som matchar aktuellt projekt
-              !folder.projectId || 
-              folder.projectId === projectId || 
-              String(folder.projectId) === String(projectId)
-            )
-          );
-        } else {
-          console.log("userCreatedFolders är inte en array, initierar tom array");
-          projectFolders = [];
-        }
+        projectFolders = userCreatedFolders.filter(folder => 
+          folder && (
+            // Visa både mappar som saknar projektId och mappar som matchar aktuellt projekt
+            !folder.projectId || 
+            folder.projectId === projectId || 
+            String(folder.projectId) === String(projectId)
+          )
+        );
       } catch (error) {
         console.log("Kunde inte filtrera mappar med projektId, använder alla mappar istället", error);
-        // Använd alla mappar om vi inte kan filtrera, men säkerställ att vi har en giltig array
-        projectFolders = Array.isArray(userCreatedFolders) ? [...userCreatedFolders] : [];
+        projectFolders = [...userCreatedFolders]; // Använd alla mappar om vi inte kan filtrera
       }
       
       console.log("Filtered folders for tree building:", projectFolders);
@@ -1923,32 +1764,12 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               // Rotmappar som är direkt under Files får indentering 1
               parentIndent = 0;
             } else {
-              // Om det inte är en rotmapp, hitta förälderindenteringen i folderMap
-              // Viktigt: Kontrollera att folderMap har denna förälder
-              if (folderMap[parentId]) {
-                // Använda förälderns indentering om den finns
-                parentIndent = folderMap[parentId].indent !== undefined ? folderMap[parentId].indent : 0;
-              } else {
-                // Fallback: Om förälder saknas i folderMap, används direktsökning i sortedFolders
-                const parentFolder = sortedFolders.find(f => String(f.id) === parentId);
-                if (parentFolder) {
-                  // Hitta föräldermappens indentering genom att räkna nivåer upp till roten
-                  let depth = 1; // Start at 1 for first level
-                  let currentFolder = parentFolder;
-                  
-                  // Räkna steg upp till rot-nivån
-                  while (currentFolder.parentId) {
-                    depth++;
-                    // Hitta den här mappens förälder
-                    const grandparent = sortedFolders.find(f => String(f.id) === String(currentFolder.parentId));
-                    if (!grandparent) break;
-                    currentFolder = grandparent;
-                  }
-                  
-                  parentIndent = depth;
-                }
-              }
-              // Debugging för att säkerställa att inga undermappar får felaktig indentering
+              // Om det inte är en rotmapp, kontrollera förälderindenteringen
+              // Garantera att undermappar alltid får minst level 1 indentering
+              const parentNavItem = folderMap[parentId];
+              parentIndent = (parentNavItem?.indent !== undefined) ? parentNavItem.indent : 0;
+              
+              // Debug för att säkerställa att inga undermappar får felaktig indentering
               console.log(`Beräkning för ${folder.name}: Förälder ${parentId} har indent ${parentIndent}`);
             }
             
@@ -1958,7 +1779,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
             
             console.log(`Setting indent for ${folder.name} (ID: ${folder.id}): ${baseIndent}, parent: ${parentId || 'root'}`);
             
-            // Skapa NavItem för denna mapp med rätt indentering och alla nödvändiga egenskaper
+            // Skapa NavItem för denna mapp
             const folderNavItem: NavItemType = {
               href: `/vault/files/${encodeURIComponent(folder.name)}`,
               label: folder.name,
@@ -1969,15 +1790,11 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               onAddClick: () => handleAddFolder(folder.name),
               folderId: String(folder.id),
               // Bygg undermappar rekursivt
-              children: [] // Initialisera som tom array, kommer att fyllas i nedanför
+              children: buildTree(String(folder.id))
             };
             
-            // Lägg till folderItem i folderMap INNAN vi bygger undermappar 
-            // så att undermappar kan hitta sin förälder i folderMap
+            // Lägg till folderItem i folderMap för senare användning
             folderMap[folder.id] = folderNavItem;
-            
-            // Bygg undermappar rekursivt och lägg till dem i folderNavItem
-            folderNavItem.children = buildTree(String(folder.id));
             
             // Lägg till i listan av undermappar
             children.push(folderNavItem);
@@ -2080,31 +1897,23 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         // SPECIFIKA INDENTERINGSVÄRDEN enligt användarens specifikation
         if (item.indent !== undefined) {
           // Använder exakt de indenteringsvärden som användaren har angivit för varje mapp
-          if (item.indent === 0) indentClass = 'pl-0';       // Topnivå - ingen indentering
+          if (item.indent === 0) indentClass = 'pl-0';      // Topnivå - ingen indentering
           else if (item.indent === 1) indentClass = 'pl-8';  // Mapp 1
-          else if (item.indent === 2) indentClass = 'pl-12'; // Nivå 2 - Ökad indentering för tydligare hierarki
-          else if (item.indent === 3) indentClass = 'pl-16'; // Mapp 2 - Ökad indentering
-          else if (item.indent === 4) indentClass = 'pl-20'; // Mapp 3 - Ökad indentering
-          else if (item.indent === 5) indentClass = 'pl-24'; // Mapp 4
-          else if (item.indent === 6) indentClass = 'pl-28'; // Mapp 5
-          else if (item.indent === 7) indentClass = 'pl-32'; // Mapp 6
-          else if (item.indent === 8) indentClass = 'pl-36'; // Mapp 7
-          else if (item.indent === 9) indentClass = 'pl-40'; // Mapp 8
-          else if (item.indent === 10) indentClass = 'pl-44'; // Mapp 9
-          else if (item.indent === 11) indentClass = 'pl-48'; // Mapp 10
-          else if (item.indent === 12) indentClass = 'pl-52'; // Mapp 11
-          else if (item.indent === 13) indentClass = 'pl-56'; // Mapp 12
-          else if (item.indent === 14) indentClass = 'pl-60'; // Mapp 13
-          else if (item.indent === 15) indentClass = 'pl-64'; // Mapp 14
-          else indentClass = `pl-${item.indent * 4 + 4}`; // Djupare nivåer - ökad indentering
-
-          // Lägg till visuell markör för undermappar (nivå 2+)
-          let hierarchyClass = '';
-          if (item.type === 'folder' && item.indent >= 2) {
-            // Lägg till en vertikal linje till vänster för undermappar
-            hierarchyClass = ' border-l border-muted-foreground/30 -ml-2 pl-2';
-            indentClass += hierarchyClass;
-          }
+          else if (item.indent === 2) indentClass = 'pl-10'; // Nivå 2
+          else if (item.indent === 3) indentClass = 'pl-12'; // Mapp 2
+          else if (item.indent === 4) indentClass = 'pl-16'; // Mapp 3
+          else if (item.indent === 5) indentClass = 'pl-20'; // Mapp 4
+          else if (item.indent === 6) indentClass = 'pl-24'; // Mapp 5
+          else if (item.indent === 7) indentClass = 'pl-28'; // Mapp 6
+          else if (item.indent === 8) indentClass = 'pl-32'; // Mapp 7
+          else if (item.indent === 9) indentClass = 'pl-36'; // Mapp 8
+          else if (item.indent === 10) indentClass = 'pl-40'; // Mapp 9
+          else if (item.indent === 11) indentClass = 'pl-44'; // Mapp 10
+          else if (item.indent === 12) indentClass = 'pl-48'; // Mapp 11
+          else if (item.indent === 13) indentClass = 'pl-52'; // Mapp 12
+          else if (item.indent === 14) indentClass = 'pl-56'; // Mapp 13
+          else if (item.indent === 15) indentClass = 'pl-60'; // Mapp 14
+          else indentClass = `pl-${item.indent * 4}`; // Djupare nivåer - 4px per nivå
           
           // Debuglogga för att säkerställa att indenteringen beräknas korrekt
           if (item.type === 'folder') {
@@ -2114,11 +1923,11 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           // Alternativ beräkning baserat på längden av parentKey för icke-mappobjekt
           const level = parentKey.split('-').length - 1;
           if (level <= 0) indentClass = 'pl-0'; // Topnivå
-          else if (level === 1) indentClass = 'pl-8'; // Första nivån - Ökad indentering
-          else if (level === 2) indentClass = 'pl-12'; // Andra nivån - Ökad indentering
-          else if (level === 3) indentClass = 'pl-16'; // Tredje nivån - Ökad indentering
-          else if (level === 4) indentClass = 'pl-20'; // Fjärde nivån - Ökad indentering
-          else indentClass = 'pl-24'; // Djupare nivåer - Ökad indentering
+          else if (level === 1) indentClass = 'pl-5'; // Första nivån
+          else if (level === 2) indentClass = 'pl-9'; // Andra nivån
+          else if (level === 3) indentClass = 'pl-12'; // Tredje nivån
+          else if (level === 4) indentClass = 'pl-16'; // Fjärde nivån
+          else indentClass = 'pl-20'; // Djupare nivåer
         }
       } else {
         // När sidofältet är stängt använder vi ingen indentering (allt är centrerat)

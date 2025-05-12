@@ -128,7 +128,7 @@ export function FolderManagementWidget() {
       
       return await res.json();
     },
-    onSuccess: async (data) => {
+    onSuccess: (data) => {
       // Använd föräldermappens namn i meddelandetexten
       const parentInfo = selectedParentFolder ? 
         `under "${foldersData.find((f: FolderData) => f.id.toString() === selectedParentFolder)?.name || 'vald'} mappen"` : 
@@ -154,68 +154,70 @@ export function FolderManagementWidget() {
       queryClient.invalidateQueries({ queryKey: ['/api/folders', currentProject?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id, 'all=true'] });
       
+      // Uppdatera lokalt lagrade mappar i localStorage för att de ska visas i sidomenyn
+      // Sparar en temporär referens i lokalstorage med speciell struktur
+      // för att respektera mappstrukturen i sidofältet och projektspecifik avgränsning
       try {
-        // Hämta alltid FRÄSCHA data direkt från API istället för att lita på lokal cache
-        // Detta är nyckeln till att lösa synkroniseringsproblemet mellan sidebaren och widgeten
-        console.log(`Hämtar fräscha mappdata från API för projekt ${currentProject?.id}`);
-        const freshFoldersResponse = await fetch(`/api/folders?projectId=${currentProject?.id}`, {
-          credentials: 'include'
-        });
-        
-        if (!freshFoldersResponse.ok) {
-          throw new Error(`Kunde inte hämta uppdaterade mappar: ${freshFoldersResponse.status}`);
-        }
-        
-        // Hämta de färska mapparna från API:et
-        const freshFolders = await freshFoldersResponse.json();
-        console.log(`Hämtade ${freshFolders.length} uppdaterade mappar från API`);
-        
-        // Förbered mapparna för localStorage i korrekt format som sidebaren förväntar sig
-        const formattedFolders = freshFolders.map((folder: any) => {
-          // Hitta föräldermappens namn om den finns
-          let parentName = 'Files';
-          if (folder.parentId) {
-            const parentFolder = freshFolders.find((f: any) => f.id === folder.parentId);
-            if (parentFolder) {
-              parentName = parentFolder.name;
-            }
-          }
-          
-          return {
-            name: folder.name,
-            parent: parentName,
-            id: folder.id.toString(),
-            parentId: folder.parentId ? folder.parentId.toString() : null,
-            projectId: currentProject?.id.toString(),
-            type: 'folder',
-            label: folder.name, // För kompatibilitet
-            href: `/vault/files/${encodeURIComponent(folder.name)}`
-          };
-        });
-        
-        // Hämta befintliga mappar för alla projekt
+        // Hämta alla befintliga mappar från localStorage
         const allUserFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
         
         // Filtrera ut mappar från andra projekt så vi inte skriver över dem
         const otherProjectFolders = allUserFolders.filter((f: any) => {
+          // Behåll mappar som inte har ett projectId eller som tillhör ett annat projekt
+          // Jämför både som sträng och som nummer för att vara säker
           return !f.projectId || (
             String(f.projectId) !== String(currentProject?.id) && 
             f.projectId !== Number(currentProject?.id)
           );
         });
         
-        console.log(`Behåller ${otherProjectFolders.length} mappar från andra projekt och lägger till ${formattedFolders.length} mapparna från aktuellt projekt`);
+        // Hämta befintliga mappar för det aktuella projektet
+        const currentProjectFolders = allUserFolders.filter((f: any) => 
+          String(f.projectId) === String(currentProject?.id) || 
+          f.projectId === Number(currentProject?.id)
+        );
         
-        // Kombinera andra projekts mappar med de fräscha mapparna från API
-        const updatedFolders = [...otherProjectFolders, ...formattedFolders];
+        // Identifiera föräldermappens namn från dess ID
+        let parentFolderName = 'Files'; // Standardvärde om ingen föräldermapp är vald
+        
+        if (data.parentId) {
+          // Hitta föräldermappens namn baserat på ID
+          const parentFromDB = foldersData.find((f: FolderData) => 
+            f.id.toString() === data.parentId.toString()
+          );
+          
+          if (parentFromDB) {
+            parentFolderName = parentFromDB.name;
+            console.log(`Found parent folder name: ${parentFolderName} for ID: ${data.parentId}`);
+          } else {
+            console.log(`Could not find parent folder with ID: ${data.parentId}, using Files as parent`);
+          }
+        }
+        
+        // Skapa den nya mappen med explicit projektID-referens
+        const newFolder = {
+          name: data.name,
+          parent: parentFolderName, // Använd föräldermappens namn för korrekt hierarki
+          id: data.id.toString(),
+          parentId: data.parentId ? data.parentId.toString() : null,
+          projectId: currentProject?.id.toString(), // Lägg till projektID för korrekt filtrering
+          type: 'folder' // Explicit typ för korrekt rendering
+        };
+        
+        console.log('Saving new folder to localStorage:', newFolder);
+        console.log(`Current project: ${currentProject?.id}, Adding to ${currentProjectFolders.length} existing folders`);
+        
+        // Kombinera mappar från andra projekt och uppdaterad lista för aktuellt projekt
+        const updatedFolders = [...otherProjectFolders, ...currentProjectFolders, newFolder];
         
         // Spara i båda localStorage-nycklarna för att säkerställa synkronisering
         localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
         localStorage.setItem('user_created_folders', JSON.stringify(updatedFolders));
         
-        // Tvinga en refresh av sidebar-menyn genom att utlösa en custom event med action=refresh
+        // Tvinga en refresh av sidebar-menyn genom att utlösa en custom event
+        // Sidomenyn lyssnar efter denna händelse för att uppdatera sig
         window.dispatchEvent(new CustomEvent('folder-structure-changed', { 
-          detail: { projectId: currentProject?.id, action: 'refresh' } 
+          detail: { projectId: currentProject?.id } 
         }));
         
       } catch (e) {
@@ -245,7 +247,7 @@ export function FolderManagementWidget() {
       
       return folderId;
     },
-    onSuccess: async (deletedFolderId) => {
+    onSuccess: (deletedFolderId) => {
       toast({
         title: "Mapp borttagen",
         description: "Mappen och dess innehåll har raderats",
@@ -255,68 +257,54 @@ export function FolderManagementWidget() {
       queryClient.invalidateQueries({ queryKey: ['/api/folders', currentProject?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/files', currentProject?.id, 'all=true'] });
       
+      // Also remove folder from localStorage for sidebar
       try {
-        // Hämta alltid FRÄSCHA data direkt från API efter borttagning
-        console.log(`Hämtar fräscha mappdata från API efter borttagning för projekt ${currentProject?.id}`);
-        const freshFoldersResponse = await fetch(`/api/folders?projectId=${currentProject?.id}`, {
-          credentials: 'include'
-        });
+        const userFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
         
-        if (!freshFoldersResponse.ok) {
-          throw new Error(`Kunde inte hämta uppdaterade mappar efter borttagning: ${freshFoldersResponse.status}`);
-        }
+        // Identifiera den borttagna mappen
+        const folderToRemove = userFolders.find((folder: any) => 
+          folder.id === deletedFolderId.toString()
+        );
         
-        // Hämta de färska mapparna från API:et
-        const freshFolders = await freshFoldersResponse.json();
-        console.log(`Hämtade ${freshFolders.length} uppdaterade mappar från API efter borttagning`);
-        
-        // Förbered mapparna för localStorage i korrekt format som sidebaren förväntar sig
-        const formattedFolders = freshFolders.map((folder: any) => {
-          // Hitta föräldermappens namn om den finns
-          let parentName = 'Files';
-          if (folder.parentId) {
-            const parentFolder = freshFolders.find((f: any) => f.id === folder.parentId);
-            if (parentFolder) {
-              parentName = parentFolder.name;
-            }
-          }
+        // Ta bort den markerade mappen och alla dess underliggande mappar
+        if (folderToRemove) {
+          const folderName = folderToRemove.name;
+          console.log(`Removing folder ${folderName} and all its children from local storage`);
           
-          return {
-            name: folder.name,
-            parent: parentName,
-            id: folder.id.toString(),
-            parentId: folder.parentId ? folder.parentId.toString() : null,
-            projectId: currentProject?.id.toString(),
-            type: 'folder',
-            label: folder.name, // För kompatibilitet
-            href: `/vault/files/${encodeURIComponent(folder.name)}`
+          // Funktionen identifierar alla undermappar rekursivt
+          const findChildFolderIds = (parentName: string): string[] => {
+            const directChildren = userFolders.filter((folder: any) => 
+              folder.parent === parentName
+            );
+            
+            return [
+              ...directChildren.map((child: any) => child.id),
+              ...directChildren.flatMap((child: any) => findChildFolderIds(child.name))
+            ];
           };
-        });
-        
-        // Hämta alla befintliga mappar från localStorage för alla projekt
-        const allUserFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
-        
-        // Filtrera ut mappar från andra projekt så vi inte skriver över dem
-        const otherProjectFolders = allUserFolders.filter((f: any) => {
-          return !f.projectId || (
-            String(f.projectId) !== String(currentProject?.id) && 
-            f.projectId !== Number(currentProject?.id)
+          
+          // Hitta IDs för alla mappar som ska tas bort (den valda mappen + undermappar)
+          const idsToRemove = [
+            deletedFolderId.toString(),
+            ...findChildFolderIds(folderToRemove.name)
+          ];
+          
+          console.log(`Will remove ${idsToRemove.length} folders in total`);
+          
+          // Filtrera bort de mappar som ska tas bort
+          const updatedFolders = userFolders.filter((folder: any) => 
+            !idsToRemove.includes(folder.id)
           );
-        });
-        
-        console.log(`Behåller ${otherProjectFolders.length} mappar från andra projekt och lägger till ${formattedFolders.length} mappar från aktuellt projekt efter borttagning`);
-        
-        // Kombinera andra projekts mappar med de fräscha mapparna
-        const updatedFolders = [...otherProjectFolders, ...formattedFolders];
-        
-        // Spara i båda localStorage-nycklarna för att säkerställa synkronisering
-        localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
-        localStorage.setItem('user_created_folders', JSON.stringify(updatedFolders));
-        
-        // Tvinga en refresh av sidebar-menyn genom att utlösa en custom event med action=refresh
-        window.dispatchEvent(new CustomEvent('folder-structure-changed', { 
-          detail: { projectId: currentProject?.id, action: 'refresh' } 
-        }));
+          
+          // Spara de uppdaterade mapparna till båda localStorage-nycklarna för att säkerställa synkronisering
+          localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
+          localStorage.setItem('user_created_folders', JSON.stringify(updatedFolders));
+          
+          // Tvinga en refresh av sidebar-menyn genom att utlösa en custom event
+          window.dispatchEvent(new CustomEvent('folder-structure-changed', { 
+            detail: { projectId: currentProject?.id } 
+          }));
+        }
       } catch (e) {
         console.error("Error updating local storage folders after deletion:", e);
       }
@@ -383,28 +371,15 @@ export function FolderManagementWidget() {
   };
   
   // Confirm clearing all local storage folders
-  const confirmClearAllFolders = async () => {
+  const confirmClearAllFolders = () => {
     try {
-      // Hämta alla befintliga mappar från localStorage för alla projekt
-      const allUserFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
+      // Clear all folders from both localStorage keys
+      localStorage.setItem('userCreatedFolders', '[]');
+      localStorage.setItem('user_created_folders', '[]');
       
-      // Filtrera ut mappar från andra projekt så vi inte skriver över dem
-      const otherProjectFolders = allUserFolders.filter((f: any) => {
-        return !f.projectId || (
-          String(f.projectId) !== String(currentProject?.id) && 
-          f.projectId !== Number(currentProject?.id)
-        );
-      });
-      
-      console.log(`Behåller ${otherProjectFolders.length} mappar från andra projekt vid rensning av aktuellt projekt`);
-      
-      // Spara endast mappar från andra projekt i localStorage
-      localStorage.setItem('userCreatedFolders', JSON.stringify(otherProjectFolders));
-      localStorage.setItem('user_created_folders', JSON.stringify(otherProjectFolders));
-      
-      // Tvinga en refresh av sidebar-menyn genom att utlösa en custom event med action=clear
+      // Trigger sidebar update
       window.dispatchEvent(new CustomEvent('folder-structure-changed', { 
-        detail: { projectId: currentProject?.id, action: 'clear' } 
+        detail: { projectId: currentProject?.id } 
       }));
       
       // Reset the confirm dialog
@@ -412,8 +387,8 @@ export function FolderManagementWidget() {
       
       // Provide feedback to the user
       toast({
-        title: "Mappar rensade för aktuellt projekt",
-        description: "Alla mappar för detta projekt har rensats från sidofältet",
+        title: "Lokala mappar rensade",
+        description: "Alla lokalt lagrade mappar har rensats från sidofältet",
       });
       
       // Refresh the folders data
