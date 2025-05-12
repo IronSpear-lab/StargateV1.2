@@ -474,4 +474,38 @@
   .dark .sidebar-folder-container::-webkit-scrollbar-track-horizontal {
     background-color: rgba(55, 55, 55, 0.3);
   }
+  
+  /* Specifika stilar för mapptext i sidofältet - förbättrad trunkering */
+  .sidebar-folder-text {
+    display: inline-block;
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.875rem; /* text-sm */
+  }
+  
+  /* Anpassa maxbredd baserat på nästlingsnivå */
+  [data-folder-level="3"] .sidebar-folder-text,
+  [data-folder-level="4"] .sidebar-folder-text,
+  [data-folder-level="5"] .sidebar-folder-text {
+    max-width: 120px;
+  }
+  
+  [data-folder-level="6"] .sidebar-folder-text,
+  [data-folder-level="7"] .sidebar-folder-text,
+  [data-folder-level="8"] .sidebar-folder-text,
+  [data-folder-level="9"] .sidebar-folder-text,
+  [data-folder-level="10"] .sidebar-folder-text {
+    max-width: 100px;
+  }
+  
+  /* Extrema nivåer får minimal bredd */
+  [data-folder-level="11"] .sidebar-folder-text,
+  [data-folder-level="12"] .sidebar-folder-text,
+  [data-folder-level="13"] .sidebar-folder-text,
+  [data-folder-level="14"] .sidebar-folder-text,
+  [data-folder-level="15"] .sidebar-folder-text {
+    max-width: 80px;
+  }
 }
