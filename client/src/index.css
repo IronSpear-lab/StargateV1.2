@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom padding utilities for sidebar folder indentation */
+@layer utilities {
+  .pl-10 {
+    padding-left: 2.5rem; /* 40px */
+  }
+  .pl-15 {
+    padding-left: 3.75rem; /* 60px */
+  }
+  .pl-25 {
+    padding-left: 6.25rem; /* 100px */
+  }
+}
+
 /* PDF viewer style fixes to ensure sidebar remains visible */
 .pdf-document-container {
   position: relative;

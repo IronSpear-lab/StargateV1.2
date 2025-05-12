@@ -1878,13 +1878,15 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       if (isOpen) {
         // Använd explicit indenteringsnivå som kommer från mappens faktiska position i hierarkin
         if (item.indent !== undefined) {
-          // Förbättrad indenteringsskala med tydligare steg mellan nivåer
+          // Förbättrad indenteringsskala med perfekt jämna steg mellan nivåer
+          // Detta säkerställer att alla mappar får exakt samma hierarkiska visuella struktur
           if (item.indent === 0) indentClass = 'pl-0'; // Topnivå - ingen indentering
-          else if (item.indent === 1) indentClass = 'pl-5'; // Första nivån med tydligare indentering
-          else if (item.indent === 2) indentClass = 'pl-9'; // Andra nivån med större mellanrum
-          else if (item.indent === 3) indentClass = 'pl-12'; // Tredje nivån
-          else if (item.indent === 4) indentClass = 'pl-16'; // Fjärde nivån
-          else if (item.indent >= 5) indentClass = 'pl-20'; // Djupare nivåer
+          else if (item.indent === 1) indentClass = 'pl-5'; // Första nivån (direkt under Files)
+          else if (item.indent === 2) indentClass = 'pl-10'; // Andra nivån - exakt 5px mer än föregående
+          else if (item.indent === 3) indentClass = 'pl-15'; // Tredje nivån - exakt 5px mer än föregående
+          else if (item.indent === 4) indentClass = 'pl-20'; // Fjärde nivån - exakt 5px mer än föregående
+          else if (item.indent === 5) indentClass = 'pl-25'; // Femte nivån - exakt 5px mer än föregående
+          else if (item.indent >= 6) indentClass = `pl-${item.indent * 5}`; // Djupare nivåer - 5px per nivå
           else indentClass = 'pl-4'; // Standard indentering om nivå inte specificeras
           
           // Debuglogga för att säkerställa att indenteringen beräknas korrekt
