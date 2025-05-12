@@ -1774,86 +1774,102 @@ export default function EnhancedPDFViewer({
         </div>
         
         {/* Right sidebar - med extremt hög z-index för att säkerställa att den alltid är synlig */}
-        <div className="w-80 border-l bg-white overflow-y-auto z-50 relative" style={{ position: 'relative', zIndex: 50 }}>
-          {/* Sidebar navigation */}
-          <div className="border-b p-3 flex">
-            <Button 
-              variant={sidebarMode === 'details' ? 'default' : 'outline'} 
-              size="sm"
-              className="flex-1"
-              onClick={() => setSidebarMode('details')}
-            >
-              Detaljer
-            </Button>
-            <Button 
-              variant={sidebarMode === 'history' ? 'default' : 'outline'} 
-              size="sm"
-              className="flex-1"
-              onClick={() => setSidebarMode('history')}
-            >
-              Historik
-            </Button>
-            <Button 
-              variant={sidebarMode === 'comment' ? 'default' : 'outline'} 
-              size="sm"
-              className="flex-1"
-              onClick={() => setSidebarMode('comment')}
-              disabled={!activeAnnotation}
-            >
-              Kommentar
-            </Button>
+        <div className="w-80 border-l bg-white dark:bg-gray-900 overflow-y-auto z-50 relative" style={{ position: 'relative', zIndex: 50 }}>
+          {/* Sidebar navigation - modernare utseende */}
+          <div className="border-b bg-gray-50 dark:bg-gray-800 p-2 rounded-t-md">
+            <div className="flex justify-between bg-white dark:bg-gray-900 rounded-md p-1 shadow-sm">
+              <Button 
+                variant={sidebarMode === 'details' ? 'default' : 'ghost'} 
+                size="sm"
+                className={`flex-1 ${sidebarMode === 'details' ? 'bg-primary text-white dark:bg-blue-600' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                onClick={() => setSidebarMode('details')}
+              >
+                Detaljer
+              </Button>
+              <Button 
+                variant={sidebarMode === 'history' ? 'default' : 'ghost'} 
+                size="sm"
+                className={`flex-1 ${sidebarMode === 'history' ? 'bg-primary text-white dark:bg-blue-600' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                onClick={() => setSidebarMode('history')}
+              >
+                Historik
+              </Button>
+              <Button 
+                variant={sidebarMode === 'comment' ? 'default' : 'ghost'} 
+                size="sm"
+                className={`flex-1 ${sidebarMode === 'comment' ? 'bg-primary text-white dark:bg-blue-600' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                onClick={() => setSidebarMode('comment')}
+                disabled={!activeAnnotation}
+              >
+                Kommentar
+              </Button>
+            </div>
           </div>
           
-          {/* Sidebar content */}
+          {/* Sidebar content - modernare design */}
           <div className="p-4">
             {sidebarMode === 'details' && (
               <div>
-                <h3 className="text-lg font-medium mb-4">Extra tätskiktsremsa YEP #{Math.floor(Math.random() * 1000)}</h3>
+                <h3 className="text-lg font-semibold mb-5 pb-2 border-b border-gray-200 dark:border-gray-700">
+                  Extra tätskiktsremsa YEP #{Math.floor(Math.random() * 1000)}
+                </h3>
                 
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Skapad av</label>
-                    <div className="flex items-center mt-1">
-                      <Avatar className="h-5 w-5 mr-2">
+                <div className="space-y-5">
+                  {/* Skapad av - modernare design */}
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm">
+                    <label className="text-xs font-medium uppercase text-primary dark:text-blue-400 mb-2 block">Skapad av</label>
+                    <div className="flex items-center">
+                      <Avatar className="h-6 w-6 mr-2 border-2 border-white dark:border-gray-700 shadow-sm">
                         <AvatarImage src={`https://avatar.vercel.sh/${fileVersions[0]?.uploadedBy || 'user'}.png`} />
-                        <AvatarFallback>
+                        <AvatarFallback className="bg-primary/10 text-primary dark:bg-blue-900 dark:text-blue-300">
                           {(fileVersions[0]?.uploadedBy || 'U').substring(0, 1).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span>{fileVersions[0]?.uploadedBy || 'Unknown'}, {formatDate(fileVersions[0]?.uploaded || new Date().toISOString())}</span>
+                      <span className="font-medium">{fileVersions[0]?.uploadedBy || 'Unknown'}</span>
+                      <span className="text-sm text-muted-foreground ml-2">{formatDate(fileVersions[0]?.uploaded || new Date().toISOString())}</span>
                     </div>
                   </div>
                   
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Tilldelad till</label>
-                    <div className="flex items-center mt-1">
-                      <Avatar className="h-5 w-5 mr-2">
+                  {/* Tilldelad till - modernare design */}
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm">
+                    <label className="text-xs font-medium uppercase text-green-600 dark:text-green-400 mb-2 block">Tilldelad till</label>
+                    <div className="flex items-center">
+                      <Avatar className="h-6 w-6 mr-2 border-2 border-white dark:border-gray-700 shadow-sm">
                         <AvatarImage src="https://avatar.vercel.sh/benoit.png" />
-                        <AvatarFallback>B</AvatarFallback>
+                        <AvatarFallback className="bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300">B</AvatarFallback>
                       </Avatar>
-                      <span>Benoit Nielsen, Konstruktör</span>
+                      <span className="font-medium">Benoit Nielsen</span>
+                      <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">Konstruktör</Badge>
                     </div>
                   </div>
                   
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Deadline</label>
-                    <div className="flex items-center mt-1">
-                      <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <span>{formatDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString())}</span>
+                  {/* Deadline - modernare design */}
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm">
+                    <label className="text-xs font-medium uppercase text-amber-600 dark:text-amber-400 mb-2 block">Deadline</label>
+                    <div className="flex items-center">
+                      <div className="bg-amber-100 dark:bg-amber-900/40 p-1.5 rounded-full mr-2">
+                        <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <span className="font-medium">{formatDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString())}</span>
                     </div>
                   </div>
                   
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Granskningspaket</label>
-                    <div className="mt-1">
-                      <span>K - Granskning BH Hus 3-4</span>
+                  {/* Granskningspaket - modernare design */}
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm">
+                    <label className="text-xs font-medium uppercase text-purple-600 dark:text-purple-400 mb-2 block">Granskningspaket</label>
+                    <div className="flex items-center">
+                      <div className="bg-purple-100 dark:bg-purple-900/40 p-1.5 rounded-full mr-2">
+                        <FileCheck className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <span className="font-medium">K - Granskning BH Hus 3-4</span>
                     </div>
                   </div>
                   
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Typ</label>
-                    <div className="mt-1">
-                      <Badge variant="outline" className="mr-2">Gransknings kommentar</Badge>
+                  {/* Typ - modernare design */}
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm">
+                    <label className="text-xs font-medium uppercase text-blue-600 dark:text-blue-400 mb-2 block">Typ</label>
+                    <div className="flex items-center">
+                      <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 border-none py-1 px-3">Gransknings kommentar</Badge>
                     </div>
                   </div>
                 </div>
