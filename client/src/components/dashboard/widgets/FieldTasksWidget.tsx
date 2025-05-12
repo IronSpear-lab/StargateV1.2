@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
+import { usePDFDialog } from "@/hooks/use-pdf-dialog";
 import { 
   AlertCircle, 
   Calendar, 

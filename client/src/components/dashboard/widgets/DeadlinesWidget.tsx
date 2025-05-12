@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Calendar, ChevronRight, AlertCircle, Clock, MapPin, MessageSquare, FileText } from "lucide-react";
+import { usePDFDialog } from "@/hooks/use-pdf-dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -336,9 +337,13 @@ export function DeadlinesWidget({ limit = 5, projectId }: DeadlinesWidgetProps) 
     const knownProjectId = 6;
     
     if (item.type === "pdf_annotation") {
-      // Gå till PDF-visare med annotation ID för att markera och fokusera på rätt kommentar
-      console.log(`Navigerar till PDF-visare: /files/pdf/${item.data.pdfVersionId}?annotationId=${item.data.id}`);
-      setLocation(`/files/pdf/${item.data.pdfVersionId}?annotationId=${item.data.id}`);
+      // Använd PDF-dialog istället för navigation
+      console.log(`Öppnar PDF-dialog för version ${item.data.pdfVersionId}, annotation ${item.data.id}`);
+      const { showPDFDialog } = usePDFDialog();
+      showPDFDialog({
+        versionId: Number(item.data.pdfVersionId),
+        annotationId: item.data.id
+      });
     } else {
       // Logga detaljerad information för felsökning
       console.log(`Klickad uppgift detaljer:`, {

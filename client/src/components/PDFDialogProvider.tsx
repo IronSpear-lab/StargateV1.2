@@ -13,6 +13,7 @@ interface PDFDialogState {
   versionId?: number;
   pdfFile?: Blob | null;
   highlightAnnotationId?: number;
+  annotationId?: number; // För att fokusera på en specifik annotation
 }
 
 // Kontextens typ
