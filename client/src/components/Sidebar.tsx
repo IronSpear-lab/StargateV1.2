@@ -1701,7 +1701,12 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
             // Hitta rotmappar för parentId null, eller mappar vars förälder matchar det angivna ID:t
             const isParentMatch = parentId === null 
               ? (!folder.parentId || folder.parent === "Files")
-              : (folder.parentId && String(folder.parentId) === parentId);
+              : (folder.parentId && String(folder.parentId) === String(parentId));
+            
+            // Lägg till extra debugging för mapp med ID 90 (mapp "4")
+            if (folder.id === "90" || folder.id === 90) {
+              console.log(`Mapp 4 (ID 90) - ParentId: ${folder.parentId}, Checking against: ${parentId}, Match: ${isParentMatch}`);
+            }
             
             // Skip already processed folders to avoid duplicates
             return isParentMatch && !processedIds.has(String(folder.id));
