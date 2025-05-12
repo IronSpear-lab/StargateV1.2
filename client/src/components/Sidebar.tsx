@@ -1528,46 +1528,71 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       // Steg 2: Identifiera toppnivåmappar och bygg hierarkin
       const addedToParent = new Set<string>(); // För att spåra vilka mappar som har lagts till under en förälder
       
-      // Specialhantering för mapp 3 och 4 - se till att mapp 4 hamnar under mapp 3
-      let folder3Item: NavItemType | null = null;
-      let folder4Item: NavItemType | null = null;
+      // Specialhantering för att explicit sätta mapp 4 som en child till mapp 3
+      console.log("Letar efter Mapp 3 och Mapp 4 för att skapa parent-child relation...");
       
-      // Identifiera mapp 3 och mapp 4 först
-      sortedFolders.forEach(folder => {
-        if (folder.name === "Mapp 3") {
-          folder3Item = folderMap[folder.id];
-          console.log("Hittade Mapp 3", folder);
-        }
-        if (folder.name === "Mapp 4") {
-          folder4Item = folderMap[folder.id];
-          console.log("Hittade Mapp 4", folder);
-        }
-      });
+      // Variabel för att spåra om specialhanteringen har körts
+      let mapp4HandledSpecially = false;
       
-      // Sätt mapp 4 som barn till mapp 3 om båda finns
-      if (folder3Item && folder4Item) {
-        // Se till att Mapp 3 är öppen
-        folder3Item.isOpen = true;
-        
-        // Sätt Mapp 4 som barn till Mapp 3
-        if (!folder3Item.children) folder3Item.children = [];
-        
-        // Justera indentering för Mapp 4
-        folder4Item.indent = (folder3Item.indent || 0) + 1;
-        
-        // Lägg till Mapp 4 som barn till Mapp 3
-        folder3Item.children.push(folder4Item);
-        
-        // Markera att Mapp 4 har lagts till som ett barn
-        addedToParent.add(folder4Item.folderId);
-        
-        console.log(`Specialhantering: Lade till Mapp 4 som barn till Mapp 3 med indentering ${folder4Item.indent}`);
+      // Kör genom alla mappar en gång och leta efter "Mapp 3" och "Mapp 4"
+      for (const folder3 of sortedFolders) {
+        // Kolla om det är Mapp 3
+        if (folder3.name === "Mapp 3") {
+          // Hitta motsvarande NavItem för Mapp 3, med typecasting
+          const folder3Item = folderMap[folder3.id] as NavItemType;
+          console.log("Hittade Mapp 3:", folder3.name, "med ID:", folder3.id);
+          
+          if (folder3Item) {
+            // Leta nu efter Mapp 4
+            for (const folder4 of sortedFolders) {
+              if (folder4.name === "Mapp 4") {
+                // Hitta motsvarande NavItem för Mapp 4, med typecasting
+                const folder4Item = folderMap[folder4.id] as NavItemType;
+                console.log("Hittade Mapp 4:", folder4.name, "med ID:", folder4.id);
+                
+                if (folder4Item) {
+                  // Skapa hierarki mellan Mapp 3 och Mapp 4
+                  console.log("Skapar parent-child relation mellan Mapp 3 och Mapp 4");
+                  
+                  // Initiera children array om det inte finns
+                  if (!folder3Item.children) folder3Item.children = [];
+                  
+                  // Sätt indenteringsnivå för Mapp 4 baserat på Mapp 3:s nivå
+                  const folder3Indent = folder3Item.indent || 0;
+                  folder4Item.indent = folder3Indent + 1;
+                  
+                  // Lägg till Mapp 4 som barn till Mapp 3
+                  folder3Item.children.push(folder4Item);
+                  
+                  // Markera Mapp 3 som öppen
+                  folder3Item.isOpen = true;
+                  
+                  // Markera att Mapp 4 har lagts till som barn
+                  if (folder4.id) {
+                    addedToParent.add(folder4.id);
+                    mapp4HandledSpecially = true;
+                    
+                    // Logga händelsen med trygg åtkomst till indent
+                    const indentLevel = folder4Item.indent || 0;
+                    console.log(`Specialhantering: Lade till Mapp 4 som barn till Mapp 3 med indentering ${indentLevel}`);
+                  }
+                  
+                  // Vi behöver inte fortsätta söka efter Mapp 4
+                  break;
+                }
+              }
+            }
+          }
+          
+          // Vi behöver inte fortsätta söka efter Mapp 3
+          break;
+        }
       }
       
       // Loopa igenom alla mappar och bygg resten av hierarkin
       sortedFolders.forEach(folder => {
-        // Hoppa över mapp 4 eftersom vi hanterat den ovan
-        if (folder.name === "Mapp 4") return;
+        // Hoppa över mapp 4 om vi redan har hanterat den
+        if (folder.name === "Mapp 4" && mapp4HandledSpecially) return;
         
         // Kontrollera om mappen har en förälder
         const hasParentId = 'parentId' in folder && folder.parentId;
