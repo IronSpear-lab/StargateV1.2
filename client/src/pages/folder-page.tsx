@@ -31,8 +31,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { PDFViewerDialog } from "@/components/ui/pdf-viewer-dialog";
-import EnhancedPDFViewer from "@/components/EnhancedPDFViewer";
+// Använder nu usePDFDialog-hooken från PDFDialogProvider istället för direktimport av EnhancedPDFViewer
 import { 
   storeFiles, 
   getUploadedFileUrl, 
