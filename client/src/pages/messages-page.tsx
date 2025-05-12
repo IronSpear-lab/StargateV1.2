@@ -32,7 +32,6 @@ import { User, Send, MoreVertical, UserPlus, Search, FileIcon, Paperclip, X, Fil
 import { format, isToday, isYesterday } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Sidebar } from "@/components/Sidebar";
-import { PDFViewerDialog } from "@/components/ui/pdf-viewer-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Custom event declaration for TypeScript
@@ -644,12 +643,7 @@ const MessageView = ({
     }
   };
   
-  // För att hantera PDF-visning
-  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState("");
-  const [pdfTitle, setPdfTitle] = useState("");
-  
-  // Öppna PDF i dialogrutan med den nya PDF-dialoglösningen
+  // Använd den centrala PDF-dialoglösningen
   const { showPDFDialog } = usePDFDialog();
   
   // Funktion för att öppna PDF i dialogrutan
@@ -1140,14 +1134,6 @@ const MessageView = ({
           </Button>
         </form>
       </div>
-      
-      {/* PDF Viewer Dialog */}
-      <PDFViewerDialog
-        open={pdfViewerOpen}
-        onOpenChange={setPdfViewerOpen}
-        url={pdfUrl}
-        title={pdfTitle}
-      />
       
       {/* Group Settings Dialog */}
       <Dialog open={groupSettingsDialogOpen} onOpenChange={setGroupSettingsDialogOpen}>
