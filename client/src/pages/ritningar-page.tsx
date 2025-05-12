@@ -662,16 +662,14 @@ export default function RitningarPage() {
         
         if (storedFileData) {
           console.log(`[${Date.now()}] Successfully loaded file from local storage for viewing: ${ritning.fileId}`);
-          setSelectedFile({
-            file: storedFileData.file,
-            fileUrl: storedFileData.url,
-            fileData: {
-              filename: ritning.filename,
-              version: ritning.version,
-              description: ritning.description,
-              uploaded: ritning.uploaded,
-              uploadedBy: ritning.uploadedBy
-            }
+          
+          // Använd PDF-dialogsystemet istället för lokal state
+          showPDFDialog({
+            fileId: ritning.id || ritning.fileId,
+            initialUrl: storedFileData.url,
+            filename: ritning.filename,
+            projectId: currentProject?.id || null,
+            file: storedFileData.file
           });
           return;
         }
@@ -680,31 +678,47 @@ export default function RitningarPage() {
       }
     }
     
-    // För filens numeriska ID, försök att hämta från servern
+    // För filens numeriska ID, öppna med PDF-dialogen direkt
     if (ritning.id && !isNaN(Number(ritning.id))) {
       try {
-        // Starta hämtning av filinnehåll från servern via mutation
-        fetchFileContentMutation.mutate(Number(ritning.id));
+        const fileId = Number(ritning.id);
+        
+        // Använd PDF-dialogsystemet direkt med ID
+        showPDFDialog({
+          fileId: fileId,
+          filename: ritning.filename,
+          projectId: currentProject?.id || null
+        });
         return;
       } catch (error) {
-        console.error(`[${Date.now()}] Error loading file with ID ${ritning.id} from server:`, error);
+        console.error(`[${Date.now()}] Error opening file with PDF dialog: ${error}`);
+        toast({
+          title: "Kunde inte öppna filen",
+          description: "Ett fel uppstod när filen skulle öppnas.",
+          variant: "destructive",
+        });
       }
     }
     
-    // Fallback: För befintliga/mock-filer, använd exempelfilen om inget annat fungerar
-    const fileUrl = getUploadedFileUrl(ritning.id);
-    console.log(`[${Date.now()}] Using example file URL for file: ${ritning.filename}`);
-    setSelectedFile({
-      file: null,
-      fileUrl,
-      fileData: {
+    // Fallback: använd exempelfilen om inget annat fungerar
+    try {
+      const fileUrl = getUploadedFileUrl(ritning.id);
+      console.log(`[${Date.now()}] Using fallback URL for file: ${ritning.filename}`);
+      
+      showPDFDialog({
+        fileId: ritning.id || `file_${Date.now()}`,
+        initialUrl: fileUrl,
         filename: ritning.filename,
-        version: ritning.version,
-        description: ritning.description,
-        uploaded: ritning.uploaded,
-        uploadedBy: ritning.uploadedBy
-      }
-    });
+        projectId: currentProject?.id || null
+      });
+    } catch (error) {
+      console.error("Kunde inte öppna fallback-filen:", error);
+      toast({
+        title: "Kunde inte öppna filen",
+        description: "Ett fel uppstod när filen skulle öppnas. Försök igen eller kontakta support.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
