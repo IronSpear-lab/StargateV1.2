@@ -729,13 +729,17 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   useEffect(() => {
     if (user) {
       // Hämta och uppdatera mappar från localStorage varje gång komponenten renderas
-      const savedFolders = localStorage.getItem('userCreatedFolders');
+      // Kontrollera båda nycklarna för att säkerställa synkronisering
+      const savedFolders = localStorage.getItem('userCreatedFolders') || localStorage.getItem('user_created_folders');
       if (savedFolders) {
         try {
           const parsedFolders = JSON.parse(savedFolders);
           setUserCreatedFolders(parsedFolders);
           
-          // Säkerställ att user_created_folders också är synkroniserat för App.tsx
+          // Säkerställ att båda nycklar är synkroniserade
+          localStorage.setItem('userCreatedFolders', JSON.stringify(parsedFolders));
+          
+          // För backward compatibility med App.tsx, skapa också en förenklad version
           const simplifiedFolders = parsedFolders.map((folder: any) => ({
             label: folder.name,
             parent: folder.parent
