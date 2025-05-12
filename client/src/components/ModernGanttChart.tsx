@@ -13,6 +13,22 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 
+// Hjälpfunktion för att justera färgnyans (ljusare eller mörkare)
+function adjustColorBrightness(color: string, percent: number): string {
+  // Konvertera hex till RGB
+  let r = parseInt(color.substring(1, 3), 16);
+  let g = parseInt(color.substring(3, 5), 16);
+  let b = parseInt(color.substring(5, 7), 16);
+
+  // Justera ljusstyrka
+  r = Math.min(255, Math.max(0, r + Math.floor(r * percent / 100)));
+  g = Math.min(255, Math.max(0, g + Math.floor(g * percent / 100)));
+  b = Math.min(255, Math.max(0, b + Math.floor(b * percent / 100)));
+
+  // Konvertera tillbaka till hex
+  return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
 // Interface för uppgifter i Gantt-diagrammet
 export interface GanttTask {
   id: number;
@@ -963,14 +979,25 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
       return { display: 'none' };
     }
     
-    // Beräkna bredden baserat på uppgiftstyp
+    // FÖRBÄTTRAD BREDDBERÄKNING
     let width;
+    
+    // Beräkna bredden baserat på uppgiftstyp och faktiska pixlar
     if (task.type === 'MILESTONE') {
-      width = 10; // Milstolpar är bara punkter
+      // Milstolpar är små punkter
+      width = 20; // Öka minimum-storlek för bättre synlighet
     } else {
-      // Beräkna bredden baserat på faktiska datum
-      const dayDiff = differenceInDays(taskEndDate, taskStartDate);
-      width = Math.max((dayDiff + 1) * zoomLevel, zoomLevel);
+      // För faser och vanliga uppgifter
+      if (endIdx === startIdx) {
+        // Om start och slut hamnar på samma dag, säkerställ minimum bredd
+        width = Math.max(zoomLevel, 25); // Min 25px för att kunna se och klicka
+      } else {
+        // Annars, beräkna baserat på faktiska dagar
+        width = Math.max((endIdx - startIdx + 1) * zoomLevel, zoomLevel);
+      }
+      
+      // Sätt ett minsta värde för att uppgifter alltid ska synas
+      width = Math.max(width, 15); 
     }
     
     let barColor = '';
@@ -992,10 +1019,25 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
         barColor = '#6b7280'; // gray-500
     }
     
+    // Beräkna position igen med större säkerhetsmarginal
+    const left = startIdx * zoomLevel;
+    
+    // Logga detaljerad positioneringsinformation
+    console.log(`Gantt: Positionering av "${task.name}"`, {
+      type: task.type,
+      status: task.status,
+      startDate: taskStartDate.toISOString().substring(0, 10),
+      endDate: taskEndDate.toISOString().substring(0, 10),
+      startIdx,
+      endIdx,
+      left,
+      width
+    });
+    
     // Skapa olika stilar beroende på uppgiftstyp
     const style: React.CSSProperties = {
       position: 'absolute',
-      left: `${startIdx * zoomLevel}px`,
+      left: `${left}px`,
       cursor: 'pointer',
       zIndex: 2,
       display: 'flex',
