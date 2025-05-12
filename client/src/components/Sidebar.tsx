@@ -1767,13 +1767,35 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           folderLevel = level;
         }
         
-        // Tillämpa indentering baserat på nivån
-        if (folderLevel <= 0) indentClass = 'pl-0'; // Topnivå - ingen indentering
-        else if (folderLevel === 1) indentClass = 'pl-4'; // Första nivån
-        else if (folderLevel === 2) indentClass = 'pl-8'; // Andra nivån
-        else if (folderLevel === 3) indentClass = 'pl-12'; // Tredje nivån
-        else if (folderLevel >= 4) indentClass = 'pl-16'; // Fjärde nivån eller djupare
-        else indentClass = 'pl-16'; // Djupare nivåer
+        // Tillämpa indentering baserat på nivån - med visuell linje för hierarkin
+        // Anpassade indenteringsnivåer för att exakt matcha bildhierarkin
+        if (folderLevel <= 0) {
+          indentClass = 'pl-0'; // Topnivå - ingen indentering
+        }
+        else if (folderLevel === 1) {
+          indentClass = 'pl-8 relative'; // Första nivån med bredare indrag
+          // Lägg till en visuell linje som visar hierarkin
+          item.borderClass = 'border-l-2 border-blue-100 dark:border-blue-950 ml-3 absolute left-0 h-full';
+        }
+        else if (folderLevel === 2) {
+          indentClass = 'pl-16 relative'; // Andra nivån med än mer indrag
+          // Tydligare visuell linje för nivå 2
+          item.borderClass = 'border-l-2 border-blue-100 dark:border-blue-950 ml-10 absolute left-0 h-full';
+        }
+        else if (folderLevel === 3) {
+          indentClass = 'pl-24 relative'; // Tredje nivån med mycket indrag
+          // Ännu tydligare visuell linje för nivå 3
+          item.borderClass = 'border-l-2 border-blue-100 dark:border-blue-950 ml-18 absolute left-0 h-full';
+        }
+        else if (folderLevel >= 4) {
+          indentClass = 'pl-32 relative'; // Fjärde nivån och djupare - extremt indrag
+          // Maximal visuell linje för djupa nivåer
+          item.borderClass = 'border-l-2 border-blue-100 dark:border-blue-950 ml-26 absolute left-0 h-full';
+        }
+        else {
+          indentClass = 'pl-32 relative'; // Djupare nivåer
+          item.borderClass = 'border-l-2 border-blue-100 dark:border-blue-950 ml-26 absolute left-0 h-full';
+        }
       } else {
         // När sidofältet är stängt använder vi ingen indentering (allt är centrerat)
         indentClass = 'pl-0';
