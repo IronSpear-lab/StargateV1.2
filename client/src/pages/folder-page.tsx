@@ -490,7 +490,7 @@ export default function FolderPage() {
           typeof ritning.id === 'string' && !isNaN(Number(ritning.id)) ? Number(ritning.id) : 
           Math.floor(Date.now() / 1000);
       
-      openPDFDialog({
+      showPDFDialog({
         fileId: fileId,
         initialUrl: fileUrl,
         filename: ritning.filename,
@@ -660,25 +660,7 @@ export default function FolderPage() {
       </div>
       
       {/* PDF-visare - använder den förbättrade visaren med kommentarer och versionshantering */}
-      {selectedFile && (
-        <div className="fixed inset-0 z-50 bg-background/80">
-          <EnhancedPDFViewer
-            fileId={
-              typeof selectedFile.fileData?.id === 'number' 
-                ? selectedFile.fileData.id 
-                : typeof selectedFile.fileData?.id === 'string' && !isNaN(Number(selectedFile.fileData.id))
-                  ? Number(selectedFile.fileData.id)
-                  : Math.floor(Date.now() / 1000) // Använd ett numeriskt ID baserat på aktuell tid
-            }
-            initialUrl={selectedFile.fileUrl || ""}
-            filename={selectedFile.fileData?.filename || "Dokument"}
-            onClose={() => setSelectedFile(null)}
-            projectId={currentProject?.id || null}
-            useDatabase={false} // Använd localStorage för att säkerställa att PDF-visaren fungerar för dynamiska mappar
-            file={selectedFile.file} // Lägg till filreferensen direkt
-          />
-        </div>
-      )}
+      {/* PDF-visning hanteras nu genom PDF-dialog-systemet */}
       
       {/* Bekräftelsedialog för borttagning */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
