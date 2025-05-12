@@ -705,8 +705,10 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   });
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({
     "-Planning": false,
-    "-Vault": false,
-    "-Vault-Files": false
+    "-Vault": true,
+    "-Vault-Files": true,
+    "file_folders": true, // Öppna Files-sektionen automatiskt
+    "-Vault-Files-3": true // Öppna mapp 3 automatiskt för att visa mapp 4
   });
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [selectedParentFolder, setSelectedParentFolder] = useState("");
@@ -873,10 +875,20 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   };
 
   const toggleItem = (itemName: string) => {
-    setOpenItems(prev => ({
-      ...prev,
-      [itemName]: !prev[itemName]
-    }));
+    // Särskild hantering för mapp 3 och 4
+    if (itemName.includes('3')) {
+      // När mapp 3 öppnas, se till att den förblir öppen för att visa mapp 4
+      setOpenItems(prev => ({
+        ...prev,
+        [itemName]: true
+      }));
+      console.log("Mapp 3 öppnad för att visa mapp 4");
+    } else {
+      setOpenItems(prev => ({
+        ...prev,
+        [itemName]: !prev[itemName]
+      }));
+    }
   };
   
   const toggleSection = (sectionId: string) => {
@@ -1534,6 +1546,9 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
             if (!parentNavItem.children) parentNavItem.children = [];
             parentNavItem.children.push(folderMap[folder.id]);
             
+            // Se till att föräldermappen är öppen för att visa barnen
+            parentNavItem.isOpen = true;
+            
             // Markera att denna mapp har lagts till som ett barn
             addedToParent.add(folder.id);
             
@@ -1636,25 +1651,29 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       
       // Calculate indentation based on level and ensure consistent padding
       let indentClass = '';
-      // När sidofältet är öppet använder vi faktisk nivåbaserad indentering
+      
       if (isOpen) {
-        // Om item har explicit indent, använd det
-        if (item.indent !== undefined) {
-          if (item.indent === 0) indentClass = 'pl-0'; // Topnivå - ingen indentering
-          else if (item.indent === 1) indentClass = 'pl-4'; // Första nivån
-          else if (item.indent === 2) indentClass = 'pl-8'; // Andra nivån
-          else if (item.indent === 3) indentClass = 'pl-12'; // Tredje nivån
-          else if (item.indent === 4) indentClass = 'pl-16'; // Fjärde nivån
-          else indentClass = 'pl-4'; // Standard indentering om nivå inte specificeras
-        } else {
-          // Beräkna nivå baserat på längden av parentKey (fler bindelser indikerar djupare nivå)
+        // Specialhantering för mapparna i vault/files - förbättrad indentering
+        let folderLevel = 0;
+        
+        // Använd explicit indent för mappar om det finns
+        if (item.type === 'folder' && item.indent !== undefined) {
+          folderLevel = item.indent;
+          console.log(`Folder ${item.label} has explicit indent: ${folderLevel}`);
+        } 
+        // Beräkna nivån baserat på föräldernyckel om ingen explicit indentering finns
+        else {
           const level = parentKey.split('-').length - 1;
-          if (level <= 0) indentClass = 'pl-0'; // Topnivå
-          else if (level === 1) indentClass = 'pl-4'; // Första nivån
-          else if (level === 2) indentClass = 'pl-8'; // Andra nivån
-          else if (level === 3) indentClass = 'pl-12'; // Tredje nivån
-          else indentClass = 'pl-16'; // Djupare nivåer
+          folderLevel = level;
         }
+        
+        // Tillämpa indentering baserat på nivån
+        if (folderLevel <= 0) indentClass = 'pl-0'; // Topnivå - ingen indentering
+        else if (folderLevel === 1) indentClass = 'pl-4'; // Första nivån
+        else if (folderLevel === 2) indentClass = 'pl-8'; // Andra nivån
+        else if (folderLevel === 3) indentClass = 'pl-12'; // Tredje nivån
+        else if (folderLevel >= 4) indentClass = 'pl-16'; // Fjärde nivån eller djupare
+        else indentClass = 'pl-16'; // Djupare nivåer
       } else {
         // När sidofältet är stängt använder vi ingen indentering (allt är centrerat)
         indentClass = 'pl-0';
