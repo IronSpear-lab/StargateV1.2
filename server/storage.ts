@@ -371,6 +371,8 @@ class DatabaseStorage implements IStorage {
   }
 
   async createFolder(folder: Omit<Folder, "id">): Promise<Folder> {
+    console.log(`createFolder: Skapar mapp "${folder.name}" med föräldermapp: ${folder.parentId || 'ingen (rot)'} i projekt ${folder.projectId}`);
+    
     // Om föräldermapp-ID finns, verifiera att den finns i databasen
     if (folder.parentId) {
       // Kontrollera om föräldermapp-ID finns i databasen
@@ -383,11 +385,17 @@ class DatabaseStorage implements IStorage {
       if (parentFolder.length === 0) {
         console.log(`Varning: Föräldermapp med ID ${folder.parentId} finns inte, sätter parentId till null`);
         folder.parentId = null;
+      } else {
+        console.log(`Föräldermapp hittad: ${parentFolder[0].name} (ID: ${parentFolder[0].id})`);
       }
     }
     
     const validatedData = insertFolderSchema.parse(folder);
+    console.log("createFolder: Validerad data:", JSON.stringify(validatedData, null, 2));
+    
     const result = await db.insert(folders).values(validatedData).returning();
+    console.log(`createFolder: Skapad mapp: ID=${result[0].id}, name=${result[0].name}, parentId=${result[0].parentId || 'null'}`);
+    
     return result[0];
   }
   

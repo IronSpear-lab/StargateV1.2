@@ -975,39 +975,72 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       // Kontrollera om parentName är en befintlig mappnamn (dvs inte "Files", "Dokument", etc)
       // och sätt parentId korrekt
       let parentId = null;
+      let parentFolderObject = null;
       
       // Om parentName inte är "Files" (som är root för mappar i sidebaren), 
       // då måste vi hitta föräldermappens ID
       if (parentName !== "Files") {
         console.log(`createFolder: Letar efter föräldermappens ID för '${parentName}'`);
         
-        // Hämta alla befintliga mappar från båda localStorage-nycklarna
-        const allUserFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
-        const altFolders = JSON.parse(localStorage.getItem('user_created_folders') || '[]');
+        try {
+          // Hämta senaste folderdata från API för att undvika att använda föråldrade localStorage-data
+          const foldersResponse = await fetch(`/api/folders?projectId=${currentProjectId}`, {
+            credentials: 'include'
+          });
+          
+          if (foldersResponse.ok) {
+            const folders = await foldersResponse.json();
+            console.log(`Hämtade ${folders.length} mappar från API för att hitta förälder`);
+            
+            // Hitta föräldermappen baserat på namn eller ID
+            parentFolderObject = folders.find((f: any) => 
+              f.name === parentName || 
+              (f.id && f.id.toString() === parentName)
+            );
+            
+            if (parentFolderObject) {
+              parentId = parentFolderObject.id;
+              console.log(`Hittade föräldermapp ${parentName} med ID ${parentId} från API`);
+            } else {
+              console.log(`Kunde inte hitta föräldermapp ${parentName} i API-responsen`);
+            }
+          } else {
+            console.log(`Kunde inte hämta mappar från API, faller tillbaka på localStorage`);
+          }
+        } catch (error) {
+          console.error(`Fel vid försök att hämta mappar från API:`, error);
+        }
         
-        // Kombinera och deduplicera mappar från båda källor för att säkerställa att vi hittar mapparna
-        const combinedFolders = [...allUserFolders];
-        
-        // Filtrera mappar för aktuellt projekt - jämför både som sträng och som nummer
-        const projectFolders = combinedFolders.filter((f: any) => {
-          return f.projectId && (
-            String(f.projectId) === String(currentProjectId) ||
-            f.projectId === Number(currentProjectId)
-          );
-        });
-        
-        // Hitta föräldermappen - sök både på namn och ID för att vara säker
-        const parentFolder = projectFolders.find((f: any) => {
-          // Matcha antingen på namn exakt eller på namn i parentId-format
-          return f.name === parentName || 
-                 (f.id && f.id.toString() === parentName) ||
-                 (f.folderId && f.folderId.toString() === parentName);
-        });
-        
-        if (parentFolder) {
-          // Använd ID från föräldermappen som parentId
-          parentId = Number(parentFolder.id || parentFolder.folderId);
-          console.log(`createFolder: Hittade föräldermapp med ID ${parentId}`);
+        // Fallback: Om vi inte kunde hitta föräldermappen från API, försök med localStorage
+        if (!parentFolderObject) {
+          // Hämta alla befintliga mappar från båda localStorage-nycklarna
+          const allUserFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
+          const altFolders = JSON.parse(localStorage.getItem('user_created_folders') || '[]');
+          
+          // Kombinera och deduplicera mappar från båda källor för att säkerställa att vi hittar mapparna
+          const combinedFolders = [...allUserFolders];
+          
+          // Filtrera mappar för aktuellt projekt - jämför både som sträng och som nummer
+          const projectFolders = combinedFolders.filter((f: any) => {
+            return f.projectId && (
+              String(f.projectId) === String(currentProjectId) ||
+              f.projectId === Number(currentProjectId)
+            );
+          });
+          
+          // Hitta föräldermappen - sök både på namn och ID för att vara säker
+          const parentFolder = projectFolders.find((f: any) => {
+            // Matcha antingen på namn exakt eller på namn i parentId-format
+            return f.name === parentName || 
+                  (f.id && f.id.toString() === parentName) ||
+                  (f.folderId && f.folderId.toString() === parentName);
+          });
+          
+          if (parentFolder) {
+            // Använd ID från föräldermappen som parentId
+            parentId = Number(parentFolder.id || parentFolder.folderId);
+            console.log(`createFolder: Hittade föräldermapp med ID ${parentId} från localStorage`);
+          }
         }
       }
       
@@ -1255,18 +1288,21 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     return items.map(item => {
       // Extra loggutskrift för att hjälpa debug
       console.log(`Checking item ${item.label}, parent=${parentName}, type=${item.type}, folderId=${item.folderId}`);
+      console.log(`Item details:`, item);
+      console.log(`Folder details:`, newFolder);
       
-      // STRIKT MATCHNING: Kontrollera om denna mapp är föräldern
-      // Vi matchar nu med striktare regler för att undvika dubletter
+      // FÖRBÄTTRAD MATCHNING: Kontrollera om denna mapp är föräldern med fler matchningsregler
       const isParentMatch = 
-        // Om förälder är "Files" (huvudmappen), matcha på exakt namn 
-        // OCH kontrollera att "Files" finns under Vault-sektionen
-        (item.label === "Files" && parentName === "Files" && item.folderId === "files_root") ||
-        // ELLER om vi har en användarskapad mapp som förälder, matcha strikt på ID
-        (item.folderId && newFolder.parentId && item.folderId === newFolder.parentId);
+        // Om förälder är "Files" (huvudmappen) och den nya mappen ska vara på rotnivå
+        (item.label === "Files" && parentName === "Files" && !newFolder.parentId && item.folderId === "files_root") ||
+        // ELLER om vi har en användarskapad mapp som förälder, matcha på ID, och konvertera till string för säkerhets skull
+        (item.folderId && newFolder.parentId && 
+          (String(item.folderId) === String(newFolder.parentId) || 
+           item.folderId === newFolder.id || 
+           (typeof item.folderId === 'string' && item.folderId.includes(String(newFolder.parentId)))));
         
       if (isParentMatch) {
-        console.log(`✅ STRIKT MATCH! Tilldelar mapp ${newFolder.name} ENDAST till ${item.label} (ID: ${item.folderId})`);
+        console.log(`✅ MATCHNING HITTAD! Tilldelar mapp ${newFolder.name} till ${item.label} (ID: ${item.folderId})`);
         
         // Kontrollera om mappen redan finns för att undvika dubletter
         const folderAlreadyExists = (item.children || []).some(
@@ -1293,6 +1329,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
               type: "folder",
               onAddClick: () => handleAddFolder(newFolder.name),
               folderId: newFolder.id, // Lägg till ID för identifiering och borttagning
+              parentId: item.folderId, // Explicit sätt förälder-ID för att bevara hierarkin
               children: []
             }
           ]
