@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useProject } from "@/contexts/ProjectContext"; // Lägg till ProjectContext-hook
 import { cn } from "@/lib/utils";
 import { 
   Home, 
@@ -692,6 +693,8 @@ function ProfileSettingsDialog({
 
 export function Sidebar({ className }: SidebarProps): JSX.Element {
   const { user, logoutMutation } = useAuth();
+  // Hämta aktuellt projekt från ProjectContext
+  const { currentProject } = useProject();
   const [location] = useLocation();
   const isMobile = useMobile();
   const [isOpen, setIsOpen] = useState(!isMobile);
@@ -766,8 +769,8 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           try {
             const parsedFolders = JSON.parse(savedFolders);
             
-            // Hämta aktuellt project-ID
-            const projectId = localStorage.getItem('currentProjectId');
+            // Hämta aktuellt project-ID från ProjectContext eller localStorage som fallback
+            const projectId = currentProject?.id ? String(currentProject.id) : localStorage.getItem('currentProjectId');
             
             // Filtrera mappar baserat på aktuellt projekt, om ett projekt är valt
             // Och avlägsna duplicerade mappar - varje mapp ska ha ett unikt ID
