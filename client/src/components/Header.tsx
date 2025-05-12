@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bell, HelpCircle, Menu, Search, ChevronDown, Plus } from "lucide-react";
+import { Bell, HelpCircle, Menu, Search, ChevronDown, Plus, UserPlus } from "lucide-react";
 import { useMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { InviteUserDialog } from "@/components/invitations/InviteUserDialog";
 
 interface HeaderProps {
   title: string;
@@ -301,7 +302,14 @@ export function Header({
           <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
         </div>
         
-        <ModeToggle />
+        {/* Visa inbjudningsknapp endast för användare med behörighet (admin, project_leader, superuser) */}
+        {user?.role && (user.role === "admin" || user.role === "project_leader" || user.role === "superuser") && (
+          <InviteUserDialog>
+            <Button variant="ghost" size="icon" className="p-2 rounded-full hover:bg-muted" title="Bjud in användare">
+              <UserPlus className="h-5 w-5 text-foreground" />
+            </Button>
+          </InviteUserDialog>
+        )}
         
         <Button variant="ghost" size="icon" className="p-2 rounded-full hover:bg-muted relative">
           <Bell className="h-5 w-5 text-foreground" />
