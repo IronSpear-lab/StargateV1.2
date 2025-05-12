@@ -146,21 +146,31 @@ export function Widget({
       className={cn(
         expanded ? "fixed inset-6 z-50" : widthClasses,
         "shadow-md rounded-lg transition-all duration-300 widget border-0",
+        "backdrop-filter backdrop-blur-[2px] bg-opacity-95",
         dragging ? "opacity-50" : "opacity-100",
         expanded && "backdrop-blur-sm",
         className
       )}
       style={{
-        boxShadow: expanded ? "0 8px 30px rgba(0, 0, 0, 0.12)" : "",
+        boxShadow: expanded ? "0 8px 30px rgba(0, 0, 0, 0.12)" : "0 4px 15px rgba(0, 0, 0, 0.06)",
+        background: "linear-gradient(135deg, var(--card) 0%, var(--card-foreground-rgb)/0.02 100%)",
+        borderLeft: "1px solid rgba(var(--card-foreground-rgb), 0.05)",
+        borderTop: "1px solid rgba(var(--card-foreground-rgb), 0.05)",
       }}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <CardHeader className="p-3 bg-gradient-to-r from-primary/10 to-card border-b flex-row items-center justify-between space-y-0 rounded-t-lg">
-        <div className="flex items-center space-x-2">
+      <CardHeader 
+        className="p-3 flex-row items-center justify-between space-y-0 rounded-t-lg relative overflow-hidden backdrop-filter backdrop-blur-sm"
+        style={{
+          background: "linear-gradient(135deg, var(--primary)/0.07 0%, transparent 100%)",
+          borderBottom: "1px solid rgba(var(--card-foreground-rgb), 0.06)"
+        }}
+      >
+        <div className="flex items-center space-x-2 z-10">
           <div
-            className="cursor-move p-1 rounded hover:bg-primary/10"
+            className="cursor-move p-1 rounded-full hover:bg-primary/10 transition-colors"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <Grip className="h-4 w-4 text-primary" />
@@ -172,11 +182,11 @@ export function Widget({
             )}
           </div>
         </div>
-        <div className="flex items-center space-x-0.5">
+        <div className="flex items-center space-x-0.5 z-10">
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-6 w-6 rounded-full hover:bg-primary/10" 
+            className="h-6 w-6 rounded-full hover:bg-primary/10 transition-colors" 
             onClick={toggleCollapsed}
           >
             {collapsed ? (
@@ -190,7 +200,7 @@ export function Widget({
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-6 w-6 rounded-full hover:bg-primary/10" 
+              className="h-6 w-6 rounded-full hover:bg-primary/10 transition-colors" 
               onClick={toggleExpanded}
             >
               <Maximize2 className="h-3.5 w-3.5 text-primary" />
@@ -199,7 +209,7 @@ export function Widget({
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-6 w-6 rounded-full hover:bg-primary/10" 
+              className="h-6 w-6 rounded-full hover:bg-primary/10 transition-colors" 
               onClick={toggleExpanded}
             >
               <Minimize2 className="h-3.5 w-3.5 text-primary" />
@@ -211,7 +221,7 @@ export function Widget({
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-6 w-6 rounded-full hover:bg-primary/10"
+                className="h-6 w-6 rounded-full hover:bg-primary/10 transition-colors"
               >
                 <MoreHorizontal className="h-3.5 w-3.5 text-primary" />
               </Button>
@@ -219,55 +229,55 @@ export function Widget({
             <DropdownMenuContent align="end" className="w-[160px]">
               {onEdit && (
                 <DropdownMenuItem onClick={() => onEdit(id)}>
-                  Edit widget
+                  Redigera widget
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={toggleExpanded}>
-                {expanded ? "Collapse" : "Expand"}
+                {expanded ? "Minimera" : "Expandera"}
               </DropdownMenuItem>
               
               {/* Widget Width Submenu */}
               <DropdownMenuItem className="font-semibold">
-                Set Width:
+                Ställ in bredd:
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleResize("full" as WidthType, safeHeight)}>
-                Full Width
+                Full bredd
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleResize("half" as WidthType, safeHeight)}>
-                Half Width
+                Halv bredd
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleResize("third" as WidthType, safeHeight)}>
-                Third Width
+                Tredjedels bredd
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleResize("quarter" as WidthType, safeHeight)}>
-                Quarter Width
+                Fjärdedels bredd
               </DropdownMenuItem>
               
               {/* Widget Height Submenu */}
               <DropdownMenuSeparator />
               <DropdownMenuItem className="font-semibold">
-                Set Height:
+                Ställ in höjd:
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleResize(safeWidth, "small" as HeightType)}>
-                Small Height
+                Låg höjd
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleResize(safeWidth, "medium" as HeightType)}>
-                Medium Height
+                Medium höjd
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleResize(safeWidth, "large" as HeightType)}>
-                Large Height
+                Stor höjd
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleResize(safeWidth, "auto" as HeightType)}>
-                Auto Height
+                Auto höjd
               </DropdownMenuItem>
               
-              <DropdownMenuItem>Refresh data</DropdownMenuItem>
+              <DropdownMenuItem>Uppdatera data</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive"
                 onClick={() => onRemove(id)}
               >
-                Remove widget
+                Ta bort widget
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -275,7 +285,7 @@ export function Widget({
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 rounded-full hover:bg-destructive/10"
+            className="h-6 w-6 rounded-full hover:bg-destructive/10 transition-colors"
             onClick={() => onRemove(id)}
           >
             <X className="h-3.5 w-3.5 text-destructive" />
@@ -285,13 +295,18 @@ export function Widget({
       <CardContent 
         className={cn(
           noPadding ? "p-0" : "p-3", 
-          "overflow-auto bg-card rounded-b-lg",
+          "overflow-auto rounded-b-lg transition-all duration-300",
           !expanded && heightClasses, 
           collapsed && "hidden", 
           "relative"
         )}
+        style={{
+          background: "linear-gradient(180deg, var(--card) 0%, var(--card-foreground-rgb)/0.01 100%)",
+        }}
       >
-        {children}
+        <div className="relative z-10">
+          {children}
+        </div>
       </CardContent>
     </Card>
   );
