@@ -904,11 +904,40 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
     setIsOpen(!isOpen);
   };
 
-  const toggleItem = (itemName: string) => {
+  const toggleItem = (itemName: string, item?: NavItemType) => {
     setOpenItems(prev => ({
       ...prev,
       [itemName]: !prev[itemName]
     }));
+    
+    // Om det är en djupt nästlad mapp, se till att scrollningen visar den
+    if (item?.indent && item.indent >= 10 && fileSectionRef.current) {
+      // Vänta lite så DOM hinner uppdateras efter toggle
+      setTimeout(() => {
+        // Hitta alla element med deep-folder-klassen
+        const deepFolders = fileSectionRef.current?.querySelectorAll('.deep-folder');
+        // Hitta elementet som innehåller mappnamnet vi söker
+        const targetFolder = Array.from(deepFolders || []).find(
+          el => el.textContent?.includes(item.label)
+        );
+        
+        if (targetFolder) {
+          // Beräkna optimal scrollposition
+          const container = fileSectionRef.current;
+          const elementLeft = (targetFolder as HTMLElement).offsetLeft;
+          const containerWidth = container.clientWidth;
+          const scrollLeft = elementLeft - (containerWidth / 4);
+          
+          // Scrolla containern
+          container.scrollTo({
+            left: scrollLeft,
+            behavior: 'smooth'
+          });
+          
+          console.log(`Scrollat till djupt nästlad mapp efter toggle: ${item.label}`);
+        }
+      }, 150);
+    }
   };
   
   const toggleSection = (sectionId: string) => {
@@ -1156,7 +1185,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       
       // Säkerställ att Files-sektionen är öppen
       if (!openItems["file_folders"]) {
-        toggleItem("file_folders");
+        toggleItem("file_folders", filesSection);
       }
       
       // VIKTIGT: Invalidera React Query cache för att uppdatera FolderManagementWidget
@@ -1525,7 +1554,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           folderId: "files_root", // Unikt ID för rotkatalogen
           onAddClick: () => handleAddFolder("Files"), // För att lägga till mappar under Files
           isOpen: openItems["file_folders"] || false, // För att hålla mappen öppen/stängd
-          onToggle: () => toggleItem("file_folders"), // För att toggla öppen/stängd status
+          onToggle: () => toggleItem("file_folders", filesSection), // För att toggla öppen/stängd status
           children: [
             // Dynamiska undermappar kommer att läggas till i useEffect nedan
             // tillsammans med userCreatedFolders
@@ -1967,7 +1996,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     "px-0 mx-auto"
                   )}
-                  onClick={() => toggleItem(itemKey)}
+                  onClick={() => toggleItem(itemKey, item)}
                 >
                   <span className={cn(
                     "flex items-center justify-center",
