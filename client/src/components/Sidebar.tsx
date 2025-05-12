@@ -1897,6 +1897,12 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
           else if (item.indent === 15) indentClass = 'pl-60'; // Mapp 14
           else indentClass = `pl-${item.indent * 4}`; // Djupare nivåer - 4px per nivå
           
+          // Lägg till villkor för att aktivera overflow-x-auto på djupa mappar
+          if (item.indent && item.indent >= 10) {
+            // Lägg till klass för att göra elementi genomskinligt om det är för långt till höger
+            indentClass += ' deep-folder';
+          }
+          
           // Debuglogga för att säkerställa att indenteringen beräknas korrekt
           if (item.type === 'folder') {
             console.log(`Mapp ${item.label} med indent ${item.indent} får CSS-klass ${indentClass}`);
