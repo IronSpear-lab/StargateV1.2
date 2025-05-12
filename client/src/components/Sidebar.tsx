@@ -956,19 +956,32 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       if (parentName !== "Files") {
         console.log(`createFolder: Letar efter föräldermappens ID för '${parentName}'`);
         
-        // Hämta alla befintliga mappar från localStorage
+        // Hämta alla befintliga mappar från båda localStorage-nycklarna
         const allUserFolders = JSON.parse(localStorage.getItem('userCreatedFolders') || '[]');
+        const altFolders = JSON.parse(localStorage.getItem('user_created_folders') || '[]');
         
-        // Filtrera mappar för aktuellt projekt
-        const projectFolders = allUserFolders.filter((f: any) => 
-          f.projectId && f.projectId === currentProjectId
-        );
+        // Kombinera och deduplicera mappar från båda källor för att säkerställa att vi hittar mapparna
+        const combinedFolders = [...allUserFolders];
         
-        // Hitta föräldermappen
-        const parentFolder = projectFolders.find((f: any) => f.name === parentName);
+        // Filtrera mappar för aktuellt projekt - jämför både som sträng och som nummer
+        const projectFolders = combinedFolders.filter((f: any) => {
+          return f.projectId && (
+            String(f.projectId) === String(currentProjectId) ||
+            f.projectId === Number(currentProjectId)
+          );
+        });
+        
+        // Hitta föräldermappen - sök både på namn och ID för att vara säker
+        const parentFolder = projectFolders.find((f: any) => {
+          // Matcha antingen på namn exakt eller på namn i parentId-format
+          return f.name === parentName || 
+                 (f.id && f.id.toString() === parentName) ||
+                 (f.folderId && f.folderId.toString() === parentName);
+        });
         
         if (parentFolder) {
-          parentId = Number(parentFolder.id);
+          // Använd ID från föräldermappen som parentId
+          parentId = Number(parentFolder.id || parentFolder.folderId);
           console.log(`createFolder: Hittade föräldermapp med ID ${parentId}`);
         }
       }
@@ -1023,12 +1036,18 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       
       // Dela upp mapparna mellan aktuellt projekt och andra projekt
       const otherProjectFolders = allUserFolders.filter((f: any) => {
-        return !f.projectId || f.projectId !== currentProjectId;
+        return !f.projectId || (
+          String(f.projectId) !== String(currentProjectId) && 
+          f.projectId !== Number(currentProjectId)
+        );
       });
       
       // Hämta mapparna från det aktuella projektet separat
       const currentProjectFolders = allUserFolders.filter((f: any) => {
-        return f.projectId && f.projectId === currentProjectId;
+        return f.projectId && (
+          String(f.projectId) === String(currentProjectId) || 
+          f.projectId === Number(currentProjectId)
+        );
       });
       
       console.log(`createFolder: Behåller ${otherProjectFolders.length} mappar från andra projekt och ${currentProjectFolders.length} mappar från aktuellt projekt`);
@@ -1040,11 +1059,11 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       setUserCreatedFolders(updatedFolders);
       console.log(`createFolder: State uppdaterad med ${updatedFolders.length} mappar`);
       
-      // Spara i localStorage
+      // Spara i localStorage i båda formaten för att säkerställa synkronisering
       localStorage.setItem('userCreatedFolders', JSON.stringify(updatedFolders));
       
-      // Spara även i user_created_folders för App.tsx som behöver känna till mappnamnen
-      // Detta behövs för den dynamiska routern
+      // Se till att den alternativa nyckeln också uppdateras för att undvika synkproblem
+      // App.tsx behöver känna till mappnamnen för den dynamiska routern
       const existingFoldersForApp = localStorage.getItem('user_created_folders');
       const foldersForApp = existingFoldersForApp ? JSON.parse(existingFoldersForApp) : [];
       
