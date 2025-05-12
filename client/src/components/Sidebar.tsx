@@ -2229,10 +2229,13 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
                   )}>
                     {item.icon}
                   </span>
-                  <span className={cn(
-                    "text-sm",
-                    item.active ? "text-primary" : "text-muted-foreground"
-                  )}>
+                  <span 
+                    className={cn(
+                      "text-sm truncate max-w-[140px] inline-block", 
+                      item.active ? "text-primary" : "text-muted-foreground"
+                    )}
+                    title={item.label} // Show full name on hover
+                  >
                     {item.label}
                   </span>
                 </div>
