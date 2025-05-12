@@ -1164,10 +1164,20 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
       // För uppgifter med projektId, spara till databasen
       else {
         // Skapa API-data objekt
+        // Konvertera Gantt-uppgiftstyp till API-format
+        const typeMapping: Record<string, string> = {
+          'MILESTONE': 'milestone',
+          'PHASE': 'phase',
+          'TASK': 'task'
+        };
+        
+        // Använd vald typ från användaren istället för hardcoded "gantt"
+        const taskType = typeMapping[newTask.type as string] || 'gantt';
+        
         const taskData = {
           title: newTask.name,
           status: apiStatus,
-          type: "gantt", // Explicit sätta typen till "gantt" för uppgifter i Gantt-vyn
+          type: taskType, // Använd korrekt mappat värde från uppgiftstypen
           projectId: projectId,
           startDate: newTask.startDate,
           endDate: endDate,
