@@ -591,9 +591,9 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-sm font-medium flex items-center space-x-1.5">
+        <div className="text-sm font-medium text-gray-500 flex items-center space-x-1.5">
           <MapPin className="h-4 w-4 text-blue-500" />
-          <span>My Field Tasks</span>
+          <span>Mina fältuppgifter</span>
         </div>
         <AllTasksDialog />
       </div>
@@ -602,7 +602,7 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-            <span className="ml-2 text-sm text-gray-500">Loading field tasks...</span>
+            <span className="ml-2 text-sm text-gray-500">Laddar fältuppgifter...</span>
           </div>
         ) : sortedItems.length > 0 ? (
           <div className="space-y-1.5 divide-y">
@@ -619,8 +619,8 @@ export function FieldTasksWidget({ limit = 5, userId }: FieldTasksWidgetProps) {
         ) : (
           <div className="flex flex-col items-center justify-center h-[200px] text-center p-4">
             <Map className="h-8 w-8 text-gray-300 mb-2" />
-            <h3 className="text-sm font-medium text-gray-600">No field tasks assigned</h3>
-            <p className="text-xs text-gray-500 mt-1">You don't have any field tasks assigned at the moment.</p>
+            <h3 className="text-sm font-medium text-gray-600">Inga tilldelade fältuppgifter</h3>
+            <p className="text-xs text-gray-500 mt-1">Du har inga fältuppgifter tilldelade för tillfället.</p>
           </div>
         )}
       </ScrollArea>
