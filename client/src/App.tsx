@@ -31,6 +31,7 @@ import SimpleViewerPage from "@/pages/simple-viewer-page";
 import MessagesPage from "@/pages/messages-page";
 import PDFViewerPage from "@/pages/pdf-viewer-page";
 import InvitationsPage from "@/pages/invitations-page";
+import RevenueTimePage from "@/pages/planning/revenue-time-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -81,6 +82,7 @@ function Router() {
       <ProtectedRoute path="/kanban/:projectId" component={KanbanPage} />
       <ProtectedRoute path="/planning/kanban" component={KanbanPage} />
       <ProtectedRoute path="/planning/gantt-chart" component={GanttChartPage} />
+      <ProtectedRoute path="/planning/revenue-time" component={RevenueTimePage} />
       <ProtectedRoute path="/gantt-chart/:projectId" component={GanttChartPage} />
       <ProtectedRoute path="/wiki" component={WikiPage} />
       <ProtectedRoute path="/time-tracking" component={TimeTrackingPage} />
