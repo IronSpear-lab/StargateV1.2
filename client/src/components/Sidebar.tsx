@@ -1648,152 +1648,94 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       // Rensa först filesSection.children för att undvika dubletter
       filesSection!.children = [];
       
-      // Bygg en hierarkisk mappstruktur från grunden
-      // Steg 1: Identifiera rotmappar och lägg till dem i Files sektionen
-      const rootFolders = userCreatedFolders.filter(folder => 
-        !folder.parent || folder.parent === "Files" || 
-        (folder.parentId === null || folder.parentId === undefined)
+      // HELT NYTT TILLVÄGAGÅNGSSÄTT: Bygg hierarkiskt mappträd baserat på mappinformation
+      // Detta förbättrade tillvägagångssätt eliminerar dubbletterna
+      
+      // Filtrera ut bara foldrarna för aktuellt projekt (för säkerhets skull)
+      const projectFolders = userCreatedFolders.filter(folder => 
+        folder && folder.projectId === currentProjectId
       );
       
-      // Skapa en Set för att hålla reda på vilka mappar vi redan har hanterat
-      const processedFolderIds = new Set<string>();
+      console.log("Filtered folders for tree building:", projectFolders);
       
-      // Lägg till rotmapparna direkt till Files-sektionen
-      rootFolders.forEach(folder => {
-        if (processedFolderIds.has(String(folder.id))) {
-          console.log(`Rotmappen ${folder.name} har redan hanterats, hoppar över`);
-          return;
-        }
+      // Sortera mapparna först, så att föräldraförst-ordningen fungerar korrekt
+      // Dels så att rotmappar (utan förälder) kommer först, 
+      // följt av mappar i första nivån, andra nivån osv.
+      const sortedFolders = [...projectFolders].sort((a, b) => {
+        // Rotmappar först
+        if ((!a.parentId || a.parent === "Files") && b.parentId) return -1;
+        if (a.parentId && (!b.parentId || b.parent === "Files")) return 1;
         
-        filesSection!.children!.push(folderMap[folder.id]);
-        processedFolderIds.add(String(folder.id));
-        console.log(`Lade till rotmapp ${folder.name} (ID: ${folder.id}) direkt i Files-sektionen`);
+        // Om a är förälder till b, så ska a komma först
+        if (b.parentId && String(b.parentId) === String(a.id)) return -1;
+        // Om b är förälder till a, så ska b komma först
+        if (a.parentId && String(a.parentId) === String(b.id)) return 1;
+        
+        // I annat fall, sortera på namn för enklare navigering
+        return a.name.localeCompare(b.name);
       });
       
-      // Steg 2: Identifiera undermappar och lägg till dem under sina föräldrar
-      let totalFolders = userCreatedFolders.length;
-      let processedCount = processedFolderIds.size;
-      
-      // Fortsätt tills vi har hanterat alla mappar eller inte kan göra fler framsteg
-      while (processedCount < totalFolders) {
-        let madeProgress = false;
-        
-        userCreatedFolders.forEach(folder => {
-          // Hoppa över mappar vi redan har hanterat
-          if (processedFolderIds.has(String(folder.id))) {
-            return;
-          }
-          
-          // Om mappen har en förälder som inte är "Files"
-          if (folder.parent && folder.parent !== "Files") {
-            let parentId = folder.parentId ? String(folder.parentId) : null;
-            if (!parentId) {
-              // Försök hitta föräldern baserat på namn
-              const parentByName = userCreatedFolders.find(p => p.name === folder.parent);
-              if (parentByName) {
-                parentId = String(parentByName.id);
-              }
-            }
-            
-            // Om vi hittade en föräldraMapp och den redan har bearbetats
-            if (parentId && processedFolderIds.has(parentId) && folderMap[parentId]) {
-              // Hitta förälderns NavItem-objekt
-              const parentNavItem = folderMap[parentId];
-              
-              // Se till att föräldern har en children-array
-              if (!parentNavItem.children) {
-                parentNavItem.children = [];
-              }
-              
-              // Konfiguration av undermappen
-              folderMap[folder.id].indent = (parentNavItem.indent || 0) + 1;
-              
-              // Lägg till undermappen i förälderns children-array
-              parentNavItem.children.push(folderMap[folder.id]);
-              
-              // Markera mappen som hanterad
-              processedFolderIds.add(String(folder.id));
-              madeProgress = true;
-              
-              console.log(`Hierarchical build: Lade till ${folder.name} (ID: ${folder.id}) som undermapp till ${parentNavItem.label}`);
-            }
-          }
-        });
-        
-        // Om vi inte kunde lägga till några mappar i denna omgång, avbryt för att undvika en oändlig loop
-        if (!madeProgress) {
-          console.log(`Avbryter mappbyggnad efter att ha hanterat ${processedCount} av ${totalFolders} mappar. Resterande mappar kan sakna giltig förälder.`);
-          break;
-        }
-        
-        // Uppdatera räknaren
-        processedCount = processedFolderIds.size;
+      // Rensa filesSection.children för att undvika dubletter
+      if (filesSection && filesSection.children) {
+        filesSection.children = [];
       }
       
-      // Logga resultatet
-      console.log(`Mappstruktur byggd. Hanterade ${processedCount} av ${totalFolders} mappar.`);
+      // Bygg en spårningsuppsättning för att hålla reda på vilka ID:n vi redan har hanterat
+      const processedIds = new Set<string>();
       
-      // Vi har redan hanterat detta i steg 1 ovan, denna del kan tas bort
-      // Om det fortfarande finns undermappar som inte hittade sina föräldrar
-      // så kan vi hantera dem nu, men vi måste vara försiktiga
-      const unmappedSubfolders = userCreatedFolders.filter(folder => {
-        if (!folder.parent || folder.parent === "Files") return false;
+      // Funktion som bygger trädet rekursivt
+      const buildTree = (parentId: string | null = null): NavItemType[] => {
+        const children: NavItemType[] = [];
         
-        // Vi vill bara ha mappar som har en förälder, men inte redan har
-        // blivit placerad korrekt i förälderns children-array
-        const parentId = folder.parentId ? String(folder.parentId) : null;
-        if (!parentId) return false;
-        
-        const parent = folderMap[parentId];
-        if (!parent) return true; // Förälder finns inte i mappning
-        
-        // Kontrollera om mappen redan finns i förälderns children-array
-        if (!parent.children) return true;
-        
-        const existsInParent = parent.children.some(child => 
-          child.folderId === folder.id || child.label === folder.name
-        );
-        
-        return !existsInParent; // Returnera true om mappen inte finns i förälderns children-array
-      });
-      
-      console.log(`Hittade ${unmappedSubfolders.length} undermappar som inte placerats korrekt`);
-      
-      // För varje undermapp som inte hittade sin förälder, försök igen
-      unmappedSubfolders.forEach(folder => {
-        // Konvertera parentId till string för att söka i folderMap
-        const parentId = folder.parentId ? String(folder.parentId) : null;
-        if (!parentId) return;
-        
-        // Om föräldermappen finns i vår mappning
-        if (folderMap[parentId]) {
-          const parentNavItem = folderMap[parentId];
-          
-          // Initiera children-array om den saknas
-          if (!parentNavItem.children) {
-            parentNavItem.children = [];
-          }
-          
-          // Öka indenteringen för undermappen baserat på förälderns nivå
-          folderMap[folder.id].indent = (parentNavItem.indent || 0) + 1;
-          
-          // Lägg till undermappen i förälderns children-array
-          parentNavItem.children.push(folderMap[folder.id]);
-          console.log(`Second pass: Lade till undermapp ${folder.name} i föräldermapp med ID ${parentId}`);
-          
-          // Ta bort från root om den finns där
-          if (filesSection && filesSection.children) {
-            const rootIndex = filesSection.children.findIndex(item => 
-              item.folderId === folder.id || item.label === folder.name
-            );
+        // Hitta alla mappar som hör till denna förälder
+        sortedFolders
+          .filter(folder => {
+            // Hitta rotmappar för parentId null, eller mappar vars förälder matchar det angivna ID:t
+            const isParentMatch = parentId === null 
+              ? (!folder.parentId || folder.parent === "Files")
+              : (folder.parentId && String(folder.parentId) === parentId);
             
-            if (rootIndex !== -1) {
-              filesSection.children.splice(rootIndex, 1);
-              console.log(`Tog bort undermapp ${folder.name} från rotnivån eftersom den har en förälder`);
-            }
-          }
-        }
-      });
+            // Skip already processed folders to avoid duplicates
+            return isParentMatch && !processedIds.has(String(folder.id));
+          })
+          .forEach(folder => {
+            // Markera denna mapp som hanterad
+            processedIds.add(String(folder.id));
+            
+            // Beräkna indragningsnivå baserat på föräldern
+            const baseIndent = parentId === null 
+              ? (filesSection!.indent || 0) + 1
+              : (folderMap[parentId]?.indent || 0) + 1;
+            
+            // Skapa NavItem för denna mapp
+            const folderNavItem: NavItemType = {
+              href: `/vault/files/${encodeURIComponent(folder.name)}`,
+              label: folder.name,
+              active: location === `/vault/files/${encodeURIComponent(folder.name)}`,
+              indent: baseIndent,
+              icon: <FolderClosed className="w-4 h-4" />,
+              type: "folder",
+              onAddClick: () => handleAddFolder(folder.name),
+              folderId: String(folder.id),
+              // Bygg undermappar rekursivt
+              children: buildTree(String(folder.id))
+            };
+            
+            // Lägg till folderItem i folderMap för senare användning
+            folderMap[folder.id] = folderNavItem;
+            
+            // Lägg till i listan av undermappar
+            children.push(folderNavItem);
+          });
+        
+        return children;
+      };
+      
+      // Bygg mappträdet med rotmappar och undermappar
+      if (filesSection) {
+        filesSection.children = buildTree(null);
+        console.log(`Byggde mappträd med ${processedIds.size} av ${sortedFolders.length} tillgängliga mappar`);
+      }
       
       // Säkerställ att Files-sektionen är öppen om den har mappar
       if (filesSection.children && filesSection.children.length > 0) {
@@ -1860,10 +1802,11 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   
   const renderNavItems = (items: NavItemType[], parentKey: string = '') => {
     return items.map((item, index) => {
-      // Skapa en unik nyckel baserad på item-specifika egenskaper om de finns
-      const uniqueId = item.folderId || item.id || '';
+      // Förbättrad unik nyckelgenerering som använder både föräldersökväg och ID
+      // för att garantera unika nycklar över hela hierarkin
+      const uniqueId = item.folderId || item.sectionId || item.id || '';
       const itemKey = uniqueId 
-        ? `${parentKey}-${item.label}-${uniqueId}` 
+        ? `${parentKey}-${uniqueId}` 
         : `${parentKey}-${item.label}-${index}`;
       const hasChildren = item.children && item.children.length > 0;
       
