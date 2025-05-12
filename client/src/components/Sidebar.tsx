@@ -779,8 +779,9 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
             console.log("Mappar:", filteredFolders.map((f: any) => `${f.name} (${f.projectId || 'ingen projektId'})`));
             
             // Jämför med aktuell state för att undvika onödiga renderingar - med strikt jämförelse
-            const currentFolderIds = userCreatedFolders.map((f: any) => f.id).sort().join(',');
-            const newFolderIds = filteredFolders.map((f: any) => f.id).sort().join(',');
+            // Säkerställ att vi alltid konverterar ID:n till strängar för korrekt jämförelse
+            const currentFolderIds = userCreatedFolders.map((f: any) => String(f.id)).sort().join(',');
+            const newFolderIds = filteredFolders.map((f: any) => String(f.id)).sort().join(',');
             
             if (currentFolderIds !== newFolderIds) {
               console.log("Sidebar: Uppdaterar mapplistan från localStorage", {
@@ -978,7 +979,9 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         name: folderName,
         projectId: Number(currentProjectId),
         parentId: parentId, // Sätt parentId korrekt baserat på föräldermappen
-        sidebarParent: 'Files'
+        sidebarParent: 'Files',
+        // För att säkerställa riktig visning i sidebar
+        parent: parentName
       };
       
       console.log("Anropar API för att skapa mapp:", folderData);
@@ -1047,12 +1050,14 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       
       // Filtrera först ut mappar från andra projekt
       const otherProjectFoldersForApp = foldersForApp.filter((f: any) => {
-        return !f.projectId || f.projectId !== currentProjectId;
+        // Jämför både som sträng och som nummer för att vara säker
+        return !f.projectId || (String(f.projectId) !== String(currentProjectId) && f.projectId !== Number(currentProjectId));
       });
       
       // Filtrera ut mappar från aktuellt projekt
       const currentProjectFoldersForApp = foldersForApp.filter((f: any) => {
-        return f.projectId && f.projectId === currentProjectId;
+        // Jämför både som sträng och som nummer för att vara säker
+        return f.projectId && (String(f.projectId) === String(currentProjectId) || f.projectId === Number(currentProjectId));
       });
       
       // Lägg till den nya mappen i listan - se till att id, parentId och övriga attribut matchar i båda lagringsplatserna
