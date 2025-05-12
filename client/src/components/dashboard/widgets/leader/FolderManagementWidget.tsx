@@ -130,7 +130,7 @@ export function FolderManagementWidget() {
     onSuccess: (data) => {
       // Använd föräldermappens namn i meddelandetexten
       const parentInfo = selectedParentFolder ? 
-        `under "${foldersData.find(f => f.id.toString() === selectedParentFolder)?.name || 'vald'} mappen"` : 
+        `under "${foldersData.find((f: FolderData) => f.id.toString() === selectedParentFolder)?.name || 'vald'} mappen"` : 
         "i rotkatalogen";
       
       toast({
@@ -568,6 +568,29 @@ export function FolderManagementWidget() {
             )}
           </div>
         </div>
+        
+        {/* Delete folder confirmation dialog */}
+        <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
+          <AlertDialogContent className="max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-neutral-800">Bekräfta borttagning</AlertDialogTitle>
+              <AlertDialogDescription className="text-neutral-600">
+                Är du säker på att du vill radera mappen "{folderToDelete?.name}" och allt dess innehåll?
+                <br /><br />
+                <span className="font-medium">Denna åtgärd kan inte ångras.</span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-neutral-200 text-neutral-700">Avbryt</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmDeleteFolder} 
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Ta bort
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );
