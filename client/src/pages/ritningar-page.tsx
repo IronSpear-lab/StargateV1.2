@@ -30,7 +30,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { usePDFDialog } from "@/hooks/use-pdf-dialog";
+import { PDFViewerDialog } from "@/components/ui/pdf-viewer-dialog";
+import EnhancedPDFViewer from "@/components/EnhancedPDFViewer";
 import { 
   storeFiles, 
   getUploadedFileUrl, 
@@ -305,8 +306,17 @@ export default function RitningarPage() {
   // Initiera med tom array och hämta data från server när komponenten laddas
   const [ritningarData, setRitningarData] = useState<Ritning[]>([]);
   
-  // Använd PDF-dialog-hooken istället för lokal state
-  const { showPDFDialog } = usePDFDialog();
+  const [selectedFile, setSelectedFile] = useState<{
+    file: File | null;
+    fileUrl?: string;
+    fileData?: {
+      filename: string;
+      version: string;
+      description: string;
+      uploaded: string;
+      uploadedBy: string;
+    };
+  } | null>(null);
   
   // Hämta ritningar när projektet ändras
   useEffect(() => {
@@ -345,13 +355,23 @@ export default function RitningarPage() {
             // Hitta ritningsdatan för den här filen om den finns
             const matchingRitning = ritningarData.find(r => r.fileId === fileIdParam);
             
-            // Använd PDF-dialogsystemet istället för lokal state
-            showPDFDialog({
-              fileId: matchingRitning?.id || `file_${Date.now()}`,
-              initialUrl: storedFileData.url,
-              filename: matchingRitning?.filename || storedFileData.name || "Dokument",
-              projectId: currentProject?.id || null,
-              file: storedFileData.file
+            setSelectedFile({
+              file: storedFileData.file,
+              fileUrl: storedFileData.url,
+              fileData: matchingRitning ? {
+                filename: matchingRitning.filename,
+                version: matchingRitning.version,
+                description: matchingRitning.description,
+                uploaded: matchingRitning.uploaded,
+                uploadedBy: matchingRitning.uploadedBy
+              } : {
+                // Standardvärden om vi inte hittar matchande ritningsdata
+                filename: storedFileData.name,
+                version: "1",
+                description: "Uppladdad fil",
+                uploaded: new Date().toLocaleString(),
+                uploadedBy: "Du"
+              }
             });
           } else {
             console.error(`[${Date.now()}] Could not load file with ID: ${fileIdParam}`);
@@ -373,7 +393,7 @@ export default function RitningarPage() {
     };
     
     checkUrlParams();
-  }, [ritningarData, currentProject, showPDFDialog]);
+  }, [ritningarData]);
   
   // Hämta ritningar från databasen baserat på projekt-ID
   const { data: apiRitningar = [], isLoading: isLoadingApi } = useQuery({
@@ -662,14 +682,16 @@ export default function RitningarPage() {
         
         if (storedFileData) {
           console.log(`[${Date.now()}] Successfully loaded file from local storage for viewing: ${ritning.fileId}`);
-          
-          // Använd PDF-dialogsystemet istället för lokal state
-          showPDFDialog({
-            fileId: ritning.id || ritning.fileId,
-            initialUrl: storedFileData.url,
-            filename: ritning.filename,
-            projectId: currentProject?.id || null,
-            file: storedFileData.file
+          setSelectedFile({
+            file: storedFileData.file,
+            fileUrl: storedFileData.url,
+            fileData: {
+              filename: ritning.filename,
+              version: ritning.version,
+              description: ritning.description,
+              uploaded: ritning.uploaded,
+              uploadedBy: ritning.uploadedBy
+            }
           });
           return;
         }
@@ -678,47 +700,31 @@ export default function RitningarPage() {
       }
     }
     
-    // För filens numeriska ID, öppna med PDF-dialogen direkt
+    // För filens numeriska ID, försök att hämta från servern
     if (ritning.id && !isNaN(Number(ritning.id))) {
       try {
-        const fileId = Number(ritning.id);
-        
-        // Använd PDF-dialogsystemet direkt med ID
-        showPDFDialog({
-          fileId: fileId,
-          filename: ritning.filename,
-          projectId: currentProject?.id || null
-        });
+        // Starta hämtning av filinnehåll från servern via mutation
+        fetchFileContentMutation.mutate(Number(ritning.id));
         return;
       } catch (error) {
-        console.error(`[${Date.now()}] Error opening file with PDF dialog: ${error}`);
-        toast({
-          title: "Kunde inte öppna filen",
-          description: "Ett fel uppstod när filen skulle öppnas.",
-          variant: "destructive",
-        });
+        console.error(`[${Date.now()}] Error loading file with ID ${ritning.id} from server:`, error);
       }
     }
     
-    // Fallback: använd exempelfilen om inget annat fungerar
-    try {
-      const fileUrl = getUploadedFileUrl(ritning.id);
-      console.log(`[${Date.now()}] Using fallback URL for file: ${ritning.filename}`);
-      
-      showPDFDialog({
-        fileId: ritning.id || `file_${Date.now()}`,
-        initialUrl: fileUrl,
+    // Fallback: För befintliga/mock-filer, använd exempelfilen om inget annat fungerar
+    const fileUrl = getUploadedFileUrl(ritning.id);
+    console.log(`[${Date.now()}] Using example file URL for file: ${ritning.filename}`);
+    setSelectedFile({
+      file: null,
+      fileUrl,
+      fileData: {
         filename: ritning.filename,
-        projectId: currentProject?.id || null
-      });
-    } catch (error) {
-      console.error("Kunde inte öppna fallback-filen:", error);
-      toast({
-        title: "Kunde inte öppna filen",
-        description: "Ett fel uppstod när filen skulle öppnas. Försök igen eller kontakta support.",
-        variant: "destructive",
-      });
-    }
+        version: ritning.version,
+        description: ritning.description,
+        uploaded: ritning.uploaded,
+        uploadedBy: ritning.uploadedBy
+      }
+    });
   };
 
   return (
@@ -910,7 +916,19 @@ export default function RitningarPage() {
         </div>
       </div>
       
-      {/* PDF Dialog används nu för att visa PDF filer via usePDFDialog-hooken */}
+      {/* PDF-visare - använder den förbättrade visaren med kommentarer och versionshantering */}
+      {selectedFile && (
+        <div className="fixed inset-0 z-50 bg-background/80">
+          <EnhancedPDFViewer
+            fileId={Number(selectedFile.fileData?.id) || (selectedFile.fileData as any)?.fileId || `file_${Date.now()}`}
+            initialUrl={selectedFile.fileUrl || ""}
+            filename={selectedFile.fileData?.filename || "Dokument"}
+            onClose={() => setSelectedFile(null)}
+            projectId={currentProject?.id || null}
+            useDatabase={true} // Använd databasen istället för localStorage för att spara anmärkningar
+          />
+        </div>
+      )}
       
       {/* Bekräftelsedialog för borttagning */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

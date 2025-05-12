@@ -31,7 +31,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-// Använder nu usePDFDialog-hooken från PDFDialogProvider istället för direktimport av EnhancedPDFViewer
+import { PDFViewerDialog } from "@/components/ui/pdf-viewer-dialog";
+import EnhancedPDFViewer from "@/components/EnhancedPDFViewer";
 import { 
   storeFiles, 
   getUploadedFileUrl, 
@@ -368,9 +369,63 @@ export default function FolderPage() {
     }
   };
   
-  // OBS: Vi använder handleFileClick istället för fetchFileContentMutation
-  // Funktionaliteten för att hämta PDF-filer från servern är nu inbyggd i 
-  // handleFileClick-funktionen och använder showPDFDialog från PDF-dialog-systemet
+  // Hämta PDF-fil från servern när användaren klickar på den
+  const fetchFileContentMutation = useMutation({
+    mutationFn: async (fileId: number) => {
+      // Hämta filens binärdata direkt
+      const response = await fetch(`/api/files/${fileId}/content`, {
+        credentials: 'include' // Se till att cookies skickas med för autentisering
+      });
+      
+      if (!response.ok) {
+        throw new Error('Kunde inte hämta filinnehåll');
+      }
+      
+      // Hämta direkt som blob
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      
+      return url;
+    },
+    onSuccess: (fileUrl, variables) => {
+      if (!fileUrl) {
+        toast({
+          title: "Kunde inte öppna filen",
+          description: "Filinnehållet är tomt eller kunde inte läsas.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Hitta ritningen baserat på filID för att få metadata
+      const ritning = ritningar.find(r => r.id === variables);
+      
+      if (!ritning) {
+        toast({
+          title: "Kunde inte hitta filens metadata",
+          description: "Filen kan visas men metadata saknas.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Använd PDF-dialog-systemet istället för lokal state
+      showPDFDialog({
+        fileId: ritning.id,
+        initialUrl: fileUrl,
+        filename: ritning.filename || "dokument.pdf",
+        projectId: currentProject?.id || null
+      });
+    },
+    onError: (error: Error) => {
+      console.error("Fel vid hämtning av fil:", error);
+      toast({
+        title: "Kunde inte öppna filen",
+        description: error.message || "Ett fel uppstod när filen skulle öppnas.",
+        variant: "destructive",
+      });
+    }
+  });
 
   // Öppna PDF-visaren när användaren klickar på en fil
   const handleFileClick = async (ritning: Ritning) => {
