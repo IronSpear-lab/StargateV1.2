@@ -305,17 +305,8 @@ export default function RitningarPage() {
   // Initiera med tom array och hämta data från server när komponenten laddas
   const [ritningarData, setRitningarData] = useState<Ritning[]>([]);
   
-  const [selectedFile, setSelectedFile] = useState<{
-    file: File | null;
-    fileUrl?: string;
-    fileData?: {
-      filename: string;
-      version: string;
-      description: string;
-      uploaded: string;
-      uploadedBy: string;
-    };
-  } | null>(null);
+  // Använd den gemensamma PDF-dialog-hooken
+  const { showPDFDialog } = usePDFDialog();
   
   // Hämta ritningar när projektet ändras
   useEffect(() => {
@@ -636,27 +627,31 @@ export default function RitningarPage() {
       const ritning = ritningarData.find(r => Number(r.id) === fileId);
       
       if (ritning) {
-        setSelectedFile({
-          file: null,
-          fileUrl,
+        // Använd den nya PDF-dialog-hooken
+        showPDFDialog({
+          url: fileUrl,
+          title: ritning.filename,
           fileData: {
             filename: ritning.filename,
             version: data.version.versionNumber.toString(),
             description: data.version.description || ritning.description,
             uploaded: new Date(data.version.uploadedAt).toLocaleString(),
-            uploadedBy: data.version.uploadedBy || ritning.uploadedBy
+            uploadedBy: data.version.uploadedBy || ritning.uploadedBy,
+            fileId: ritning.id.toString()
           }
         });
       } else {
-        setSelectedFile({
-          file: null,
-          fileUrl,
+        // Använd den nya PDF-dialog-hooken även om vi inte hittar en matchande ritning
+        showPDFDialog({
+          url: fileUrl,
+          title: data.version.metadata?.fileName || "dokument.pdf",
           fileData: {
             filename: data.version.metadata?.fileName || "dokument.pdf",
             version: data.version.versionNumber.toString(),
             description: data.version.description || "PDF-dokument",
             uploaded: new Date(data.version.uploadedAt).toLocaleString(),
-            uploadedBy: data.version.uploadedBy || "System"
+            uploadedBy: data.version.uploadedBy || "System",
+            fileId: fileId.toString()
           }
         });
       }
@@ -681,16 +676,20 @@ export default function RitningarPage() {
         
         if (storedFileData) {
           console.log(`[${Date.now()}] Successfully loaded file from local storage for viewing: ${ritning.fileId}`);
-          setSelectedFile({
-            file: storedFileData.file,
-            fileUrl: storedFileData.url,
+          
+          // Använd den nya PDF-dialog-hooken
+          showPDFDialog({
+            url: storedFileData.url,
+            title: ritning.filename,
             fileData: {
               filename: ritning.filename,
               version: ritning.version,
               description: ritning.description,
               uploaded: ritning.uploaded,
-              uploadedBy: ritning.uploadedBy
-            }
+              uploadedBy: ritning.uploadedBy,
+              fileId: ritning.fileId
+            },
+            file: storedFileData.file
           });
           return;
         }
@@ -713,15 +712,18 @@ export default function RitningarPage() {
     // Fallback: För befintliga/mock-filer, använd exempelfilen om inget annat fungerar
     const fileUrl = getUploadedFileUrl(ritning.id);
     console.log(`[${Date.now()}] Using example file URL for file: ${ritning.filename}`);
-    setSelectedFile({
-      file: null,
-      fileUrl,
+    
+    // Använd den nya PDF-dialog-hooken
+    showPDFDialog({
+      url: fileUrl,
+      title: ritning.filename,
       fileData: {
         filename: ritning.filename,
         version: ritning.version,
         description: ritning.description,
         uploaded: ritning.uploaded,
-        uploadedBy: ritning.uploadedBy
+        uploadedBy: ritning.uploadedBy,
+        fileId: ritning.id ? ritning.id.toString() : undefined
       }
     });
   };
