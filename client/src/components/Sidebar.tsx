@@ -79,7 +79,6 @@ type NavItemType = {
   badge?: string;
   active?: boolean;
   indent?: number;
-  level?: number; // Explicit nivå för mappar i hierarkin
   children?: NavItemType[];
   type?: 'folder' | 'file' | 'link' | 'section' | string; // För att kunna identifiera mappar, sektioner och visa plustecken
   onAddClick?: () => void;
@@ -88,7 +87,6 @@ type NavItemType = {
   sectionId?: string; // ID för sektioner som ska kunna öppnas/stängas
   isOpen?: boolean; // Om en sektion är öppen eller stängd
   onToggle?: () => void; // Funktion för att toggla öppna/stängda sektioner
-  borderClass?: string; // CSS-klasser för visuella linjer i hierarkin
 };
 
 interface NavGroupProps {
@@ -707,10 +705,8 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   });
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({
     "-Planning": false,
-    "-Vault": true,
-    "-Vault-Files": true,
-    "file_folders": true, // Öppna Files-sektionen automatiskt
-    "-Vault-Files-3": true // Öppna mapp 3 automatiskt för att visa mapp 4
+    "-Vault": false,
+    "-Vault-Files": false
   });
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [selectedParentFolder, setSelectedParentFolder] = useState("");
@@ -720,7 +716,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   const { toast } = useToast();
   
   // State för att lagra mappar som användaren har skapat
-  const [userCreatedFolders, setUserCreatedFolders] = useState<{name: string; parent: string; id: string; parentId?: string}[]>(() => {
+  const [userCreatedFolders, setUserCreatedFolders] = useState<{name: string; parent: string; id: string}[]>(() => {
     // Försök att hämta sparade mappar från localStorage vid initialisering
     if (typeof window !== 'undefined') {
       const savedFolders = localStorage.getItem('userCreatedFolders');
@@ -877,20 +873,10 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
   };
 
   const toggleItem = (itemName: string) => {
-    // Särskild hantering för mapp 3 och 4
-    if (itemName.includes('3')) {
-      // När mapp 3 öppnas, se till att den förblir öppen för att visa mapp 4
-      setOpenItems(prev => ({
-        ...prev,
-        [itemName]: true
-      }));
-      console.log("Mapp 3 öppnad för att visa mapp 4");
-    } else {
-      setOpenItems(prev => ({
-        ...prev,
-        [itemName]: !prev[itemName]
-      }));
-    }
+    setOpenItems(prev => ({
+      ...prev,
+      [itemName]: !prev[itemName]
+    }));
   };
   
   const toggleSection = (sectionId: string) => {
@@ -1020,7 +1006,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         name: folderName, 
         parent: parentName, 
         id: folderId,
-        parentId: parentId ? parentId.toString() : null, // Viktigt att sätta parentId korrekt för hierarkin
+        parentId: null, // Denna sätts bara när mappen skapas under en annan mapp
         projectId: currentProjectId, // Lägg till projektId för korrekt filtrering
         label: folderName, // Samma som name, men enklare att använda i andra delar av koden
         href: `/vault/files/${encodeURIComponent(folderName)}` // Länk till den dynamiska sidan
@@ -1495,197 +1481,82 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         filesSection.children = [];
       }
       
-      // Vi ska bygga en fullständig hierarkisk struktur för mapparna
-      console.log("Bygger en ny hierarkisk struktur för mapparna i sidebaren");
-      
-      // Sortera mapparna och förbered för strukturbyggandet
-      const sortedFolders = [...userCreatedFolders].sort((a, b) => 
-        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-      );
-      
-      // Steg 1: Skapa en mappning med alla mappar för snabb åtkomst 
+      // Bygg en mappning av alla mappar för snabb åtkomst vid byggande av hierarkin
       const folderMap: Record<string, NavItemType> = {};
       
-      // Skapa alla NavItem-objekt först
-      sortedFolders.forEach(folder => {
-        // Alla mappar sätts med standardnivå först (justeras senare)
-        const baseIndent = (filesSection?.indent || 0) + 1;
-        
+      // Först skapa alla mappobjekt och spara dem i mappningen
+      userCreatedFolders.forEach(folder => {
         folderMap[folder.id] = {
           href: `/vault/files/${encodeURIComponent(folder.name)}`,
           label: folder.name,
           active: location === `/vault/files/${encodeURIComponent(folder.name)}`,
-          indent: baseIndent, // Kommer justeras senare baserat på hierarkinivå
-          icon: <FolderClosed className="w-4 h-4 text-blue-500" />,
+          indent: (filesSection!.indent || 0) + 1, // Standardvärde, justeras senare
+          icon: <FolderClosed className="w-4 h-4" />,
           type: "folder",
           onAddClick: () => handleAddFolder(folder.name),
           folderId: folder.id,
-          isOpen: true, // Öppna alla mappar som standard
           children: []
         };
         
-        console.log(`Förberedde NavItem för mapp ${folder.name} (ID: ${folder.id})`);
+        console.log(`Skapade NavItem för mapp ${folder.name} (ID: ${folder.id})`);
       });
       
-      // Steg 2: Identifiera toppnivåmappar och bygg hierarkin
-      const addedToParent = new Set<string>(); // För att spåra vilka mappar som har lagts till under en förälder
+      // Identifiera rotmappar (mappar utan förälder eller med förälder "Files")
+      const rootFolders = userCreatedFolders.filter(folder => 
+        !folder.parent || folder.parent === "Files"
+      );
       
-      // Specialhantering för att bygga den visuella hierarkin Mapp 1 -> Mapp 2 -> Mapp 3 -> Mapp 4 -> Mapp 5
-      console.log("Försöker bygga mappstrukturen: Mapp 1 -> Mapp 2 -> Mapp 3 -> Mapp 4 -> Mapp 5");
-      
-      // Spåra vilka mappar som redan lagts till i hierarkin
-      let mapp1HandledSpecially = false;
-      let mapp2HandledSpecially = false;
-      let mapp3HandledSpecially = false;
-      let mapp4HandledSpecially = false;
-      // mapp5HandledSpecially deklareras längre ner i koden
-      
-      // Steg 1: Hitta Mapp 1
-      let mapp1Item: NavItemType | null = null;
-      let mapp2Item: NavItemType | null = null;
-      let mapp3Item: NavItemType | null = null;
-      let mapp4Item: NavItemType | null = null;
-      let mapp5Item: NavItemType | null = null;
-      
-      // Hitta alla mappar i en sökning så vi slipper söka flera gånger
-      for (const folder of sortedFolders) {
-        if (folder.name === "Mapp 1") {
-          mapp1Item = folderMap[folder.id] as NavItemType;
-          if (folder.id) addedToParent.add(folder.id);
-          console.log("Hittade Mapp 1 med ID:", folder.id);
-        } 
-        else if (folder.name === "Mapp 2") {
-          mapp2Item = folderMap[folder.id] as NavItemType;
-          if (folder.id) addedToParent.add(folder.id);
-          console.log("Hittade Mapp 2 med ID:", folder.id);
-        }
-        else if (folder.name === "Mapp 3") {
-          mapp3Item = folderMap[folder.id] as NavItemType;
-          if (folder.id) addedToParent.add(folder.id);
-          console.log("Hittade Mapp 3 med ID:", folder.id);
-        }
-        else if (folder.name === "Mapp 4") {
-          mapp4Item = folderMap[folder.id] as NavItemType;
-          if (folder.id) addedToParent.add(folder.id);
-          console.log("Hittade Mapp 4 med ID:", folder.id);
-        }
-        else if (folder.name === "Mapp 5") {
-          mapp5Item = folderMap[folder.id] as NavItemType;
-          if (folder.id) addedToParent.add(folder.id);
-          console.log("Hittade Mapp 5 med ID:", folder.id);
-        }
-      }
-      
-      // Nu när vi har hittat alla mappar, bygg hierarkin
-      if (mapp1Item && mapp2Item && mapp3Item && mapp4Item && mapp5Item) {
-        console.log("Kan bygga hela mappkedjan 1-2-3-4-5");
+      // Lägg till rotmapparna direkt till Files-sektionen
+      rootFolders.forEach(folder => {
+        // Kontrollera om mappen redan finns i Files-sektionen för att undvika dubletter
+        const existingFolder = filesSection!.children!.find(child => 
+          child.folderId === folder.id || child.label === folder.name
+        );
         
-        // Exakt efterlikna trädstrukturen i bilden
-        
-        // Skapa den exakta strukturen från bilden
-        // Mapp 1 läggs till som en separat mapppost i navBar
-        mapp1Item.level = 0;
-        mapp1Item.indent = 0;
-        mapp1Item.isOpen = true;
-        mapp1HandledSpecially = true;
-        
-        // Vi återställer children till tom array för att undvika dubbletter
-        mapp1Item.children = [];
-        
-        // Mapp 2 läggs till som ett child direkt under Mapp 1
-        mapp2Item.level = 1;
-        mapp2Item.indent = 1;
-        mapp2Item.isOpen = true;
-        mapp2HandledSpecially = true;
-        mapp1Item.children.push(mapp2Item);
-        console.log("Lade till Mapp 2 som barn till Mapp 1");
-        
-        // Mapp 2 får en tom children-array
-        mapp2Item.children = [];
-        
-        // Mapp 3 läggs till som ett child direkt under Mapp 2
-        mapp3Item.level = 2;
-        mapp3Item.indent = 1; 
-        mapp3Item.isOpen = true;
-        mapp3HandledSpecially = true;
-        mapp2Item.children.push(mapp3Item);
-        console.log("Lade till Mapp 3 som barn till Mapp 2");
-        
-        // Mapp 3 får en tom children-array
-        mapp3Item.children = [];
-        
-        // Mapp 4 läggs till som ett child direkt under Mapp 3
-        mapp4Item.level = 3;
-        mapp4Item.indent = 1;
-        mapp4Item.isOpen = true; 
-        mapp4HandledSpecially = true;
-        mapp3Item.children.push(mapp4Item);
-        console.log("Lade till Mapp 4 som barn till Mapp 3");
-        
-        // Mapp 4 får en tom children-array
-        mapp4Item.children = [];
-        
-        // Mapp 5 läggs till som ett child direkt under Mapp 4
-        mapp5Item.level = 4;
-        mapp5Item.indent = 1;
-        mapp5Item.isOpen = false; // Stängd som standard, enligt bilden
-        mapp4Item.children.push(mapp5Item);
-        console.log("Lade till Mapp 5 som barn till Mapp 4");
-        console.log("Lade till Mapp 5 som barn till Mapp 4");
-      } else {
-        console.log("Kunde inte hitta alla mappar för att bygga kedjan 1-2-3-4-5");
-      }
-      
-      // Fortsätt med övriga mappar
-    
-      // Loopa igenom alla mappar och bygg resten av hierarkin
-      sortedFolders.forEach(folder => {
-        // Hoppa över mapp 1, 2, 3, 4 och 5 om de är del av vår specialhantering
-        if (folder.name === "Mapp 1" && mapp1HandledSpecially) return;
-        if (folder.name === "Mapp 2" && mapp2HandledSpecially) return;
-        if (folder.name === "Mapp 3" && mapp3HandledSpecially) return;
-        if (folder.name === "Mapp 4" && mapp4HandledSpecially) return;
-        if (folder.name === "Mapp 5") return; // Mapp 5 hanteras alltid som barn till Mapp 4
-        
-        // Kontrollera om mappen har en förälder
-        const hasParentId = 'parentId' in folder && folder.parentId;
-        
-        if (hasParentId) {
-          // Om mappen har en förälder, lägg till den som ett barn till föräldern
-          const parentFolderId = folder.parentId!;
-          const parentNavItem = folderMap[parentFolderId];
-          
-          if (parentNavItem) {
-            // Beräkna rätt indentering baserat på förälderns nivå
-            folderMap[folder.id].indent = (parentNavItem.indent || 0) + 1;
-            
-            // Lägg till mappen som ett barn till föräldern
-            if (!parentNavItem.children) parentNavItem.children = [];
-            parentNavItem.children.push(folderMap[folder.id]);
-            
-            // Se till att föräldermappen är öppen för att visa barnen
-            parentNavItem.isOpen = true;
-            
-            // Markera att denna mapp har lagts till som ett barn
-            addedToParent.add(folder.id);
-            
-            console.log(`Lade till ${folder.name} som barn till ${parentNavItem.label} med indentering ${folderMap[folder.id].indent}`);
-          }
+        if (!existingFolder) {
+          // Lägg till mappen direkt som ett barnelement till Files-sektionen
+          filesSection!.children!.push(folderMap[folder.id]);
+          console.log(`Lade till rotmapp ${folder.name} (ID: ${folder.id}) direkt i Files-sektionen`);
+        } else {
+          console.log(`Rotmappen ${folder.name} finns redan i Files-sektionen, hoppar över`);
         }
       });
       
-      // Steg 3: Lägg till alla toppnivåmappar direkt i Files-sektionen
-      sortedFolders.forEach(folder => {
-        // Om mappen inte har lagts till som ett barn till någon förälder, lägg den på toppnivå
-        if (!addedToParent.has(folder.id)) {
-          // Kontrollera om mappen redan finns i Files-sektionen för att undvika dubletter
-          const existingFolder = filesSection!.children!.find(child => 
-            child.folderId === folder.id || child.label === folder.name
-          );
+      // Hantera undermappar genom att koppla dem till sina föräldramappar
+      userCreatedFolders.forEach(folder => {
+        // Om denna mapp har en förälder som INTE är "Files"
+        if (folder.parent && folder.parent !== "Files") {
+          // Hitta föräldermappen baserat på namn
+          const parentFolder = userCreatedFolders.find(p => p.name === folder.parent);
           
-          if (!existingFolder) {
-            filesSection!.children!.push(folderMap[folder.id]);
-            console.log(`Lade till ${folder.name} som toppnivåmapp i Files-sektionen`);
+          if (parentFolder && folderMap[parentFolder.id]) {
+            // Hitta förälderns NavItem objekt
+            const parentNavItem = folderMap[parentFolder.id];
+            
+            // Kontrollera om barnet redan finns i föräldern för att undvika dubletter
+            const childExists = parentNavItem.children?.some(child => 
+              child.folderId === folder.id || child.label === folder.name
+            );
+            
+            if (!childExists) {
+              // Justera indent-nivån baserat på förälderns nivå
+              folderMap[folder.id].indent = (parentNavItem.indent || 0) + 1;
+              
+              // Lägg till som ett barn till föräldern
+              parentNavItem.children = [...(parentNavItem.children || []), folderMap[folder.id]];
+              console.log(`Lade till undermapp ${folder.name} i föräldermappen ${folder.parent}`);
+            }
+          } else {
+            console.log(`Kunde inte hitta föräldermappen för ${folder.name}, lägger den på rotnivå`);
+            
+            // Om föräldern inte hittades, lägg till på rotnivå som säkerhet
+            const existingFolder = filesSection!.children!.find(child => 
+              child.folderId === folder.id || child.label === folder.name
+            );
+            
+            if (!existingFolder) {
+              filesSection!.children!.push(folderMap[folder.id]);
+            }
           }
         }
       });
@@ -1768,53 +1639,24 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       
       // Calculate indentation based on level and ensure consistent padding
       let indentClass = '';
-      
+      // När sidofältet är öppet använder vi faktisk nivåbaserad indentering
       if (isOpen) {
-        // Specialhantering för mapparna i vault/files - förbättrad indentering
-        let folderLevel = 0;
-        
-        // Använd explicit indent för mappar om det finns
-        if (item.type === 'folder' && item.indent !== undefined) {
-          folderLevel = item.indent;
-          console.log(`Folder ${item.label} has explicit indent: ${folderLevel}`);
-        } 
-        // Beräkna nivån baserat på föräldernyckel om ingen explicit indentering finns
-        else {
+        // Om item har explicit indent, använd det
+        if (item.indent !== undefined) {
+          if (item.indent === 0) indentClass = 'pl-0'; // Topnivå - ingen indentering
+          else if (item.indent === 1) indentClass = 'pl-4'; // Första nivån
+          else if (item.indent === 2) indentClass = 'pl-8'; // Andra nivån
+          else if (item.indent === 3) indentClass = 'pl-12'; // Tredje nivån
+          else if (item.indent === 4) indentClass = 'pl-16'; // Fjärde nivån
+          else indentClass = 'pl-4'; // Standard indentering om nivå inte specificeras
+        } else {
+          // Beräkna nivå baserat på längden av parentKey (fler bindelser indikerar djupare nivå)
           const level = parentKey.split('-').length - 1;
-          folderLevel = level;
-        }
-        
-        // Tillämpa indentering baserat på nivån - med visuell linje för hierarkin
-        // Anpassade indenteringsnivåer för att exakt matcha bildhierarkin
-        // Använd item.level om det finns, annars fallback till folderLevel
-        const level = item.level !== undefined ? item.level : folderLevel;
-        
-        if (level <= 0) {
-          indentClass = 'pl-0'; // Topnivå - ingen indentering
-        }
-        else if (level === 1) {
-          indentClass = 'pl-8 relative'; // Första nivån med bredare indrag
-          // Lägg till en visuell linje som visar hierarkin
-          item.borderClass = 'border-l-2 border-zinc-200 dark:border-zinc-700 absolute left-3 h-full';
-        }
-        else if (level === 2) {
-          indentClass = 'pl-16 relative'; // Andra nivån med än mer indrag
-          // Tydligare visuell linje för nivå 2
-          item.borderClass = 'border-l-2 border-zinc-200 dark:border-zinc-700 absolute left-11 h-full';
-        }
-        else if (level === 3) {
-          indentClass = 'pl-24 relative'; // Tredje nivån med mycket indrag
-          // Ännu tydligare visuell linje för nivå 3
-          item.borderClass = 'border-l-2 border-zinc-200 dark:border-zinc-700 absolute left-19 h-full';
-        }
-        else if (level >= 4) {
-          indentClass = 'pl-32 relative'; // Fjärde nivån och djupare - extremt indrag
-          // Maximal visuell linje för djupa nivåer
-          item.borderClass = 'border-l-2 border-zinc-200 dark:border-zinc-700 absolute left-27 h-full';
-        }
-        else {
-          indentClass = 'pl-32 relative'; // Djupare nivåer
-          item.borderClass = 'border-l-2 border-zinc-200 dark:border-zinc-700 absolute left-27 h-full';
+          if (level <= 0) indentClass = 'pl-0'; // Topnivå
+          else if (level === 1) indentClass = 'pl-4'; // Första nivån
+          else if (level === 2) indentClass = 'pl-8'; // Andra nivån
+          else if (level === 3) indentClass = 'pl-12'; // Tredje nivån
+          else indentClass = 'pl-16'; // Djupare nivåer
         }
       } else {
         // När sidofältet är stängt använder vi ingen indentering (allt är centrerat)
@@ -2308,7 +2150,7 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
         )}
         
         <div className="py-2 flex-1 overflow-y-auto">
-          <div className="sidebar-folder-container overflow-x-auto">
+          <div className="sidebar-folder-container">
             {renderNavItems(navItems)}
           </div>
         </div>
