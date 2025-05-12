@@ -68,14 +68,14 @@ const defaultWidgets: WidgetInstance[] = [
   {
     id: uuidv4(),
     type: "field-tasks",
-    title: "MY FIELD TASKS",
+    title: "Mina fältuppgifter",
     width: "half",
     height: "medium"
   },
   {
     id: uuidv4(),
     type: "recent-files",
-    title: "RECENT FILES IN VAULT",
+    title: "Senaste filer i valvet",
     width: "half",
     height: "medium"
   }

@@ -70,7 +70,7 @@ const defaultProjectLeaderWidgets: WidgetInstance[] = [
   {
     id: uuidv4(),
     type: "budget-cost",
-    title: "BUDGET VS COST",
+    title: "Budget mot kostnad",
     width: "half",
     height: "medium"
   },
@@ -84,35 +84,35 @@ const defaultProjectLeaderWidgets: WidgetInstance[] = [
   {
     id: uuidv4(),
     type: "kpi-metrics",
-    title: "KPI METRICS",
+    title: "KPI-mätvärden",
     width: "half",
     height: "medium"
   },
   {
     id: uuidv4(),
     type: "ai-forecast",
-    title: "AI FORECAST",
+    title: "AI-prognos",
     width: "half",
     height: "medium"
   },
   {
     id: uuidv4(),
     type: "folder-management",
-    title: "MAPPHANTERING",
+    title: "Mapphantering",
     width: "half",
     height: "medium"
   },
   {
     id: uuidv4(),
     type: "calendar",
-    title: "CALENDAR",
+    title: "Kalender",
     width: "half",
     height: "medium"
   },
   {
     id: uuidv4(),
     type: "tasks-overview",
-    title: "TASKS OVERVIEW",
+    title: "Uppgiftsöversikt",
     width: "half",
     height: "medium"
   }
