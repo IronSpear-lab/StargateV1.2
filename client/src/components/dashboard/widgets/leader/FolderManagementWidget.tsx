@@ -473,7 +473,7 @@ export function FolderManagementWidget() {
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-medium">Mapphantering</CardTitle>
+          <CardTitle className="text-base font-medium text-gray-600 dark:text-gray-400">Mapphantering</CardTitle>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -488,10 +488,10 @@ export function FolderManagementWidget() {
         <div className="space-y-4">
           {/* Create folder form */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium">Skapa ny mapp</h3>
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Skapa ny mapp</h3>
             <div className="grid gap-2">
               <div className="grid gap-1">
-                <Label htmlFor="folderName">Mappnamn</Label>
+                <Label htmlFor="folderName" className="text-gray-500 dark:text-gray-400">Mappnamn</Label>
                 <Input
                   id="folderName"
                   placeholder="t.ex. Projektdokumentation"
@@ -501,7 +501,7 @@ export function FolderManagementWidget() {
               </div>
               
               <div className="grid gap-1">
-                <Label htmlFor="parentFolder">Föräldermapp (Valfritt)</Label>
+                <Label htmlFor="parentFolder" className="text-gray-500 dark:text-gray-400">Föräldermapp (Valfritt)</Label>
                 <Select
                   value={selectedParentFolder || "root"}
                   onValueChange={(value) => setSelectedParentFolder(value === "root" ? null : value)}
