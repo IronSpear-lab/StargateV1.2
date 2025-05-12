@@ -345,23 +345,13 @@ export default function RitningarPage() {
             // Hitta ritningsdatan för den här filen om den finns
             const matchingRitning = ritningarData.find(r => r.fileId === fileIdParam);
             
-            setSelectedFile({
+            // Använd det nya PDF-dialog-systemet istället
+            showPDFDialog({
+              initialUrl: storedFileData.url,
+              filename: matchingRitning ? matchingRitning.filename : storedFileData.name || "Dokument",
+              fileId: fileIdParam,
               file: storedFileData.file,
-              fileUrl: storedFileData.url,
-              fileData: matchingRitning ? {
-                filename: matchingRitning.filename,
-                version: matchingRitning.version,
-                description: matchingRitning.description,
-                uploaded: matchingRitning.uploaded,
-                uploadedBy: matchingRitning.uploadedBy
-              } : {
-                // Standardvärden om vi inte hittar matchande ritningsdata
-                filename: storedFileData.name,
-                version: "1",
-                description: "Uppladdad fil",
-                uploaded: new Date().toLocaleString(),
-                uploadedBy: "Du"
-              }
+              projectId: currentProject?.id || null
             });
           } else {
             console.error(`[${Date.now()}] Could not load file with ID: ${fileIdParam}`);
