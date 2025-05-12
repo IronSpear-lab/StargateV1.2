@@ -1578,40 +1578,40 @@ export function Sidebar({ className }: SidebarProps): JSX.Element {
       if (mapp1Item && mapp2Item && mapp3Item && mapp4Item && mapp5Item) {
         console.log("Kan bygga hela mappkedjan 1-2-3-4-5");
         
-        // Använd absoluta värden för indenteringsnivåer
+        // Exakt efterlikna trädstrukturen i bilden
         
-        // Mapp 1 har basnivå
-        mapp1Item.indent = 1;  // Minimal indentering för basnivån
-        mapp1Item.isOpen = true; // Gör den öppen
+        // Mapp 1 blir en toppnivåmapp
+        mapp1Item.indent = 0;  // Ingen indentering
+        mapp1Item.isOpen = true; // Öppen så att barnen visas
+        mapp1HandledSpecially = true;
         
-        // Lägg till Mapp 2 som barn till Mapp 1 med mer indentering
+        // Mapp 2 är ett direkt barn till Mapp 1
         if (!mapp1Item.children) mapp1Item.children = [];
-        mapp2Item.indent = 8;  // Fast indentering för att få den längre till höger
+        mapp2Item.indent = 1;  // En nivås indentering
         mapp2Item.isOpen = true;
         mapp1Item.children.push(mapp2Item);
-        mapp1HandledSpecially = true;
         mapp2HandledSpecially = true;
         console.log("Lade till Mapp 2 som barn till Mapp 1");
         
-        // Lägg till Mapp 3 som barn till Mapp 2 med ännu mer indentering
+        // Mapp 3 är ett direkt barn till Mapp 2
         if (!mapp2Item.children) mapp2Item.children = [];
-        mapp3Item.indent = 15;  // Ännu större indentering
+        mapp3Item.indent = 1;  // Samma relativa indentering
         mapp3Item.isOpen = true;
         mapp2Item.children.push(mapp3Item);
         mapp3HandledSpecially = true;
         console.log("Lade till Mapp 3 som barn till Mapp 2");
         
-        // Lägg till Mapp 4 som barn till Mapp 3 med maximal indentering
+        // Mapp 4 är ett direkt barn till Mapp 3
         if (!mapp3Item.children) mapp3Item.children = [];
-        mapp4Item.indent = 22;  // Mycket större indentering för Mapp 4
+        mapp4Item.indent = 1; // Behåll samma indragsnivå för alla mappar
         mapp4Item.isOpen = true;
         mapp3Item.children.push(mapp4Item);
         mapp4HandledSpecially = true;
         console.log("Lade till Mapp 4 som barn till Mapp 3");
         
-        // Lägg till Mapp 5 som barn till Mapp 4 med extrem indentering
+        // Mapp 5 är ett direkt barn till Mapp 4
         if (!mapp4Item.children) mapp4Item.children = [];
-        mapp5Item.indent = 29;  // Maximal indentering för Mapp 5
+        mapp5Item.indent = 1; // Samma indrag relativt till föräldern
         mapp5Item.isOpen = false; // Stängd som standard, enligt bilden
         mapp4Item.children.push(mapp5Item);
         console.log("Lade till Mapp 5 som barn till Mapp 4");
