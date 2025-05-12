@@ -769,9 +769,41 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
   
   // Beräkna position och stil för uppgiftsstaplar
   const getTaskBarStyle = (task: GanttTask): React.CSSProperties => {
-    // Konvertera datestrings till Date-objekt
-    const taskStartDate = parseISO(task.startDate);
-    const taskEndDate = parseISO(task.endDate);
+    // Kontrollera om datum finns och konvertera datestrings till Date-objekt
+    if (!task.startDate || !task.endDate) {
+      console.warn(`Gantt: Uppgift "${task.name}" saknar start- eller slutdatum`, task);
+      return { display: 'none' };
+    }
+    
+    // Försök att konvertera strängdatum till Date-objekt, hantera eventuella fel
+    let taskStartDate, taskEndDate;
+    try {
+      taskStartDate = parseISO(task.startDate);
+      taskEndDate = parseISO(task.endDate);
+      
+      // Validera att parseISO producerade giltiga datum
+      if (isNaN(taskStartDate.getTime()) || isNaN(taskEndDate.getTime())) {
+        console.warn(`Gantt: Ogiltiga datum för uppgift "${task.name}"`, {
+          startDate: task.startDate,
+          endDate: task.endDate
+        });
+        return { display: 'none' };
+      }
+    } catch (error) {
+      console.error(`Gantt: Fel vid konvertering av datum för uppgift "${task.name}"`, error);
+      return { display: 'none' };
+    }
+    
+    // Logga för debugging
+    console.log(`Gantt: Rendering uppgift "${task.name}"`, {
+      type: task.type,
+      startDate: task.startDate,
+      endDate: task.endDate,
+      dates: {
+        start: taskStartDate.toISOString(),
+        end: taskEndDate.toISOString()
+      }
+    });
     
     // Hitta indexen där uppgiften börjar och slutar
     let startIdx = -1;
@@ -785,9 +817,9 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
       }
     }
     
-    // Hitta slutindex - börja från slutet för milstolpar (samma dag)
+    // Hitta slutindex - särskild hantering för milstolpar (samma dag)
     if (task.type === 'MILESTONE') {
-      endIdx = startIdx;
+      endIdx = startIdx; // Milstolpar visar vi som en punkt (samma dag)
     } else {
       // För vanliga uppgifter, hitta sista dagen som är mindre än eller lika med slutdatumet
       for (let i = 0; i < days.length; i++) {
@@ -798,12 +830,17 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
       }
     }
     
-    // Om datumen inte är inom intervallet, visa inte stapeln
+    // Om datumen inte är inom intervallet eller vi fick ogiltig indexering
     if (startIdx === -1 || endIdx === -1) {
+      console.warn(`Gantt: Uppgift "${task.name}" har datum utanför intervallet`, {
+        startIdx,
+        endIdx,
+        days: days.length
+      });
       return { display: 'none' };
     }
     
-    // För vanliga uppgifter, beräkna bredden baserat på antalet dagar mellan start- och slutdatum
+    // Beräkna bredden baserat på uppgiftstyp
     let width;
     if (task.type === 'MILESTONE') {
       width = 10; // Milstolpar är bara punkter
@@ -860,6 +897,13 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
         zIndex: 3,
         display: 'block'
       });
+      console.log(`Gantt: Renderar MILSTOLPE "${task.name}"`, {
+        position: style.left,
+        color: barColor,
+        dates: {
+          start: task.startDate
+        }
+      });
     }
     else if (task.type === 'PHASE') {
       // För faser, skapa en större stapel med gradient och subtil skugga
@@ -873,6 +917,15 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
         borderRadius: '4px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)',
         zIndex: 1
+      });
+      console.log(`Gantt: Renderar FAS "${task.name}"`, {
+        position: style.left,
+        bredd: style.width,
+        color: barColor,
+        dates: {
+          start: task.startDate,
+          end: task.endDate
+        }
       });
     }
     else {
@@ -904,6 +957,16 @@ const ModernGanttChart: React.FC<ModernGanttChartProps> = ({ projectId, focusTas
         borderRadius: '3px',
         boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
         ...statusIndicator
+      });
+      
+      console.log(`Gantt: Renderar UPPGIFT "${task.name}"`, {
+        position: style.left,
+        bredd: style.width,
+        color: barColor,
+        dates: {
+          start: task.startDate,
+          end: task.endDate
+        }
       });
     }
     
