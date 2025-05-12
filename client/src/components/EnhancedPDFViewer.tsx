@@ -134,6 +134,8 @@ interface EnhancedPDFViewerProps {
   versionId?: number;
   pdfFile?: Blob | null;
   highlightAnnotationId?: number;
+  // Dialog mode flag - när true visas PDF:en i dialog/popup-läge
+  isDialogMode?: boolean;
 }
 
 type Position = { x: number; y: number };
@@ -148,7 +150,8 @@ export default function EnhancedPDFViewer({
   file,
   versionId,
   pdfFile,
-  highlightAnnotationId
+  highlightAnnotationId,
+  isDialogMode = false
 }: EnhancedPDFViewerProps) {
   const { user } = useAuth();
   const { projectMembers, currentProject } = useProject();
@@ -1594,7 +1597,7 @@ export default function EnhancedPDFViewer({
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100">
+    <div className={`${isDialogMode ? 'h-full' : 'h-screen'} flex flex-col bg-gray-100`}>
       {/* Header bar */}
       <div className="border-b bg-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center">
@@ -1603,9 +1606,13 @@ export default function EnhancedPDFViewer({
             size="sm" 
             onClick={handleClose} 
             className="mr-2"
-            title="Tillbaka (sparar alla osparade kommentarer)"
+            title={isDialogMode ? "Stäng" : "Tillbaka (sparar alla osparade kommentarer)"}
           >
-            <ArrowLeft className="h-4 w-4 mr-1" /> Tillbaka
+            {isDialogMode ? (
+              <><X className="h-4 w-4 mr-1" /> Stäng</>
+            ) : (
+              <><ArrowLeft className="h-4 w-4 mr-1" /> Tillbaka</>
+            )}
           </Button>
           <h1 className="text-lg font-medium">{filename}</h1>
         </div>
