@@ -3373,6 +3373,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Create a new user (only for superuser/admin)
+  app.post(`${apiPrefix}/users`, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      // Only superuser or admin can create users
+      if (req.user!.role !== 'superuser' && req.user!.role !== 'admin') {
+        return res.status(403).json({ error: "Du har inte behörighet att skapa användare" });
+      }
+      
+      const { username, password, firstName, lastName, email, role } = req.body;
+      
+      // Kontrollera om användaren redan finns
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ message: "Användarnamnet är upptaget" });
+      }
+      
+      // Hasha lösenordet först
+      const hashedPassword = await require('./auth').hashPassword(password);
+      
+      // Skapa användaren
+      const newUser = await storage.createUser({
+        username,
+        password: hashedPassword,
+        firstName, 
+        lastName,
+        email,
+        role // Vi skickar med rollen specifikt
+      });
+      
+      // Ta bort lösenordet från svaret
+      const { password: _, ...userWithoutPassword } = newUser;
+      
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ error: "Kunde inte skapa användaren" });
+    }
+  });
+  
   // Update conversation (for renaming group chats)
   app.patch(`${apiPrefix}/conversations/:id`, async (req, res) => {
     try {
