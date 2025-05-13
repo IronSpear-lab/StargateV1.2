@@ -296,6 +296,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ error: "Failed to fetch user projects" });
     }
   });
+  
+  // Folders API
+  app.get(`${apiPrefix}/folders`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: "Unauthorized" });
+    }
+    
+    try {
+      const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
+      
+      if (!projectId) {
+        return res.status(400).json({ error: "Project ID is required" });
+      }
+      
+      // Check user access to project
+      const userInfo = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
+      
+      // Check if user is superuser or has access to the project
+      const isSuperuserOrAdmin = userInfo && (userInfo.role === "superuser" || userInfo.role === "admin");
+      
+      let hasAccess = false;
+      
+      if (isSuperuserOrAdmin) {
+        hasAccess = true;
+      } else {
+        // Check project membership for regular users
+        const projectAccess = await db.query.userProjects.findFirst({
+          where: and(
+            eq(userProjects.userId, req.user!.id),
+            eq(userProjects.projectId, projectId)
+          )
+        });
+        
+        hasAccess = !!projectAccess;
+      }
+      
+      if (!hasAccess) {
+        return res.status(403).json({ error: "No access to this project" });
+      }
+      
+      // Fetch folders for the project
+      const folderList = await db.query.folders.findMany({
+        where: eq(folders.projectId, projectId),
+        orderBy: [asc(folders.name)]
+      });
+      
+      return res.json(folderList);
+    } catch (error) {
+      console.error("Error fetching folders:", error);
+      return res.status(500).json({ error: "Failed to fetch folders" });
+    }
+  });
+  
+  app.post(`${apiPrefix}/folders`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: "Unauthorized" });
+    }
+    
+    try {
+      const { name, projectId, parentId, parent, sidebarParent } = req.body;
+      
+      if (!name || !projectId) {
+        return res.status(400).json({ error: "Name and projectId are required" });
+      }
+      
+      // Check if user can create folders (project_leader, admin, or superuser)
+      const userInfo = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
+      
+      if (!userInfo || !(userInfo.role === "project_leader" || userInfo.role === "admin" || userInfo.role === "superuser")) {
+        return res.status(403).json({ error: "No permission to create folders" });
+      }
+      
+      // Check if project exists and user has access
+      let hasAccess = false;
+      
+      if (userInfo.role === "superuser" || userInfo.role === "admin") {
+        hasAccess = true;
+      } else {
+        // Check project membership for project_leader
+        const projectAccess = await db.query.userProjects.findFirst({
+          where: and(
+            eq(userProjects.userId, req.user!.id),
+            eq(userProjects.projectId, projectId)
+          )
+        });
+        
+        hasAccess = !!projectAccess;
+      }
+      
+      if (!hasAccess) {
+        return res.status(403).json({ error: "No access to this project" });
+      }
+      
+      // Check if parent folder exists if parentId is provided
+      if (parentId) {
+        const parentFolder = await db.query.folders.findFirst({
+          where: and(
+            eq(folders.id, parentId),
+            eq(folders.projectId, projectId)
+          )
+        });
+        
+        if (!parentFolder) {
+          return res.status(404).json({ error: "Parent folder not found" });
+        }
+      }
+      
+      // Create the folder
+      const [newFolder] = await db.insert(folders).values({
+        name,
+        projectId,
+        parentId: parentId || null,
+        createdAt: new Date(),
+        createdById: req.user!.id
+      }).returning();
+      
+      console.log(`Ny mapp skapad: ${name} (ID: ${newFolder.id}) i projekt ${projectId} av användare ${req.user!.id}`);
+      
+      return res.status(200).json(newFolder);
+    } catch (error) {
+      console.error("Error creating folder:", error);
+      return res.status(500).json({ error: "Failed to create folder" });
+    }
+  });
 
   // Create HTTP server
   const httpServer = createServer(app);
