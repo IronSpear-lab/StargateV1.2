@@ -1337,7 +1337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileSource = rootFilesOnly ? "ROTFILER" : "STANDARD (ROTFILER)";
         console.log(`/api/files - ANVÄNDER LÄGE: ${fileSource} - Hämtar ENDAST filer UTAN mapptillhörighet i projekt ${projectId}`);
         
-        // Lägg till villkor: folderId IS NULL
+        // Lägg till villkor: folderId IS NULL - FÖRSTÄRKT VALIDERING
         whereCondition = and(
           whereCondition,
           isNull(files.folderId)
@@ -1348,7 +1348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileSource = `MAPP ${folderId}`;
         console.log(`/api/files - ANVÄNDER LÄGE: ${fileSource} - Hämtar ENDAST filer FÖR SPECIFIK MAPP ${folderId} i projekt ${projectId}`);
         
-        // Lägg till villkor: folderId = specifik mapp
+        // Lägg till villkor: folderId = specifik mapp med STRIKT validering
         whereCondition = and(
           whereCondition,
           eq(files.folderId, folderId)
@@ -1360,15 +1360,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`/api/files - ANVÄNDER LÄGE: ${fileSource} - Hämtar ALLA filer i projekt ${projectId} oavsett mapptillhörighet`);
       }
       
+      // EXTRA LOGGNING AV SQL-VILLKOR FÖR FELSÖKNING
+      const conditionString = JSON.stringify(whereCondition, (key, value) => 
+        typeof value === 'function' ? value.toString() : value);
+      console.log(`/api/files - SQL-VILLKOR: ${conditionString}`);
+      
       // Hämta filerna med det konstruerade villkoret
       fileList = await db.select()
         .from(files)
         .where(whereCondition)
         .orderBy(desc(files.uploadDate));
       
-      // Steg 6: Validera resultatet för mappspecifika filer - ett extra säkerhetslager
+      // Steg 6: Validera resultatet för alla filtreringslägen med mer noggrann validering
+      let origCount = fileList.length;
+      
       if (folderId !== undefined) {
-        const validFiles = fileList.filter(file => file.folderId === folderId);
+        // Mappspecifika filer: Kontrollera att folderId exakt matchar det vi söker efter
+        const validFiles = fileList.filter(file => {
+          // Mycket striktare validering av folder-ID med explicit typkonvertering
+          const matchesFolderId = file.folderId === folderId;
+          if (!matchesFolderId) {
+            console.error(`/api/files - KRITISKT FEL: Fil ${file.id} ("${file.name}") har folderId=${file.folderId} men borde ha ${folderId}`);
+          }
+          return matchesFolderId;
+        });
         
         if (validFiles.length !== fileList.length) {
           console.error(`/api/files - KRITISKT FEL I DATAVALIDERING! Hittade ${fileList.length - validFiles.length} filer med fel mappID!`);
@@ -1381,6 +1396,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Ersätt listan med endast giltiga filer
           fileList = validFiles;
         }
+      } else if (rootFilesOnly || (!folderId && !all)) {
+        // Rotfiler: Kontrollera att folderId faktiskt är NULL
+        const validFiles = fileList.filter(file => {
+          const isNullFolder = file.folderId === null;
+          if (!isNullFolder) {
+            console.error(`/api/files - KRITISKT FEL: Fil ${file.id} ("${file.name}") har folderId=${file.folderId} men borde ha NULL i rotläge`);
+          }
+          return isNullFolder;
+        });
+        
+        if (validFiles.length !== fileList.length) {
+          console.error(`/api/files - KRITISKT FEL I DATAVALIDERING! Hittade ${fileList.length - validFiles.length} rotfiler med icke-null mappID!`);
+          console.error(`/api/files - FELKORRIGERING: Filtrerar bort ${fileList.length - validFiles.length} filer som inte är rotfiler`);
+          
+          const invalidFiles = fileList.filter(file => file.folderId !== null);
+          console.error(`/api/files - FELDISKREPANS: Felaktiga rotfiler:`, 
+            invalidFiles.map(f => `[${f.id}: ${f.name}, felaktig mappID: ${f.folderId}]`));
+          
+          // Ersätt listan med endast giltiga filer
+          fileList = validFiles;
+        }
+      }
+      
+      if (fileList.length !== origCount) {
+        console.error(`/api/files - TOTAL FILTRERING: Gick från ${origCount} till ${fileList.length} filer efter strikt validering`);
       }
       
       // Steg 7: Loggning av resultatet med tydlig information
