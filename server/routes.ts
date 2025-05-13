@@ -431,6 +431,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Files upload API
+  app.post(`${apiPrefix}/files`, upload.single('file'), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    try {
+      // Kontrollera att filen laddades upp korrekt
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+      
+      // Validera projektID
+      const projectId = parseInt(req.body.projectId);
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project ID" });
+      }
+      
+      // Kontrollera användaråtkomst till projektet
+      const userInfo = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
+      
+      // Kontrollera behörighet
+      let hasAccess = false;
+      
+      if (userInfo && (userInfo.role === "superuser" || userInfo.role === "admin")) {
+        hasAccess = true;
+      } else {
+        const projectAccess = await db.query.userProjects.findFirst({
+          where: and(
+            eq(userProjects.userId, req.user!.id),
+            eq(userProjects.projectId, projectId)
+          )
+        });
+        
+        hasAccess = !!projectAccess;
+      }
+      
+      if (!hasAccess) {
+        return res.status(403).json({ error: "No access to this project" });
+      }
+      
+      // Validera och extrahera folderId om det finns
+      let folderId = null;
+      if (req.body.folderId && req.body.folderId !== 'null') {
+        folderId = parseInt(req.body.folderId);
+        
+        if (!isNaN(folderId)) {
+          // Kontrollera att mappen existerar och tillhör projektet
+          const folderExists = await db.query.folders.findFirst({
+            where: and(
+              eq(folders.id, folderId),
+              eq(folders.projectId, projectId)
+            )
+          });
+          
+          if (!folderExists) {
+            return res.status(404).json({ error: "Folder not found in this project" });
+          }
+        } else {
+          // Om folderId inte är ett giltigt nummer, sätt det till null
+          folderId = null;
+        }
+      }
+      
+      // Skapa filpost i databasen
+      const [newFile] = await db.insert(files).values({
+        name: req.file.originalname,
+        fileType: req.file.mimetype.split('/')[1] || 'unknown',
+        fileSize: req.file.size,
+        filePath: req.file.path,
+        projectId,
+        folderId,
+        uploadedById: req.user!.id,
+        uploadDate: new Date()
+      }).returning();
+      
+      console.log(`Ny fil uppladdad: ${req.file.originalname} till projekt ${projectId} ${folderId ? `i mapp ${folderId}` : 'utan mapp'}`);
+      
+      // Returnera JSON-data
+      return res.status(200).json(newFile);
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      return res.status(500).json({ error: "Failed to upload file" });
+    }
+  });
+
   // Create HTTP server
   const httpServer = createServer(app);
   
