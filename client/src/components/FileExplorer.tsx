@@ -53,6 +53,10 @@ interface FileNode {
   fileSize?: number;
   children?: FileNode[];
   selected?: boolean;
+  folderId?: number | null; // explicit folderId för att garantera mapptillhörighet
+  projectId?: number | string; // projektID för striktare filtrering
+  expanded?: boolean; // om mappen är expanderad
+  isRootFile?: boolean; // flagga för rotfiler
 }
 
 interface FileExplorerProps {
