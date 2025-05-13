@@ -1549,16 +1549,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get(`${apiPrefix}/files/:id`, async (req, res) => {
     try {
+      // Kontrollera autentisering
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
       // Validate id is a number
       const fileId = parseInt(req.params.id);
       if (isNaN(fileId)) {
         return res.status(400).json({ error: "Invalid file ID" });
       }
       
-      const file = await storage.getFile(fileId);
+      // Hämta filen direkt från databasen istället för storage helper
+      const file = await db.query.files.findFirst({
+        where: eq(files.id, fileId)
+      });
+      
       if (!file) {
         return res.status(404).json({ error: "File not found" });
       }
+      
+      // Hämta användarinformation för att kontrollera rollen
+      const userInfo = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
+      
+      // Superusers och admins har tillgång till alla filer
+      const isSuperuserOrAdmin = userInfo && (userInfo.role === 'superuser' || userInfo.role === 'admin');
+      
+      // Om användaren inte är superuser eller admin, kontrollera projektbehörighet
+      if (!isSuperuserOrAdmin) {
+        const userProject = await db.select()
+          .from(userProjects)
+          .where(and(
+            eq(userProjects.userId, req.user!.id),
+            eq(userProjects.projectId, file.projectId)
+          ))
+          .limit(1);
+        
+        if (userProject.length === 0) {
+          console.log(`GET /files/${fileId} - ÅTKOMST NEKAD: Användare ${req.user!.id} har inte tillgång till fil ${fileId} i projekt ${file.projectId}`);
+          return res.status(403).json({ error: 'You do not have access to this file' });
+        }
+      }
+      
+      console.log(`GET /files/${fileId} - BEHÖRIGHETSKONTROLL OK: Användare ${req.user!.id} (${isSuperuserOrAdmin ? userInfo!.role : 'regular'}) har tillgång till fil ${fileId} i projekt ${file.projectId}`);
+      
       res.json(file);
     } catch (error) {
       console.error("Error fetching file:", error);
@@ -1569,16 +1605,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Serve uploaded files
   app.get(`${apiPrefix}/files/:id/content`, async (req, res) => {
     try {
+      // Kontrollera autentisering
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
       // Validate id is a number
       const fileId = parseInt(req.params.id);
       if (isNaN(fileId)) {
         return res.status(400).json({ error: "Invalid file ID" });
       }
       
-      const file = await storage.getFile(fileId);
+      // Hämta filen direkt från databasen istället för storage helper
+      const file = await db.query.files.findFirst({
+        where: eq(files.id, fileId)
+      });
+      
       if (!file) {
         return res.status(404).json({ error: "File not found" });
       }
+      
+      // Hämta användarinformation för att kontrollera rollen
+      const userInfo = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
+      
+      // Superusers och admins har tillgång till alla filer
+      const isSuperuserOrAdmin = userInfo && (userInfo.role === 'superuser' || userInfo.role === 'admin');
+      
+      // Om användaren inte är superuser eller admin, kontrollera projektbehörighet
+      if (!isSuperuserOrAdmin) {
+        const userProject = await db.select()
+          .from(userProjects)
+          .where(and(
+            eq(userProjects.userId, req.user!.id),
+            eq(userProjects.projectId, file.projectId)
+          ))
+          .limit(1);
+        
+        if (userProject.length === 0) {
+          console.log(`GET /files/${fileId}/content - ÅTKOMST NEKAD: Användare ${req.user!.id} har inte tillgång till fil ${fileId} i projekt ${file.projectId}`);
+          return res.status(403).json({ error: 'You do not have access to this file' });
+        }
+      }
+      
+      console.log(`GET /files/${fileId}/content - BEHÖRIGHETSKONTROLL OK: Användare ${req.user!.id} (${isSuperuserOrAdmin ? userInfo!.role : 'regular'}) har tillgång till fil ${fileId} i projekt ${file.projectId}`);
       
       // Check if file exists on disk
       if (!fs.existsSync(file.filePath)) {
@@ -2483,11 +2554,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid file ID" });
       }
       
-      // Get the file to make sure it exists and user has access
-      const file = await storage.getFile(fileId);
+      // Kontrollera autentisering
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      // Hämta filen direkt från databasen istället för storage helper
+      const file = await db.query.files.findFirst({
+        where: eq(files.id, fileId)
+      });
+      
       if (!file) {
         return res.status(404).json({ error: "File not found" });
       }
+      
+      // Hämta användarinformation för att kontrollera rollen
+      const userInfo = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
+      
+      // Superusers och admins har tillgång till alla filer
+      const isSuperuserOrAdmin = userInfo && (userInfo.role === 'superuser' || userInfo.role === 'admin');
+      
+      // Om användaren inte är superuser eller admin, kontrollera projektbehörighet
+      if (!isSuperuserOrAdmin) {
+        const userProject = await db.select()
+          .from(userProjects)
+          .where(and(
+            eq(userProjects.userId, req.user!.id),
+            eq(userProjects.projectId, file.projectId)
+          ))
+          .limit(1);
+        
+        if (userProject.length === 0) {
+          console.log(`GET /pdf/${fileId}/versions - ÅTKOMST NEKAD: Användare ${req.user!.id} har inte tillgång till fil ${fileId} i projekt ${file.projectId}`);
+          return res.status(403).json({ error: 'You do not have access to this file' });
+        }
+      }
+      
+      console.log(`GET /pdf/${fileId}/versions - BEHÖRIGHETSKONTROLL OK: Användare ${req.user!.id} (${isSuperuserOrAdmin ? userInfo!.role : 'regular'}) har tillgång till fil ${fileId} i projekt ${file.projectId}`);
       
       // Get all versions
       const versions = await db.query.pdfVersions.findMany({
