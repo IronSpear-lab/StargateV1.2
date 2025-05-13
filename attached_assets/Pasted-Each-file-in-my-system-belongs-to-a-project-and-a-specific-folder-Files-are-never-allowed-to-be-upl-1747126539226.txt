@@ -1,0 +1,82 @@
+Each file in my system belongs to a project and a specific folder.
+Files are never allowed to be uploaded to root — they must always have a folderId.
+
+🔍 The problem:
+Currently, I can upload files into folders and I pass folderId and projectId to the backend.
+But since I don’t have a working GET /api/files endpoint (only /api/files/recent exists), the frontend shows all files in every folder, because there is no folder-level filtering on the server.
+
+✅ What I need:
+
+A new GET /api/files endpoint that:
+
+Accepts projectId and folderId as query parameters.
+
+Checks user access to the project (including superuser/admin bypass).
+
+Returns only files that match both projectId and folderId.
+
+Since files are not allowed in root, folderId must never be null.
+
+If folderId is missing or 'null', return a 400 Bad Request.
+
+I want to enforce that on both backend and eventually in the database schema (NOT NULL).
+
+Here's a base implementation you can use and extend:
+
+ts
+Kopiera
+Redigera
+app.get(`${apiPrefix}/files`, async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const projectId = parseInt(req.query.projectId as string);
+  const rawFolderId = req.query.folderId;
+
+  // ❌ Reject missing folderId (no files allowed in root)
+  if (!rawFolderId || rawFolderId === 'null') {
+    return res.status(400).json({ error: "folderId is required – files must be tied to a folder." });
+  }
+
+  const folderId = parseInt(rawFolderId as string);
+  if (isNaN(projectId) || isNaN(folderId)) {
+    return res.status(400).json({ error: "Invalid projectId or folderId" });
+  }
+
+  try {
+    const userId = req.user!.id;
+
+    const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+    const isSuperuser = user?.role === 'superuser' || user?.role === 'admin';
+
+    if (!isSuperuser) {
+      const access = await db.select().from(userProjects)
+        .where(and(eq(userProjects.userId, userId), eq(userProjects.projectId, projectId)));
+      if (access.length === 0) {
+        return res.status(403).json({ error: "No access to this project" });
+      }
+    }
+
+    // ✅ Strict folder-level filtering
+    const files = await db.query.files.findMany({
+      where: and(
+        eq(files.projectId, projectId),
+        eq(files.folderId, folderId)
+      )
+    });
+
+    return res.json({ files });
+  } catch (err) {
+    console.error("Error in GET /api/files", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+📌 Note:
+
+The frontend already sends the correct query string:
+/api/files?projectId=123&folderId=456
+
+The backend just needs to handle it with this logic.
+
+This endpoint must replace the need for /files/recent when fetching folder-specific files.

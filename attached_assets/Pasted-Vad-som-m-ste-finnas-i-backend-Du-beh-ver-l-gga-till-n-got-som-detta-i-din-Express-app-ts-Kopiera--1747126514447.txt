@@ -1,0 +1,67 @@
+Vad som måste finnas i backend
+Du behöver lägga till något som detta i din Express-app:
+
+ts
+Kopiera
+Redigera
+app.get(`${apiPrefix}/files`, async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const projectId = parseInt(req.query.projectId as string);
+  const rawFolderId = req.query.folderId;
+  const folderId = rawFolderId === 'null' || rawFolderId === undefined ? null : parseInt(rawFolderId as string);
+
+  if (isNaN(projectId)) {
+    return res.status(400).json({ error: "Invalid project ID" });
+  }
+
+  try {
+    const userId = req.user!.id;
+
+    // Validera att användaren har tillgång till projektet (samma logik som /files/recent)
+    const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+    const isSuperuser = user?.role === 'superuser' || user?.role === 'admin';
+
+    if (!isSuperuser) {
+      const access = await db.select().from(userProjects)
+        .where(and(eq(userProjects.userId, userId), eq(userProjects.projectId, projectId)));
+      if (access.length === 0) {
+        return res.status(403).json({ error: "No access to this project" });
+      }
+    }
+
+    // Hämta filer beroende på folderId
+    let files = [];
+
+    if (folderId === null) {
+      files = await db.query.files.findMany({
+        where: and(
+          eq(files.projectId, projectId),
+          isNull(files.folderId)
+        )
+      });
+    } else {
+      files = await db.query.files.findMany({
+        where: and(
+          eq(files.projectId, projectId),
+          eq(files.folderId, folderId)
+        )
+      });
+    }
+
+    return res.json({ files });
+  } catch (err) {
+    console.error("Error in GET /api/files", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+✅ Frontend då?
+Din frontend är redan rätt konfigurerad – den skickar:
+
+js
+Kopiera
+Redigera
+/api/files?projectId=123&folderId=456
+Men eftersom du inte har en GET /api/files i din backend, så är det därför du får alla filer, oavsett mapp.
