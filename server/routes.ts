@@ -1362,13 +1362,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`/api/files - SVARAR med tom fillista (0 filer)`);
       }
       
-      // Steg 8: Lägg till cache-bustning för att säkerställa att klienten alltid får färsk data
-      const response = {
-        files: fileList,
-        _timestamp: new Date().getTime() // Hjälper till att förhindra cachningsproblem
-      };
+      // Returnera filerna direkt istället för att nästla dem i ett objekt
+      // Detta gör att vi använder samma format som resten av koden förväntar sig
+      console.log(`/api/files - RETURNERAR FILERNA DIREKT`);
       
-      res.json(response);
+      res.json(fileList);
     } catch (error) {
       console.error("Error fetching files:", error);
       res.status(500).json({ error: "Failed to fetch files" });

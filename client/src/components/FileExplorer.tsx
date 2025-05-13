@@ -225,9 +225,9 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     }
   }, [foldersData]);
   
-  // Fetch files - TOTAL OMARBETNING MED GARANTERAD MAPPFILTRERING
+  // Fetch files - REVIDERAD FÖR ATT ÅTGÄRDA VISUALISERINGSPROBLEMET
   const { 
-    data: filesResponseData, 
+    data: filesData, // Ändrade tillbaka till filesData för att matcha resten av koden
     isLoading: isLoadingFiles, 
     error: filesError 
   } = useQuery({
@@ -236,115 +236,96 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     queryFn: async () => {
       if (!currentProject?.id) {
         console.log("FileExplorer: Inget projekt valt, inga filer att visa");
-        return { files: [], _timestamp: new Date().getTime() };
+        return []; // Returnerar tomt array i konsistent format
       }
       
-      // ABSOLUT STRIKT LÄGE: GARANTERAD SEPARATION AV FILER MELLAN MAPPAR
-      console.log(`FileExplorer: ABSOLUT STRIKT SEPARATIONSLÄGE AKTIVERAT. Kontext: ${selectedFolderId ? `MAPP ${selectedFolderId}` : 'ROTFILER'}, Projekt: ${currentProject.id}`);
+      console.log(`FileExplorer: STRIKT FILTRERINGSLÄGE. Kontext: ${selectedFolderId ? `MAPP ${selectedFolderId}` : 'ROTFILER'}, Projekt: ${currentProject.id}`);
       
       // Grundläggande URL med projektID
       let url = `/api/files?projectId=${currentProject.id}`;
       
-      // Lägg till dubbel anti-caching för att garantera färsk data
-      url += `&_t=${new Date().getTime()}&cacheBuster=${Math.random()}`;
+      // Lägg till anti-caching för att garantera färsk data
+      url += `&_t=${new Date().getTime()}`;
       
-      // Strict path selection based on context
+      // Välj rätt filtreringsläge baserat på kontext
       if (selectedFolderId) {
-        // MAPPLÄGE: Hämta EXKLUSIVT filer ENBART för denna specifika mapp
-        console.log(`FileExplorer: STRIKT MAPPLÄGE - Kräver filer ENDAST för mapp ${selectedFolderId}`);
+        // MAPPLÄGE: Hämta endast filer för aktuell mapp
+        console.log(`FileExplorer: MAPPLÄGE - Hämtar filer för mapp ${selectedFolderId}`);
         url += `&folderId=${selectedFolderId}`;
       } else {
-        // ROTLÄGE: Hämta EXKLUSIVT filer som SAKNAR mapptillhörighet
-        console.log(`FileExplorer: STRIKT ROTLÄGE - Kräver filer UTAN mapptillhörighet`);
+        // ROTLÄGE: Hämta endast filer utan mapptillhörighet
+        console.log(`FileExplorer: ROTLÄGE - Hämtar filer utan mapptillhörighet`);
         url += `&rootFilesOnly=true`;
       }
       
-      console.log(`FileExplorer: ANROPAR API MED URL: "${url}"`);
-      console.log(`FileExplorer: Förväntar kontext: ${selectedFolderId ? 'MAPPLÄGE' : 'ROTLÄGE'}`);
+      console.log(`FileExplorer: API-anrop: ${url}`);
       
       try {
-        // Använd anti-cache-headers för ytterligare säkerhet
+        // Använd vanliga fetch-options
         const res = await fetch(url, {
-          method: 'GET',
           credentials: 'include',
           headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-            'X-Context-Type': selectedFolderId ? `FOLDER-${selectedFolderId}` : 'ROOT',
-            'X-Request-Time': new Date().toISOString()
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
           }
         });
         
         if (!res.ok) {
-          const errorText = await res.text().catch(() => 'Ingen detaljerad felinformation tillgänglig');
-          console.error(`FileExplorer: KRITISKT API-FEL: ${res.status} ${res.statusText}`, errorText);
-          throw new Error(`API-fel vid filhämtning: ${res.status} - ${errorText}`);
+          const errorText = await res.text().catch(() => 'Ingen felinformation tillgänglig');
+          console.error(`FileExplorer: API-fel: ${res.status}`, errorText);
+          throw new Error(`Fel vid filhämtning: ${res.status} - ${errorText}`);
         }
         
-        // Hämta och tolka serverns svar
-        // Servern returnerar nu data i formatet { files: [...], _timestamp: ... }
+        // Hämta data från servern
         const responseData = await res.json();
         
-        // Extrahera filerna från svaret - hantera både gamla och nya API-format
-        const files = responseData.files || responseData;
-        const timestamp = responseData._timestamp || new Date().getTime();
+        // Hantera både det nya och gamla formatet
+        let files = [];
         
-        console.log(`FileExplorer: API returnerade ${files.length} filer med tidsstämpel ${timestamp}`);
-        
-        // TRIPPELKONTROLL: Validera att filerna uppfyller rätt kriterier
-        // Detta säkerställer att vi har EXAKT rätt filuppsättning även om servern skulle returnera fel
-        const validatedFiles = files.filter((file: FileData) => {
-          // Olika valideringsregler baserat på kontext
-          const isValid = selectedFolderId 
-            // MAPPLÄGE: filer MÅSTE ha exakt detta mappID
-            ? file.folderId === Number(selectedFolderId)
-            // ROTLÄGE: filer FÅR INTE ha något mappID alls
-            : file.folderId === null;
-        
-          if (!isValid) {
-            console.error(`FileExplorer: KRITISKT FILTRERINGSFEL! Fil ${file.id} (${file.name}) har FELAKTIG MAPPKONTEXT:`, {
-              läge: selectedFolderId ? `MAPPLÄGE (${selectedFolderId})` : 'ROTLÄGE',
-              filMappId: file.folderId !== null ? file.folderId : 'NULL',
-              önskadMapp: selectedFolderId || 'NULL (ROTLÄGE)'
-            });
-          }
-          
-          return isValid;
-        });
-        
-        // Logga resultatet av valideringen mycket tydligt
-        if (validatedFiles.length !== files.length) {
-          console.error(`FileExplorer: KRITISK DISKREPANS! ${files.length - validatedFiles.length} filer BORTFILTRERADE på grund av fel mapptillhörighet!`);
-          console.error(`FileExplorer: FILTRERING: ${validatedFiles.length} av ${files.length} filer har korrekt mapptillhörighet för aktuell kontext.`);
-          
-          // Logga de felaktiga filerna
-          const invalidFiles = files.filter((file: FileData) => 
-            selectedFolderId 
-              ? file.folderId !== Number(selectedFolderId)
-              : file.folderId !== null
-          );
-          
-          console.error(`FileExplorer: FELAKTIGA FILER:`, invalidFiles.map((f: FileData) => 
-            `[${f.id}: ${f.name}, mappID: ${f.folderId !== null ? f.folderId : 'NULL'}]`).join(', '));
-        } else {
-          console.log(`FileExplorer: VALIDERING LYCKADES - Alla ${files.length} filer uppfyller filtreringskriterier för ${selectedFolderId ? `mapp ${selectedFolderId}` : 'rotläge'}`);
+        // Om vi har det nya formatet { files: [...], _timestamp: ... }
+        if (responseData && responseData.files) {
+          console.log(`FileExplorer: Använder nytt API-format med ${responseData.files.length} filer`);
+          files = responseData.files;
+        }
+        // Om vi har det gamla formatet (direkt array)
+        else if (Array.isArray(responseData)) {
+          console.log(`FileExplorer: Använder gammalt API-format med ${responseData.length} filer`);
+          files = responseData;
+        }
+        else {
+          console.warn(`FileExplorer: Okänt API-svarsformat`, responseData);
+          files = [];
         }
         
-        // Returnera alltid de validerade filerna
-        return { 
-          files: validatedFiles, 
-          _timestamp: timestamp,
-          context: selectedFolderId ? `folder_${selectedFolderId}` : 'root'
-        };
+        // Validera och verifiera att vi har rätt filer i rätt kontext
+        const validatedFiles = files.filter((file: FileData) => {
+          // Validera projektlsallhörighet
+          const isCorrectProject = file.projectId && 
+            file.projectId.toString() === currentProject.id.toString();
+          
+          // Validera mapptillhörighet
+          const hasCorrectFolderContext = selectedFolderId
+            ? file.folderId === Number(selectedFolderId) 
+            : file.folderId === null;
+          
+          // Kombinerad validering
+          return isCorrectProject && hasCorrectFolderContext;
+        });
+        
+        if (validatedFiles.length !== files.length) {
+          console.warn(`FileExplorer: Filtrerade bort ${files.length - validatedFiles.length} filer som inte matchar aktuell kontext`);
+        }
+        
+        console.log(`FileExplorer: Returnerar ${validatedFiles.length} validerade filer`);
+        return validatedFiles; // Returnera validerade filer i det format komponenten förväntar sig
       } catch (error) {
-        console.error("FileExplorer: FATALT FEL VID FILHÄMTNING:", error);
+        console.error("FileExplorer: Fel vid filhämtning:", error);
         toast({
           title: "Kunde inte hämta filer",
-          description: "Ett fel uppstod vid hämtning av filerna. Försök igen senare eller kontakta support.",
+          description: "Ett fel uppstod vid hämtning av filerna. Försök igen senare.",
           variant: "destructive",
         });
-        return { files: [], _timestamp: new Date().getTime() };
+        return []; // Returnera tomt array vid fel
       }
     },
     enabled: !!currentProject?.id, // Kör bara denna query om vi har ett projekt
@@ -614,7 +595,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     createFolderMutation.mutate(folderData);
   };
 
-  // KOMPLETT OMARBETAD buildFileTree funktion med DEBUG-loggning
+  // Förenklad buildFileTree funktion
   const buildFileTree = () => {
     // STEG 0: Förbered data
     const tree: FileNode[] = [];
@@ -634,15 +615,13 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     }
     
     // STEG 1: Filtrera mappar för aktuellt projekt
-    if (!foldersData || !filesData) {
-      console.warn("FileExplorer: Saknar data för mappar eller filer");
+    if (!foldersData) {
+      console.warn("FileExplorer: Saknar data för mappar");
       return [];
     }
     
-    console.log(`FileExplorer: ⚠️ HELT NY TRÄDBYGGNAD - byggTree start ⚠️`);
-    console.log("FOLDERSDATA DETALJVY:", JSON.stringify(foldersData, null, 2));
+    console.log(`FileExplorer: 🔄 TRÄDBYGGNAD - Kontext: ${selectedFolderId ? `MAPP ${selectedFolderId}` : 'ROTLÄGE'}`);
     
-    // Vi ska inte längre lägga till testmappar
     // Filtrera och se till att vi bara använder mappar från aktuellt projekt
     const projectFolders = foldersData.filter((folder: FolderData) => 
       folder && folder.projectId && folder.projectId.toString() === currentProject.id.toString()
@@ -651,14 +630,17 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     // Använd de filtrerade projektmapparna för fortsatt bearbetning
     let workingFolders = [...projectFolders];
     
-    console.log(`FileExplorer: ${workingFolders.length} mappar tillhör projekt ${currentProject.id}`);
-    console.log("PROJEKTMAPPAR:", JSON.stringify(workingFolders, null, 2));
+    console.log(`FileExplorer: ${workingFolders.length} mappar för projekt ${currentProject.id}`);
     
-    // Extrahera filer från det nya svarsformatet
-    const responseFiles = filesResponseData?.files || filesResponseData || [];
+    // Kontrollera att vi har filer att visa
+    if (!filesData) {
+      console.log("FileExplorer: Inga fildata tillgängliga");
+    } else {
+      console.log(`FileExplorer: Fildata tillgängliga: ${filesData.length} filer`);
+    }
     
-    // Säkerställ att vi bara använder filer från aktuellt projekt med extra validering
-    const projectFiles = responseFiles.filter((file: FileData) => {
+    // Filtrera filer för aktuellt projekt och kontext (mapp eller rot)
+    const projectFiles = filesData ? filesData.filter((file: FileData) => {
       // Grundläggande filtreringsvillkor baserat på projektID
       const isCorrectProject = file && file.projectId && 
         file.projectId.toString() === currentProject.id.toString();
@@ -667,22 +649,14 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       const hasCorrectFolderContext = selectedFolderId
         ? file.folderId === Number(selectedFolderId) // För mappläge
         : file.folderId === null;                   // För rotläge
-        
-      // Logga eventuella diskrepanser för felsökning
-      if (isCorrectProject && !hasCorrectFolderContext) {
-        console.error(`FileExplorer: FEL MAPPKONTEXT för fil ${file.id} (${file.name}):`, {
-          kontext: selectedFolderId ? `Mapp ${selectedFolderId}` : 'ROTLÄGE',
-          filMappId: file.folderId
-        });
-      }
       
       // Filen måste uppfylla BÅDA villkoren för att inkluderas
       return isCorrectProject && hasCorrectFolderContext;
-    });
+    }) : [];
     
-    console.log(`FileExplorer: ${projectFiles.length} validerade filer för projekt ${currentProject.id} i ${selectedFolderId ? `mapp ${selectedFolderId}` : 'rotläge'}`);
-    if (responseFiles.length !== projectFiles.length) {
-      console.warn(`FileExplorer: FILTRERADE BORT ${responseFiles.length - projectFiles.length} filer pga fel projekt eller mappkontext!`);
+    console.log(`FileExplorer: ${projectFiles.length} validerade filer för kontext: ${selectedFolderId ? `Mapp ${selectedFolderId}` : 'Rotläge'}`);
+    if (filesData && filesData.length !== projectFiles.length) {
+      console.log(`FileExplorer: Filtrerade bort ${filesData.length - projectFiles.length} filer som inte matchar aktuell kontext`);
     }
     
     // STEG 2: Skapa alla mappnoder och spara dem i folderMap för enkel åtkomst via ID
