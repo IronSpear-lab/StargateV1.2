@@ -550,6 +550,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Filuppladdning: Slutlig folderId=${folderId} av typen ${typeof folderId}`);
       
+      // EXTRA VALIDERING: Gör en extra SQL-kontroll för att bekräfta mappens existens
+      if (folderId !== null) {
+        console.log(`Filuppladdning: Dubbelkontrollerar att mapp ${folderId} existerar med SQL-fråga`);
+        const folderCheck = await db.execute(
+          sql`SELECT id, name, "projectId" FROM folders 
+              WHERE id = ${folderId} AND "projectId" = ${projectId}`
+        );
+        
+        if (folderCheck.rows.length === 0) {
+          console.error(`Filuppladdning: KRITISKT FEL - Mapp ${folderId} existerar inte i projekt ${projectId} enligt SQL-fråga`);
+          // Fallback till null om mappen inte finns (för att undvika foreign key error)
+          folderId = null;
+        } else {
+          console.log(`Filuppladdning: Mapp ${folderId} bekräftad giltig via SQL`);
+        }
+      }
+      
       // Skapa filpost i databasen
       const [newFile] = await db.insert(files).values({
         name: req.file.originalname,
@@ -557,7 +574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileSize: req.file.size,
         filePath: req.file.path,
         projectId,
-        folderId,
+        folderId,  // Använder validerad folderId
         uploadedById: req.user!.id,
         uploadDate: new Date()
       }).returning();
@@ -570,6 +587,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       console.log(`Verifierar sparad fil: ID=${savedFile?.id}, name=${savedFile?.name}, folderId=${savedFile?.folderId} (${typeof savedFile?.folderId})`);
+      
+      // KRITISK VALIDERING: Kontrollera att matchningen för folderId är korrekt
+      const expectedFolderId = folderId;
+      const actualFolderId = savedFile?.folderId;
+      
+      if (expectedFolderId !== actualFolderId) {
+        console.error(`KRITISKT DATAFEL: Oväntad mismatch på folderId vid filuppladdning:
+          - Förväntad folderId: ${expectedFolderId} (typ: ${typeof expectedFolderId})
+          - Faktisk folderId: ${actualFolderId} (typ: ${typeof actualFolderId})
+        `);
+      } else {
+        console.log(`✅ Verifiering slutförd: Fil ${newFile.id} har korrekt folderId=${actualFolderId}`);
+      }
       
       // Returnera JSON-data
       return res.status(200).json(newFile);
