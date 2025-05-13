@@ -2791,6 +2791,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all annotations for a PDF version
   app.get(`${apiPrefix}/pdf/versions/:versionId/annotations`, async (req, res) => {
     try {
+      // Kontrollera autentisering
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
       const versionIdStr = req.params.versionId;
       
       // Om versionId är en timestamp eller uuid-liknande, hantera som temporär
@@ -2804,14 +2809,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid version ID" });
       }
       
-      // Check if version exists
+      // Check if version exists with file relation to get project info
       const version = await db.query.pdfVersions.findFirst({
-        where: eq(pdfVersions.id, versionId)
+        where: eq(pdfVersions.id, versionId),
+        with: {
+          file: true
+        }
       });
       
       if (!version) {
         return res.status(404).json({ error: "Version not found" });
       }
+      
+      // Hämta användarinformation för att kontrollera rollen
+      const userInfo = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
+      
+      // Superusers och admins har tillgång till alla filer
+      const isSuperuserOrAdmin = userInfo && (userInfo.role === 'superuser' || userInfo.role === 'admin');
+      
+      // Om användaren inte är superuser eller admin, kontrollera projektbehörighet
+      if (!isSuperuserOrAdmin) {
+        const userProject = await db.select()
+          .from(userProjects)
+          .where(and(
+            eq(userProjects.userId, req.user!.id),
+            eq(userProjects.projectId, version.file.projectId)
+          ))
+          .limit(1);
+        
+        if (userProject.length === 0) {
+          console.log(`GET /pdf/versions/${versionId}/annotations - ÅTKOMST NEKAD: Användare ${req.user!.id} har inte tillgång till fil ${version.fileId} i projekt ${version.file.projectId}`);
+          return res.status(403).json({ error: 'You do not have access to this file version annotations' });
+        }
+      }
+      
+      console.log(`GET /pdf/versions/${versionId}/annotations - BEHÖRIGHETSKONTROLL OK: Användare ${req.user!.id} (${isSuperuserOrAdmin ? userInfo!.role : 'regular'}) har tillgång till filversionsannotationer ${versionId} i projekt ${version.file.projectId}`);
       
       // Get all annotations
       const annotations = await db.query.pdfAnnotations.findMany({
@@ -2849,6 +2883,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create or update an annotation
   app.post(`${apiPrefix}/pdf/versions/:versionId/annotations`, async (req, res) => {
     try {
+      // Kontrollera autentisering
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
       const versionIdStr = req.params.versionId;
       
       // Om versionId är en timestamp eller uuid-liknande, spara i temporärt lager
@@ -2875,14 +2914,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid version ID" });
       }
       
-      // Check if version exists
+      // Check if version exists with file relation to get project info
       const version = await db.query.pdfVersions.findFirst({
-        where: eq(pdfVersions.id, versionId)
+        where: eq(pdfVersions.id, versionId),
+        with: {
+          file: true
+        }
       });
       
       if (!version) {
         return res.status(404).json({ error: "Version not found" });
       }
+      
+      // Hämta användarinformation för att kontrollera rollen
+      const userInfo = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
+      
+      // Superusers och admins har tillgång till alla filer
+      const isSuperuserOrAdmin = userInfo && (userInfo.role === 'superuser' || userInfo.role === 'admin');
+      
+      // Om användaren inte är superuser eller admin, kontrollera projektbehörighet
+      if (!isSuperuserOrAdmin) {
+        const userProject = await db.select()
+          .from(userProjects)
+          .where(and(
+            eq(userProjects.userId, req.user!.id),
+            eq(userProjects.projectId, version.file.projectId)
+          ))
+          .limit(1);
+        
+        if (userProject.length === 0) {
+          console.log(`POST /pdf/versions/${versionId}/annotations - ÅTKOMST NEKAD: Användare ${req.user!.id} har inte tillgång till fil ${version.fileId} i projekt ${version.file.projectId}`);
+          return res.status(403).json({ error: 'You do not have access to add annotations to this file version' });
+        }
+      }
+      
+      console.log(`POST /pdf/versions/${versionId}/annotations - BEHÖRIGHETSKONTROLL OK: Användare ${req.user!.id} (${isSuperuserOrAdmin ? userInfo!.role : 'regular'}) har tillgång till att kommentera filversion ${versionId} i projekt ${version.file.projectId}`);
       
       // If an ID is provided, update existing annotation
       if (req.body.id) {
@@ -2966,19 +3034,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete an annotation
   app.delete(`${apiPrefix}/pdf/annotations/:annotationId`, async (req, res) => {
     try {
+      // Kontrollera autentisering
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
       const annotationId = parseInt(req.params.annotationId);
       if (isNaN(annotationId)) {
         return res.status(400).json({ error: "Invalid annotation ID" });
       }
       
-      // Get the annotation to check if it exists and to return the version ID
+      // Hämta annotationen med version och filtillhörighet för behörighetskontroll
       const annotation = await db.query.pdfAnnotations.findFirst({
-        where: eq(pdfAnnotations.id, annotationId)
+        where: eq(pdfAnnotations.id, annotationId),
+        with: {
+          version: {
+            with: {
+              file: true
+            }
+          }
+        }
       });
       
       if (!annotation) {
         return res.status(404).json({ error: "Annotation not found" });
       }
+      
+      // Hämta användarinformation för att kontrollera rollen
+      const userInfo = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
+      
+      // Superusers och admins har tillgång till att ta bort alla kommentarer
+      const isSuperuserOrAdmin = userInfo && (userInfo.role === 'superuser' || userInfo.role === 'admin');
+      
+      // Användare som skapat kommentaren kan radera den
+      const isCreator = annotation.createdById === req.user!.id;
+      
+      // Projektledare kan också radera kommentarer i sina projekt
+      let isProjectLeader = false;
+      if (!isSuperuserOrAdmin && !isCreator) {
+        const userProject = await db.select()
+          .from(userProjects)
+          .where(and(
+            eq(userProjects.userId, req.user!.id),
+            eq(userProjects.projectId, annotation.version.file.projectId),
+            eq(userProjects.role, 'project_leader')
+          ))
+          .limit(1);
+          
+        isProjectLeader = userProject.length > 0;
+      }
+      
+      // Kontrollera om användaren har behörighet att radera
+      if (!isSuperuserOrAdmin && !isCreator && !isProjectLeader) {
+        console.log(`DELETE /pdf/annotations/${annotationId} - ÅTKOMST NEKAD: Användare ${req.user!.id} kan inte radera annotation ${annotationId} skapad av ${annotation.createdById}`);
+        return res.status(403).json({ error: "Du har inte behörighet att ta bort denna kommentar" });
+      }
+      
+      console.log(`DELETE /pdf/annotations/${annotationId} - BEHÖRIGHETSKONTROLL OK: Användare ${req.user!.id} (${isSuperuserOrAdmin ? userInfo!.role : isCreator ? 'creator' : 'project_leader'}) kan radera annotation ${annotationId}`);
       
       // Delete the annotation
       await db.delete(pdfAnnotations)
