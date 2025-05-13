@@ -229,14 +229,17 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     }
   }, [foldersData]);
   
-  // Fetch files - REVIDERAD FÖR ATT ÅTGÄRDA VISUALISERINGSPROBLEMET
+  // Fetch files - HELT REVIDERAD FÖR ATT GARANTERA UPPDATERING VID MAPPBYTE
   const { 
-    data: filesData, // Ändrade tillbaka till filesData för att matcha resten av koden
+    data: filesData, 
     isLoading: isLoadingFiles, 
-    error: filesError 
+    error: filesError,
+    refetch: refetchFiles, // Explicit refetch-funktion
+    isRefetching: isRefetchingFiles  // Visar om vi håller på att uppdatera
   } = useQuery({
-    // Använd tidsstämpel i queryKey för att förhindra caching helt och hållet
-    queryKey: ['/api/files', currentProject?.id, selectedFolderId, Math.random(), new Date().getTime()],
+    // Garantera unik query för varje mappkombination
+    // Ta bort slumpmässiga värden som kan orsaka onödiga omladdningar
+    queryKey: ['/api/files', currentProject?.id, selectedFolderId],
     queryFn: async () => {
       if (!currentProject?.id) {
         console.log("FileExplorer: Inget projekt valt, inga filer att visa");
@@ -980,10 +983,16 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         setSelectedFolderId(null);
         setUploadState(prev => ({ ...prev, selectedFolder: null }));
         
-        // Tvinga query-invalidering för att säkerställa att rotfiler visas
-        void queryClient.invalidateQueries({ 
-          queryKey: ['/api/files', currentProject?.id, null, new Date().getTime()]
+        // Visa bekräftelse till användaren för bättre feedback
+        toast({
+          description: "Visar filer utan mapptillhörighet",
         });
+        
+        // Explicit refetch istället för att bara invalidera cachcen
+        // Detta garanterar att data laddas om omedelbart
+        setTimeout(() => {
+          refetchFiles();
+        }, 100);
       } else {
         // Användaren väljer en ny mapp
         console.log(`MAPPBYTE: Väljer mapp "${file.name}" (ID: ${folderId}), visar ENDAST filer i denna mapp`);
@@ -992,10 +1001,16 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         setSelectedFolderId(folderId);
         setUploadState(prev => ({ ...prev, selectedFolder: folderId }));
         
-        // Tvinga query-invalidering för att säkerställa att rätt filer visas
-        void queryClient.invalidateQueries({ 
-          queryKey: ['/api/files', currentProject?.id, folderId, new Date().getTime()]
+        // Visa bekräftelse till användaren för bättre feedback
+        toast({
+          description: `Visar endast filer i mappen "${file.name}"`,
         });
+        
+        // Explicit refetch som tvingar omedelbar omladdning
+        // Liten timeout för att säkerställa att state har uppdaterats
+        setTimeout(() => {
+          refetchFiles();
+        }, 100);
       }
     }
   };
