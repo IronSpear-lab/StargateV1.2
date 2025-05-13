@@ -195,9 +195,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Hämta filerna enligt de specificerade villkoren
-      const fileList = await db.query.files.findMany({
-        where: whereCondition,
-        orderBy: desc(files.createdAt)
+      // Gör en enkel SQL-fråga direkt utan orderBy för att undvika SQL-syntaxfel
+      let fileList = await db.query.files.findMany({
+        where: whereCondition
+      });
+      
+      // Sortera resultaten efter uppladdningsdatum i minnet istället
+      fileList = fileList.sort((a, b) => {
+        const dateA = new Date(a.uploadDate);
+        const dateB = new Date(b.uploadDate);
+        return dateB.getTime() - dateA.getTime(); // Fallande ordning (nyast först)
       });
       
       // Returnera filerna
