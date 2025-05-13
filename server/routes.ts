@@ -1286,7 +1286,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Steg 4: Kontrollera användaråtkomst till projektet
-      const hasAccess = await storage.userHasAccessToProject(req.user!.id, projectId);
+      // Anropa direkt databas-API istället för storage helper
+      const userProjectAccess = await db.select()
+        .from(userProjects)
+        .where(and(
+          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.projectId, projectId)
+        ))
+        .limit(1);
+        
+      const hasAccess = userProjectAccess.length > 0;
+      
       if (!hasAccess) {
         console.error(`/api/files - ÅTKOMST NEKAD: Användare ${req.user!.id} har inte tillgång till projekt ${projectId}`);
         return res.status(403).json({ 
