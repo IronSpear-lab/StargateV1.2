@@ -234,16 +234,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [newProject] = await db.insert(projects).values({
         name,
         description,
-        created_at: new Date(),
-        updated_at: new Date(),
-        created_by_id: userId // Anpassat för databasnamnet
+        createdAt: new Date(),
+        createdById: userId // Vi använder namnen exakt som i schema.ts
       }).returning();
 
       // Automatiskt tilldela skaparen till projektet
       await db.insert(userProjects).values({
-        user_id: userId, // Använd samma userId som vi verifierade ovan
-        project_id: newProject.id,
-        created_at: new Date()
+        userId: userId, // Använd userId (camelCase enligt schema.ts)
+        projectId: newProject.id,
+        role: "project_leader" // Vi behöver också lägga till roll enligt schemadefinitionen
       });
 
       console.log(`Nytt projekt skapat: ${name} (ID: ${newProject.id}) av användare ${req.user!.id}`);
