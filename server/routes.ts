@@ -218,18 +218,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { name, description } = req.body;
 
+      // Debugging - skriver ut användarinformation
+      console.log("User object in /api/projects:", req.user);
+      console.log("User ID in /api/projects:", req.user?.id);
+      console.log("Is authenticated:", req.isAuthenticated());
+      console.log("Session:", req.session);
+
+      // Skapa projektet med explicit ID-konvertering
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ error: "User ID not available" });
+      }
+
       // Skapa projektet
       const [newProject] = await db.insert(projects).values({
         name,
         description,
         created_at: new Date(),
         updated_at: new Date(),
-        created_by_id: req.user!.id // Anpassat för databasnamnet
+        created_by_id: userId // Anpassat för databasnamnet
       }).returning();
 
       // Automatiskt tilldela skaparen till projektet
       await db.insert(userProjects).values({
-        user_id: req.user!.id,
+        user_id: userId, // Använd samma userId som vi verifierade ovan
         project_id: newProject.id,
         created_at: new Date()
       });
