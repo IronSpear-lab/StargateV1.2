@@ -712,10 +712,12 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       const isCorrectProject = file && file.projectId && 
         file.projectId.toString() === currentProject.id.toString();
       
-      // Extra validering av mapptillhörighet baserat på vår aktuella kontext
+      // Extra validering av mapptillhörighet baserat på vår aktuella kontext - STRIKT TYPJÄMFÖRELSE
       const hasCorrectFolderContext = selectedFolderId
-        ? file.folderId === Number(selectedFolderId) // För mappläge
-        : file.folderId === null;                   // För rotläge
+        ? file.folderId !== null && file.folderId !== undefined && 
+          Number(file.folderId) === Number(selectedFolderId) // För mappläge - STRIKT typkonvertering
+        : file.folderId === null || file.folderId === undefined || 
+          file.folderId === 0 || file.folderId === '';      // För rotläge - hantera alla tomt/null-varianter
       
       // Filen måste uppfylla BÅDA villkoren för att inkluderas
       return isCorrectProject && hasCorrectFolderContext;
@@ -800,20 +802,41 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         
         const folderKey = `folder_${fileFolderId}`;
         
-        // VISNINGSREGLER FÖR MAPPTILLHÖRANDE FILER:
+        // VISNINGSREGLER FÖR MAPPTILLHÖRANDE FILER - EXTRA STRIKT VERSION:
         // 1. En mapp måste vara vald
-        // 2. Den valda mappen måste exakt matcha filens mappID
+        // 2. Den valda mappen måste EXAKT matcha filens mappID med strikt typjämförelse
         // 3. Mappen måste existera i vår folderMap
-        if (selectedFolderId && 
-            Number(selectedFolderId) === fileFolderId && 
-            folderMap[folderKey]) {
+        
+        // Konvertera till nummer FÖR JÄMFÖRELSE, men kontrollera strikt
+        const targetFolderId = Number(selectedFolderId);
+        const strictFolderMatch = selectedFolderId && 
+                                !isNaN(targetFolderId) && 
+                                targetFolderId > 0 && 
+                                targetFolderId === fileFolderId && 
+                                folderMap[folderKey];
+        
+        if (strictFolderMatch) {
+          // EXTRA VALIDERING: Kontrollera att mapparna exakt matchar även som strängar
+          const exactStringMatch = String(fileFolderId) === String(selectedFolderId);
           
-          // Alla tre villkor uppfyllda - lägg till filen i den valda mappen
-          folderMap[folderKey].children = folderMap[folderKey].children || [];
-          folderMap[folderKey].children.push(fileNode);
-          console.log(`FileExplorer: ✅ Fil "${file.name}" (ID ${file.id}) tillhör exakt mapp ${selectedFolderId}, VISAS i mappen`);
+          if (exactStringMatch) {
+            // BARA om ALLA villkor är uppfyllda - lägg till filen i den valda mappen
+            folderMap[folderKey].children = folderMap[folderKey].children || [];
+            
+            // Lägg till explicit folderId i filnoden för extra säkerhet och spårbarhet
+            const enhancedFileNode = {
+              ...fileNode,
+              folderId: fileFolderId, // Explicit lagra mappkoppling i filnoden
+              projectId: file.projectId // Spara även projektID för fullständig kontext
+            };
+            
+            folderMap[folderKey].children.push(enhancedFileNode);
+            console.log(`FileExplorer: ✅ VALIDERAD: Fil "${file.name}" (ID ${file.id}) har EXAKT mappning till mapp ${selectedFolderId}, VISAS`);
+          } else {
+            console.warn(`FileExplorer: ⚠️ STRINGJÄMFÖRELSEFEL: Fil "${file.name}" (ID ${file.id}): '${String(fileFolderId)}' vs '${String(selectedFolderId)}'`);
+          }
         } else {
-          // Något villkor misslyckades - fil visas inte
+          // DETALJERAD DIAGNOSTIK för varje typ av jämförelsefel
           if (!selectedFolderId) {
             console.log(`FileExplorer: 🔍 Fil "${file.name}" (ID ${file.id}) tillhör mapp ${fileFolderId} men vi är i ROOT-läge`);
           } else if (Number(selectedFolderId) !== fileFolderId) {
@@ -821,20 +844,37 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
           } else if (!folderMap[folderKey]) {
             console.log(`FileExplorer: ⛔ Fil "${file.name}" (ID ${file.id}) tillhör mapp ${fileFolderId} som saknas i folderMap`);
           }
-          // Ingen åtgärd - filen ignoreras helt
+          // INGEN ÅTGÄRD - filen visas inte alls i denna kontext
         }
       }
-      // 2. ROTFIL (ingen mapptillhörighet)
+      // 2. ROTFIL (ingen mapptillhörighet) - STRIKTARE HANTERING
       else {
-        // VISNINGSREGLER FÖR ROTFILER:
-        // 1. Visa ENDAST i root-läge (ingen mapp vald)
-        // 2. Aldrig i någon mapp
-        if (!selectedFolderId) {
-          // Lägg till i huvudträdet
-          tree.push(fileNode);
-          console.log(`FileExplorer: ✅ Rotfil "${file.name}" (ID ${file.id}) visas KORREKT i ROOT`);
+        // VISNINGSREGLER FÖR ROTFILER - STRIKTARE VERSION:
+        // 1. Visa ENDAST i absolut root-läge (ingen mapp vald)
+        // 2. Explicit bekräfta att filen inte har någon mappkoppling
+        // 3. Aldrig visa i någon mapp
+        
+        // Först, extra validering att detta verkligen är en rotfil
+        const isStrictRootFile = file.folderId === null || 
+                               file.folderId === undefined || 
+                               file.folderId === 0 || 
+                               file.folderId === '';
+        
+        if (!selectedFolderId && isStrictRootFile) {
+          // Lägg till i huvudträdet MED extra attribut för diagnostik
+          const enhancedRootFileNode = {
+            ...fileNode,
+            folderId: null,  // Explicit NULL för att bekräfta rotfilstatus
+            projectId: file.projectId, // Spara projektID för spårbarhet
+            isRootFile: true // Extra flagga för tydligare diagnostik
+          };
+          
+          tree.push(enhancedRootFileNode);
+          console.log(`FileExplorer: ✅ VALIDERAD ROTFIL: "${file.name}" (ID ${file.id}) visas KORREKT i ROOT`);
+        } else if (selectedFolderId) {
+          console.log(`FileExplorer: ℹ️ Rotfil "${file.name}" (ID ${file.id}) visas INTE i mapp ${selectedFolderId} (korrekt beteende)`);
         } else {
-          console.log(`FileExplorer: ℹ️ Rotfil "${file.name}" (ID ${file.id}) visas INTE i mapp ${selectedFolderId}`);
+          console.warn(`FileExplorer: ⚠️ Fil "${file.name}" (ID ${file.id}) är inte en strikt rotfil, folderId=${file.folderId}`);
         }
       }
     });
