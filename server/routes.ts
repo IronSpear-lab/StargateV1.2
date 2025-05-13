@@ -1412,6 +1412,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Validera att en fil tillhör en specifik mapp
+  app.get(`${apiPrefix}/files/:fileId/validate-folder`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      console.log("/api/files/:fileId/validate-folder - ej autentiserad, returnerar 401");
+      return res.status(401).send({ error: 'Du måste vara inloggad' });
+    }
+    
+    try {
+      const fileId = parseInt(req.params.fileId);
+      const folderId = req.query.folderId ? parseInt(req.query.folderId as string) : null;
+      const checkRoot = req.query.checkRoot === 'true';
+      
+      console.log(`/api/files/${fileId}/validate-folder - Validerar fil ${fileId} för ${checkRoot ? 'rotmapp' : `mapp ${folderId}`}`);
+      
+      if (isNaN(fileId)) {
+        return res.status(400).json({ error: "Ogiltigt fil-ID", valid: false });
+      }
+      
+      // Hämta filen från databasen
+      const file = await storage.getFile(fileId);
+      if (!file) {
+        console.log(`/api/files/${fileId}/validate-folder - Fil ${fileId} hittades inte`);
+        return res.status(404).json({ error: "Filen hittades inte", valid: false });
+      }
+      
+      // Kontrollera att användaren har tillgång till filens projekt
+      const userProject = await db.select()
+        .from(userProjects)
+        .where(and(
+          eq(userProjects.userId, req.user!.id),
+          eq(userProjects.projectId, file.projectId)
+        ))
+        .limit(1);
+      
+      if (userProject.length === 0) {
+        console.log(`/api/files/${fileId}/validate-folder - Användare ${req.user!.id} har inte tillgång till projektets fil ${fileId}`);
+        return res.status(403).json({ error: 'Du har inte tillgång till denna fil', valid: false });
+      }
+      
+      // Om vi kontrollerar rotmapp, verifiera att filen inte har någon mapp
+      if (checkRoot) {
+        const isRootFile = file.folderId === null;
+        console.log(`/api/files/${fileId}/validate-folder - Fil ${fileId} ${isRootFile ? 'är' : 'är inte'} i rotmappen`);
+        return res.json({ valid: isRootFile });
+      }
+      
+      // Annars, kontrollera att filens mapp matchar den angivna mappen
+      if (folderId === null) {
+        console.log(`/api/files/${fileId}/validate-folder - Inget mapp-ID angavs för validering`);
+        return res.status(400).json({ error: "Inget mapp-ID angavs", valid: false });
+      }
+      
+      const belongsToFolder = file.folderId === folderId;
+      console.log(`/api/files/${fileId}/validate-folder - Fil ${fileId} ${belongsToFolder ? 'tillhör' : 'tillhör inte'} mapp ${folderId}`);
+      
+      return res.json({ valid: belongsToFolder });
+    } catch (error) {
+      console.error("Error validating file folder:", error);
+      res.status(500).json({ error: "Ett fel uppstod vid validering av filmapp", valid: false });
+    }
+  });
+
   app.post(`${apiPrefix}/files`, upload.single('file'), async (req, res) => {
     try {
       if (!req.file) {
