@@ -1372,55 +1372,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(desc(files.uploadDate));
       
       // Steg 6: Validera resultatet för alla filtreringslägen med mer noggrann validering
+      // Ta bort eventuella cirkulära strukturer genom att inte direkt logga Drizzle-objekt
+      // eller åtminstone säkerställa att vi bara använder enkla värden
       let origCount = fileList.length;
       
-      if (folderId !== undefined) {
-        // Mappspecifika filer: Kontrollera att folderId exakt matchar det vi söker efter
-        const validFiles = fileList.filter(file => {
-          // Mycket striktare validering av folder-ID med explicit typkonvertering
-          const matchesFolderId = file.folderId === folderId;
-          if (!matchesFolderId) {
-            console.error(`/api/files - KRITISKT FEL: Fil ${file.id} ("${file.name}") har folderId=${file.folderId} men borde ha ${folderId}`);
+      try {
+        if (folderId !== undefined) {
+          // Mappspecifika filer: Kontrollera att folderId exakt matchar det vi söker efter
+          const validFiles = fileList.filter(file => {
+            // Mycket striktare validering av folder-ID med explicit typkonvertering
+            const matchesFolderId = file.folderId === folderId;
+            if (!matchesFolderId) {
+              console.error(`/api/files - KRITISKT FEL: Fil ${file.id} ("${file.name}") har folderId=${file.folderId} men borde ha ${folderId}`);
+            }
+            return matchesFolderId;
+          });
+          
+          if (validFiles.length !== fileList.length) {
+            console.error(`/api/files - KRITISKT FEL I DATAVALIDERING! Hittade ${fileList.length - validFiles.length} filer med fel mappID!`);
+            console.error(`/api/files - FELKORRIGERING: Filtrerar bort ${fileList.length - validFiles.length} filer som inte tillhör mapp ${folderId}`);
+            
+            // Använd primitiva värden istället för fullständiga objekt i loggar för att undvika cirkulära strukturer
+            const invalidFileIds = fileList
+              .filter(file => file.folderId !== folderId)
+              .map(f => `[${f.id}: ${f.name}, felaktig mappID: ${f.folderId}]`);
+            
+            console.error(`/api/files - FELDISKREPANS: Felaktiga filer:`, invalidFileIds);
+            
+            // Ersätt listan med endast giltiga filer
+            fileList = validFiles;
           }
-          return matchesFolderId;
-        });
-        
-        if (validFiles.length !== fileList.length) {
-          console.error(`/api/files - KRITISKT FEL I DATAVALIDERING! Hittade ${fileList.length - validFiles.length} filer med fel mappID!`);
-          console.error(`/api/files - FELKORRIGERING: Filtrerar bort ${fileList.length - validFiles.length} filer som inte tillhör mapp ${folderId}`);
+        } else if (rootFilesOnly || (!folderId && !all)) {
+          // Rotfiler: Kontrollera att folderId faktiskt är NULL
+          const validFiles = fileList.filter(file => {
+            const isNullFolder = file.folderId === null;
+            if (!isNullFolder) {
+              console.error(`/api/files - KRITISKT FEL: Fil ${file.id} ("${file.name}") har folderId=${file.folderId} men borde ha NULL i rotläge`);
+            }
+            return isNullFolder;
+          });
           
-          const invalidFiles = fileList.filter(file => file.folderId !== folderId);
-          console.error(`/api/files - FELDISKREPANS: Felaktiga filer:`, 
-            invalidFiles.map(f => `[${f.id}: ${f.name}, felaktig mappID: ${f.folderId}]`));
-          
-          // Ersätt listan med endast giltiga filer
-          fileList = validFiles;
-        }
-      } else if (rootFilesOnly || (!folderId && !all)) {
-        // Rotfiler: Kontrollera att folderId faktiskt är NULL
-        const validFiles = fileList.filter(file => {
-          const isNullFolder = file.folderId === null;
-          if (!isNullFolder) {
-            console.error(`/api/files - KRITISKT FEL: Fil ${file.id} ("${file.name}") har folderId=${file.folderId} men borde ha NULL i rotläge`);
+          if (validFiles.length !== fileList.length) {
+            console.error(`/api/files - KRITISKT FEL I DATAVALIDERING! Hittade ${fileList.length - validFiles.length} rotfiler med icke-null mappID!`);
+            console.error(`/api/files - FELKORRIGERING: Filtrerar bort ${fileList.length - validFiles.length} filer som inte är rotfiler`);
+            
+            // Använd primitiva värden istället för fullständiga objekt i loggar för att undvika cirkulära strukturer
+            const invalidFileIds = fileList
+              .filter(file => file.folderId !== null)
+              .map(f => `[${f.id}: ${f.name}, felaktig mappID: ${f.folderId}]`);
+            
+            console.error(`/api/files - FELDISKREPANS: Felaktiga rotfiler:`, invalidFileIds);
+            
+            // Ersätt listan med endast giltiga filer
+            fileList = validFiles;
           }
-          return isNullFolder;
-        });
-        
-        if (validFiles.length !== fileList.length) {
-          console.error(`/api/files - KRITISKT FEL I DATAVALIDERING! Hittade ${fileList.length - validFiles.length} rotfiler med icke-null mappID!`);
-          console.error(`/api/files - FELKORRIGERING: Filtrerar bort ${fileList.length - validFiles.length} filer som inte är rotfiler`);
-          
-          const invalidFiles = fileList.filter(file => file.folderId !== null);
-          console.error(`/api/files - FELDISKREPANS: Felaktiga rotfiler:`, 
-            invalidFiles.map(f => `[${f.id}: ${f.name}, felaktig mappID: ${f.folderId}]`));
-          
-          // Ersätt listan med endast giltiga filer
-          fileList = validFiles;
         }
-      }
-      
-      if (fileList.length !== origCount) {
-        console.error(`/api/files - TOTAL FILTRERING: Gick från ${origCount} till ${fileList.length} filer efter strikt validering`);
+        
+        if (fileList.length !== origCount) {
+          console.error(`/api/files - TOTAL FILTRERING: Gick från ${origCount} till ${fileList.length} filer efter strikt validering`);
+        }
+      } catch (error) {
+        console.error('/api/files - FEL VID VALIDERING:', error);
+        // Fortsätt med den ursprungliga fileList om validering misslyckas
       }
       
       // Steg 7: Loggning av resultatet med tydlig information
