@@ -1471,12 +1471,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Loggning av uppladdningsparametrar för felsökning
       console.log(`/api/files POST - Laddar upp fil: "${fileName}" till projekt ${projectId}, mapp ${folderId || 'INGEN MAPP/ROOT'}`);
       
-      // FÖRBÄTTRAD FILINFORMATION FÖR UPPLADDNING - Hantera folderId mer strikt
+      // FÖRBÄTTRAD FILINFORMATION FÖR UPPLADDNING - Hantera folderId mycket striktare
       let parsedFolderId = null;
       
       // Om en mapp anges, validera att den existerar för projektet
-      if (folderId) {
-        parsedFolderId = parseInt(folderId);
+      if (folderId && folderId !== 'null' && folderId !== 'undefined') {
+        // Mer robust parsning av folderId - säkerställ att vi har ett heltal
+        const tempId = parseInt(folderId);
+        if (isNaN(tempId)) {
+          console.error(`/api/files POST - FEL: Mapp-ID ${folderId} är inte ett giltigt heltal`);
+          return res.status(400).json({ error: "Ogiltigt format på mapp-ID" });
+        }
+        
+        parsedFolderId = tempId;
+        console.log(`/api/files POST - Konverterade mapp-ID från "${folderId}" till ${parsedFolderId}`);
         
         // Validering av mapptillhörighet - kontrollera att mappen faktiskt tillhör projektet
         try {
@@ -1497,6 +1505,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`/api/files POST - Kunde inte validera mapp ${parsedFolderId}:`, err);
           return res.status(500).json({ error: "Kunde inte validera mappinformation" });
         }
+      } else {
+        console.log(`/api/files POST - Ingen giltig mapp angiven, fil sparas i ROT. Värde: "${folderId}"`);
       }
       
       // Create file record in database with explicit NULL for folderId when no folder is selected
