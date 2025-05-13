@@ -495,10 +495,7 @@ class DatabaseStorage implements IStorage {
     }
     
     try {
-      // I förberedning för tillgång till kolumner som använder snake_case (i databasen) istället för camelCase
-      const projectIdColumn = 'project_id';
-      const folderIdColumn = 'folder_id';
-      
+      // STRIKT LÄGE: Hämta ENDAST filer som har NULL i folderId (dvs. filer utan mapptillhörighet)
       const fileList = await db.query.files.findMany({
         where: and(
           eq(files.projectId, projectId),
@@ -506,7 +503,13 @@ class DatabaseStorage implements IStorage {
         )
       });
       
-      console.log(`storage.getRootFiles: Hittade ${fileList.length} rotfiler för projekt ${projectId}`);
+      console.log(`storage.getRootFiles: Hittade ${fileList.length} rotfiler för projekt ${projectId}. ENDAST filer utan mapptillhörighet visas.`);
+      
+      // Extra debug-loggning för felsökning av filvisning i mappar
+      if (fileList.length > 0) {
+        console.log(`storage.getRootFiles: FILER UTAN MAPPTILLHÖRIGHET: ${fileList.map(f => `[${f.id}: ${f.name}]`).join(', ')}`);
+      }
+      
       return fileList;
     } catch (error) {
       console.error("Error fetching root files:", error);
@@ -524,6 +527,7 @@ class DatabaseStorage implements IStorage {
     }
     
     try {
+      // STRIKT LÄGE: Hämta ENDAST filer med exact match på både projectId OCH folderId
       const fileList = await db.query.files.findMany({
         where: and(
           eq(files.projectId, projectId),
@@ -531,7 +535,13 @@ class DatabaseStorage implements IStorage {
         )
       });
       
-      console.log(`storage.getFilesByFolder: Hittade ${fileList.length} filer i mapp ${folderId} för projekt ${projectId}`);
+      console.log(`storage.getFilesByFolder: Hittade ${fileList.length} filer i mapp ${folderId} för projekt ${projectId}. ENDAST filer för denna specifika mapp.`);
+      
+      // Extra debug-loggning för felsökning av filvisning i mappar
+      if (fileList.length > 0) {
+        console.log(`storage.getFilesByFolder: FILER I MAPP ${folderId}: ${fileList.map(f => `[${f.id}: ${f.name}]`).join(', ')}`);
+      }
+      
       return fileList;
     } catch (error) {
       console.error("Error fetching files by folder:", error);
