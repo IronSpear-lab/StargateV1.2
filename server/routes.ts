@@ -1320,18 +1320,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hämta användarinformation först
       const user = await storage.getUser(req.user!.id);
       
-      // Create file record in database
+      // Loggning av uppladdningsparametrar för felsökning
+      console.log(`/api/files POST - Laddar upp fil: "${fileName}" till projekt ${projectId}, mapp ${folderId || 'INGEN MAPP/ROOT'}`);
+      
+      // FÖRBÄTTRAD FILINFORMATION FÖR UPPLADDNING - Hantera folderId mer strikt
+      let parsedFolderId = null;
+      
+      // Om en mapp anges, validera att den existerar för projektet
+      if (folderId) {
+        parsedFolderId = parseInt(folderId);
+        
+        // Validering av mapptillhörighet - kontrollera att mappen faktiskt tillhör projektet
+        try {
+          const folderExists = await db.query.folders.findFirst({
+            where: and(
+              eq(folders.id, parsedFolderId),
+              eq(folders.projectId, parseInt(projectId))
+            )
+          });
+          
+          if (!folderExists) {
+            console.error(`/api/files POST - FEL: Mapp ${parsedFolderId} tillhör inte projekt ${projectId}`);
+            return res.status(400).json({ error: "Mappen tillhör inte projektet" });
+          }
+          
+          console.log(`/api/files POST - Verifierade att mapp ${parsedFolderId} tillhör projekt ${projectId}`);
+        } catch (err) {
+          console.error(`/api/files POST - Kunde inte validera mapp ${parsedFolderId}:`, err);
+          return res.status(500).json({ error: "Kunde inte validera mappinformation" });
+        }
+      }
+      
+      // Create file record in database with explicit NULL for folderId when no folder is selected
       const file = await storage.createFile({
         name: fileName,
         fileType,
         fileSize,
         filePath,
         projectId: parseInt(projectId),
-        folderId: folderId ? parseInt(folderId) : undefined,
+        folderId: parsedFolderId, // Använd NULL explicit när ingen mapp är vald
         uploadedById: req.user!.id,
         uploaderUsername: user?.username || "projectleader", // Spara användarnamn med filen
         uploadDate: new Date()
       });
+      
+      console.log(`/api/files POST - Skapat fil ${file.id} med folderId = ${file.folderId || 'NULL (rotfil)'}`);
       
       // Om det är en PDF-fil, skapa automatiskt första versionen
       if (fileType === 'application/pdf') {

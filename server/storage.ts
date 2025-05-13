@@ -675,11 +675,28 @@ class DatabaseStorage implements IStorage {
   }
 
   async createFile(file: Omit<File, "id" | "uploadDate">): Promise<File> {
-    const validatedData = insertFileSchema.parse({
-      ...file,
-      uploadDate: new Date()
+    // KRITISK FÖRBÄTTRING: Säkerställ korrekt hantering av folderId
+    // Om folderId är undefined, sätt det till explicit NULL för att undvika problemet med
+    // files som visas i alla mappar
+    
+    console.log(`storage.createFile: Skapar fil "${file.name}" med följande mapptillhörighet:`, { 
+      projektId: file.projectId, 
+      folderId: file.folderId ?? 'NULL (explicit rotfil)' 
     });
+    
+    // Notera: Vi behöver explicit konvertera undefined till null för att 
+    // säkerställa konsekvent databasbeteende
+    const fileDataToSave = {
+      ...file,
+      uploadDate: new Date(),
+      folderId: file.folderId === undefined ? null : file.folderId
+    };
+    
+    const validatedData = insertFileSchema.parse(fileDataToSave);
     const result = await db.insert(files).values(validatedData).returning();
+    
+    console.log(`storage.createFile: Fil skapad med ID ${result[0].id}, folderId = ${result[0].folderId || 'NULL (rotfil)'}`);
+    
     return result[0];
   }
   
