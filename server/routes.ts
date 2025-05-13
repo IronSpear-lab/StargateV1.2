@@ -3140,6 +3140,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Annotationen är inte kopplad till ett projekt" });
       }
       
+      // Hämta användarinformation för att kontrollera rollen
+      const userInfo = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
+      
+      // Superusers och admins kan konvertera alla kommentarer till uppgifter
+      const isSuperuserOrAdmin = userInfo && (userInfo.role === 'superuser' || userInfo.role === 'admin');
+      
+      // Användare som skapat kommentaren kan konvertera den till uppgift
+      const isCreator = annotation.createdById === req.user!.id;
+      
+      // Projektledare kan konvertera kommentarer i sina projekt till uppgifter
+      let isProjectLeader = false;
+      if (!isSuperuserOrAdmin && !isCreator) {
+        const userProject = await db.select()
+          .from(userProjects)
+          .where(and(
+            eq(userProjects.userId, req.user!.id),
+            eq(userProjects.projectId, annotation.projectId),
+            eq(userProjects.role, 'project_leader')
+          ))
+          .limit(1);
+          
+        isProjectLeader = userProject.length > 0;
+      }
+      
+      // Kontrollera om användaren har behörighet att konvertera
+      if (!isSuperuserOrAdmin && !isCreator && !isProjectLeader) {
+        console.log(`POST /pdf/annotations/${annotationId}/convert-to-task - ÅTKOMST NEKAD: Användare ${req.user!.id} kan inte konvertera annotation ${annotationId} skapad av ${annotation.createdById}`);
+        return res.status(403).json({ error: "Du har inte behörighet att konvertera denna kommentar till en uppgift" });
+      }
+      
+      console.log(`POST /pdf/annotations/${annotationId}/convert-to-task - BEHÖRIGHETSKONTROLL OK: Användare ${req.user!.id} (${isSuperuserOrAdmin ? userInfo!.role : isCreator ? 'creator' : 'project_leader'}) kan konvertera annotation ${annotationId} till uppgift`);
+      
       // Om uppgiften redan existerar, returnera den
       if (annotation.taskId) {
         const existingTask = await db.query.tasks.findFirst({
