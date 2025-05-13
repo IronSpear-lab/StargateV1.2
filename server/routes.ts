@@ -2913,12 +2913,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
+      const fileId = req.query.fileId ? parseInt(req.query.fileId as string) : undefined;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-      console.log(`DEBUG: Recent files API - Parsed params: projectId=${projectId}, limit=${limit}`);
       
+      console.log(`DEBUG: Recent files API - Parsed params: projectId=${projectId}, fileId=${fileId}, limit=${limit}`);
+      
+      // Om ett specifikt fileId efterfrågas, hämta den filen
+      if (fileId) {
+        const file = await db.query.files.findFirst({
+          where: eq(files.id, fileId)
+        });
+        
+        if (!file) {
+          return res.status(404).json({ error: "File not found" });
+        }
+        
+        // Kontrollera att användaren har tillgång till filens projekt
+        const userProject = await db.select()
+          .from(userProjects)
+          .where(and(
+            eq(userProjects.userId, req.user!.id),
+            eq(userProjects.projectId, file.projectId)
+          ))
+          .limit(1);
+        
+        if (userProject.length === 0) {
+          return res.status(403).json({ error: 'You do not have access to this file' });
+        }
+        
+        // Returnera filen
+        return res.json([{
+          id: file.id.toString(),
+          name: file.name || "Unnamed file",
+          fileType: file.fileType || "unknown",
+          fileSize: file.fileSize || 0,
+          lastModified: file.uploadDate ? file.uploadDate.toISOString() : new Date().toISOString(),
+          folder: "Vault", // Enkel standard för enskilda filer
+          uploadedBy: "User", // Förenklad respons
+          uploadedById: file.uploadedById ? file.uploadedById.toString() : "unknown",
+          fileId: file.id.toString()
+        }]);
+      }
+      
+      // Annars behöver vi ett projektId
       if (!projectId) {
         console.log("DEBUG: Recent files API - Missing projectId");
-        return res.status(400).json({ error: "Project ID is required" });
+        return res.status(400).json({ error: "Project ID is required when not querying by fileId" });
       }
       
       // Kontrollera att användaren har tillgång till projektet
