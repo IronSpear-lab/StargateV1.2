@@ -1418,6 +1418,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "No file uploaded" });
       }
 
+      if (!req.isAuthenticated()) {
+        return res.status(401).send({ error: 'Unauthorized' });
+      }
+
       const { projectId, folderId } = req.body;
       
       if (!projectId) {
@@ -1430,8 +1434,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileSize = req.file.size;
       const filePath = req.file.path;
 
-      // Hämta användarinformation först
-      const user = await storage.getUser(req.user!.id);
+      // Hämta användarinformation först, vi behöver detta både för behörighetskontroll och för att spara metadata
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
+      
+      // Kontrollera användaråtkomst till projektet
+      const isSuperuserOrAdmin = user && (user.role === 'superuser' || user.role === 'admin');
+      let hasAccess = false;
+      
+      if (isSuperuserOrAdmin) {
+        // Superuser/admin har automatiskt tillgång
+        hasAccess = true;
+        console.log(`/api/files POST - ÅTKOMST BEVILJAD: Användare ${req.user!.id} har ${user.role}-behörighet till alla projekt`);
+      } else {
+        // För vanliga användare, kontrollera projektbehörighet
+        const userProjectAccess = await db.select()
+          .from(userProjects)
+          .where(and(
+            eq(userProjects.userId, req.user!.id),
+            eq(userProjects.projectId, parseInt(projectId))
+          ))
+          .limit(1);
+        
+        hasAccess = userProjectAccess.length > 0;
+      }
+      
+      if (!hasAccess) {
+        console.error(`/api/files POST - ÅTKOMST NEKAD: Användare ${req.user!.id} har inte tillgång till projekt ${projectId}`);
+        return res.status(403).json({ 
+          error: 'Du har inte behörighet att ladda upp filer i detta projekt',
+          details: 'Kontakta en projektadministratör för att få behörighet'
+        });
+      }
       
       // Loggning av uppladdningsparametrar för felsökning
       console.log(`/api/files POST - Laddar upp fil: "${fileName}" till projekt ${projectId}, mapp ${folderId || 'INGEN MAPP/ROOT'}`);
