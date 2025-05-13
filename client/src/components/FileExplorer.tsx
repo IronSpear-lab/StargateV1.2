@@ -492,13 +492,18 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     
     console.log(`Laddar upp fil till projektID: ${currentProject.id}`);
     
+    // KRITISK FÖRBÄTTRING: Använd den aktiva mappen först (selectedFolderId)
+    const effectiveFolderId = selectedFolderId || uploadState.selectedFolder;
+    
+    console.log(`Effektiv mapp för uppladdning: ${effectiveFolderId} (selectedFolderId=${selectedFolderId}, uploadState.selectedFolder=${uploadState.selectedFolder})`);
+    
     // KRITISK FÖRBÄTTRING: Se till att folderId hanteras korrekt
-    if (uploadState.selectedFolder) {
+    if (effectiveFolderId) {
       // Validera att mappen existerar och tillhör rätt projekt
-      const folder = foldersData?.find((f: FolderData) => f.id.toString() === uploadState.selectedFolder);
+      const folder = foldersData?.find((f: FolderData) => f.id.toString() === effectiveFolderId);
       
       if (!folder) {
-        console.error(`ALLVARLIGT FEL: Vald mapp (ID ${uploadState.selectedFolder}) finns inte i mappdata!`);
+        console.error(`ALLVARLIGT FEL: Vald mapp (ID ${effectiveFolderId}) finns inte i mappdata!`);
         toast({
           title: "Felaktig mapp",
           description: "Den valda mappen kunde inte hittas. Välj en annan mapp.",
@@ -509,7 +514,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       }
       
       if (folder.projectId.toString() !== currentProject.id.toString()) {
-        console.error(`VARNING: Vald mapp (ID ${uploadState.selectedFolder}) tillhör projekt ${folder.projectId}, inte aktuellt projekt ${currentProject.id}`);
+        console.error(`VARNING: Vald mapp (ID ${effectiveFolderId}) tillhör projekt ${folder.projectId}, inte aktuellt projekt ${currentProject.id}`);
         toast({
           title: "Felaktig mapp",
           description: "Den valda mappen tillhör ett annat projekt.",
@@ -520,8 +525,8 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       }
       
       // KRITISKT FIXAT: Skicka folderId med korrekt format 
-      formData.append('folderId', uploadState.selectedFolder.toString());
-      console.log(`Laddar upp till mapp: ${uploadState.selectedFolder} (validerad för projekt ${currentProject.id})`);
+      formData.append('folderId', effectiveFolderId.toString());
+      console.log(`Laddar upp till mapp: ${effectiveFolderId} (validerad för projekt ${currentProject.id})`);
     } else {
       // Explicit loggning när ingen mapp är vald - för felsökning
       console.log(`Laddar upp utan mappval - filen kommer placeras i ROT`);
