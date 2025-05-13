@@ -666,244 +666,224 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     createFolderMutation.mutate(folderData);
   };
 
-  // Förenklad buildFileTree funktion
+  // HELT OMBYGGD buildFileTree funktion för strikt mappfiltrering
   const buildFileTree = () => {
-    // STEG 0: Förbered data
+    // STEG 0: Skapa tomma resultatstrukturer
     const tree: FileNode[] = [];
     const folderMap: Record<string, FileNode> = {};
     
-    // Logga för att se vilka data som finns vid start
-    console.log("STARTAR TRÄDBYGGNAD:", {
-      foldersData: foldersData?.length || 0,
-      filesData: filesData?.length || 0,
-      currentProject: currentProject?.id
+    // Logga diagnostisk information
+    console.log("RADIKAL OMBYGGD TRÄDBYGGNAD:", {
+      mappkontext: selectedFolderId ? `MAPP ${selectedFolderId}` : 'ROT',
+      tillgängligaMappar: foldersData?.length || 0,
+      tillgängligaFiler: filesData?.length || 0,
+      projektID: currentProject?.id
     });
     
-    // Om vi saknar projektdata, returnera ett tomt träd
+    // Validera att vi har nödvändig data för att bygga trädet
     if (!currentProject?.id) {
-      console.warn("FileExplorer: Inget aktivt projekt, kan inte bygga filträd");
+      console.warn("FileExplorer: ⛔ KRITISKT - Inget projekt valt, kan inte bygga träd");
       return [];
     }
     
-    // STEG 1: Filtrera mappar för aktuellt projekt
-    if (!foldersData) {
-      console.warn("FileExplorer: Saknar data för mappar");
+    if (!foldersData || !filesData) {
+      console.warn(`FileExplorer: ⚠️ Saknar data - Mappar: ${!!foldersData}, Filer: ${!!filesData}`);
       return [];
     }
     
-    console.log(`FileExplorer: 🔄 TRÄDBYGGNAD - Kontext: ${selectedFolderId ? `MAPP ${selectedFolderId}` : 'ROTLÄGE'}`);
-    
-    // Filtrera och se till att vi bara använder mappar från aktuellt projekt
-    const projectFolders = foldersData.filter((folder: FolderData) => 
+    // STEG 1: STRIKT PROJEKTMAPPFILTRERING - Endast mappar från detta projekt
+    const projektetsMappar = foldersData.filter((folder: FolderData) => 
       folder && folder.projectId && folder.projectId.toString() === currentProject.id.toString()
     );
     
-    // Använd de filtrerade projektmapparna för fortsatt bearbetning
-    let workingFolders = [...projectFolders];
+    console.log(`FileExplorer: 📂 Projekt ${currentProject.id} har ${projektetsMappar.length} mappar`);
     
-    console.log(`FileExplorer: ${workingFolders.length} mappar för projekt ${currentProject.id}`);
+    // STEG 2: STRIKT PROJEKTFILFILTRERING - Endast filer från detta projekt
+    const projektetsAllaFiler = filesData.filter((file: FileData) => 
+      file && file.projectId && file.projectId.toString() === currentProject.id.toString()
+    );
     
-    // Kontrollera att vi har filer att visa
-    if (!filesData) {
-      console.log("FileExplorer: Inga fildata tillgängliga");
+    console.log(`FileExplorer: 📄 Projekt ${currentProject.id} har totalt ${projektetsAllaFiler.length} filer`);
+    
+    // STEG 3: RADIKAL KONTEXTBASERAD FILFILTRERING
+    let filerAttVisa: FileData[] = [];
+    
+    // Bestäm vilka filer som ska visas baserat på den exakta kontexten vi är i
+    if (selectedFolderId) {
+      // MAPPLÄGE: Visa ENDAST filer som tillhör exakt denna mapp
+      console.log(`FileExplorer: 🔍 MAPPLÄGE - Visar endast filer i mapp ${selectedFolderId}`);
+      
+      // Extremt strikt filtrering med flera nivåer av validering
+      filerAttVisa = projektetsAllaFiler.filter(file => {
+        // Krav 1: Filen måste ha en giltig folderId
+        if (file.folderId === null || file.folderId === undefined) {
+          console.log(`FileExplorer: ❌ Fil ${file.id} - "${file.name}" har INGEN folderId, visas INTE i mapp ${selectedFolderId}`);
+          return false;
+        }
+        
+        // Krav 2: folderId måste vara strikt samma som den valda mappen
+        const filFolderId = Number(file.folderId);
+        const valdMappId = Number(selectedFolderId);
+        
+        if (isNaN(filFolderId) || isNaN(valdMappId)) {
+          console.log(`FileExplorer: ❌ Fil ${file.id} har ogiltig folderId (${file.folderId}), visas INTE i mapp ${selectedFolderId}`);
+          return false;
+        }
+        
+        // Krav 3: Strikt numerisk likhet
+        const exactMatch = filFolderId === valdMappId;
+        
+        if (exactMatch) {
+          console.log(`FileExplorer: ✅ Fil ${file.id} - "${file.name}" med folderId=${filFolderId} MATCHAR mapp ${selectedFolderId} - VISAS`);
+          return true;
+        } else {
+          console.log(`FileExplorer: ❌ Fil ${file.id} - "${file.name}" med folderId=${filFolderId} MATCHAR INTE mapp ${selectedFolderId} - VISAS EJ`);
+          return false;
+        }
+      });
     } else {
-      console.log(`FileExplorer: Fildata tillgängliga: ${filesData.length} filer`);
+      // ROTLÄGE: Visa ENDAST filer utan mapptillhörighet
+      console.log(`FileExplorer: 🌱 ROTLÄGE - Visar endast filer utan mapptillhörighet`);
+      
+      filerAttVisa = projektetsAllaFiler.filter(file => {
+        // En fil är en rotfil om den saknar mappkoppling helt
+        const isRootFile = file.folderId === null || file.folderId === undefined || 
+                          file.folderId === 0 || file.folderId === '';
+        
+        if (isRootFile) {
+          console.log(`FileExplorer: ✅ Rotfil ${file.id} - "${file.name}" visas i ROT`);
+          return true;
+        } else {
+          console.log(`FileExplorer: ❌ Fil ${file.id} - "${file.name}" med folderId=${file.folderId} är INTE en rotfil - VISAS EJ i ROT`);
+          return false;
+        }
+      });
     }
     
-    // Filtrera filer för aktuellt projekt och kontext (mapp eller rot)
-    const projectFiles = filesData ? filesData.filter((file: FileData) => {
-      // Grundläggande filtreringsvillkor baserat på projektID
-      const isCorrectProject = file && file.projectId && 
-        file.projectId.toString() === currentProject.id.toString();
-      
-      // Extra validering av mapptillhörighet baserat på vår aktuella kontext - STRIKT TYPJÄMFÖRELSE
-      const hasCorrectFolderContext = selectedFolderId
-        ? file.folderId !== null && file.folderId !== undefined && 
-          Number(file.folderId) === Number(selectedFolderId) // För mappläge - STRIKT typkonvertering
-        : file.folderId === null || file.folderId === undefined || 
-          file.folderId === 0 || file.folderId === '';      // För rotläge - hantera alla tomt/null-varianter
-      
-      // Filen måste uppfylla BÅDA villkoren för att inkluderas
-      return isCorrectProject && hasCorrectFolderContext;
-    }) : [];
+    console.log(`FileExplorer: 🎯 ${filerAttVisa.length} av ${projektetsAllaFiler.length} filer kvalificerade för visning i aktuell kontext`);
     
-    console.log(`FileExplorer: ${projectFiles.length} validerade filer för kontext: ${selectedFolderId ? `Mapp ${selectedFolderId}` : 'Rotläge'}`);
-    if (filesData && filesData.length !== projectFiles.length) {
-      console.log(`FileExplorer: Filtrerade bort ${filesData.length - projectFiles.length} filer som inte matchar aktuell kontext`);
-    }
-    
-    // STEG 2: Skapa alla mappnoder och spara dem i folderMap för enkel åtkomst via ID
-    workingFolders.forEach((folder: FolderData) => {
-      const folderNode: FileNode = {
+    // STEG 4: SKAPA MAPP-NODER FÖR TRÄDVISUALISERING
+    projektetsMappar.forEach((folder: FolderData) => {
+      // Skapa en mapp-nod med alla grundläggande attribut
+      folderMap[`folder_${folder.id}`] = {
         id: `folder_${folder.id}`,
         name: folder.name,
         type: 'folder',
-        children: [] // Tom array från början
+        folderId: folder.id, // Explicit lagra det faktiska mappID:t
+        projectId: folder.projectId, // Lagra även projektID för striktare filtrering
+        expanded: expandedFolders[`folder_${folder.id}`] || true, // Som standard expanderade
+        children: [] // Börja med tom lista - lägger till filer och undermappar senare
       };
       
-      // Spara i mappningsobjektet för enkel åtkomst senare
-      folderMap[`folder_${folder.id}`] = folderNode;
-      console.log(`FileExplorer: Registrerar mapp "${folder.name}" med ID ${folder.id}`);
+      console.log(`FileExplorer: ✓ Skapade mappnod för "${folder.name}" (ID ${folder.id})`);
     });
     
-    console.log("Alla registrerade mappar i folderMap:", Object.keys(folderMap).join(", "));
-    
-    // STEG 3: Organisera mappar i en hierarki baserat på parent-child relationer
-    workingFolders.forEach((folder: FolderData) => {
+    // STEG 5: ORGANISERA MAPPAR I HIERARKI
+    projektetsMappar.forEach((folder: FolderData) => {
+      // Har denna mapp en förälder?
       if (folder.parentId) {
-        // Denna mapp har en förälder
+        // JA - Denna mapp har en förälder
         const parentKey = `folder_${folder.parentId}`;
         
         if (folderMap[parentKey]) {
-          // Föräldern finns, lägg till denna mapp som ett barn till föräldern
+          // Föräldern finns, placera mappen som barn under föräldern
           folderMap[parentKey].children = folderMap[parentKey].children || [];
           folderMap[parentKey].children.push(folderMap[`folder_${folder.id}`]);
-          console.log(`FileExplorer: Mapp "${folder.name}" (${folder.id}) placeras under förälder ${folder.parentId}`);
+          console.log(`FileExplorer: ⤵️ Mapp "${folder.name}" (${folder.id}) placerad under förälder ${folder.parentId}`);
         } else {
-          // Föräldern saknas, placera i root
-          console.warn(`FileExplorer: Kan inte hitta föräldermapp ${folder.parentId} för mapp ${folder.id}, placerar i root`);
+          // Föräldern saknas (ovanligt, men kan hända) - placera i rot
           tree.push(folderMap[`folder_${folder.id}`]);
+          console.warn(`FileExplorer: ⚠️ Kan inte hitta föräldermapp ${folder.parentId} för mapp ${folder.id}, placerar i ROT`);
         }
       } else {
-        // Denna mapp har ingen förälder, placera i root
+        // NEJ - Denna mapp har ingen förälder, placera direkt i rotträdet
         tree.push(folderMap[`folder_${folder.id}`]);
-        console.log(`FileExplorer: Rotmapp "${folder.name}" (${folder.id}) läggs i trädets rot`);
+        console.log(`FileExplorer: ⬆️ Mapp "${folder.name}" (${folder.id}) placerad i ROT (ingen förälder)`);
       }
     });
     
-    // Kontrollera och logga alla mappar som lagts till i trädet
-    console.log(`FileExplorer: Efter mapporganisering finns ${tree.length} objekt i root:`, 
-      tree.map(node => `${node.type}: ${node.name} (${node.id})`).join(", "));
-    
-    // STEG 4: Organisera filer i respektive mapp (eller i root om de inte har någon mapp)
-    // *** VIKTIGT: STRIKT FILTRERING AV FILER BASERAT PÅ MAPP ***
-    // Vi litar inte på API:ets filtrering utan göt en extra strikt filtrering här
-    console.log(`FileExplorer: 🔍 STRIKT FILTRERING AV FILER. Vald mapp ID: ${selectedFolderId}`);
-    
-    projectFiles.forEach((file: FileData) => {
-      // Skapa filnoden med grundläggande egenskaper
-      const fileNode: FileNode = {
-        id: `file_${file.id}`,
-        name: file.name,
-        type: 'file',
-        fileType: getFileExtension(file.name),
-        fileSize: file.size,
-        selected: `file_${file.id}` === selectedFileId
-      };
+    // STEG 6: LÄGG TILL FILER I TRÄDET - STRIKT ENLIGT KONTEXT
+    if (selectedFolderId) {
+      // MAPPLÄGE: Lägg alla filer i den valda mappen
+      const folderKey = `folder_${selectedFolderId}`;
       
-      // LOGGA VARJE FIL FÖR TYDLIGARE FELSÖKNING
-      console.log(`FileExplorer: Bearbetar fil "${file.name}" (ID ${file.id}, mappID: ${file.folderId || "ROOT"})`);
+      // Kontrollera att den valda mappen faktiskt finns
+      if (!folderMap[folderKey]) {
+        console.error(`FileExplorer: ❌❌❌ KRITISKT FEL - Den valda mappen ${selectedFolderId} existerar inte i mappstrukturen!`);
+        return tree; // Returnera bara mapparna
+      }
       
-      // HELT OMARBETAT - EXTREMT STRIKT FILTRERING FÖR SÄKERHETSKRITISKA APPLIKATIONER
-      // 1. FIL MED MAPPTILLHÖRIGHET
-      if (file.folderId !== null && file.folderId !== undefined) {
-        // Strikt typkontroll och standardisering
-        const fileFolderId = Number(file.folderId);
-        if (isNaN(fileFolderId) || fileFolderId <= 0) {
-          console.warn(`FileExplorer: ⚠️ Fil "${file.name}" (ID ${file.id}) har ogiltig folderId ${file.folderId}, ignoreras`);
-          return; // Hoppa över denna fil helt
-        }
+      // För varje fil som passerade filteringen - lägg till i den valda mappen
+      filerAttVisa.forEach(file => {
+        const fileNode: FileNode = {
+          id: `file_${file.id}`,
+          name: file.name,
+          type: 'file',
+          fileType: getFileExtension(file.name),
+          fileSize: file.size,
+          folderId: Number(file.folderId), // Explicit lagra mappID
+          projectId: file.projectId, // Lagra projektID
+          selected: `file_${file.id}` === selectedFileId
+        };
         
-        const folderKey = `folder_${fileFolderId}`;
+        // Lägg till filen i den valda mappen
+        folderMap[folderKey].children = folderMap[folderKey].children || [];
+        folderMap[folderKey].children.push(fileNode);
+        console.log(`FileExplorer: ✅ Fil "${file.name}" placerad i mapp ${selectedFolderId}`);
+      });
+      
+      console.log(`FileExplorer: ✅ Alla ${filerAttVisa.length} filer för mapp ${selectedFolderId} har lagts till`);
+    } else {
+      // ROTLÄGE: Lägg alla rotfiler direkt i trädet
+      filerAttVisa.forEach(file => {
+        const fileNode: FileNode = {
+          id: `file_${file.id}`,
+          name: file.name,
+          type: 'file',
+          fileType: getFileExtension(file.name),
+          fileSize: file.size,
+          folderId: null, // Explicit NULL för att bekräfta rotfilstatus
+          projectId: file.projectId,
+          isRootFile: true, // Markera som rotfil för tydlighet
+          selected: `file_${file.id}` === selectedFileId
+        };
         
-        // VISNINGSREGLER FÖR MAPPTILLHÖRANDE FILER - EXTRA STRIKT VERSION:
-        // 1. En mapp måste vara vald
-        // 2. Den valda mappen måste EXAKT matcha filens mappID med strikt typjämförelse
-        // 3. Mappen måste existera i vår folderMap
-        
-        // Konvertera till nummer FÖR JÄMFÖRELSE, men kontrollera strikt
-        const targetFolderId = Number(selectedFolderId);
-        const strictFolderMatch = selectedFolderId && 
-                                !isNaN(targetFolderId) && 
-                                targetFolderId > 0 && 
-                                targetFolderId === fileFolderId && 
-                                folderMap[folderKey];
-        
-        if (strictFolderMatch) {
-          // EXTRA VALIDERING: Kontrollera att mapparna exakt matchar även som strängar
-          const exactStringMatch = String(fileFolderId) === String(selectedFolderId);
-          
-          if (exactStringMatch) {
-            // BARA om ALLA villkor är uppfyllda - lägg till filen i den valda mappen
-            folderMap[folderKey].children = folderMap[folderKey].children || [];
-            
-            // Lägg till explicit folderId i filnoden för extra säkerhet och spårbarhet
-            const enhancedFileNode = {
-              ...fileNode,
-              folderId: fileFolderId, // Explicit lagra mappkoppling i filnoden
-              projectId: file.projectId // Spara även projektID för fullständig kontext
-            };
-            
-            folderMap[folderKey].children.push(enhancedFileNode);
-            console.log(`FileExplorer: ✅ VALIDERAD: Fil "${file.name}" (ID ${file.id}) har EXAKT mappning till mapp ${selectedFolderId}, VISAS`);
-          } else {
-            console.warn(`FileExplorer: ⚠️ STRINGJÄMFÖRELSEFEL: Fil "${file.name}" (ID ${file.id}): '${String(fileFolderId)}' vs '${String(selectedFolderId)}'`);
-          }
-        } else {
-          // DETALJERAD DIAGNOSTIK för varje typ av jämförelsefel
-          if (!selectedFolderId) {
-            console.log(`FileExplorer: 🔍 Fil "${file.name}" (ID ${file.id}) tillhör mapp ${fileFolderId} men vi är i ROOT-läge`);
-          } else if (Number(selectedFolderId) !== fileFolderId) {
-            console.log(`FileExplorer: 🔒 Fil "${file.name}" (ID ${file.id}) tillhör mapp ${fileFolderId}, INTE mapp ${selectedFolderId}`);
-          } else if (!folderMap[folderKey]) {
-            console.log(`FileExplorer: ⛔ Fil "${file.name}" (ID ${file.id}) tillhör mapp ${fileFolderId} som saknas i folderMap`);
-          }
-          // INGEN ÅTGÄRD - filen visas inte alls i denna kontext
-        }
-      }
-      // 2. ROTFIL (ingen mapptillhörighet) - STRIKTARE HANTERING
-      else {
-        // VISNINGSREGLER FÖR ROTFILER - STRIKTARE VERSION:
-        // 1. Visa ENDAST i absolut root-läge (ingen mapp vald)
-        // 2. Explicit bekräfta att filen inte har någon mappkoppling
-        // 3. Aldrig visa i någon mapp
-        
-        // Först, extra validering att detta verkligen är en rotfil
-        const isStrictRootFile = file.folderId === null || 
-                               file.folderId === undefined || 
-                               file.folderId === 0 || 
-                               file.folderId === '';
-        
-        if (!selectedFolderId && isStrictRootFile) {
-          // Lägg till i huvudträdet MED extra attribut för diagnostik
-          const enhancedRootFileNode = {
-            ...fileNode,
-            folderId: null,  // Explicit NULL för att bekräfta rotfilstatus
-            projectId: file.projectId, // Spara projektID för spårbarhet
-            isRootFile: true // Extra flagga för tydligare diagnostik
-          };
-          
-          tree.push(enhancedRootFileNode);
-          console.log(`FileExplorer: ✅ VALIDERAD ROTFIL: "${file.name}" (ID ${file.id}) visas KORREKT i ROOT`);
-        } else if (selectedFolderId) {
-          console.log(`FileExplorer: ℹ️ Rotfil "${file.name}" (ID ${file.id}) visas INTE i mapp ${selectedFolderId} (korrekt beteende)`);
-        } else {
-          console.warn(`FileExplorer: ⚠️ Fil "${file.name}" (ID ${file.id}) är inte en strikt rotfil, folderId=${file.folderId}`);
-        }
-      }
-    });
+        // Lägg till filen direkt i trädet (inte i någon mapp)
+        tree.push(fileNode);
+        console.log(`FileExplorer: ✅ Rotfil "${file.name}" placerad direkt i ROT`);
+      });
+      
+      console.log(`FileExplorer: ✅ Alla ${filerAttVisa.length} rotfiler har lagts till i trädet`);
+    }
     
-    // STEG 5: Inspektera och logga fullständig trädstruktur för FELSÖKNING
+    // STEG 7: SLUTGILTIG KONTROLL AV TRÄDSTRUKTUREN
+    console.log(`FileExplorer: 🔍 SLUTKONTROLL - Trädet innehåller ${tree.length} objekt i roten`);
+    
+    // Detaljerad inspektering av trädstrukturen för felsökning
     const inspectTree = (nodes: FileNode[], level = 0, path = '') => {
       nodes.forEach(node => {
         const indent = ' '.repeat(level * 2);
         const newPath = path ? `${path} > ${node.name}` : node.name;
-        console.log(`${indent}${node.type}: ${node.name} (${node.id}) PATH: ${newPath}`);
+        const childCount = node.children?.length || 0;
+        const typeInfo = node.type === 'file' ? `[Fil${node.folderId ? ` i mapp ${node.folderId}` : ' (ROT)'}]` : '[Mapp]';
+        
+        console.log(`${indent}${typeInfo} ${node.name} (${node.id}) - ${childCount} barn`);
         
         if (node.children && node.children.length > 0) {
-          console.log(`${indent}Barn till ${node.name}:`);
           inspectTree(node.children, level + 1, newPath);
         }
       });
     };
     
-    console.log(`--- FULLSTÄNDIG TRÄDINSPEKTION START ---`);
+    // Kör inspektionen för att logga allt i detalj
+    console.log(`FileExplorer: 🌳 TRÄDINSPEKTION:`);
     inspectTree(tree);
-    console.log(`--- FULLSTÄNDIG TRÄDINSPEKTION SLUT ---`);
     
-    console.log(`FileExplorer: Trädbyggnad slutförd, totalt ${tree.length} objekt i root`);
+    // Returnera det färdigbyggda trädet
     return tree;
   };
+
+  
   
   const fileTree = buildFileTree();
   
