@@ -322,7 +322,39 @@ export default function EnhancedPDFViewer({
       try {
         // Fallback till fileId om versionId inte är tillgängligt
         const numericFileId = fileId ? getConsistentFileId(fileId) : undefined;
-        console.log(`[${new Date().toISOString()}] Laddar PDF-data för fileId: ${fileId} (numeriskt: ${numericFileId})`);
+        console.log(`[${new Date().toISOString()}] Laddar PDF-data för fileId: ${fileId} (numeriskt: ${numericFileId}), folderId: ${folderId}`);
+        
+        // MAPPVALIDERING: Kontrollera att denna fil tillhör rätt mapp (om mappfiltrering är aktivt)
+        if (folderId !== undefined && numericFileId !== undefined) {
+          console.log(`MAPPVALIDERING: Kontrollerar att fil ${numericFileId} tillhör mapp ${folderId}`);
+          
+          // Om folderId är null, kontrollerar vi att filen är i rotmappen
+          // Om folderId är satt, kontrollerar vi att filen tillhör den angivna mappen
+          if (folderId === null) {
+            console.log(`MAPPVALIDERING: Kontrollerar att fil ${numericFileId} finns i rotmappen (ingen mapp)`);
+          } else {
+            console.log(`MAPPVALIDERING: Kontrollerar att fil ${numericFileId} finns i mapp ${folderId}`);
+          }
+          
+          try {
+            // Asynkron validering av mapp-tillhörighet
+            const isValidFolder = await validateFileFolder(numericFileId, folderId);
+            if (!isValidFolder) {
+              console.error(`Fil ${numericFileId} tillhör inte mapp ${folderId}, visar felmeddelande`);
+              toast({
+                title: "Åtkomst nekad",
+                description: "Denna fil tillhör inte den valda mappen. Kontakta systemadministratören om detta är ett fel.",
+                variant: "destructive",
+              });
+              return; // Avbryt laddning av PDF om filen inte tillhör rätt mapp
+            } else {
+              console.log(`Validering OK: Fil ${numericFileId} tillhör mapp ${folderId}`);
+            }
+          } catch (error) {
+            console.error('Fel vid validering av mapp-tillhörighet:', error);
+            // Fortsätt med laddningen även vid valideringsfel, för att säkerställa att systemet inte låser sig
+          }
+        }
         
         if (numericFileId !== undefined && !isNaN(numericFileId) && (useDatabase || projectId)) {
           // Load versions

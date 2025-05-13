@@ -303,6 +303,26 @@ export async function deletePDFAnnotation(annotationId: number): Promise<boolean
   }
 }
 
+// Kontrollera om en fil tillhör en specifik mapp
+export async function validateFileFolder(fileId: number, folderId: number | null): Promise<boolean> {
+  try {
+    // Om folderId är null, kontrollera att filen inte tillhör någon mapp (rootnivå)
+    const queryParam = folderId === null ? 'checkRoot=true' : `folderId=${folderId}`;
+    const res = await apiRequest('GET', `/api/files/${fileId}/validate-folder?${queryParam}`);
+    
+    if (!res.ok) {
+      console.error(`Failed to validate file folder: ${res.statusText}`);
+      return false;
+    }
+    
+    const result = await res.json();
+    return result.valid === true;
+  } catch (error) {
+    console.error('Error validating file folder:', error);
+    return false;
+  }
+}
+
 // Konvertera en PDF-kommentar till en uppgift
 export interface TaskConversionResult {
   message: string;
