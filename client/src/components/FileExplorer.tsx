@@ -582,7 +582,31 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     }, 100);
     
     uploadFileMutation.mutate(formData, {
-      onSettled: () => clearInterval(interval)
+      onSettled: () => {
+        clearInterval(interval);
+        
+        // Efter uppladdning, invalidera filcachen för alla relevanta queries
+        // för att säkerställa att den nya filen blir synlig omedelbart
+        const effectiveFolderId = selectedFolderId || uploadState.selectedFolder;
+        
+        // Invalidera specifikt den query som matchar den aktiva kontexten
+        if (effectiveFolderId) {
+          console.log(`Invaliderar filcache för mapp ${effectiveFolderId} efter uppladdning`);
+          queryClient.invalidateQueries({ 
+            queryKey: ['/api/files', currentProject?.id, effectiveFolderId] 
+          });
+        } else {
+          console.log(`Invaliderar filcache för rotfiler efter uppladdning`);
+          queryClient.invalidateQueries({ 
+            queryKey: ['/api/files', currentProject?.id, null] 
+          });
+        }
+        
+        // För säkerhets skull, invalidera alla filqueries med en bredare selector
+        queryClient.invalidateQueries({ 
+          queryKey: ['/api/files', currentProject?.id] 
+        });
+      }
     });
   };
   
