@@ -1286,16 +1286,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Steg 4: Kontrollera användaråtkomst till projektet
-      // Anropa direkt databas-API istället för storage helper
-      const userProjectAccess = await db.select()
-        .from(userProjects)
-        .where(and(
-          eq(userProjects.userId, req.user!.id),
-          eq(userProjects.projectId, projectId)
-        ))
-        .limit(1);
+      // Hämta användarinformation för att kontrollera rollen först
+      const userInfo = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
+      
+      // Superusers och admins har tillgång till alla projekt
+      const isSuperuserOrAdmin = userInfo && (userInfo.role === 'superuser' || userInfo.role === 'admin');
+      
+      let hasAccess = false;
+      
+      if (isSuperuserOrAdmin) {
+        // Superuser/admin har automatiskt tillgång
+        hasAccess = true;
+        console.log(`/api/files - ÅTKOMST BEVILJAD: Användare ${req.user!.id} har ${userInfo!.role}-behörighet till alla projekt`);
+      } else {
+        // För vanliga användare, kontrollera projektbehörighet
+        const userProjectAccess = await db.select()
+          .from(userProjects)
+          .where(and(
+            eq(userProjects.userId, req.user!.id),
+            eq(userProjects.projectId, projectId)
+          ))
+          .limit(1);
         
-      const hasAccess = userProjectAccess.length > 0;
+        hasAccess = userProjectAccess.length > 0;
+      }
       
       if (!hasAccess) {
         console.error(`/api/files - ÅTKOMST NEKAD: Användare ${req.user!.id} har inte tillgång till projekt ${projectId}`);
@@ -1305,7 +1321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      console.log(`/api/files - BEHÖRIGHETSKONTROLL OK: Användare ${req.user!.id} har tillgång till projekt ${projectId}`);
+      console.log(`/api/files - BEHÖRIGHETSKONTROLL OK: Användare ${req.user!.id} (${isSuperuserOrAdmin ? userInfo!.role : 'regular'}) har tillgång till projekt ${projectId}`);
       
       // Steg 5: Hämta filer med strikt filtrering baserat på specifikt läge
       let fileList = [];
