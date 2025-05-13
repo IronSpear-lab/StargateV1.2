@@ -2,7 +2,7 @@ import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { eq, and, desc, asc, inArray, ne, sql, gte, lte } from "drizzle-orm";
+import { eq, and, desc, asc, inArray, ne, sql, gte, lte, isNull } from "drizzle-orm";
 import { db } from "../db";
 import { users } from "@shared/schema";
 import multer from "multer";
