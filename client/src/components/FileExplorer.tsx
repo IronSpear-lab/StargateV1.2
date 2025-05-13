@@ -760,48 +760,51 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       // HÄREFTER KOMMER NY LOGIK FÖR STRIKT FILTRERING
       // Kontrollera filens tillhörighet baserat på vald mapp ELLER root-läge
       
-      // FALL 1: FIL SOM TILLHÖR EN MAPP
+      // KRITISK FÖRBÄTTRAD LOGIK FÖR STRIKT FILTRERING PER MAPP
+      // FALL 1: FIL SOM TILLHÖR EN SPECIFIK MAPP (har folder_id)
       if (file.folderId) {
         const folderKey = `folder_${file.folderId}`;
+        const fileFolderId = file.folderId.toString();
         
-        // Fall 1A: En specifik mapp är vald
+        // Fall 1A: En specifik mapp är vald av användaren
         if (selectedFolderId) {
-          // Visa bara om filen tillhör exakt den valda mappen
-          if (file.folderId.toString() !== selectedFolderId) {
-            console.log(`FileExplorer: 🚫 Fil "${file.name}" (${file.id}) tillhör INTE mapp ${selectedFolderId}, VISAS EJ`);
+          // STRIKT JÄMFÖRELSE: Visa ENDAST om filen tillhör EXAKT den valda mappen
+          if (fileFolderId !== selectedFolderId) {
+            console.log(`FileExplorer: 🚫 Fil "${file.name}" (ID ${file.id}) tillhör mapp ${fileFolderId}, INTE mapp ${selectedFolderId}, VISAS EJ`);
             return; // Hoppa över denna fil helt
           }
           
-          // Om vi kommit hit tillhör filen den valda mappen
+          // Om vi kommit hit tillhör filen exakt den valda mappen
           // Kontrollera att mappen också finns i vår folderMap
           if (folderMap[folderKey]) {
+            // Initiera children-arrayen om den inte finns
             folderMap[folderKey].children = folderMap[folderKey].children || [];
             folderMap[folderKey].children.push(fileNode);
-            console.log(`FileExplorer: ✅ Fil "${file.name}" (${file.id}) tillhör mapp ${selectedFolderId}, VISAS`);
+            console.log(`FileExplorer: ✅ Fil "${file.name}" (ID ${file.id}) tillhör mapp ${selectedFolderId}, VISAS i mappen`);
           } else {
-            console.warn(`FileExplorer: ⚠️ Mapp ${file.folderId} hittades inte i folderMap, ignorerar fil ${file.id}`);
+            console.warn(`FileExplorer: ⚠️ Fel: Mapp ${file.folderId} är en giltig folder_id men hittades inte i folderMap-objektet, fil ${file.id} ignoreras`);
           }
         } 
         // Fall 1B: Ingen mapp är vald, vi är i root-läge
         else {
-          // När vi är i root-läge ska filer med mappar INTE visas i root
-          console.log(`FileExplorer: ℹ️ Fil "${file.name}" (${file.id}) tillhör mapp ${file.folderId}, visas EJ i root`);
-          // Gör ingenting - visa inte filen i root
+          // VIKTIGT: I root-läge ska ENDAST rotfiler visas, ALDRIG filer som tillhör mappar
+          console.log(`FileExplorer: ℹ️ Fil "${file.name}" (ID ${file.id}) tillhör mapp ${file.folderId}, och visas INTE i ROOT`);
+          // Ingen åtgärd - filen visas inte i root
         }
       }
-      // FALL 2: ROTFIL (utan mapptillhörighet)
+      // FALL 2: ROTFIL (NULL i folder_id)
       else {
-        // Fall 2A: En mapp är vald
+        // Fall 2A: En mapp är vald av användaren
         if (selectedFolderId) {
-          // Rotfiler ska ALDRIG visas i mappar
-          console.log(`FileExplorer: ℹ️ Rotfil "${file.name}" (${file.id}) visas EJ i mapp ${selectedFolderId}`);
-          // Gör ingenting - visa inte rotfilen i den valda mappen
+          // STRIKT REGEL: Rotfiler ska ALDRIG visas i någon mapp
+          console.log(`FileExplorer: ℹ️ Rotfil "${file.name}" (ID ${file.id}) har INGEN mapp och visas därför INTE i mapp ${selectedFolderId}`);
+          // Ingen åtgärd - rotfilen visas inte i den valda mappen
         }
         // Fall 2B: Ingen mapp är vald, vi är i root-läge
         else {
-          // ENDAST då visar vi rotfiler (utan mapptillhörighet)
+          // ENDAST i detta fall visar vi rotfiler (filer utan mapptillhörighet)
           tree.push(fileNode);
-          console.log(`FileExplorer: ✅ Rotfil "${file.name}" (${file.id}) visas i ROOT`);
+          console.log(`FileExplorer: ✅ Rotfil "${file.name}" (ID ${file.id}) visas KORREKT i ROOT`);
         }
       }
     });
@@ -833,45 +836,69 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
   // PDF Dialog setup
   const { showPDFDialog } = usePDFDialog();
 
-  // Handle file click
+  // FÖRBÄTTRAD FILKLICKHANTERING - för strikt mappfiltrering
   const handleFileClick = (file: FileNode) => {
     if (file.type === 'file') {
-      // Check if this is a PDF file
+      // Hantera PDF-filer speciellt
       if (file.fileType && isPdf(file.fileType)) {
-        console.log(`Öppnar PDF i dialog: ${file.name} (ID: ${file.id})`);
-        // Om det är en PDF-fil, öppna med dialog
+        // KRITISK FIX: Extrahera fil-ID korrekt utan "file_" prefix
+        const rawFileId = file.id.toString();
+        const cleanFileId = rawFileId.startsWith('file_') ? rawFileId.replace('file_', '') : rawFileId;
+        console.log(`Öppnar PDF i dialog: ${file.name} (ID: ${cleanFileId})`);
+        
         showPDFDialog({
-          fileId: file.id,
+          fileId: cleanFileId, // Skicka det rena fil-ID:t utan "file_" prefix
           filename: file.name,
           projectId: currentProject?.id
         });
         
-        // Förhindra standardhantering för PDF-filer
-        return;
+        return; // Förhindra standardhantering för PDF-filer
       } else {
-        // Annars använd standardhanteringen
+        // Standardhantering för andra filtyper
         onFileSelect(file);
       }
     } else {
-      // Om det är en mapp, expandera/kollapsa den
+      // FÖRBÄTTRAD MAPPHANTERING
+      // Först expandera/kollapsa trädvyn för mappen
       setExpandedFolders(prev => ({
         ...prev,
         [file.id]: !prev[file.id]
       }));
       
-      // Uppdatera selectedFolderId baserat på den klickade mappen
-      // file.id är i formatet "folder_123", så vi behöver extrahera sifferdelen
+      // Extrahera korrekt mapp-ID från "folder_123" format
       const folderId = file.id.replace('folder_', '');
       
-      console.log(`Mapp klickad: ${file.name} (ID: ${folderId})`);
+      console.log(`MAPPBYTE: Klick på mapp "${file.name}" (ID: ${folderId})`);
       
-      // Om mappen redan är vald (dvs vi klickar på den igen), återställ till null (visa rotfiler)
+      // KONSEKVENT MAPPBYTE:
+      // När en mapp klickas gör vi två saker konsekvent:
+      // 1. Uppdatera selectedFolderId för filvisning
+      // 2. Uppdatera uploadState.selectedFolder för uppladdningar
+      
+      // Om mappen redan är vald (användaren klickar på samma mapp igen)
       if (selectedFolderId === folderId) {
-        console.log(`Avmarkerar mapp: ${file.name} (ID: ${folderId})`);
+        console.log(`MAPPBYTE: Avmarkerar mapp "${file.name}" (ID: ${folderId}), visar ROT-filer`);
+        
+        // Återställ både selectedFolderId OCH uploadState för konsistens
         setSelectedFolderId(null);
+        setUploadState(prev => ({ ...prev, selectedFolder: null }));
+        
+        // Tvinga query-invalidering för att säkerställa att rotfiler visas
+        void queryClient.invalidateQueries({ 
+          queryKey: ['/api/files', { rootFilesOnly: true }] 
+        });
       } else {
-        console.log(`Väljer mapp: ${file.name} (ID: ${folderId})`);
+        // Användaren väljer en ny mapp
+        console.log(`MAPPBYTE: Väljer mapp "${file.name}" (ID: ${folderId}), visar ENDAST filer i denna mapp`);
+        
+        // Uppdatera både selectedFolderId OCH uploadState för konsistens
         setSelectedFolderId(folderId);
+        setUploadState(prev => ({ ...prev, selectedFolder: folderId }));
+        
+        // Tvinga query-invalidering för att säkerställa att rätt filer visas
+        void queryClient.invalidateQueries({ 
+          queryKey: ['/api/files', { folderId }] 
+        });
       }
     }
   };
@@ -1167,14 +1194,30 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
                           <Select
                             value={selectedFolderId || uploadState.selectedFolder || "root"}
                             onValueChange={(value) => {
-                              console.log(`📁 Mappval vid uppladdning: ${value}`);
-                              // Uppdatera både selectedFolderId för visning och uploadState.selectedFolder för uppladdning
+                              console.log(`📁 UPPLADDNINGSMENY: Mappval ändrad till: ${value === "root" ? "ROT" : value}`);
+                              
+                              // STRIKT MAPPVAL SYNKRONISERING:
+                              // Vi måste uppdatera BÅDA state-variablerna för konsistens
                               if (value === "root") {
+                                // ROT-val
                                 setSelectedFolderId(null);
                                 setUploadState(prev => ({ ...prev, selectedFolder: null }));
+                                console.log(`📁 UPPLADDNINGSMENY: Rotmapp vald, alla filer i ROT kommer att visas`);
+                                
+                                // Tvinga omfråga för att visa rotfiler
+                                void queryClient.invalidateQueries({ 
+                                  queryKey: ['/api/files', { rootFilesOnly: true }] 
+                                });
                               } else {
+                                // Specifik mapptilldelning
                                 setSelectedFolderId(value);
                                 setUploadState(prev => ({ ...prev, selectedFolder: value }));
+                                console.log(`📁 UPPLADDNINGSMENY: Filer för mapp ${value} kommer att visas`);
+                                
+                                // Tvinga omfråga specifikt för denna mapp
+                                void queryClient.invalidateQueries({ 
+                                  queryKey: ['/api/files', { folderId: value }] 
+                                });
                               }
                             }}
                           >
