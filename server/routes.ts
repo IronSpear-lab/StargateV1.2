@@ -1360,10 +1360,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`/api/files - ANVÄNDER LÄGE: ${fileSource} - Hämtar ALLA filer i projekt ${projectId} oavsett mapptillhörighet`);
       }
       
-      // EXTRA LOGGNING AV SQL-VILLKOR FÖR FELSÖKNING
-      const conditionString = JSON.stringify(whereCondition, (key, value) => 
-        typeof value === 'function' ? value.toString() : value);
-      console.log(`/api/files - SQL-VILLKOR: ${conditionString}`);
+      // EXTRA LOGGNING AV SQL-VILLKOR FÖR FELSÖKNING - med säker stringifiering
+      // Hantera cirkulära strukturer genom att kontrollera seen-objekt
+      try {
+        // Säker JSON.stringify som hanterar cirkulära strukturer
+        const getCircularReplacer = () => {
+          const seen = new WeakSet();
+          return (key, value) => {
+            // Hantera funktioner
+            if (typeof value === 'function') {
+              return value.toString();
+            }
+            // Hantera objekt för att undvika cirkulära strukturer
+            if (typeof value === 'object' && value !== null) {
+              if (seen.has(value)) {
+                return '[Circular Reference]';
+              }
+              seen.add(value);
+              
+              // För Drizzle-specifika objekt, returnera bara enkla egenskaper
+              if (value.constructor && value.constructor.name === 'PgTable') {
+                return `[PgTable: ${value.name || 'unknown'}]`;
+              }
+            }
+            return value;
+          };
+        };
+        
+        const conditionString = JSON.stringify(whereCondition, getCircularReplacer());
+        console.log(`/api/files - SQL-VILLKOR: ${conditionString}`);
+      } catch (err) {
+        console.log(`/api/files - Kunde inte logga SQL-villkor: ${err.message}`);
+      }
       
       // Hämta filerna med det konstruerade villkoret
       fileList = await db.select()
@@ -1455,10 +1483,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Returnera filerna direkt istället för att nästla dem i ett objekt
-      // Detta gör att vi använder samma format som resten av koden förväntar sig
-      console.log(`/api/files - RETURNERAR FILERNA DIREKT`);
+      // Men först, se till att vi rensar bort alla eventuella cirkulära eller Drizzle-specifika egenskaper
+      console.log(`/api/files - RETURNERAR FILERNA DIREKT (${fileList.length} filer)`);
       
-      res.json(fileList);
+      try {
+        // Säker metod för att skicka filerna utan cirkulära strukturer
+        // Konvertera till vanilla objekt med bara värden, inga referenser
+        const safeFileList = fileList.map(file => {
+          return {
+            id: file.id,
+            name: file.name,
+            fileType: file.fileType,
+            fileSize: file.fileSize,
+            filePath: file.filePath,
+            projectId: file.projectId,
+            folderId: file.folderId,
+            uploadedById: file.uploadedById,
+            uploaderUsername: file.uploaderUsername,
+            uploadDate: file.uploadDate ? file.uploadDate.toISOString() : null,
+            lastModifiedDate: file.lastModifiedDate ? file.lastModifiedDate.toISOString() : null,
+            metadata: file.metadata || null
+          };
+        });
+        
+        res.json(safeFileList);
+      } catch (error) {
+        console.error("Error formatting files for JSON response:", error);
+        // Fallback - skicka tom lista om något går fel
+        res.json([]);
+      }
     } catch (error) {
       console.error("Error fetching files:", error);
       res.status(500).json({ error: "Failed to fetch files" });
