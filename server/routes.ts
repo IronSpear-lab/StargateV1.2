@@ -97,6 +97,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const all = req.query.all === "true";
       const rootFilesOnly = req.query.rootFilesOnly === "true";
       
+      // DIAGNOSTIK: Logga tydligt anropet för att underlätta debugging 
       console.log(`/api/files - ANROP MED PARAMETRAR:`, { 
         projectId, 
         folderId: rawFolderId,
