@@ -1217,82 +1217,158 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Files API - STRIKT ISOLERING AV FILER PER MAPP
+  // Files API - TOTAL OMARBETNING FÖR GARANTERAD MAPPISOLERING
   app.get(`${apiPrefix}/files`, async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send({ error: 'Unauthorized' });
     }
 
     try {
+      // Steg 1: Extrahera och validera alla förfrågningsparametrar
       const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
       const folderId = req.query.folderId ? parseInt(req.query.folderId as string) : undefined;
-      const all = req.query.all === 'true'; // Läs in all-parametern som en boolean
-      const rootFilesOnly = req.query.rootFilesOnly === 'true'; // Ny parameter för att bara visa rotfiler
+      const all = req.query.all === 'true'; 
+      const rootFilesOnly = req.query.rootFilesOnly === 'true';
       
-      console.log(`/api/files - ANROP MED PARAMETRAR (STRIKT MAPPFILTRERING):`, { 
+      console.log(`/api/files - ANROP MED PARAMETRAR (NYA STRIKT MAPPFILTRERING):`, { 
         projectId, 
         folderId, 
         all, 
         rootFilesOnly,
-        userId: req.user?.id
+        userId: req.user?.id,
+        timestamp: new Date().toISOString()  // Lägg till tidsstämpel för att spåra när anropet gjordes
       });
       
+      // Steg 2: Validera projektID
       if (!projectId) {
-        console.log("/api/files - SAKNAR PROJECT_ID");
-        return res.status(400).json({ error: "Project ID is required" });
+        console.error("/api/files - KRITISKT FEL: SAKNAR PROJECT_ID");
+        return res.status(400).json({ 
+          error: "Projekt-ID krävs för att hämta filer",
+          details: "Ange ett giltigt projekt-ID i din förfrågan"
+        });
       }
       
-      // Kontrollera att användaren har tillgång till projektet
-      const userProject = await db.select()
-        .from(userProjects)
-        .where(and(
-          eq(userProjects.userId, req.user!.id),
-          eq(userProjects.projectId, projectId)
-        ))
-        .limit(1);
-      
-      if (userProject.length === 0) {
-        console.log(`/api/files - ANVÄNDARE ${req.user!.id} HAR INTE TILLGÅNG TILL PROJEKT ${projectId}`);
-        return res.status(403).json({ error: 'You do not have access to this project' });
+      if (isNaN(projectId)) {
+        console.error(`/api/files - KRITISKT FEL: OGILTIGT PROJEKT-ID FORMAT: ${req.query.projectId}`);
+        return res.status(400).json({ 
+          error: "Ogiltigt format på Projekt-ID", 
+          details: `Projekt-ID måste vara ett nummer, fick: ${req.query.projectId}`
+        });
       }
       
-      console.log(`/api/files - ANVÄNDARE HAR TILLGÅNG, hämtar filer med STRIKT FILTRERING för projekt ${projectId}, mapp ${folderId || 'INGEN'}, all=${all}, rootFilesOnly=${rootFilesOnly}`);
+      // Steg 3: Validera mapptillhörighet om specificerad
+      if (folderId !== undefined) {
+        if (isNaN(folderId)) {
+          console.error(`/api/files - KRITISKT FEL: OGILTIGT MAPP-ID FORMAT: ${req.query.folderId}`);
+          return res.status(400).json({ 
+            error: "Ogiltigt format på Mapp-ID", 
+            details: `Mapp-ID måste vara ett nummer, fick: ${req.query.folderId}`
+          });
+        }
+        
+        // Kontrollera att mappen faktiskt existerar innan vi fortsätter
+        const folderCheck = await db.query.folders.findFirst({
+          where: and(
+            eq(folders.id, folderId),
+            eq(folders.projectId, projectId)
+          )
+        });
+        
+        if (!folderCheck) {
+          console.error(`/api/files - KRITISKT FEL: MAPP ${folderId} EXISTERAR INTE I PROJEKT ${projectId}`);
+          return res.status(404).json({ 
+            error: `Mappen med ID ${folderId} existerar inte i projekt ${projectId}`,
+            details: "Kontrollera mapp-ID och projektets tillhörighet"
+          });
+        }
+        
+        console.log(`/api/files - MAPPVERIFIERING OK: Mapp "${folderCheck.name}" (ID: ${folderId}) bekräftad i projekt ${projectId}`);
+      }
       
-      // FÖRBÄTTRAD STRIKT FILTRERING: För att förhindra att filer visas i fel mappar
-      let fileList;
+      // Steg 4: Kontrollera användaråtkomst till projektet
+      const hasAccess = await storage.userHasAccessToProject(req.user!.id, projectId);
+      if (!hasAccess) {
+        console.error(`/api/files - ÅTKOMST NEKAD: Användare ${req.user!.id} har inte tillgång till projekt ${projectId}`);
+        return res.status(403).json({ 
+          error: 'Du har inte behörighet att visa filer i detta projekt',
+          details: 'Kontakta en projektadministratör för att få behörighet'
+        });
+      }
+      
+      console.log(`/api/files - BEHÖRIGHETSKONTROLL OK: Användare ${req.user!.id} har tillgång till projekt ${projectId}`);
+      
+      // Steg 5: Hämta filer med strikt filtrering baserat på specifikt läge
+      let fileList = [];
+      let fileSource = ""; // För loggning
       
       // ANVÄND STORAGE INTERFACE MED FÖRBÄTTRAD LOGGNING FÖR FELSÖKNING
       if (rootFilesOnly) {
-        // LÄGE 1: Visa ENDAST filer som inte har någon mapptillhörighet alls (strikt rotläge)
-        console.log(`/api/files - STRIKT ROTLÄGE aktiverat: Hämtar ENDAST filer utan mapptillhörighet i projekt ${projectId}`);
+        // LÄGE 1: ENDAST ROTFILER 
+        fileSource = "ROTFILER";
+        console.log(`/api/files - ANVÄNDER LÄGE: ${fileSource} - Hämtar ENDAST filer UTAN mapptillhörighet i projekt ${projectId}`);
         fileList = await storage.getRootFiles(projectId);
-        console.log(`/api/files - STRIKT ROTLÄGE: Hittade ${fileList.length} filer utan mapptillhörighet i projekt ${projectId}`);
-      } else if (folderId !== undefined) {
-        // LÄGE 2: Visa ENDAST filer som tillhör en specifik mapp (strikt mappläge)
-        console.log(`/api/files - STRIKT MAPPLÄGE aktiverat: Hämtar ENDAST filer som tillhör mapp ${folderId} i projekt ${projectId}`);
+      } 
+      else if (folderId !== undefined) {
+        // LÄGE 2: MAPPSPECIFIKA FILER
+        fileSource = `MAPP ${folderId}`;
+        console.log(`/api/files - ANVÄNDER LÄGE: ${fileSource} - Hämtar ENDAST filer FÖR SPECIFIK MAPP ${folderId} i projekt ${projectId}`);
         fileList = await storage.getFilesByFolder(projectId, folderId);
-        console.log(`/api/files - STRIKT MAPPLÄGE: Hittade ${fileList.length} filer som tillhör mapp ${folderId} i projekt ${projectId}`);
-      } else if (all) {
-        // LÄGE 3: Visa ALLA filer i projektet oavsett mapptillhörighet
-        console.log(`/api/files - ALLA FILER läge aktiverat: Hämtar samtliga filer i projekt ${projectId}`);
+      } 
+      else if (all) {
+        // LÄGE 3: ALLA PROJEKTFILER
+        fileSource = "ALLA FILER";
+        console.log(`/api/files - ANVÄNDER LÄGE: ${fileSource} - Hämtar ALLA filer i projekt ${projectId} oavsett mapptillhörighet`);
         fileList = await storage.getFilesByProject(projectId);
-        console.log(`/api/files - ALLA FILER: Hittade ${fileList.length} filer totalt i projekt ${projectId}`);
-      } else {
-        // LÄGE 4: Standardläge - visa endast rotfiler när ingen specifik filtreringsparameter anges
-        console.log(`/api/files - STANDARDLÄGE (ROTFILER): Hämtar ENDAST filer utan mapptillhörighet i projekt ${projectId}`);
+      } 
+      else {
+        // LÄGE 4: STANDARDLÄGE (ROTFILER)
+        fileSource = "STANDARD (ROTFILER)";
+        console.log(`/api/files - ANVÄNDER LÄGE: ${fileSource} - Hämtar ENDAST filer utan mapptillhörighet i projekt ${projectId}`);
         fileList = await storage.getRootFiles(projectId);
-        console.log(`/api/files - STANDARDLÄGE: Hittade ${fileList.length} filer utan mapptillhörighet i projekt ${projectId}`);
       }
       
-      // Loggning av resultatet för felsökning - lista alla filer som returneras
+      // Steg 6: Validera resultatet för mappspecifika filer - ett extra säkerhetslager
+      if (folderId !== undefined) {
+        const validFiles = fileList.filter(file => file.folderId === folderId);
+        
+        if (validFiles.length !== fileList.length) {
+          console.error(`/api/files - KRITISKT FEL I DATAVALIDERING! Hittade ${fileList.length - validFiles.length} filer med fel mappID!`);
+          console.error(`/api/files - FELKORRIGERING: Filtrerar bort ${fileList.length - validFiles.length} filer som inte tillhör mapp ${folderId}`);
+          
+          const invalidFiles = fileList.filter(file => file.folderId !== folderId);
+          console.error(`/api/files - FELDISKREPANS: Felaktiga filer:`, 
+            invalidFiles.map(f => `[${f.id}: ${f.name}, felaktig mappID: ${f.folderId}]`));
+          
+          // Ersätt listan med endast giltiga filer
+          fileList = validFiles;
+        }
+      }
+      
+      // Steg 7: Loggning av resultatet med tydlig information
+      console.log(`/api/files - RESULTAT ${fileSource}: Hittade ${fileList.length} filer för projekt ${projectId}${folderId !== undefined ? `, mapp ${folderId}` : ''}`);
+      
       if (fileList.length > 0) {
-        console.log(`/api/files - SVARAR med ${fileList.length} filer: [${fileList.map(f => `${f.id}: ${f.name} (mapp: ${f.folderId || 'ROT'})`).join(', ')}]`);
+        if (fileList.length <= 10) {
+          // Visa all information för små resultat
+          console.log(`/api/files - DETALJERAD FILLISTA:`, 
+            fileList.map(f => `[${f.id}: ${f.name}, mapp: ${f.folderId !== null ? f.folderId : 'INGEN MAPP'}]`));
+        } else {
+          // Visa bara sammanfattning för större resultat
+          console.log(`/api/files - SAMMANFATTNING (${fileList.length} filer totalt):`,
+            fileList.slice(0, 5).map(f => `[${f.id}: ${f.name}, mapp: ${f.folderId !== null ? f.folderId : 'INGEN MAPP'}]`) + 
+            ` ... och ${fileList.length - 5} till`);
+        }
       } else {
-        console.log(`/api/files - SVARAR med 0 filer för projekt ${projectId}, mapp ${folderId || 'ROT'}`);
+        console.log(`/api/files - SVARAR med tom fillista (0 filer)`);
       }
       
-      // Returnera den strikt filtrerade listan med filer
-      res.json(fileList);
+      // Steg 8: Lägg till cache-bustning för att säkerställa att klienten alltid får färsk data
+      const response = {
+        files: fileList,
+        _timestamp: new Date().getTime() // Hjälper till att förhindra cachningsproblem
+      };
+      
+      res.json(response);
     } catch (error) {
       console.error("Error fetching files:", error);
       res.status(500).json({ error: "Failed to fetch files" });
