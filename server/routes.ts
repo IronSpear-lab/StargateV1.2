@@ -209,6 +209,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Projects API
+  app.post(`${apiPrefix}/projects`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: "Unauthorized" });
+    }
+
+    try {
+      const { name, description } = req.body;
+
+      // Skapa projektet
+      const [newProject] = await db.insert(projects).values({
+        name,
+        description,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: req.user!.id
+      }).returning();
+
+      // Automatiskt tilldela skaparen till projektet
+      await db.insert(userProjects).values({
+        userId: req.user!.id,
+        projectId: newProject.id,
+        createdAt: new Date()
+      });
+
+      console.log(`Nytt projekt skapat: ${name} (ID: ${newProject.id}) av användare ${req.user!.id}`);
+      
+      return res.status(200).json(newProject);
+    } catch (error) {
+      console.error("Error creating project:", error);
+      return res.status(500).json({ error: "Failed to create project" });
+    }
+  });
+
+  // User-Projects API
+  app.get(`${apiPrefix}/user-projects`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: "Unauthorized" });
+    }
+
+    try {
+      const userInfo = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
+      
+      // Superusers och admins får tillgång till alla projekt
+      if (userInfo && (userInfo.role === "superuser" || userInfo.role === "admin")) {
+        const allProjects = await db.query.projects.findMany({
+          orderBy: [desc(projects.updatedAt)]
+        });
+        return res.json(allProjects);
+      }
+      
+      // Vanliga användare får bara tillgång till sina projekt
+      const userProjectIds = await db.query.userProjects.findMany({
+        where: eq(userProjects.userId, req.user!.id),
+        columns: { projectId: true }
+      });
+      
+      const projectIds = userProjectIds.map(up => up.projectId);
+      
+      if (projectIds.length === 0) {
+        return res.json([]);
+      }
+      
+      const userProjs = await db.query.projects.findMany({
+        where: inArray(projects.id, projectIds),
+        orderBy: [desc(projects.updatedAt)]
+      });
+      
+      return res.json(userProjs);
+    } catch (error) {
+      console.error("Error fetching user projects:", error);
+      return res.status(500).json({ error: "Failed to fetch user projects" });
+    }
+  });
+
   // Create HTTP server
   const httpServer = createServer(app);
   
