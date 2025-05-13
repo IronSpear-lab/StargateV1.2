@@ -419,7 +419,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name,
         projectId,
         parentId: parentId || null,
-        createdAt: new Date(),
         createdById: req.user!.id
       }).returning();
       
