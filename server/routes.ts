@@ -1217,7 +1217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Files API - FÖRBÄTTRAD VERSION MED FELSÖKNING
+  // Files API - STRIKT ISOLERING AV FILER PER MAPP
   app.get(`${apiPrefix}/files`, async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send({ error: 'Unauthorized' });
@@ -1229,7 +1229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const all = req.query.all === 'true'; // Läs in all-parametern som en boolean
       const rootFilesOnly = req.query.rootFilesOnly === 'true'; // Ny parameter för att bara visa rotfiler
       
-      console.log(`/api/files - ANROP MED PARAMETRAR:`, { 
+      console.log(`/api/files - ANROP MED PARAMETRAR (STRIKT MAPPFILTRERING):`, { 
         projectId, 
         folderId, 
         all, 
@@ -1256,41 +1256,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'You do not have access to this project' });
       }
       
-      console.log(`/api/files - ANVÄNDARE HAR TILLGÅNG, hämtar filer för projekt ${projectId}, mapp ${folderId || 'INGEN'}, all=${all}, rootFilesOnly=${rootFilesOnly}`);
+      console.log(`/api/files - ANVÄNDARE HAR TILLGÅNG, hämtar filer med STRIKT FILTRERING för projekt ${projectId}, mapp ${folderId || 'INGEN'}, all=${all}, rootFilesOnly=${rootFilesOnly}`);
       
+      // FÖRBÄTTRAD STRIKT FILTRERING: För att förhindra att filer visas i fel mappar
       let fileList;
-      // Låt oss använda explicit kontroll och loggning här för att förstå flödet
+      
+      // ANVÄND STORAGE INTERFACE MED FÖRBÄTTRAD LOGGNING FÖR FELSÖKNING
       if (rootFilesOnly) {
-        // Om rootFilesOnly är true, hämta bara filer utan folderId (rotfiler)
-        console.log(`/api/files - Hämtar ENDAST ROTFILER för projekt ${projectId}`);
+        // LÄGE 1: Visa ENDAST filer som inte har någon mapptillhörighet alls (strikt rotläge)
+        console.log(`/api/files - STRIKT ROTLÄGE aktiverat: Hämtar ENDAST filer utan mapptillhörighet i projekt ${projectId}`);
         fileList = await storage.getRootFiles(projectId);
-        console.log(`/api/files - Hittade ${fileList.length} rotfiler för projekt ${projectId}`);
+        console.log(`/api/files - STRIKT ROTLÄGE: Hittade ${fileList.length} filer utan mapptillhörighet i projekt ${projectId}`);
       } else if (folderId !== undefined) {
-        // Om folderId finns, hämta bara filer för den specifika mappen
-        console.log(`/api/files - Hämtar filer för SPECIFIK MAPP ${folderId} i projekt ${projectId}`);
+        // LÄGE 2: Visa ENDAST filer som tillhör en specifik mapp (strikt mappläge)
+        console.log(`/api/files - STRIKT MAPPLÄGE aktiverat: Hämtar ENDAST filer som tillhör mapp ${folderId} i projekt ${projectId}`);
         fileList = await storage.getFilesByFolder(projectId, folderId);
-        console.log(`/api/files - Hittade ${fileList.length} filer i mapp ${folderId} för projekt ${projectId}`);
+        console.log(`/api/files - STRIKT MAPPLÄGE: Hittade ${fileList.length} filer som tillhör mapp ${folderId} i projekt ${projectId}`);
       } else if (all) {
-        // Om all=true, hämta ALLA filer för projektet oavsett mapp
-        console.log(`/api/files - Hämtar ALLA filer för projekt ${projectId} (all=true)`);
+        // LÄGE 3: Visa ALLA filer i projektet oavsett mapptillhörighet
+        console.log(`/api/files - ALLA FILER läge aktiverat: Hämtar samtliga filer i projekt ${projectId}`);
         fileList = await storage.getFilesByProject(projectId);
-        console.log(`/api/files - Hittade ${fileList.length} filer totalt för projekt ${projectId}`);
+        console.log(`/api/files - ALLA FILER: Hittade ${fileList.length} filer totalt i projekt ${projectId}`);
       } else {
-        // Standardfall - vi hamnar här om projectId finns men folderId och rootFilesOnly inte är satta
-        // I detta fall, hämta bara rotfiler som en standard
-        console.log(`/api/files - STANDARDFALL: Hämtar rotfiler för projekt ${projectId}`);
+        // LÄGE 4: Standardläge - visa endast rotfiler när ingen specifik filtreringsparameter anges
+        console.log(`/api/files - STANDARDLÄGE (ROTFILER): Hämtar ENDAST filer utan mapptillhörighet i projekt ${projectId}`);
         fileList = await storage.getRootFiles(projectId);
-        console.log(`/api/files - Hittade ${fileList.length} rotfiler för projekt ${projectId}`);
+        console.log(`/api/files - STANDARDLÄGE: Hittade ${fileList.length} filer utan mapptillhörighet i projekt ${projectId}`);
       }
       
-      // Loggning av resultatet före svaret för att kunna felsöka bättre
-      console.log(`/api/files - SVARAR med ${fileList.length} filer:`, fileList.map(f => `${f.id}: ${f.name}`).join(', '));
+      // Loggning av resultatet för felsökning - lista alla filer som returneras
+      if (fileList.length > 0) {
+        console.log(`/api/files - SVARAR med ${fileList.length} filer: [${fileList.map(f => `${f.id}: ${f.name} (mapp: ${f.folderId || 'ROT'})`).join(', ')}]`);
+      } else {
+        console.log(`/api/files - SVARAR med 0 filer för projekt ${projectId}, mapp ${folderId || 'ROT'}`);
+      }
       
-      // TA BORT DUMMY-DATA:
-      // Vi ska inte längre använda dummy-data eftersom detta orsakar problem med visning av filer
-      // i fel mappar. Istället respekterar vi den faktiska mappstrukturen.
-      // Om listan är tom, returnera bara en tom array.
-      
+      // Returnera den strikt filtrerade listan med filer
       res.json(fileList);
     } catch (error) {
       console.error("Error fetching files:", error);
