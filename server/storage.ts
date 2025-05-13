@@ -604,14 +604,20 @@ class DatabaseStorage implements IStorage {
     }
     
     try {
+      // STRIKT FILTRERING: Förbättrad logik för att säkerställa korrekt filvisning i rätt mapp
+      console.log(`storage.getFiles: STRIKT FILTRERING AKTIVERAD med parametrar: projectId=${projectId}, folderId=${folderId}, allProjectFiles=${allProjectFiles}`);
+      
       if (allProjectFiles) {
-        // Om allProjectFiles är true, hämta alla filer för projektet oavsett mapp
+        // LÄGE 1: Visa alla filer i projektet oavsett mappstruktur
+        console.log(`storage.getFiles: ALLA FILER läge - hämtar samtliga filer för projekt ${projectId}`);
         return this.getFilesByProject(projectId);
       } else if (folderId !== undefined) {
-        // Om folderId är angivet, hämta bara filer för den specifika mappen
+        // LÄGE 2: Visa ENDAST filer för en specifik mapp (strikt isolering)
+        console.log(`storage.getFiles: MAPPSPECIFIKT läge - hämtar ENDAST filer tillhörande mapp ${folderId} i projekt ${projectId}`);
         return this.getFilesByFolder(projectId, folderId);
       } else {
-        // Om ingen folderId och inte allProjectFiles, hämta bara rotfiler (utan mapp)
+        // LÄGE 3: Visa ENDAST rotfiler (filer som INTE har någon mapptillhörighet)
+        console.log(`storage.getFiles: ROTFILER läge - hämtar ENDAST filer UTAN mapptillhörighet i projekt ${projectId}`);
         return this.getRootFiles(projectId);
       }
     } catch (error) {
