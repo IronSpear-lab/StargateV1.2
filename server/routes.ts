@@ -2955,18 +2955,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ error: "File not found" });
         }
         
-        // Kontrollera att användaren har tillgång till filens projekt
-        const userProject = await db.select()
-          .from(userProjects)
-          .where(and(
-            eq(userProjects.userId, req.user!.id),
-            eq(userProjects.projectId, file.projectId)
-          ))
-          .limit(1);
+        // Hämta användarinformation för att kontrollera rollen
+        const userInfo = await db.query.users.findFirst({
+          where: eq(users.id, req.user!.id)
+        });
         
-        if (userProject.length === 0) {
-          return res.status(403).json({ error: 'You do not have access to this file' });
+        // Superusers och admins har tillgång till alla filer i alla projekt
+        const isSuperuserOrAdmin = userInfo && (userInfo.role === 'superuser' || userInfo.role === 'admin');
+        
+        // Om användaren inte är superuser eller admin, kontrollera projektbehörighet
+        if (!isSuperuserOrAdmin) {
+          const userProject = await db.select()
+            .from(userProjects)
+            .where(and(
+              eq(userProjects.userId, req.user!.id),
+              eq(userProjects.projectId, file.projectId)
+            ))
+            .limit(1);
+          
+          if (userProject.length === 0) {
+            return res.status(403).json({ error: 'You do not have access to this file' });
+          }
         }
+        
+        console.log(`API /files/recent - Användare ${req.user!.id} (${isSuperuserOrAdmin ? userInfo!.role : 'regular'}) hämtar specifik fil ${fileId} i projekt ${file.projectId}`);
         
         // Returnera filen
         return res.json([{
@@ -2994,19 +3006,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Kontrollera att användaren har tillgång till projektet
-      const userProject = await db.select()
-        .from(userProjects)
-        .where(and(
-          eq(userProjects.userId, req.user!.id),
-          eq(userProjects.projectId, projectId)
-        ))
-        .limit(1);
+      // Hämta användarinformation för att kontrollera rollen
+      const userInfo = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
       
-      if (userProject.length === 0) {
-        return res.status(403).json({ error: 'You do not have access to this project' });
+      // Superusers och admins har tillgång till alla projekt
+      const isSuperuserOrAdmin = userInfo && (userInfo.role === 'superuser' || userInfo.role === 'admin');
+      
+      // Om användaren inte är superuser eller admin, kontrollera projektbehörighet
+      if (!isSuperuserOrAdmin) {
+        const userProject = await db.select()
+          .from(userProjects)
+          .where(and(
+            eq(userProjects.userId, req.user!.id),
+            eq(userProjects.projectId, projectId)
+          ))
+          .limit(1);
+        
+        if (userProject.length === 0) {
+          return res.status(403).json({ error: 'You do not have access to this project' });
+        }
       }
       
-      console.log(`API /files/recent - Hämtar senaste filer för projekt ${projectId} med limit ${limit}`);
+      console.log(`API /files/recent - Användare ${req.user!.id} (${isSuperuserOrAdmin ? userInfo!.role : 'regular'}) hämtar senaste filer för projekt ${projectId} med limit ${limit}`);
       
       // Gör en direkt databasförfrågan istället för att använda storage.getRecentFiles
       const recentFiles = await db.query.files.findMany({
