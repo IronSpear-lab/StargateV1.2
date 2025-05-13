@@ -675,29 +675,65 @@ class DatabaseStorage implements IStorage {
   }
 
   async createFile(file: Omit<File, "id" | "uploadDate">): Promise<File> {
-    // KRITISK FÖRBÄTTRING: Säkerställ korrekt hantering av folderId
-    // Om folderId är undefined, sätt det till explicit NULL för att undvika problemet med
-    // files som visas i alla mappar
+    // TOTAL OMSKRIVNING FÖR ATT GARANTERA KORREKT MAPPHANTERING
+    // Detta är en kritisk funktion som säkerställer att filer ALLTID har korrekt mapptillhörighet
     
-    console.log(`storage.createFile: Skapar fil "${file.name}" med följande mapptillhörighet:`, { 
+    // Steg 1: Validera projektID och logga tydligt
+    if (!file.projectId || isNaN(file.projectId)) {
+      console.error(`storage.createFile: KRITISKT FEL - Ogiltigt projektID: ${file.projectId}. Kan inte skapa fil.`);
+      throw new Error("Ogiltigt projektID vid filskapande");
+    }
+    
+    // Steg 2: Validera folderId om det finns - kontrollera att denna mapp verkligen existerar
+    if (file.folderId !== undefined && file.folderId !== null) {
+      console.log(`storage.createFile: VALIDERAR MAPP ${file.folderId} för fil "${file.name}"`);
+      
+      try {
+        // Hämta mappen för att verifiera att den existerar
+        const folder = await db.query.folders.findFirst({
+          where: and(
+            eq(folders.id, file.folderId),
+            eq(folders.projectId, file.projectId) // Måste tillhöra samma projekt!
+          )
+        });
+        
+        if (!folder) {
+          console.error(`storage.createFile: MAPP-VALIDERINGSFEL - Mapp ${file.folderId} existerar inte i projekt ${file.projectId}`);
+          throw new Error(`Mappen (ID: ${file.folderId}) existerar inte eller tillhör inte detta projekt`);
+        }
+        
+        console.log(`storage.createFile: MAPP-VALIDERING OK - Mapp ${file.folderId} ("${folder.name}") finns i projekt ${file.projectId}`);
+      } catch (error) {
+        console.error(`storage.createFile: MAPP-VALIDERINGSFEL:`, error);
+        throw new Error(`Kunde inte validera mapp ${file.folderId}: ${error.message}`);
+      }
+    }
+    
+    // Steg 3: Förbered fil med tydlig mapphantering
+    // Explicit konvertering av undefined till null för att säkerställa konsekvent databeteende
+    console.log(`storage.createFile: SKAPAR FIL "${file.name}" med parametrar:`, { 
       projektId: file.projectId, 
-      folderId: file.folderId ?? 'NULL (explicit rotfil)' 
+      folderId: file.folderId === undefined ? "NULL (ingen mapp)" : file.folderId 
     });
     
-    // Notera: Vi behöver explicit konvertera undefined till null för att 
-    // säkerställa konsekvent databasbeteende
     const fileDataToSave = {
       ...file,
       uploadDate: new Date(),
       folderId: file.folderId === undefined ? null : file.folderId
     };
     
-    const validatedData = insertFileSchema.parse(fileDataToSave);
-    const result = await db.insert(files).values(validatedData).returning();
-    
-    console.log(`storage.createFile: Fil skapad med ID ${result[0].id}, folderId = ${result[0].folderId || 'NULL (rotfil)'}`);
-    
-    return result[0];
+    // Steg 4: Validera och spara filen
+    try {
+      const validatedData = insertFileSchema.parse(fileDataToSave);
+      const result = await db.insert(files).values(validatedData).returning();
+      
+      console.log(`storage.createFile: FIL SKAPAD FRAMGÅNGSRIKT - ID ${result[0].id}, namn "${result[0].name}", mappID = ${result[0].folderId || 'NULL (rotfil)'}`);
+      
+      return result[0];
+    } catch (error) {
+      console.error(`storage.createFile: FILSKAPANDE MISSLYCKADES:`, error);
+      throw error;
+    }
   }
   
   async deleteFile(id: number): Promise<{ success: boolean, filePath: string | null }> {
