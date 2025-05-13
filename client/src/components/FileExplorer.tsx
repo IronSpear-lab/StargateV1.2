@@ -303,26 +303,33 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
           const isCorrectProject = file.projectId && 
             file.projectId.toString() === currentProject.id.toString();
           
-          // STRIKT MAPPTILLHÖRIGHET: Säkerställ att filer endast visas i rätt mapp
+          // FÖRBÄTTRAD STRIKT MAPPTILLHÖRIGHET MED EXTRA SÄKERHET
           let hasCorrectFolderContext = false;
           
-          // Konvertera folderId till strikt typade värden för jämförelse
-          // KRITISK FÖRBÄTTRING: Hanterar null och undefined korrekt
-          const fileFolderId = file.folderId !== null && file.folderId !== undefined 
-            ? Number(file.folderId) 
-            : null;
+          // Hantera null/undefined/0/"" och konvertera konsekvent till korrekta typer
+          let fileFolderId = null;
+          
+          // Explicit typkonvertering med strikt validering
+          if (file.folderId !== null && file.folderId !== undefined && file.folderId !== "" && file.folderId !== 0) {
+            // Säkerställ att det är ett giltigt nummer
+            const numericFolderId = Number(file.folderId);
+            if (!isNaN(numericFolderId) && numericFolderId > 0) {
+              fileFolderId = numericFolderId;
+            }
+          }
+          
+          console.log(`FileExplorer: DIAGNOSTIK (${file.name}) - Rå folderId: "${file.folderId}", Konverterad: ${fileFolderId === null ? 'null' : fileFolderId}`);
           
           if (selectedFolderId) {
             // MAPPLÄGE: Visa ENDAST filer med exakt matchande mapp-ID
             const targetFolderId = Number(selectedFolderId);
             
-            // STRIKT TYPKONTROLL: Jämför med ===
-            hasCorrectFolderContext = fileFolderId === targetFolderId;
+            // Strikt typkontroll med === och extra validering
+            hasCorrectFolderContext = fileFolderId !== null && fileFolderId === targetFolderId;
             
             console.log(`FileExplorer: FilID=${file.id}, MAPPLÄGE (${file.name}): filFolderId=${fileFolderId}, targetFolderId=${targetFolderId}, match=${hasCorrectFolderContext}`);
           } else {
             // ROTLÄGE: Visa ENDAST filer utan mapptillhörighet (folderId === null)
-            // SÄKERHETSFÖRBÄTTRING: Säkerställ att vi verkligen har null, inte undefined eller 0 eller ""
             hasCorrectFolderContext = fileFolderId === null;
             
             console.log(`FileExplorer: FilID=${file.id}, ROTLÄGE (${file.name}): filFolderId=${fileFolderId}, match=${hasCorrectFolderContext}`);
@@ -841,15 +848,58 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     if (file.type === 'file') {
       // Hantera PDF-filer speciellt
       if (file.fileType && isPdf(file.fileType)) {
-        // KRITISK FIX: Extrahera fil-ID korrekt utan "file_" prefix
+        // FÖRBÄTTRAD PDF-HANTERING MED EXTRA SÄKERHET
+        // 1. Extrahera fil-ID korrekt utan "file_" prefix
         const rawFileId = file.id.toString();
         const cleanFileId = rawFileId.startsWith('file_') ? rawFileId.replace('file_', '') : rawFileId;
-        console.log(`Öppnar PDF i dialog: ${file.name} (ID: ${cleanFileId})`);
         
+        // 2. Säkerställ att filens folderId matchar den aktuella kontexten (för strikt säkerhet)
+        const isInCorrectFolder = selectedFolderId 
+          ? file.folderId && file.folderId.toString() === selectedFolderId.toString()
+          : file.folderId === null || file.folderId === undefined || file.folderId === 0 || file.folderId === "";
+        
+        // 3. Säkerställ att filen tillhör det aktuella projektet (för extra säkerhet)
+        const isInCorrectProject = file.projectId && 
+          currentProject && 
+          file.projectId.toString() === currentProject.id.toString();
+        
+        // 4. Detaljerad loggning för felsökning
+        console.log(`PDF-DIALOG: Öppnar "${file.name}" (ID: ${cleanFileId})`, {
+          fileFolderId: file.folderId, 
+          selectedFolder: selectedFolderId, 
+          isInCorrectFolder,
+          fileProjectId: file.projectId,
+          currentProjectId: currentProject?.id,
+          isInCorrectProject
+        });
+        
+        // 5. Validera innan visning (extra säkerhetslager för att garantera isolering)
+        if (!isInCorrectFolder) {
+          console.error(`PDF-DIALOG FEL: Fil "${file.name}" (${cleanFileId}) tillhör inte aktuell mapp`);
+          toast({
+            title: "Kan inte öppna PDF",
+            description: "Filen tillhör inte den aktuella mappen.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        if (!isInCorrectProject) {
+          console.error(`PDF-DIALOG FEL: Fil "${file.name}" (${cleanFileId}) tillhör inte aktuellt projekt`);
+          toast({
+            title: "Kan inte öppna PDF",
+            description: "Filen tillhör inte det aktuella projektet.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // 6. Öppna PDF-dialogen med validerat fil-ID
         showPDFDialog({
-          fileId: cleanFileId, // Skicka det rena fil-ID:t utan "file_" prefix
+          fileId: cleanFileId,
           filename: file.name,
-          projectId: currentProject?.id
+          projectId: currentProject?.id,
+          folderId: file.folderId ? Number(file.folderId) : undefined // Skicka med mapp-ID för enklare spårning
         });
         
         return; // Förhindra standardhantering för PDF-filer
@@ -866,7 +916,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       }));
       
       // Extrahera korrekt mapp-ID från "folder_123" format
-      const folderId = file.id.replace('folder_', '');
+      const folderId = typeof file.id === 'string' ? file.id.replace(/^folder_/, '') : String(file.id);
       
       console.log(`MAPPBYTE: Klick på mapp "${file.name}" (ID: ${folderId})`);
       
@@ -885,7 +935,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         
         // Tvinga query-invalidering för att säkerställa att rotfiler visas
         void queryClient.invalidateQueries({ 
-          queryKey: ['/api/files', { rootFilesOnly: true }] 
+          queryKey: ['/api/files', currentProject?.id, null, new Date().getTime()]
         });
       } else {
         // Användaren väljer en ny mapp
@@ -897,7 +947,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         
         // Tvinga query-invalidering för att säkerställa att rätt filer visas
         void queryClient.invalidateQueries({ 
-          queryKey: ['/api/files', { folderId }] 
+          queryKey: ['/api/files', currentProject?.id, folderId, new Date().getTime()]
         });
       }
     }

@@ -14,6 +14,7 @@ interface PDFDialogState {
   pdfFile?: Blob | null;
   highlightAnnotationId?: number;
   annotationId?: number; // För att fokusera på en specifik annotation
+  folderId?: number | null; // För att hålla reda på i vilken mapp PDF:en tillhör
 }
 
 // Kontextens typ
@@ -68,6 +69,7 @@ export function PDFDialogProvider({ children }: { children: ReactNode }) {
               highlightAnnotationId={dialogState.highlightAnnotationId}
               annotationId={dialogState.annotationId}
               isDialogMode={true}
+              folderId={dialogState.folderId} // Skicka med folderId till PDF-visaren för korrekt mappassociation
             />
           )}
         </PDFDialogContent>

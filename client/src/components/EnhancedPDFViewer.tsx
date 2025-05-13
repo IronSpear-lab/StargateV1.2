@@ -137,6 +137,8 @@ interface EnhancedPDFViewerProps {
   annotationId?: number; // ID för att fokusera på en specifik annotation
   // Dialog mode flag - när true visas PDF:en i dialog/popup-läge
   isDialogMode?: boolean;
+  // Folder association - vilken mapp filen tillhör
+  folderId?: number | null;
 }
 
 type Position = { x: number; y: number };
