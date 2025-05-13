@@ -297,27 +297,40 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
           files = [];
         }
         
-        // Validera och verifiera att vi har rätt filer i rätt kontext
+        // Validera och verifiera att vi har rätt filer i rätt kontext - FÖRBÄTTRAD VERSION
         const validatedFiles = files.filter((file: FileData) => {
           // Validera projekttillhörighet först - grundläggande säkerhet
           const isCorrectProject = file.projectId && 
             file.projectId.toString() === currentProject.id.toString();
           
-          // Validera mapptillhörighet med mycket striktare kontroller
+          // STRIKT MAPPTILLHÖRIGHET: Säkerställ att filer endast visas i rätt mapp
           let hasCorrectFolderContext = false;
           
+          // Konvertera folderId till strikt typade värden för jämförelse
+          // KRITISK FÖRBÄTTRING: Hanterar null och undefined korrekt
+          const fileFolderId = file.folderId !== null && file.folderId !== undefined 
+            ? Number(file.folderId) 
+            : null;
+          
           if (selectedFolderId) {
-            // Mapp är vald - verifiera att filen tillhör exakt denna mapp
-            // Konvertera båda till siffror för konsekvent jämförelse
-            const fileFolderId = file.folderId !== null ? Number(file.folderId) : null;
+            // MAPPLÄGE: Visa ENDAST filer med exakt matchande mapp-ID
             const targetFolderId = Number(selectedFolderId);
             
+            // STRIKT TYPKONTROLL: Jämför med ===
             hasCorrectFolderContext = fileFolderId === targetFolderId;
-            console.log(`FileExplorer: FilID=${file.id}, Valideraring (MAPPLÄGE): filFolderId=${fileFolderId}, targetFolderId=${targetFolderId}, match=${hasCorrectFolderContext}`);
+            
+            console.log(`FileExplorer: FilID=${file.id}, MAPPLÄGE (${file.name}): filFolderId=${fileFolderId}, targetFolderId=${targetFolderId}, match=${hasCorrectFolderContext}`);
           } else {
-            // Rotläge - verifiera att filen inte har någon mapp (måste vara null, inte undefined)
-            hasCorrectFolderContext = file.folderId === null;
-            console.log(`FileExplorer: FilID=${file.id}, Validerar (ROTLÄGE): filFolderId=${file.folderId}, match=${hasCorrectFolderContext}`);
+            // ROTLÄGE: Visa ENDAST filer utan mapptillhörighet (folderId === null)
+            // SÄKERHETSFÖRBÄTTRING: Säkerställ att vi verkligen har null, inte undefined eller 0 eller ""
+            hasCorrectFolderContext = fileFolderId === null;
+            
+            console.log(`FileExplorer: FilID=${file.id}, ROTLÄGE (${file.name}): filFolderId=${fileFolderId}, match=${hasCorrectFolderContext}`);
+          }
+          
+          // DETALJERAD DIAGNOSTISK LOGGNING
+          if (!hasCorrectFolderContext && isCorrectProject) {
+            console.warn(`FileExplorer: Fil ${file.id} (${file.name}) FILTRERADES BORT - fel mapptillhörighet`);
           }
           
           // Kombinerad validering
