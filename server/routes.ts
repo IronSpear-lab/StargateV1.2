@@ -2919,7 +2919,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`DEBUG: Recent files API - Parsed params: projectId=${projectId}, fileId=${fileId}, limit=${limit}`);
       
       // Om ett specifikt fileId efterfrågas, hämta den filen
-      if (fileId) {
+      if (fileId !== undefined && !isNaN(fileId)) {
         const file = await db.query.files.findFirst({
           where: eq(files.id, fileId)
         });
@@ -2959,6 +2959,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!projectId) {
         console.log("DEBUG: Recent files API - Missing projectId");
         return res.status(400).json({ error: "Project ID is required when not querying by fileId" });
+      }
+      
+      if (isNaN(projectId)) {
+        console.log("DEBUG: Recent files API - Invalid projectId format:", req.query.projectId);
+        return res.status(400).json({ error: "Invalid project ID format" });
       }
       
       // Kontrollera att användaren har tillgång till projektet
