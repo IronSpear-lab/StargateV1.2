@@ -197,7 +197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hämta filerna enligt de specificerade villkoren
       const fileList = await db.query.files.findMany({
         where: whereCondition,
-        orderBy: [desc(files.createdAt)]
+        orderBy: desc(files.createdAt)
       });
       
       // Returnera filerna
