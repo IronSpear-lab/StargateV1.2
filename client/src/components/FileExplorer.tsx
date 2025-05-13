@@ -788,54 +788,53 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       // LOGGA VARJE FIL FÖR TYDLIGARE FELSÖKNING
       console.log(`FileExplorer: Bearbetar fil "${file.name}" (ID ${file.id}, mappID: ${file.folderId || "ROOT"})`);
       
-      // HÄREFTER KOMMER NY LOGIK FÖR STRIKT FILTRERING
-      // Kontrollera filens tillhörighet baserat på vald mapp ELLER root-läge
-      
-      // KRITISK FÖRBÄTTRAD LOGIK FÖR STRIKT FILTRERING PER MAPP
-      // FALL 1: FIL SOM TILLHÖR EN SPECIFIK MAPP (har folder_id)
-      if (file.folderId) {
-        const folderKey = `folder_${file.folderId}`;
-        const fileFolderId = file.folderId.toString();
+      // HELT OMARBETAT - EXTREMT STRIKT FILTRERING FÖR SÄKERHETSKRITISKA APPLIKATIONER
+      // 1. FIL MED MAPPTILLHÖRIGHET
+      if (file.folderId !== null && file.folderId !== undefined) {
+        // Strikt typkontroll och standardisering
+        const fileFolderId = Number(file.folderId);
+        if (isNaN(fileFolderId) || fileFolderId <= 0) {
+          console.warn(`FileExplorer: ⚠️ Fil "${file.name}" (ID ${file.id}) har ogiltig folderId ${file.folderId}, ignoreras`);
+          return; // Hoppa över denna fil helt
+        }
         
-        // Fall 1A: En specifik mapp är vald av användaren
-        if (selectedFolderId) {
-          // STRIKT JÄMFÖRELSE: Visa ENDAST om filen tillhör EXAKT den valda mappen
-          if (fileFolderId !== selectedFolderId) {
-            console.log(`FileExplorer: 🚫 Fil "${file.name}" (ID ${file.id}) tillhör mapp ${fileFolderId}, INTE mapp ${selectedFolderId}, VISAS EJ`);
-            return; // Hoppa över denna fil helt
-          }
+        const folderKey = `folder_${fileFolderId}`;
+        
+        // VISNINGSREGLER FÖR MAPPTILLHÖRANDE FILER:
+        // 1. En mapp måste vara vald
+        // 2. Den valda mappen måste exakt matcha filens mappID
+        // 3. Mappen måste existera i vår folderMap
+        if (selectedFolderId && 
+            Number(selectedFolderId) === fileFolderId && 
+            folderMap[folderKey]) {
           
-          // Om vi kommit hit tillhör filen exakt den valda mappen
-          // Kontrollera att mappen också finns i vår folderMap
-          if (folderMap[folderKey]) {
-            // Initiera children-arrayen om den inte finns
-            folderMap[folderKey].children = folderMap[folderKey].children || [];
-            folderMap[folderKey].children.push(fileNode);
-            console.log(`FileExplorer: ✅ Fil "${file.name}" (ID ${file.id}) tillhör mapp ${selectedFolderId}, VISAS i mappen`);
-          } else {
-            console.warn(`FileExplorer: ⚠️ Fel: Mapp ${file.folderId} är en giltig folder_id men hittades inte i folderMap-objektet, fil ${file.id} ignoreras`);
+          // Alla tre villkor uppfyllda - lägg till filen i den valda mappen
+          folderMap[folderKey].children = folderMap[folderKey].children || [];
+          folderMap[folderKey].children.push(fileNode);
+          console.log(`FileExplorer: ✅ Fil "${file.name}" (ID ${file.id}) tillhör exakt mapp ${selectedFolderId}, VISAS i mappen`);
+        } else {
+          // Något villkor misslyckades - fil visas inte
+          if (!selectedFolderId) {
+            console.log(`FileExplorer: 🔍 Fil "${file.name}" (ID ${file.id}) tillhör mapp ${fileFolderId} men vi är i ROOT-läge`);
+          } else if (Number(selectedFolderId) !== fileFolderId) {
+            console.log(`FileExplorer: 🔒 Fil "${file.name}" (ID ${file.id}) tillhör mapp ${fileFolderId}, INTE mapp ${selectedFolderId}`);
+          } else if (!folderMap[folderKey]) {
+            console.log(`FileExplorer: ⛔ Fil "${file.name}" (ID ${file.id}) tillhör mapp ${fileFolderId} som saknas i folderMap`);
           }
-        } 
-        // Fall 1B: Ingen mapp är vald, vi är i root-läge
-        else {
-          // VIKTIGT: I root-läge ska ENDAST rotfiler visas, ALDRIG filer som tillhör mappar
-          console.log(`FileExplorer: ℹ️ Fil "${file.name}" (ID ${file.id}) tillhör mapp ${file.folderId}, och visas INTE i ROOT`);
-          // Ingen åtgärd - filen visas inte i root
+          // Ingen åtgärd - filen ignoreras helt
         }
       }
-      // FALL 2: ROTFIL (NULL i folder_id)
+      // 2. ROTFIL (ingen mapptillhörighet)
       else {
-        // Fall 2A: En mapp är vald av användaren
-        if (selectedFolderId) {
-          // STRIKT REGEL: Rotfiler ska ALDRIG visas i någon mapp
-          console.log(`FileExplorer: ℹ️ Rotfil "${file.name}" (ID ${file.id}) har INGEN mapp och visas därför INTE i mapp ${selectedFolderId}`);
-          // Ingen åtgärd - rotfilen visas inte i den valda mappen
-        }
-        // Fall 2B: Ingen mapp är vald, vi är i root-läge
-        else {
-          // ENDAST i detta fall visar vi rotfiler (filer utan mapptillhörighet)
+        // VISNINGSREGLER FÖR ROTFILER:
+        // 1. Visa ENDAST i root-läge (ingen mapp vald)
+        // 2. Aldrig i någon mapp
+        if (!selectedFolderId) {
+          // Lägg till i huvudträdet
           tree.push(fileNode);
           console.log(`FileExplorer: ✅ Rotfil "${file.name}" (ID ${file.id}) visas KORREKT i ROOT`);
+        } else {
+          console.log(`FileExplorer: ℹ️ Rotfil "${file.name}" (ID ${file.id}) visas INTE i mapp ${selectedFolderId}`);
         }
       }
     });
