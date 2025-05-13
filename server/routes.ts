@@ -222,16 +222,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [newProject] = await db.insert(projects).values({
         name,
         description,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        createdBy: req.user!.id
+        created_at: new Date(),
+        updated_at: new Date(),
+        created_by_id: req.user!.id // Anpassat för databasnamnet
       }).returning();
 
       // Automatiskt tilldela skaparen till projektet
       await db.insert(userProjects).values({
-        userId: req.user!.id,
-        projectId: newProject.id,
-        createdAt: new Date()
+        user_id: req.user!.id,
+        project_id: newProject.id,
+        created_at: new Date()
       });
 
       console.log(`Nytt projekt skapat: ${name} (ID: ${newProject.id}) av användare ${req.user!.id}`);
