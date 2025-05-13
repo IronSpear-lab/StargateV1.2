@@ -299,8 +299,214 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ error: "Ett fel uppstod vid hämtning av filer" });
     }
   });
-  
-  // Lägg till övriga endpoints som behövs...
+
+  // User-Projects API
+  app.get(`${apiPrefix}/user-projects`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    try {
+      const userProjects = await db.query.userProjects.findMany({
+        where: eq(userProjects.userId, req.user!.id),
+        with: {
+          project: true
+        }
+      });
+      
+      res.json(userProjects);
+    } catch (error) {
+      console.error('Error fetching user projects:', error);
+      res.status(500).json({ error: 'Error fetching user projects' });
+    }
+  });
+
+  // Folders API
+  app.get(`${apiPrefix}/folders`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    try {
+      const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
+      
+      if (!projectId) {
+        return res.status(400).json({ error: 'Project ID is required' });
+      }
+      
+      // Check user access to the project
+      const userInfo = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
+      
+      const isSuperuserOrAdmin = userInfo && (userInfo.role === 'superuser' || userInfo.role === 'admin');
+      
+      if (!isSuperuserOrAdmin) {
+        const projectAccess = await db.query.userProjects.findFirst({
+          where: and(
+            eq(userProjects.userId, req.user!.id),
+            eq(userProjects.projectId, projectId)
+          )
+        });
+        
+        if (!projectAccess) {
+          return res.status(403).json({ error: 'No access to this project' });
+        }
+      }
+      
+      const foldersList = await db.query.folders.findMany({
+        where: eq(folders.projectId, projectId),
+        orderBy: [asc(folders.id)]
+      });
+      
+      res.json(foldersList);
+    } catch (error) {
+      console.error('Error fetching folders:', error);
+      res.status(500).json({ error: 'Error fetching folders' });
+    }
+  });
+
+  app.post(`${apiPrefix}/folders`, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    try {
+      const { name, projectId, parentId } = req.body;
+      
+      if (!name || !projectId) {
+        return res.status(400).json({ error: 'Name and Project ID are required' });
+      }
+      
+      // Check if user has permission to create folders
+      const userInfo = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
+      
+      const allowedRoles = ['admin', 'project_leader', 'superuser'];
+      const isUserAllowed = userInfo && allowedRoles.includes(userInfo.role);
+      
+      if (!isUserAllowed) {
+        return res.status(403).json({ error: 'No permission to create folders' });
+      }
+      
+      // Check if the project exists
+      const project = await db.query.projects.findFirst({
+        where: eq(projects.id, projectId)
+      });
+      
+      if (!project) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+      
+      // Create the folder
+      const [newFolder] = await db.insert(folders).values({
+        name,
+        projectId,
+        parentId: parentId || null
+      }).returning();
+      
+      res.status(201).json(newFolder);
+    } catch (error) {
+      console.error('Error creating folder:', error);
+      res.status(500).json({ error: 'Error creating folder' });
+    }
+  });
+
+  // Upload a file
+  app.post(`${apiPrefix}/upload`, upload.single('file'), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+    
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    
+    const { projectId, folderId, description } = req.body;
+    
+    if (!projectId) {
+      return res.status(400).json({ error: 'Project ID is required' });
+    }
+    
+    // Check if the project exists and user has access
+    try {
+      const project = await db.query.projects.findFirst({
+        where: eq(projects.id, parseInt(projectId))
+      });
+      
+      if (!project) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+      
+      // Check user access to the project
+      const userInfo = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
+      
+      const isSuperuserOrAdmin = userInfo && (userInfo.role === 'superuser' || userInfo.role === 'admin');
+      
+      if (!isSuperuserOrAdmin) {
+        const projectAccess = await db.query.userProjects.findFirst({
+          where: and(
+            eq(userProjects.userId, req.user!.id),
+            eq(userProjects.projectId, parseInt(projectId))
+          )
+        });
+        
+        if (!projectAccess) {
+          return res.status(403).json({ error: 'No access to this project' });
+        }
+      }
+      
+      // If a folder is specified, check if it exists
+      let folder = null;
+      
+      if (folderId) {
+        folder = await db.query.folders.findFirst({
+          where: and(
+            eq(folders.id, parseInt(folderId)),
+            eq(folders.projectId, parseInt(projectId))
+          )
+        });
+        
+        if (!folder) {
+          return res.status(404).json({ error: 'Folder not found in the specified project' });
+        }
+      }
+      
+      // Create the file record
+      const [newFile] = await db.insert(files).values({
+        name: file.originalname,
+        path: file.path,
+        projectId: parseInt(projectId),
+        folderId: folder ? parseInt(folderId) : null,
+        description: description || '',
+        uploadedBy: req.user!.id,
+        fileType: file.mimetype,
+        size: file.size,
+        createdAt: new Date()
+      }).returning();
+      
+      // If the file is a PDF, create a PDF version record
+      if (file.mimetype === 'application/pdf') {
+        await db.insert(pdfVersions).values({
+          fileId: newFile.id,
+          version: 1,
+          path: file.path,
+          uploadedBy: req.user!.id,
+          createdAt: new Date(),
+          isActive: true
+        });
+      }
+      
+      return res.status(201).json(newFile);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      return res.status(500).json({ error: 'Error saving file' });
+    }
+  });
 
   // Create HTTP server
   const httpServer = createServer(app);
