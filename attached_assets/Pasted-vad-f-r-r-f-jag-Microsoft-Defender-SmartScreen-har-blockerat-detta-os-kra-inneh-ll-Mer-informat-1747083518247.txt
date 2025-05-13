@@ -1,0 +1,38 @@
+vad för är få jag Microsoft Defender SmartScreen har blockerat detta osäkra innehåll
+
+Mer information
+Tillhandahålls av 04b55315-df43-4f1f-a44c-f46374c81fba-00-2vc93lux5k03l.worf.replit.dev
+Microsoft Defender SmartScreen har markerat att detta är nätfiskeinnehåll. Om du väljer att visa sådant innehåll kan du bli lurad att avslöja personlig eller ekonomisk information. Du riskerar att känslig information som lösenord, kreditkortsnummer, kontaktinfo eller aktiveringsnycklar för programvara hamnar i fel händer.
+Microsoft Defender SmartScreen
+
+1 minute ago
+ZT
+
+n075
+Det här är ett vanligt problem med Microsoft Defender SmartScreen när man arbetar i Replit. Meddelandet visas eftersom Replit-miljön körs på en tillfällig domän som inte är verifierad av Microsoft.
+
+Här är några alternativ för att komma runt problemet:
+
+Ladda ner HTML-filen direkt:
+
+Högerklicka på "sidebar-demo.html" i fillistningen
+Välj "Ladda ner" eller "Download"
+Öppna filen lokalt på din dator (den kommer inte att flaggas av Microsoft Defender)
+Exportera koden till ett annat projekt:
+
+Om du har tillgång till en annan utvecklingsmiljö (som VS Code) kan du kopiera koden och köra den där
+Använd en annan webbläsare:
+
+Firefox eller Safari har ibland mindre strikta säkerhetsfilter för utvecklingsmiljöer
+Testa att klicka på "Mer information" och sedan "Visa innehåll ändå":
+
+I vissa fall kan du välja att fortsätta ändå, men det beror på dina säkerhetsinställningar
+För att visa hur koden fungerar, kan jag beskriva hur jag har implementerat sidebaren:
+
+Den nya sidebaren är exakt som din referensbild med expanderbara kategorier
+När du klickar på t.ex. "Vault" så expanderas en lista med underalternativ
+Varje undermeny kan i sin tur ha egna undermenyalternativ (t.ex. Files > 01-Organisation > etc.)
+Pilarna (chevrons) ändrar riktning när en meny expanderas/kollapsar
+Aktiva menyval markeras med blå färg
+Användarprofilen visas längst ner med profilbild och e-post
+Allt detta finns implementerat i React-koden och fungerar när webbapplikationen körs. Vill du att jag gör några specifika justeringar i koden för att förbättra sidebaren?
