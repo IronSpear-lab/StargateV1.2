@@ -287,7 +287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const userProjs = await db.query.projects.findMany({
         where: inArray(projects.id, projectIds),
-        orderBy: [desc(projects.updatedAt)]
+        orderBy: [desc(projects.createdAt)]
       });
       
       return res.json(userProjs);
