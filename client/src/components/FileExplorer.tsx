@@ -299,14 +299,26 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         
         // Validera och verifiera att vi har rätt filer i rätt kontext
         const validatedFiles = files.filter((file: FileData) => {
-          // Validera projektlsallhörighet
+          // Validera projekttillhörighet först - grundläggande säkerhet
           const isCorrectProject = file.projectId && 
             file.projectId.toString() === currentProject.id.toString();
           
-          // Validera mapptillhörighet
-          const hasCorrectFolderContext = selectedFolderId
-            ? file.folderId === Number(selectedFolderId) 
-            : file.folderId === null;
+          // Validera mapptillhörighet med mycket striktare kontroller
+          let hasCorrectFolderContext = false;
+          
+          if (selectedFolderId) {
+            // Mapp är vald - verifiera att filen tillhör exakt denna mapp
+            // Konvertera båda till siffror för konsekvent jämförelse
+            const fileFolderId = file.folderId !== null ? Number(file.folderId) : null;
+            const targetFolderId = Number(selectedFolderId);
+            
+            hasCorrectFolderContext = fileFolderId === targetFolderId;
+            console.log(`FileExplorer: FilID=${file.id}, Valideraring (MAPPLÄGE): filFolderId=${fileFolderId}, targetFolderId=${targetFolderId}, match=${hasCorrectFolderContext}`);
+          } else {
+            // Rotläge - verifiera att filen inte har någon mapp (måste vara null, inte undefined)
+            hasCorrectFolderContext = file.folderId === null;
+            console.log(`FileExplorer: FilID=${file.id}, Validerar (ROTLÄGE): filFolderId=${file.folderId}, match=${hasCorrectFolderContext}`);
+          }
           
           // Kombinerad validering
           return isCorrectProject && hasCorrectFolderContext;
@@ -500,7 +512,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     // KRITISK FÖRBÄTTRING: Se till att folderId hanteras korrekt
     if (effectiveFolderId) {
       // Validera att mappen existerar och tillhör rätt projekt
-      const folder = foldersData?.find((f: FolderData) => f.id.toString() === effectiveFolderId);
+      const folder = foldersData?.find((f: FolderData) => f.id.toString() === effectiveFolderId.toString());
       
       if (!folder) {
         console.error(`ALLVARLIGT FEL: Vald mapp (ID ${effectiveFolderId}) finns inte i mappdata!`);
@@ -524,12 +536,18 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         return;
       }
       
-      // KRITISKT FIXAT: Skicka folderId med korrekt format 
-      formData.append('folderId', effectiveFolderId.toString());
-      console.log(`Laddar upp till mapp: ${effectiveFolderId} (validerad för projekt ${currentProject.id})`);
+      // KRITISKT FÖRBÄTTRAT: Säkerställ korrekt stringifiering av mappID för uppladdning
+      const folderIdString = effectiveFolderId.toString();
+      console.log(`Laddar upp till mapp: ${folderIdString} (validerad för projekt ${currentProject.id})`);
+      
+      // Skicka validerat folderId
+      formData.append('folderId', folderIdString);
     } else {
       // Explicit loggning när ingen mapp är vald - för felsökning
       console.log(`Laddar upp utan mappval - filen kommer placeras i ROT`);
+      
+      // VIKTIGT: Skicka NULL-värde explicit så servern förstår att det är avsiktligt
+      formData.append('folderId', 'null');
     }
     
     // Simulate upload progress (in a real app, you'd use XHR or fetch with progress event)
