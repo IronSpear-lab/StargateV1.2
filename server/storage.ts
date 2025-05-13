@@ -549,9 +549,9 @@ class DatabaseStorage implements IStorage {
     }
   }
 
-  // Funktion för att hämta alla filer i ett projekt
+  // Funktion för att hämta alla filer i ett projekt - FÖRBÄTTRAD LOGGNING OCH FELHANTERING
   async getFilesByProject(projectId: number): Promise<File[]> {
-    console.log(`storage.getFilesByProject: Hämtar alla filer för projekt ${projectId}`);
+    console.log(`storage.getFilesByProject: Hämtar alla filer för projekt ${projectId} med detaljerad loggning`);
     
     if (!projectId || isNaN(projectId)) {
       console.error('storage.getFilesByProject: Ogiltigt projektID:', projectId);
@@ -564,6 +564,31 @@ class DatabaseStorage implements IStorage {
       });
       
       console.log(`storage.getFilesByProject: Hittade ${fileList.length} filer för projekt ${projectId}`);
+      
+      // Förbättrad loggning: Gruppera filer per mapp
+      if (fileList.length > 0) {
+        const rootFiles = fileList.filter(f => f.folderId === null);
+        console.log(`storage.getFilesByProject: Av dessa är ${rootFiles.length} rotfiler (utan mapptillhörighet):`);
+        
+        if (rootFiles.length > 0) {
+          console.log(`  ROTFILER: ${rootFiles.map(f => `[${f.id}: ${f.name}]`).join(', ')}`);
+        }
+        
+        // Gruppera återstående filer per mapp för bättre översikt
+        const filesByFolder = fileList.reduce((acc, file) => {
+          if (file.folderId) {
+            acc[file.folderId] = acc[file.folderId] || [];
+            acc[file.folderId].push(file);
+          }
+          return acc;
+        }, {} as Record<number, File[]>);
+        
+        // Logga filer per mapp
+        Object.entries(filesByFolder).forEach(([folderId, files]) => {
+          console.log(`  MAPP ${folderId}: ${files.length} filer - ${files.map(f => `[${f.id}: ${f.name}]`).join(', ')}`);
+        });
+      }
+      
       return fileList;
     } catch (error) {
       console.error("Error fetching all project files:", error);
@@ -571,9 +596,9 @@ class DatabaseStorage implements IStorage {
     }
   }
   
-  // Funktion för att hämta de senaste filerna för ett projekt
+  // Funktion för att hämta de senaste filerna för ett projekt - FÖRBÄTTRAD MED MAPPINFORMATION
   async getRecentFiles(projectId: number, limit: number = 10): Promise<File[]> {
-    console.log(`storage.getRecentFiles: Hämtar de ${limit} senaste filerna för projekt ${projectId}`);
+    console.log(`storage.getRecentFiles: Hämtar de ${limit} senaste filerna för projekt ${projectId} med mappinformation`);
     
     if (!projectId || isNaN(projectId)) {
       console.error('storage.getRecentFiles: Ogiltigt projektID:', projectId);
@@ -588,6 +613,24 @@ class DatabaseStorage implements IStorage {
       });
       
       console.log(`storage.getRecentFiles: Hittade ${fileList.length} senaste filer för projekt ${projectId}`);
+      
+      // Detaljerad loggning: Visa mappinformation för felsökning
+      if (fileList.length > 0) {
+        // Gruppera filer i "utan mapp" och "med mapp" för tydligare loggning
+        const rootFiles = fileList.filter(f => f.folderId === null);
+        const filesWithFolders = fileList.filter(f => f.folderId !== null);
+        
+        console.log(`storage.getRecentFiles: Av de ${fileList.length} filerna är ${rootFiles.length} rotfiler och ${filesWithFolders.length} i mappar`);
+        
+        if (rootFiles.length > 0) {
+          console.log(`  SENASTE ROTFILER: ${rootFiles.map(f => `[${f.id}: ${f.name}]`).join(', ')}`);
+        }
+        
+        if (filesWithFolders.length > 0) {
+          console.log(`  SENASTE FILER I MAPPAR: ${filesWithFolders.map(f => `[${f.id}: ${f.name}, mapp: ${f.folderId}]`).join(', ')}`);
+        }
+      }
+      
       return fileList;
     } catch (error) {
       console.error("Error fetching recent files for project:", error);
