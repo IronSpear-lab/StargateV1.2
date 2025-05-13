@@ -182,6 +182,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             );
             
             console.log(`/api/files - ANVÄNDER MAPPFILTRERING: Visar endast filer i mapp ${folderId}`);
+            
+            // FÖRBÄTTRAD DIAGNOSTIK: Jämför faktiska värden som sparas i databasen
+            const folderFiles = await db.query.files.findMany({
+              where: and(
+                eq(files.projectId, projectId),
+                eq(files.folderId, folderId)
+              ),
+              limit: 5
+            });
+            
+            console.log(`/api/files - DIAGNOSTIK: De första ${folderFiles.length} filerna i mapp ${folderId}:`, 
+              folderFiles.map(f => ({id: f.id, name: f.name, folderId: f.folderId})));
           } else {
             console.error(`/api/files - VARNING: Angiven mapp ${folderId} existerar inte i projekt ${projectId}, visar alla filer`);
             // Om mappen inte existerar, visa alla filer i projektet istället
@@ -198,6 +210,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isNull(files.folderId)
         );
         console.log(`/api/files - VISAR ENDAST ROTFILER: Visar filer utan mapptillhörighet`);
+        
+        // FÖRBÄTTRAD DIAGNOSTIK: Visa exempel på rotfiler från databasen
+        const rootFiles = await db.query.files.findMany({
+          where: and(
+            eq(files.projectId, projectId),
+            isNull(files.folderId)
+          ),
+          limit: 5
+        });
+        
+        console.log(`/api/files - DIAGNOSTIK: De första ${rootFiles.length} filerna i ROT:`, 
+          rootFiles.map(f => ({id: f.id, name: f.name, folderId: f.folderId})));
       } else {
         // Om inget mappID anges eller "all" är true, visa alla filer i projektet
         whereCondition = eq(files.projectId, projectId);
@@ -507,6 +531,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // FÖRBÄTTRAD VALIDERING: Kontrollera att folderId är korrekt formaterat
+      console.log(`Filuppladdning: Kontrollerar folderId="${folderId}" av typen ${typeof folderId}`);
+      
+      // Om folderId är "null" (som string) från formuläret, se till att det blir riktigt null
+      if (folderId === "null") folderId = null;
+      
+      // Om folderId är tomt, gör det till null
+      if (folderId === "") folderId = null;
+      
+      // Konvertera siffersträngar till nummer
+      if (typeof folderId === "string" && !isNaN(Number(folderId))) {
+        folderId = Number(folderId);
+      }
+      
+      // Extra kontroll: Se till att 0 blir null (många system skickar 0 för att indikera null)
+      if (folderId === 0) folderId = null;
+      
+      console.log(`Filuppladdning: Slutlig folderId=${folderId} av typen ${typeof folderId}`);
+      
       // Skapa filpost i databasen
       const [newFile] = await db.insert(files).values({
         name: req.file.originalname,
@@ -519,7 +562,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         uploadDate: new Date()
       }).returning();
       
-      console.log(`Ny fil uppladdad: ${req.file.originalname} till projekt ${projectId} ${folderId ? `i mapp ${folderId}` : 'utan mapp'}`);
+      console.log(`Ny fil uppladdad: ${req.file.originalname} (ID: ${newFile.id}) till projekt ${projectId} ${folderId ? `i mapp ${folderId}` : 'utan mapp (NULL)'}`);
+      
+      // Dubbelkolla att den sparade filen har rätt folderId genom att hämta den direkt
+      const savedFile = await db.query.files.findFirst({
+        where: eq(files.id, newFile.id)
+      });
+      
+      console.log(`Verifierar sparad fil: ID=${savedFile?.id}, name=${savedFile?.name}, folderId=${savedFile?.folderId} (${typeof savedFile?.folderId})`);
       
       // Returnera JSON-data
       return res.status(200).json(newFile);
