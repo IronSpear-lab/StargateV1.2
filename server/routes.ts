@@ -1312,30 +1312,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let fileSource = ""; // För loggning
       
       // ANVÄND STORAGE INTERFACE MED FÖRBÄTTRAD LOGGNING FÖR FELSÖKNING
-      if (rootFilesOnly) {
-        // LÄGE 1: ENDAST ROTFILER 
-        fileSource = "ROTFILER";
+      // Använd direkta Drizzle-anrop istället för storage interface
+      // Basvillkor: filer i detta projekt
+      let whereCondition = eq(files.projectId, projectId);
+      
+      if (rootFilesOnly || (!folderId && !all)) {
+        // LÄGE 1: ENDAST ROTFILER (också standardläge om ingen annan flagga är satt)
+        fileSource = rootFilesOnly ? "ROTFILER" : "STANDARD (ROTFILER)";
         console.log(`/api/files - ANVÄNDER LÄGE: ${fileSource} - Hämtar ENDAST filer UTAN mapptillhörighet i projekt ${projectId}`);
-        fileList = await storage.getRootFiles(projectId);
+        
+        // Lägg till villkor: folderId IS NULL
+        whereCondition = and(
+          whereCondition,
+          isNull(files.folderId)
+        );
       } 
       else if (folderId !== undefined) {
         // LÄGE 2: MAPPSPECIFIKA FILER
         fileSource = `MAPP ${folderId}`;
         console.log(`/api/files - ANVÄNDER LÄGE: ${fileSource} - Hämtar ENDAST filer FÖR SPECIFIK MAPP ${folderId} i projekt ${projectId}`);
-        fileList = await storage.getFilesByFolder(projectId, folderId);
+        
+        // Lägg till villkor: folderId = specifik mapp
+        whereCondition = and(
+          whereCondition,
+          eq(files.folderId, folderId)
+        );
       } 
       else if (all) {
-        // LÄGE 3: ALLA PROJEKTFILER
+        // LÄGE 3: ALLA PROJEKTFILER (behåll bara basvillkoret som redan finns)
         fileSource = "ALLA FILER";
         console.log(`/api/files - ANVÄNDER LÄGE: ${fileSource} - Hämtar ALLA filer i projekt ${projectId} oavsett mapptillhörighet`);
-        fileList = await storage.getFilesByProject(projectId);
-      } 
-      else {
-        // LÄGE 4: STANDARDLÄGE (ROTFILER)
-        fileSource = "STANDARD (ROTFILER)";
-        console.log(`/api/files - ANVÄNDER LÄGE: ${fileSource} - Hämtar ENDAST filer utan mapptillhörighet i projekt ${projectId}`);
-        fileList = await storage.getRootFiles(projectId);
       }
+      
+      // Hämta filerna med det konstruerade villkoret
+      fileList = await db.select()
+        .from(files)
+        .where(whereCondition)
+        .orderBy(desc(files.uploadDate));
       
       // Steg 6: Validera resultatet för mappspecifika filer - ett extra säkerhetslager
       if (folderId !== undefined) {
@@ -1436,17 +1449,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create file record in database with explicit NULL for folderId when no folder is selected
-      const file = await storage.createFile({
-        name: fileName,
-        fileType,
-        fileSize,
-        filePath,
-        projectId: parseInt(projectId),
-        folderId: parsedFolderId, // Använd NULL explicit när ingen mapp är vald
-        uploadedById: req.user!.id,
-        uploaderUsername: user?.username || "projectleader", // Spara användarnamn med filen
-        uploadDate: new Date()
-      });
+      // Använd direkt Drizzle-insert istället för storage.createFile
+      const [file] = await db.insert(files)
+        .values({
+          name: fileName,
+          fileType,
+          fileSize,
+          filePath,
+          projectId: parseInt(projectId),
+          folderId: parsedFolderId, // Använd NULL explicit när ingen mapp är vald
+          uploadedById: req.user!.id,
+          uploaderUsername: user?.username || "projectleader", // Spara användarnamn med filen
+          uploadDate: new Date()
+        })
+        .returning();
       
       console.log(`/api/files POST - Skapat fil ${file.id} med folderId = ${file.folderId || 'NULL (rotfil)'}`);
       
@@ -1459,6 +1475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             filePath: filePath,
             description: 'Ursprunglig version',
             uploadedById: req.user!.id,
+            uploadedAt: new Date(), // Lägg till uploadedAt för att undvika NULL-värden
             uploaderUsername: user?.username || "projectleader", // Spara användarnamn med versionen också
             metadata: {
               fileSize: fileSize,
