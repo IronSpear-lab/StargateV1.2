@@ -2640,11 +2640,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "No file uploaded" });
       }
       
-      // Get the file to make sure it exists and user has access
-      const file = await storage.getFile(fileId);
+      // Kontrollera autentisering
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      // Hämta filen direkt från databasen istället för storage helper
+      const file = await db.query.files.findFirst({
+        where: eq(files.id, fileId)
+      });
+      
       if (!file) {
         return res.status(404).json({ error: "File not found" });
       }
+      
+      // Hämta användarinformation för att kontrollera rollen
+      const userInfo = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
+      
+      // Superusers och admins har tillgång till alla filer
+      const isSuperuserOrAdmin = userInfo && (userInfo.role === 'superuser' || userInfo.role === 'admin');
+      
+      // Om användaren inte är superuser eller admin, kontrollera projektbehörighet
+      if (!isSuperuserOrAdmin) {
+        const userProject = await db.select()
+          .from(userProjects)
+          .where(and(
+            eq(userProjects.userId, req.user!.id),
+            eq(userProjects.projectId, file.projectId)
+          ))
+          .limit(1);
+        
+        if (userProject.length === 0) {
+          console.log(`POST /pdf/${fileId}/versions - ÅTKOMST NEKAD: Användare ${req.user!.id} har inte tillgång till fil ${fileId} i projekt ${file.projectId}`);
+          return res.status(403).json({ error: 'You do not have access to this file' });
+        }
+      }
+      
+      console.log(`POST /pdf/${fileId}/versions - BEHÖRIGHETSKONTROLL OK: Användare ${req.user!.id} (${isSuperuserOrAdmin ? userInfo!.role : 'regular'}) har tillgång till fil ${fileId} i projekt ${file.projectId}`);
       
       const description = req.body.description || 'New version';
       
@@ -2656,7 +2690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const versionNumber = latestVersion ? latestVersion.versionNumber + 1 : 1;
       
-      // Create new version
+      // Create new version - använd userInfo som vi redan hämtat för behörighetskontroll
       const [newVersion] = await db.insert(pdfVersions)
         .values({
           fileId,
@@ -2664,24 +2698,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           filePath: req.file.path,
           description,
           uploadedById: req.user!.id,
+          uploadedAt: new Date(), // Säkerställ att tidsstämpeln är aktuell
+          uploaderUsername: userInfo?.username || "unknown", // Använd hämtad användarinformation
           metadata: {
             fileSize: req.file.size,
-            fileName: req.file.originalname
+            fileName: req.file.originalname,
+            status: 'aktiv',
+            annat: description || ''
           }
         })
         .returning();
       
-      // Get user data for response
-      const user = await db.query.users.findFirst({
-        where: eq(users.id, req.user!.id),
-        columns: {
-          username: true
-        }
-      });
-      
+      // Använd userInfo vi redan hämtat för behörighetskontroll
       const responseVersion = {
         ...newVersion,
-        uploadedBy: user?.username || 'Unknown'
+        uploadedBy: userInfo?.username || 'Unknown'
       };
       
       res.status(201).json(responseVersion);
@@ -2694,6 +2725,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get content of a specific PDF version
   app.get(`${apiPrefix}/pdf/versions/:versionId`, async (req, res) => {
     try {
+      // Kontrollera autentisering
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
       const versionId = parseInt(req.params.versionId);
       if (isNaN(versionId)) {
         return res.status(400).json({ error: "Invalid version ID" });
@@ -2710,6 +2746,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!version) {
         return res.status(404).json({ error: "Version not found" });
       }
+      
+      // Hämta användarinformation för att kontrollera rollen
+      const userInfo = await db.query.users.findFirst({
+        where: eq(users.id, req.user!.id)
+      });
+      
+      // Superusers och admins har tillgång till alla filer
+      const isSuperuserOrAdmin = userInfo && (userInfo.role === 'superuser' || userInfo.role === 'admin');
+      
+      // Om användaren inte är superuser eller admin, kontrollera projektbehörighet
+      if (!isSuperuserOrAdmin) {
+        const userProject = await db.select()
+          .from(userProjects)
+          .where(and(
+            eq(userProjects.userId, req.user!.id),
+            eq(userProjects.projectId, version.file.projectId)
+          ))
+          .limit(1);
+        
+        if (userProject.length === 0) {
+          console.log(`GET /pdf/versions/${versionId} - ÅTKOMST NEKAD: Användare ${req.user!.id} har inte tillgång till fil ${version.fileId} i projekt ${version.file.projectId}`);
+          return res.status(403).json({ error: 'You do not have access to this file version' });
+        }
+      }
+      
+      console.log(`GET /pdf/versions/${versionId} - BEHÖRIGHETSKONTROLL OK: Användare ${req.user!.id} (${isSuperuserOrAdmin ? userInfo!.role : 'regular'}) har tillgång till filversion ${versionId} i projekt ${version.file.projectId}`);
       
       // Check if file exists on disk
       if (!fs.existsSync(version.filePath)) {
