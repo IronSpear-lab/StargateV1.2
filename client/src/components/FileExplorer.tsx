@@ -241,10 +241,14 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       // STRIKT LÄGE: SEPARAT ANROP BASERAT PÅ KONTEXT
       // Detta säkerställer att vi håller filer separerade mellan kontexter
       
-      console.log(`FileExplorer: STRIKT LÄGE AKTIVERAT för filhämtning. Vald mapp: ${selectedFolderId || 'ROOT'}`);
+      console.log(`FileExplorer: STRIKT LÄGE AKTIVERAT för filhämtning. Vald mapp: ${selectedFolderId || 'ROOT'}, Projekt: ${currentProject.id}`);
       
       // Sätt alltid projektets ID för grundläggande filtrering
       let url = `/api/files?projectId=${currentProject.id}`;
+      
+      // DEBUGGING: Lägg alltid till en slumpmässig parameter för att förhindra cachelagring av API-anrop
+      // Detta hjälper till att säkerställa att vi alltid får färsk data från servern
+      url += `&_t=${new Date().getTime()}`;
       
       // För tydlighetens skull loggar vi exakt vilken typ av filhämtning vi gör
       if (selectedFolderId) {
@@ -469,11 +473,23 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
     
     console.log(`Laddar upp fil till projektID: ${currentProject.id}`);
     
+    // KRITISK FÖRBÄTTRING: Se till att folderId hanteras korrekt
     if (uploadState.selectedFolder) {
-      // Kontrollera att vald mapp faktiskt tillhör det aktuella projektet
+      // Validera att mappen existerar och tillhör rätt projekt
       const folder = foldersData?.find((f: FolderData) => f.id.toString() === uploadState.selectedFolder);
       
-      if (folder && folder.projectId !== currentProject.id) {
+      if (!folder) {
+        console.error(`ALLVARLIGT FEL: Vald mapp (ID ${uploadState.selectedFolder}) finns inte i mappdata!`);
+        toast({
+          title: "Felaktig mapp",
+          description: "Den valda mappen kunde inte hittas. Välj en annan mapp.",
+          variant: "destructive",
+        });
+        setUploadState(prev => ({ ...prev, isUploading: false }));
+        return;
+      }
+      
+      if (folder.projectId.toString() !== currentProject.id.toString()) {
         console.error(`VARNING: Vald mapp (ID ${uploadState.selectedFolder}) tillhör projekt ${folder.projectId}, inte aktuellt projekt ${currentProject.id}`);
         toast({
           title: "Felaktig mapp",
@@ -484,8 +500,12 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         return;
       }
       
-      formData.append('folderId', uploadState.selectedFolder);
-      console.log(`Laddar upp till mapp: ${uploadState.selectedFolder}`);
+      // KRITISKT FIXAT: Skicka folderId med korrekt format 
+      formData.append('folderId', uploadState.selectedFolder.toString());
+      console.log(`Laddar upp till mapp: ${uploadState.selectedFolder} (validerad för projekt ${currentProject.id})`);
+    } else {
+      // Explicit loggning när ingen mapp är vald - för felsökning
+      console.log(`Laddar upp utan mappval - filen kommer placeras i ROT`);
     }
     
     // Simulate upload progress (in a real app, you'd use XHR or fetch with progress event)
