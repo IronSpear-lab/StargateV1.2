@@ -95,10 +95,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
       const rawFolderId = req.query.folderId;
       const all = req.query.all === "true";
+      const rootFilesOnly = req.query.rootFilesOnly === "true";
       
       console.log(`/api/files - ANROP MED PARAMETRAR:`, { 
         projectId, 
         folderId: rawFolderId,
+        rootFilesOnly,
         all,
         userId: req.user?.id,
         timestamp: new Date().toISOString()
@@ -188,6 +190,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`/api/files - VARNING: Ogiltigt mappID-format: ${rawFolderId}, visar alla filer`);
           whereCondition = eq(files.projectId, projectId);
         }
+      } else if (rootFilesOnly) {
+        // ROTFILTRERING: Visa endast filer som inte har någon mapp (folderId är null)
+        whereCondition = and(
+          eq(files.projectId, projectId),
+          isNull(files.folderId)
+        );
+        console.log(`/api/files - VISAR ENDAST ROTFILER: Visar filer utan mapptillhörighet`);
       } else {
         // Om inget mappID anges eller "all" är true, visa alla filer i projektet
         whereCondition = eq(files.projectId, projectId);
