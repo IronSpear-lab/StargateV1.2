@@ -155,7 +155,8 @@ export default function EnhancedPDFViewer({
   pdfFile,
   highlightAnnotationId,
   annotationId,
-  isDialogMode = false
+  isDialogMode = false,
+  folderId
 }: EnhancedPDFViewerProps) {
   const { user } = useAuth();
   const { projectMembers, currentProject } = useProject();
