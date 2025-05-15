@@ -14,7 +14,8 @@ export function usePDFDialog() {
     versionId,
     pdfFile,
     highlightAnnotationId,
-    annotationId
+    annotationId,
+    folderId
   }: {
     fileId?: string | number;
     initialUrl?: string;
@@ -25,6 +26,7 @@ export function usePDFDialog() {
     pdfFile?: Blob | null;
     highlightAnnotationId?: number;
     annotationId?: number;
+    folderId?: number | null; // För att hålla reda på i vilken mapp PDF:en tillhör
   }) => {
     openPDFDialog({
       fileId,

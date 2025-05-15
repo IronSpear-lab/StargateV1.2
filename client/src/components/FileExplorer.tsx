@@ -720,7 +720,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       console.log(`FileExplorer: 🔍 MAPPLÄGE - Visar endast filer i mapp ${selectedFolderId}`);
       
       // Extremt strikt filtrering med flera nivåer av validering
-      filerAttVisa = projektetsAllaFiler.filter(file => {
+      filerAttVisa = projektetsAllaFiler.filter((file: FileData) => {
         // Krav 1: Filen måste ha en giltig folderId
         if (file.folderId === null || file.folderId === undefined) {
           console.log(`FileExplorer: ❌ Fil ${file.id} - "${file.name}" har INGEN folderId, visas INTE i mapp ${selectedFolderId}`);
@@ -751,7 +751,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       // ROTLÄGE: Visa ENDAST filer utan mapptillhörighet
       console.log(`FileExplorer: 🌱 ROTLÄGE - Visar endast filer utan mapptillhörighet`);
       
-      filerAttVisa = projektetsAllaFiler.filter(file => {
+      filerAttVisa = projektetsAllaFiler.filter((file: FileData) => {
         // STRIKTARE ROTFILKONTROLL: En fil är en rotfil ENDAST om den har null eller undefined som folderId
         // '0' och '' ska inte längre betraktas som rotfiler för att undvika förvirring
         const isRootFile = file.folderId === null || file.folderId === undefined;
@@ -775,7 +775,7 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         id: `folder_${folder.id}`,
         name: folder.name,
         type: 'folder',
-        folderId: folder.id, // Explicit lagra det faktiska mappID:t
+        folderId: typeof folder.id === 'string' ? parseInt(folder.id) : folder.id, // Explicit lagra det faktiska mappID:t som nummer
         projectId: folder.projectId, // Lagra även projektID för striktare filtrering
         expanded: expandedFolders[`folder_${folder.id}`] || true, // Som standard expanderade
         children: [] // Börja med tom lista - lägger till filer och undermappar senare
@@ -907,9 +907,11 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         const cleanFileId = rawFileId.startsWith('file_') ? rawFileId.replace('file_', '') : rawFileId;
         
         // 2. Säkerställ att filens folderId matchar den aktuella kontexten (för strikt säkerhet)
+        // FÖRBÄTTRAD TYPJÄMFÖRELSE: Konvertera allt till strängform för jämförelse
         const isInCorrectFolder = selectedFolderId 
-          ? file.folderId && file.folderId.toString() === selectedFolderId.toString()
-          : file.folderId === null || file.folderId === undefined || file.folderId === 0 || file.folderId === "";
+          ? file.folderId !== null && file.folderId !== undefined && 
+            file.folderId.toString() === selectedFolderId.toString()
+          : file.folderId === null || file.folderId === undefined;
         
         // 3. Säkerställ att filen tillhör det aktuella projektet (för extra säkerhet)
         const isInCorrectProject = file.projectId && 
