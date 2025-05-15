@@ -495,22 +495,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Create the folder - se till att vi alltid har korrekta och ekvivalenta null-värden
+      // SÄKERSTÄLL UNIK MAPP: Generera UUID för att garantera unikhet
+      const uuid = crypto.randomUUID();
+      
+      // Create the folder med garanterad unikhet
       const folderData = {
         name,
         projectId,
         parentId: parentId || null, // Explicit hantering av null och undefined
-        createdById: req.user!.id
+        createdById: req.user!.id,
+        uniqueId: uuid, // NYTT: Lägger till ett unikt ID för att garantera unik mappidentifiering
+        createdAt: new Date() // Säkerställ tidsstämpel för skapandetidpunkt
       };
       
       // För säkerhets skull, logga datan som skickas till databasen 
       console.log(`Skapar mapp med data: ${JSON.stringify(folderData)}`);
       
-      const [newFolder] = await db.insert(folders).values(folderData).returning();
-      
-      console.log(`Ny mapp skapad: ${name} (ID: ${newFolder.id}) i projekt ${projectId} av användare ${req.user!.id}`);
-      
-      return res.status(200).json(newFolder);
+      // Försök skapa mappen med strikt validering och loggning
+      try {
+        const [newFolder] = await db.insert(folders).values(folderData).returning();
+        
+        console.log(`Mapp skapad med UNIKT ID: ${uuid}, mappens ID i databasen: ${newFolder.id}`);
+        
+        // Verifiera att mappen skapades korrekt i databasen
+        const verifyFolder = await db.query.folders.findFirst({
+          where: eq(folders.id, newFolder.id)
+        });
+        
+        if (!verifyFolder) {
+          console.error(`KRITISKT FEL: Mappen med ID ${newFolder.id} kunde inte verifieras efter skapande!`);
+          return res.status(500).json({ error: "Kunde inte verifiera att mappen skapades korrekt." });
+        }
+        
+        // Allt är OK, fortsätt med den skapade mappen
+        return res.status(200).json(newFolder);
+      } catch (error) {
+        console.error("Error creating folder:", error);
+        return res.status(500).json({ error: "Failed to create folder" });
+      }
     } catch (error) {
       console.error("Error creating folder:", error);
       return res.status(500).json({ error: "Failed to create folder" });
@@ -623,6 +645,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (typeof folderId === "string" && folderId === "") {
         console.log(`Filuppladdning: Konverterar tom sträng till null`);
         folderId = null;
+      }
+      
+      // EXTRA VALIDERING: Kontrollera att mappen faktiskt existerar och är giltig
+      if (folderId !== null) {
+        const numericalFolderId = typeof folderId === 'string' ? parseInt(folderId) : folderId;
+        
+        try {
+          // Slå upp mappen för att kontrollera att den existerar och tillhör rätt projekt
+          const folderInfo = await db.query.folders.findFirst({
+            where: and(
+              eq(folders.id, numericalFolderId),
+              eq(folders.projectId, projectId)
+            )
+          });
+          
+          if (!folderInfo) {
+            console.error(`Filuppladdning: KRITISKT - Mappen ${numericalFolderId} hittades inte i projektet!`);
+            return res.status(400).json({
+              error: "Ogiltig mapp",
+              details: `Mappen med ID ${numericalFolderId} existerar inte i projektet eller har raderats.`
+            });
+          }
+          
+          console.log(`Filuppladdning: Mapp ${numericalFolderId} verifierad, fortsätter med uppladdning till mapp "${folderInfo.name}" (UUID: ${folderInfo.uniqueId})`);
+          
+          // Uppdatera folderId till den numeriska versionen
+          folderId = numericalFolderId;
+        } catch (folderError) {
+          console.error("Filuppladdning: Fel vid mappvalidering:", folderError);
+          return res.status(500).json({
+            error: "Kunde inte verifiera mappen",
+            details: "Ett fel uppstod vid verifiering av mappen. Vänligen försök igen."
+          });
+        }
       }
       
       // Konvertera siffersträngar till nummer

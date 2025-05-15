@@ -56,6 +56,8 @@ export const folders = pgTable("folders", {
   projectId: integer("project_id").references(() => projects.id).notNull(),
   parentId: integer("parent_id").references(() => folders.id),
   createdById: integer("created_by_id").references(() => users.id).notNull(),
+  uniqueId: text("unique_id").notNull(), // UUID för garanterad unikhet
+  createdAt: timestamp("created_at").defaultNow().notNull(), // Tidsstämpel för skapande
 });
 
 // Files table
