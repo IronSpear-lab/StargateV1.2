@@ -752,9 +752,9 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       console.log(`FileExplorer: 🌱 ROTLÄGE - Visar endast filer utan mapptillhörighet`);
       
       filerAttVisa = projektetsAllaFiler.filter(file => {
-        // En fil är en rotfil om den saknar mappkoppling helt
-        const isRootFile = file.folderId === null || file.folderId === undefined || 
-                          file.folderId === 0 || file.folderId === '';
+        // STRIKTARE ROTFILKONTROLL: En fil är en rotfil ENDAST om den har null eller undefined som folderId
+        // '0' och '' ska inte längre betraktas som rotfiler för att undvika förvirring
+        const isRootFile = file.folderId === null || file.folderId === undefined;
         
         if (isRootFile) {
           console.log(`FileExplorer: ✅ Rotfil ${file.id} - "${file.name}" visas i ROT`);
