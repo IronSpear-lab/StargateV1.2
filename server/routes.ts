@@ -495,13 +495,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Create the folder
-      const [newFolder] = await db.insert(folders).values({
+      // Create the folder - se till att vi alltid har korrekta och ekvivalenta null-värden
+      const folderData = {
         name,
         projectId,
-        parentId: parentId || null,
+        parentId: parentId || null, // Explicit hantering av null och undefined
         createdById: req.user!.id
-      }).returning();
+      };
+      
+      // För säkerhets skull, logga datan som skickas till databasen 
+      console.log(`Skapar mapp med data: ${JSON.stringify(folderData)}`);
+      
+      const [newFolder] = await db.insert(folders).values(folderData).returning();
       
       console.log(`Ny mapp skapad: ${name} (ID: ${newFolder.id}) i projekt ${projectId} av användare ${req.user!.id}`);
       
