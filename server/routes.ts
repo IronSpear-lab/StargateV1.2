@@ -73,7 +73,10 @@ const upload = multer({
     if (allowedFileTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Invalid file type. Only PDF, images, and Office documents are allowed."), false);
+      // Fixa typfel: cb förväntar null eller Error, men inte båda
+      // Använd null som första parameter när filen accepteras, annars Error
+      const fileTypeError = new Error("Invalid file type. Only PDF, images, and Office documents are allowed.");
+      cb(fileTypeError as unknown as null, false);
     }
   }
 });
@@ -351,8 +354,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Superusers och admins får tillgång till alla projekt
       if (userInfo && (userInfo.role === "superuser" || userInfo.role === "admin")) {
+        // Använd createdAt istället för updatedAt eftersom det är vad som finns i schemat
         const allProjects = await db.query.projects.findMany({
-          orderBy: [desc(projects.updatedAt)]
+          orderBy: [desc(projects.createdAt)]
         });
         return res.json(allProjects);
       }
@@ -603,11 +607,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // FÖRBÄTTRAD VALIDERING: Kontrollera att folderId är korrekt formaterat
       console.log(`Filuppladdning: Kontrollerar folderId="${folderId}" av typen ${typeof folderId}`);
       
-      // Om folderId är "null" (som string) från formuläret, se till att det blir riktigt null
-      if (folderId === "null") folderId = null;
+      // FÖRBÄTTRAD TYPKONTROLL för folderId-strängar
+      // Om folderId är en sträng som representerar "null", sätt den till faktisk null
+      if (typeof folderId === "string" && folderId === "null") {
+        console.log(`Filuppladdning: Konverterar strängvärde "null" till faktiskt null`);
+        folderId = null;
+      }
       
-      // Om folderId är tomt, gör det till null
-      if (folderId === "") folderId = null;
+      // Om folderId är en tom sträng, sätt den till null
+      if (typeof folderId === "string" && folderId === "") {
+        console.log(`Filuppladdning: Konverterar tom sträng till null`);
+        folderId = null;
+      }
       
       // Konvertera siffersträngar till nummer
       if (typeof folderId === "string" && !isNaN(Number(folderId))) {

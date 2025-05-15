@@ -950,11 +950,18 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
         }
         
         // 6. Öppna PDF-dialogen med validerat fil-ID
+        // FÖRBÄTTRAD TYPANVÄNDNING: Konvertera folderId korrekt och använd null istället för undefined för konsekvent mapphantering
+        const numericalFolderId = file.folderId !== null && file.folderId !== undefined 
+          ? (typeof file.folderId === 'string' ? parseInt(file.folderId) : file.folderId)
+          : null;
+          
+        console.log(`PDF-DIALOG: Skickar folderId=${numericalFolderId} (typ: ${typeof numericalFolderId}) för fil ${file.name}`);
+          
         showPDFDialog({
           fileId: cleanFileId,
           filename: file.name,
           projectId: currentProject?.id,
-          folderId: file.folderId ? Number(file.folderId) : undefined // Skicka med mapp-ID för enklare spårning
+          folderId: numericalFolderId // Skicka med korrekt konverterad folderId
         });
         
         return; // Förhindra standardhantering för PDF-filer

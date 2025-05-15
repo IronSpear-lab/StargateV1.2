@@ -37,7 +37,8 @@ export function usePDFDialog() {
       versionId,
       pdfFile,
       highlightAnnotationId,
-      annotationId
+      annotationId,
+      folderId // Skicka med folderId för bättre filkontext
     });
   };
 
