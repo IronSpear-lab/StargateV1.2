@@ -175,25 +175,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           if (folderExists) {
-            // MAPPFILTRERING: Visa endast filer som tillhör denna mapp
+            // FÖRBÄTTRAD MAPPFILTRERING: Visa endast filer som tillhör denna mapp med strikt filtrering
             whereCondition = and(
               eq(files.projectId, projectId),
-              eq(files.folderId, folderId)
+              eq(files.folderId, folderId) // Använd exakt matchning av mappID
             );
             
-            console.log(`/api/files - ANVÄNDER MAPPFILTRERING: Visar endast filer i mapp ${folderId}`);
+            console.log(`/api/files - FÖRBÄTTRAD MAPPFILTRERING: Visar endast filer i mapp ${folderId} för projekt ${projectId}`);
             
-            // FÖRBÄTTRAD DIAGNOSTIK: Jämför faktiska värden som sparas i databasen
-            const folderFiles = await db.query.files.findMany({
-              where: and(
-                eq(files.projectId, projectId),
-                eq(files.folderId, folderId)
-              ),
-              limit: 5
-            });
-            
-            console.log(`/api/files - DIAGNOSTIK: De första ${folderFiles.length} filerna i mapp ${folderId}:`, 
-              folderFiles.map(f => ({id: f.id, name: f.name, folderId: f.folderId})));
+            // UTÖKAD DIAGNOSTIK: Verifiera att mappfiltrering fungerar korrekt med SQL
+            try {
+              // Direkt SQL-fråga för att bekräfta att mappfiltrering fungerar korrekt
+              const folderFilesSql = await db.execute(
+                sql`SELECT id, name, "folderId" FROM files 
+                    WHERE "projectId" = ${projectId} 
+                    AND "folderId" = ${folderId} 
+                    LIMIT 5`
+              );
+              
+              console.log(`/api/files - SQL DIAGNOSTIK (MAPP): Hittade ${folderFilesSql.rows.length} filer i mapp ${folderId} med direkt SQL`, 
+                folderFilesSql.rows.map((f: any) => ({id: f.id, name: f.name, folderId: f.folderId})));
+                
+              // Standard ORM-fråga för jämförelse
+              const folderFilesOrm = await db.query.files.findMany({
+                where: and(
+                  eq(files.projectId, projectId),
+                  eq(files.folderId, folderId)
+                ),
+                limit: 5
+              });
+              
+              console.log(`/api/files - ORM DIAGNOSTIK (MAPP): Hittade ${folderFilesOrm.length} filer i mapp ${folderId} med ORM:`, 
+                folderFilesOrm.map(f => ({id: f.id, name: f.name, folderId: f.folderId})));
+              
+              // Jämför resultat för att bekräfta konsistens mellan SQL och ORM
+              if (folderFilesSql.rows.length !== folderFilesOrm.length) {
+                console.error(`/api/files - VARNING: Inkonsekvens i mappfiltreringsresultat mellan SQL och ORM!`);
+              }
+            } catch (sqlError) {
+              console.error(`/api/files - FEL VID SQL-MAPPDIAGNOSTIK:`, sqlError);
+            }
           } else {
             console.error(`/api/files - VARNING: Angiven mapp ${folderId} existerar inte i projekt ${projectId}, visar alla filer`);
             // Om mappen inte existerar, visa alla filer i projektet istället
@@ -204,24 +225,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
           whereCondition = eq(files.projectId, projectId);
         }
       } else if (rootFilesOnly) {
-        // ROTFILTRERING: Visa endast filer som inte har någon mapp (folderId är null)
+        // FÖRBÄTTRAD ROTFILTRERING: Visa endast filer som inte har någon mapp (folderId är null)
+        // Extra kontroller för att garantera korrekt filtrering
         whereCondition = and(
           eq(files.projectId, projectId),
-          isNull(files.folderId)
+          isNull(files.folderId) // NULL i databasen betyder ingen mapp
         );
-        console.log(`/api/files - VISAR ENDAST ROTFILER: Visar filer utan mapptillhörighet`);
+        console.log(`/api/files - VISAR ENDAST ROTFILER: Strikt filtrering för filer utan mapptillhörighet`);
         
-        // FÖRBÄTTRAD DIAGNOSTIK: Visa exempel på rotfiler från databasen
-        const rootFiles = await db.query.files.findMany({
-          where: and(
-            eq(files.projectId, projectId),
-            isNull(files.folderId)
-          ),
-          limit: 5
-        });
-        
-        console.log(`/api/files - DIAGNOSTIK: De första ${rootFiles.length} filerna i ROT:`, 
-          rootFiles.map(f => ({id: f.id, name: f.name, folderId: f.folderId})));
+        // EXTRA DIAGNOSTIK: Verifiera att WHERE-villkoret är korrekt för SQL
+        try {
+          // Gör en direkt SQL-fråga för att bekräfta att rotfilerna filtreras korrekt
+          const rootFilesSql = await db.execute(
+            sql`SELECT id, name, "folderId" FROM files 
+                WHERE "projectId" = ${projectId} 
+                AND "folderId" IS NULL 
+                LIMIT 5`
+          );
+          
+          console.log(`/api/files - SQL DIAGNOSTIK: Hittade ${rootFilesSql.rows.length} rotfiler med direkt SQL:`, 
+            rootFilesSql.rows.map((f: any) => ({id: f.id, name: f.name, folderId: f.folderId})));
+            
+          // Gör också vanlig ORM-fråga för jämförelse
+          const rootFilesOrm = await db.query.files.findMany({
+            where: and(
+              eq(files.projectId, projectId),
+              isNull(files.folderId)
+            ),
+            limit: 5
+          });
+          
+          console.log(`/api/files - ORM DIAGNOSTIK: Hittade ${rootFilesOrm.length} rotfiler med ORM:`, 
+            rootFilesOrm.map(f => ({id: f.id, name: f.name, folderId: f.folderId})));
+          
+          // Jämför antal resultat för att verifiera konsistens
+          if (rootFilesSql.rows.length !== rootFilesOrm.length) {
+            console.error(`/api/files - VARNING: Inkonsekvens i resultat mellan SQL och ORM!`);
+          }
+        } catch (sqlError) {
+          console.error(`/api/files - FEL VID SQL-DIAGNOSTIK:`, sqlError);
+        }
       } else {
         // Om inget mappID anges eller "all" är true, visa alla filer i projektet
         whereCondition = eq(files.projectId, projectId);
@@ -508,27 +551,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "No access to this project" });
       }
       
-      // Validera och extrahera folderId om det finns
+      // FÖRBÄTTRAD VALIDERING AV FOLDER ID: Garanterar korrekta värden för folder
+      // Standardvärde är null (ingen mapp/rotmapp)
       let folderId = null;
-      if (req.body.folderId && req.body.folderId !== 'null') {
-        folderId = parseInt(req.body.folderId);
+      
+      // Tydlig loggning av ursprunglig folderId från klienten
+      console.log(`Filuppladdning: Inkommande folderId="${req.body.folderId}" av typen ${typeof req.body.folderId}`);
+      
+      // Hanterar fallet när folderId skickas och inte är 'null' (sträng), undefined, eller tom sträng
+      if (req.body.folderId && 
+          req.body.folderId !== 'null' && 
+          req.body.folderId !== 'undefined' && 
+          req.body.folderId !== '') {
+          
+        // Konvertera alltid till nummer - detta säkerställer att folderId är en siffra
+        const parsedFolderId = parseInt(req.body.folderId);
         
-        if (!isNaN(folderId)) {
+        // Om parsning lyckades och vi har ett giltigt nummer
+        if (!isNaN(parsedFolderId) && parsedFolderId > 0) {
+          console.log(`Filuppladdning: Validerar mapp med ID ${parsedFolderId} för projekt ${projectId}`);
+          
           // Kontrollera att mappen existerar och tillhör projektet
           const folderExists = await db.query.folders.findFirst({
             where: and(
-              eq(folders.id, folderId),
+              eq(folders.id, parsedFolderId),
               eq(folders.projectId, projectId)
             )
           });
           
-          if (!folderExists) {
-            return res.status(404).json({ error: "Folder not found in this project" });
+          if (folderExists) {
+            // Sätt folderId endast om mappen faktiskt existerar
+            folderId = parsedFolderId;
+            console.log(`Filuppladdning: Mapp bekräftad giltig - fil associeras med mapp ${folderId}`);
+          } else {
+            console.error(`Filuppladdning: Mapp ${parsedFolderId} existerar inte i projekt ${projectId}!`);
+            return res.status(404).json({ 
+              error: "Folder not found in this project",
+              details: `The specified folder with ID ${parsedFolderId} does not exist or is not part of project ${projectId}`
+            });
           }
         } else {
-          // Om folderId inte är ett giltigt nummer, sätt det till null
+          // Ogiltigt mappID-format
+          console.error(`Filuppladdning: Ogiltigt format på mappID: "${req.body.folderId}" - ignorerar`);
           folderId = null;
         }
+      } else {
+        // Explicit loggning av rotfilsuppladdning för debugging
+        console.log(`Filuppladdning: Ingen giltig mapp angiven, fil placeras i ROT (folderId=null)`);
       }
       
       // FÖRBÄTTRAD VALIDERING: Kontrollera att folderId är korrekt formaterat
