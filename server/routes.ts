@@ -444,6 +444,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).send({ error: "Unauthorized" });
     }
     
+    console.log("========= SKAPA MAPP - INKOMMANDE BEGÄRAN ==========");
+    console.log("Anrop till POST /folders från användare:", req.user?.id);
+    console.log("Request body:", req.body);
+    
     try {
       const { name, projectId, parentId, parent, sidebarParent } = req.body;
       
@@ -483,6 +487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if parent folder exists if parentId is provided
       if (parentId) {
+        console.log(`Söker föräldermapp med ID ${parentId} i projekt ${projectId}`);
         const parentFolder = await db.query.folders.findFirst({
           where: and(
             eq(folders.id, parentId),
@@ -490,9 +495,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           )
         });
         
+        console.log(`Resultat av sökning efter föräldermapp:`, parentFolder);
+        
         if (!parentFolder) {
+          console.log(`VARNING: Föräldermapp med ID ${parentId} hittades inte i projekt ${projectId}`);
           return res.status(404).json({ error: "Parent folder not found" });
         }
+      } else {
+        console.log(`Ingen föräldermapp angiven, skapar en rotmapp i projekt ${projectId}`);
       }
       
       // SÄKERSTÄLL UNIK MAPP: Generera UUID för att garantera unikhet
