@@ -521,46 +521,84 @@ export default function FolderPage() {
     if (!currentProject?.id) return null;
     
     try {
+      console.log(`Söker efter mapp '${name}' i projekt ${currentProject.id}`);
+      
       // Första försöket: Hitta ID direkt från mappnamnet (om det finns i formatet "Mappnamn (123)")
       const folderMatch = name.match(/\((\d+)\)$/);
       if (folderMatch && folderMatch[1]) {
         const folderId = parseInt(folderMatch[1]);
         if (!isNaN(folderId)) {
-          console.log(`Direct match - found folder ID: ${folderId} from name: ${name}`);
-          return folderId;
+          console.log(`Direkt matchning - hittade mapp-ID: ${folderId} från namn: ${name}`);
+          
+          // Verifiera att mappen med detta ID faktiskt finns i projektet
+          const verifyRes = await apiRequest('GET', `/api/folders/${folderId}`);
+          if (verifyRes.ok) {
+            const folder = await verifyRes.json();
+            if (folder && folder.projectId === currentProject.id) {
+              console.log(`Verifierad direkt matchning - mapp ${folderId} existerar i projekt ${currentProject.id}`);
+              return folderId;
+            }
+          }
         }
       }
       
-      // Andra försöket: Gör ett API-anrop för att hitta mappen
-      console.log(`Searching for folder by name: ${name} in project: ${currentProject.id}`);
-      const cleanName = name.replace(/\s*\(\d+\)$/, '').trim();
-      const res = await apiRequest('GET', `/api/folders/by-name?name=${encodeURIComponent(cleanName)}&projectId=${currentProject.id}`);
-      
-      if (res.ok) {
-        const folder = await res.json();
-        if (folder && folder.id) {
-          console.log(`API lookup - found folder ID: ${folder.id} by name: ${cleanName}`);
-          return folder.id;
-        }
-      }
-      
-      // Tredje försöket: Hämta alla mappar och sök manuellt
+      // Andra försöket: Hämta alla mappar för projektet och leta efter en exakt namnmatchning
+      console.log(`Hämtar alla mappar för projekt ${currentProject.id} och söker efter '${name}'`);
       const allFoldersRes = await apiRequest('GET', `/api/folders?projectId=${currentProject.id}`);
+      
       if (allFoldersRes.ok) {
         const allFolders = await allFoldersRes.json();
-        // Sök efter mappen med samma namn (utan ID-delen om det finns)
-        const matchedFolder = allFolders.find((folder: any) => 
-          folder.name.toLowerCase() === cleanName.toLowerCase() || 
-          folder.name.replace(/\s*\(\d+\)$/, '').trim().toLowerCase() === cleanName.toLowerCase()
+        // Logga alla mappnamn för felsökning
+        console.log("Tillgängliga mappar:", allFolders.map((f: any) => `${f.name} (ID: ${f.id})`));
+        
+        // Rensa mappnamnet från eventuella ID-suffixar
+        const cleanName = name.replace(/\s*\(\d+\)$/, '').trim();
+        console.log(`Söker efter mapp med rent namn: '${cleanName}'`);
+        
+        // Först, försök hitta en exakt matchning (inklusive skiftlägeskänslighet)
+        let matchedFolder = allFolders.find((folder: any) => folder.name === name);
+        
+        if (!matchedFolder) {
+          // Om ingen exakt matchning, försök matcha på det rensade namnet
+          matchedFolder = allFolders.find((folder: any) => 
+            folder.name === cleanName || 
+            folder.name.replace(/\s*\(\d+\)$/, '').trim() === cleanName
+          );
+        }
+        
+        if (!matchedFolder) {
+          // Om fortfarande ingen matchning, gör en skiftlägesokänslig sökning
+          matchedFolder = allFolders.find((folder: any) => 
+            folder.name.toLowerCase() === cleanName.toLowerCase() || 
+            folder.name.replace(/\s*\(\d+\)$/, '').trim().toLowerCase() === cleanName.toLowerCase()
+          );
+        }
+        
+        // Om vi hittar en matchning, använd den
+        if (matchedFolder && matchedFolder.id) {
+          console.log(`Mappnamn-matchning - hittade mapp-ID: ${matchedFolder.id} för namn: ${cleanName}`);
+          return matchedFolder.id;
+        }
+        
+        // Speciell hantering för dubbla mappar med samma namn
+        const sameNameFolders = allFolders.filter((folder: any) => 
+          folder.name.toLowerCase().startsWith(cleanName.toLowerCase())
         );
         
-        if (matchedFolder && matchedFolder.id) {
-          console.log(`List lookup - found folder ID: ${matchedFolder.id} for name: ${cleanName}`);
-          return matchedFolder.id;
+        if (sameNameFolders.length > 0) {
+          console.log(`Hittade ${sameNameFolders.length} mappar med liknande namn:`, 
+            sameNameFolders.map((f: any) => `${f.name} (ID: ${f.id})`)
+          );
+          
+          // Använd den första mappen med matchande namn
+          const firstMatch = sameNameFolders[0];
+          console.log(`Använder första matchningen: ${firstMatch.name} (ID: ${firstMatch.id})`);
+          return firstMatch.id;
         }
       }
       
-      console.log(`Could not find any folder ID for name: ${name}`);
+      // Om vi kommer hit har vi inte hittat någon matchande mapp
+      console.log(`Kunde inte hitta någon mapp med namn: '${name}'`);
       
       // Uppdatera folderStatus om mappen inte hittas - detta triggar felmeddelandet
       setFolderStatus('not_found');
