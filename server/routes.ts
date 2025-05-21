@@ -268,10 +268,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (sqlError) {
           console.error(`/api/files - FEL VID SQL-DIAGNOSTIK:`, sqlError);
         }
-      } else {
-        // Om inget mappID anges eller "all" är true, visa alla filer i projektet
+      } else if (all) {
+        // Om "all" är true, visa alla filer i projektet (administratörsvyn)
         whereCondition = eq(files.projectId, projectId);
-        console.log(`/api/files - VISAR ALLA FILER: Inget mappfilter eller "all=true" angett`);
+        console.log(`/api/files - VISAR ALLA FILER: "all=true" angett - visar hela projektets filstruktur`);
+      } else {
+        // FÖRBÄTTRAT STANDARDBETEENDE: Om ingen mapp är specificerad, visa bara rotfiler (utan mappkoppling)
+        // Detta förhindrar att filer visas i flera mappar samtidigt
+        whereCondition = and(
+          eq(files.projectId, projectId),
+          isNull(files.folderId) // Visa bara filer som INTE har en mapp tilldelad
+        );
+        console.log(`/api/files - FÖRBÄTTRAT STANDARDBETEENDE: Visar endast rotfiler (null folderId) när ingen specifik mapp angetts`);
       }
       
       // Hämta filerna enligt de specificerade villkoren
