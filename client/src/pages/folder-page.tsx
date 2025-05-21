@@ -67,7 +67,7 @@ export default function FolderPage() {
   // Hämta mappnamnet från URL:en
   const params = useParams<{ folderName: string }>();
   const folderName = params.folderName || "Mapp";
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   
   const { currentProject } = useProject();
   const { toast } = useToast();
@@ -80,6 +80,9 @@ export default function FolderPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showFolderDeleteConfirm, setShowFolderDeleteConfirm] = useState(false);
   const [folderIdToDelete, setFolderIdToDelete] = useState<number | null>(null);
+  
+  // Status för mappen
+  const [folderStatus, setFolderStatus] = useState<'loading' | 'found' | 'not_found'>('loading');
   
   // Samma komponenter och state som i ritningar-page för konsekvent användargränssnitt
   // Använd PDF Dialog hook istället för lokal state
