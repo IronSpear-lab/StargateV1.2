@@ -166,6 +166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
       // Om ett specifikt folderId anges och "all" inte är true, använd det för filtrering
       if (rawFolderId && rawFolderId !== "null" && !all) {
+        // Konvertera till nummer för exakt jämförelse i databasen
         const folderId = parseInt(rawFolderId as string);
         
         if (!isNaN(folderId)) {
@@ -178,6 +179,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           if (folderExists) {
+            // KRITISK FÖRBÄTTRING: Använd strikt typning för mappjämförelse
+            // Detta säkerställer att vi bara får filer som är EXAKT kopplade till denna mapp
             // FÖRBÄTTRAD MAPPFILTRERING: Visa endast filer som tillhör denna mapp med strikt filtrering
             whereCondition = and(
               eq(files.projectId, projectId),
