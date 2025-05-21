@@ -138,6 +138,25 @@ export default function FolderPage() {
     }
   }, [ritningarData]);
   
+  // Håll reda på mappens ID för korrekt filtrering
+  const [currentFolderId, setCurrentFolderId] = useState<number | null>(null);
+  
+  // Uppdatera mappens ID när vi har verifierat den
+  useEffect(() => {
+    const updateFolderId = async () => {
+      if (!currentProject?.id || !folderName) return;
+      
+      try {
+        const folderId = await getFolderIdByName(folderName);
+        setCurrentFolderId(folderId);
+      } catch (error) {
+        console.error("Error updating folder ID:", error);
+      }
+    };
+    
+    updateFolderId();
+  }, [currentProject?.id, folderName]);
+  
   // Skapa en kombinerad lista av ritningar från API och lokal lagring
   const ritningar = React.useMemo(() => {
     const ritningarFromApi = apiRitningar || [];
@@ -146,9 +165,10 @@ export default function FolderPage() {
     // Debug-information som hjälper oss att se exakt vilken data som kommer från API
     console.log("Ritningar från API (rådata):", JSON.stringify(ritningarFromApi, null, 2));
     console.log("PDF-versioner från API (innehåller metadata):", JSON.stringify(allVersions, null, 2));
+    console.log("Aktuell mapp ID för filtrering:", currentFolderId);
     
     // Skapa en lookup-tabell för att hitta versioner baserat på fil-ID
-    const versionsByFileId = {};
+    const versionsByFileId: Record<string, any[]> = {};
     allVersions.forEach(version => {
       if (version.fileId) {
         if (!versionsByFileId[version.fileId]) {
@@ -159,8 +179,21 @@ export default function FolderPage() {
     });
     
     // Mappa om API-data till vårt Ritning-format med korrekta värden för metadata
+    // FÖRBÄTTRAD FILTRERING: Visa bara filer som faktiskt tillhör den aktuella mappen
     const mappedApiRitningar = ritningarFromApi
-      .filter(file => currentProject && file.projectId === currentProject.id)
+      .filter(file => {
+        // Filtrera först baserat på projekt
+        const matchesProject = currentProject && file.projectId === currentProject.id;
+        
+        // KRITISK FÖRBÄTTRING: Filtrera sedan baserat på mappID
+        // Om currentFolderId är null, visar vi bara rotfiler (filer utan mappID)
+        // Annars visar vi bara filer som har exakt samma mappID
+        const matchesFolder = currentFolderId === null 
+          ? file.folderId === null 
+          : file.folderId === currentFolderId;
+          
+        return matchesProject && matchesFolder;
+      })
       .map(file => {
         // Hitta relaterade PDF-versioner om de finns
         const fileVersions = versionsByFileId[file.id] || [];
@@ -516,9 +549,14 @@ export default function FolderPage() {
       }
       
       console.log(`Could not find any folder ID for name: ${name}`);
+      
+      // Uppdatera folderStatus om mappen inte hittas - detta triggar felmeddelandet
+      setFolderStatus('not_found');
+      
       return null;
     } catch (error) {
       console.error("Error finding folder ID:", error);
+      setFolderStatus('not_found');
       return null;
     }
   };
@@ -691,6 +729,29 @@ export default function FolderPage() {
     }
   };
 
+  // Effekt för att kontrollera om mappnamnet finns i aktuellt projekt
+  useEffect(() => {
+    const checkFolder = async () => {
+      if (!currentProject?.id || !folderName) return;
+      
+      setFolderStatus('loading');
+      const folderId = await getFolderIdByName(folderName);
+      
+      if (folderId) {
+        setFolderStatus('found');
+      } else {
+        setFolderStatus('not_found');
+      }
+    };
+    
+    checkFolder();
+  }, [currentProject?.id, folderName]);
+  
+  // Hantera navigering tillbaka till rotfilerna när mappen inte hittas
+  const handleNavigateToRoot = () => {
+    navigate('/vault/files');
+  };
+  
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar className={isSidebarOpen ? "" : "hidden"} />
@@ -707,6 +768,36 @@ export default function FolderPage() {
             <ChevronRight size={14} className="mx-1" />
             <span className="font-semibold">{folderName}</span>
           </div>
+          
+          {/* Meddelandeområde om mappen inte hittas */}
+          {folderStatus === 'not_found' && (
+            <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4 rounded-md">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-700 font-medium">
+                    Kunde inte hitta mappen "{folderName}"
+                  </p>
+                  <p className="text-sm text-red-700 mt-1">
+                    Mappen hittades inte i systemet. Kontrollera att du är i rätt projekt och att mappen existerar.
+                  </p>
+                  <div className="mt-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleNavigateToRoot}
+                    >
+                      Gå till filöversikten
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           
           {!currentProject && (
             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 rounded-md">
