@@ -573,11 +573,10 @@ export function FileExplorer({ onFileSelect, selectedFileId }: FileExplorerProps
       // Explicit loggning när ingen mapp är vald - för felsökning
       console.log(`Laddar upp utan mappval - filen kommer placeras i ROT`);
       
-      // KRITISK FÖRBÄTTRING: Skicka ett tomt folderId istället för "null" som sträng
-      // Detta kommer att hanteras rätt på servern och omvandlas till NULL i databasen
-      // VIKTIG ÄNDRING: Skicka INTE med folderId-parametern alls, vilket är bättre än att skicka 'null'
-      // formData.append('folderId', '');
-      console.log('Laddar upp utan folderId - servern kommer hantera filen som en rotfil');
+      // KRITISK FÖRBÄTTRING: Skicka explicit 'null' som mappID för att indikera rotfiler
+      // Detta kommer att göra att servern explicit sätter folderId = null i databasen
+      formData.append('folderId', 'null');
+      console.log('Laddar upp med folderId=null - servern kommer placera filen i rotkatalogen');
     }
     
     // Simulate upload progress (in a real app, you'd use XHR or fetch with progress event)

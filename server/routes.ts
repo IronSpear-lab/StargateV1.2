@@ -610,11 +610,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Tydlig loggning av ursprunglig folderId från klienten
       console.log(`Filuppladdning: Inkommande folderId="${req.body.folderId}" av typen ${typeof req.body.folderId}`);
       
-      // Hanterar fallet när folderId skickas och inte är 'null' (sträng), undefined, eller tom sträng
-      if (req.body.folderId && 
-          req.body.folderId !== 'null' && 
-          req.body.folderId !== 'undefined' && 
-          req.body.folderId !== '') {
+      // FÖRBÄTTRAD HANTERING AV FOLDERID: Hanterar explicit mappID (eller null)
+      console.log(`Filuppladdning: Hantering av folderId från klienten: "${req.body.folderId}" (typ: ${typeof req.body.folderId})`);
+      
+      // Explicit hantering av "null" som sträng från klienten - detta indikerar en rotfil
+      if (req.body.folderId === 'null' || req.body.folderId === 'undefined' || req.body.folderId === '') {
+        console.log(`Filuppladdning: Explicit null/undefined/tom sträng detekterad - sätter folderId=null för rotfil`);
+        folderId = null;
+      }
+      // Hanterar fallet när giltigt mappID skickas
+      else if (req.body.folderId) {
           
         // Konvertera alltid till nummer - detta säkerställer att folderId är en siffra
         const parsedFolderId = parseInt(req.body.folderId);
